@@ -1,0 +1,82 @@
+--------------------------------------------------
+Subject: One line from UTIL_AngleMod
+--------------------------------------------------
+10/23/03 at 11:08:49  Posted by: OffTopic (khomsan.ph@student.chula.ac.th)
+--------------------------------------------------
+code:
+
+// ripped this out of the engine
+float UTIL_AngleMod(float a)
+{
+#if 0 // NOTE: i have problem use this
+   if (a < 0)
+   {
+      a += 360 * ((int)(a / 360) + 1);
+   }
+   else if (a >= 360)
+   {
+      a -= 360 * ((int)(a / 360));
+   }
+#endif
+   // this line work fine
+   a = (360.0/65536) * ((int)(a*(65536/360.0)) & 65535);
+   return a;
+}
+
+
+I know that this func clamp angle (a) into [0, 360) but can anyone explain this line for me?
+code:
+
+   a = (360.0/65536) * ((int)(a*(65536/360.0)) & 65535);
+
+
+
+???
+
+--------------------------------------------------
+10/23/03 at 11:59:39  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+This part...
+code:
+((int)(a*(65536/360.0)) & 65535)
+
+...takes a floating point angle (called 'a') and multiplies it by 182.04444444444 (same as floating point 65536/360.0), and converts the result to an integer (throws away the part after the decimal place) and then does a bitwise AND of 65536 (or 0xFFFF hexadecimal).  The bitwise AND will make sure the result is between 0 and 65535 (it masks off any bits higher than the 16th most significant bit).
+
+So now you have a value between 0 and 65535 that represents the angle between 0 and 359.  Let's call these "rotation units" since they aren't really angles and they aren't really radians.
+
+Now take the rotation units and multiply it by 0.0054931640625 (floating point 360.0 / 65536).  This will "convert" that rotation unit value back to something between 0 and 359.
+
+botman
+
+--------------------------------------------------
+10/26/03 at 03:39:21  Reply by: OffTopic (khomsan.ph@student.chula.ac.th)
+--------------------------------------------------
+Thanks for an explanation botman, but I'm not 100% clear. I think, I need to know something about how a 32 bits singed INTEGER is store on a computer memory...
+
+
+--------------------------------------------------
+10/26/03 at 03:50:45  Reply by: OffTopic (khomsan.ph@student.chula.ac.th)
+--------------------------------------------------
+OK. I understand everything now.
+Here's a link I've found about how 32 bits signed INTEGER is represent...
+http://h18009.www1.hp.com/fortran/docs/vf-html/pg/pg11int4.htm
+
+
+--------------------------------------------------
+10/26/03 at 04:15:53  Reply by: OffTopic (khomsan.ph@student.chula.ac.th)
+--------------------------------------------------
+I have a follow up question here...
+code:
+
+  if (a < 0)
+  {
+     a += 360 * ((int)(a / 360) + 1);
+  }
+  else if (a >= 360)
+  {
+     a -= 360 * ((int)(a / 360));
+  }
+
+
+this code work or not? i didn't find any mistake from this code, but i have some problem using this code, it seem to have some lost of data...???
+

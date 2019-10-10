@@ -1,0 +1,57 @@
+--------------------------------------------------
+Subject: Player movement question
+--------------------------------------------------
+01/09/03 at 20:12:42  Posted by: phantom_turtle (phantom_turtle@hotmail.com)
+--------------------------------------------------
+I am trying to change the speed at wich the players can move forward, back, and side to side. I also wish to change jumping so that players cannot jump very high and loose velocity. So if you are running along and you jump you wont go very high and at the end of the jump you will come to a complete stop befroe being able to move again. I have found these functions in thecode ACT_HOP and PLAYER_JUMP but i cant see where it is getting players velocity from and where I can change it. It says in the code // jump velocity is sqrt( height * gravity * 2) but I cannot see where hieght and gravity are defined. if anyone can give me an idea of how this works or a tutorial on player movement that would be a huge help.
+
+thanks
+
+--------------------------------------------------
+01/10/03 at 05:32:42  Reply by: cycloid (mail@cycloid.biz)
+--------------------------------------------------
+there are a few ways you could go about this but the one i like is the scariest. first your mod needs to be using both client and server dlls (i.e. you need to be compiling both, incase you didnt know you can open two "Visual Studio" at a time and have one dll in each!)
+
+then check out pm_shared.c
+
+this is a "c" file and doesnt use the full vector class. only a "pretend" vec3_t which is justa float[3] array! which is where it starts to become scary.
+
+this file is used by the server to move all the players around and on the client to move the local player around and sync it with the server dll. *basically* this is where the player prediction occurs to compensate for lag. hence you need to compile both dlls for your mod for this to work
+
+
+somewhere in there (it escapes me) there are functions that check the players "maxspeed" (search for that) and limit it. in that funcition it does things with forwardmove, sidemove and upmove.
+
+PM_Jump() is where it makes you jump. i.e. gives you the upward velocity.
+
+
+if, for example, you wanted to make it so that you couldnt do the jump->duck manouver to gain extra height then you could do
+
+if( pmove->onground == -1 )
+return;
+
+in the PM_Duck function, however, this might stop the player from being able to jump through gaps like windows!
+
+
+if you can get to grips with all that then it's lots of fun!
+
+also, check out the the client dll's input.cpp.. that's where your keypresses etc. are processed sends to the pm_ code/server to tell it how fast you want to move in each direction!
+
+it's a bit, er, strange, until you figure it out!
+
+cyc
+
+
+
+[modified on 01/10/03 at 05:32:42]
+--------------------------------------------------
+01/11/03 at 01:24:33  Reply by: phantom_turtle (phantom_turtle@hotmail.com)
+--------------------------------------------------
+Thanks for pointing me in the right direction. I still have a question about the jumping. When a player jumps I want them to come to a complete stop after the jump before they can continue moving. I want to avoid the "bunny hop" effect like in quake and normal hal-life death match. If you have any code or suggestions that would be a great help.
+
+Thanks again
+
+--------------------------------------------------
+01/11/03 at 05:08:36  Reply by: cycloid (mail@cycloid.biz)
+--------------------------------------------------
+Theres the PM_CheckFalling code, which checks when you have hit the ground after falling, you could do something in there...
+

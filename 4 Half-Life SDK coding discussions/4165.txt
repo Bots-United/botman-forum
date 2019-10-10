@@ -1,0 +1,177 @@
+--------------------------------------------------
+Subject: Something odd
+--------------------------------------------------
+02/21/03 at 09:46:12  Posted by: LazyOne (the_lazy_one_09@hotmail.com)
+--------------------------------------------------
+I keep getting different results with my tracelines, actually it happens only once and a while. I'm trying to get the texture in the player's crosshair and put it into an AMX mod module. Not much to this one, any help is appreciated.
+
+<code>
+static cell get_texture(AMX *amx, cell *params)
+{
+      int ignoreindex = params[1];
+      int len = params[3];
+
+      char out[64];
+
+      edict_t *pPlayer = INDEXENT(ignoreindex);
+
+      Vector start, end, v_xhair_end;
+
+      TraceResult tr;
+
+      start = pPlayer->v.origin + pPlayer->v.view_ofs;
+      end = pPlayer->v.origin + pPlayer->v.view_ofs + gpGlobals->v_forward * 9999;
+
+      TRACE_LINE(start, end, ignore_monsters, pPlayer, &tr);
+
+      if (tr.pHit)
+      {
+            edict_t *pWorldspawn = g_engfuncs.pfnPEntityOfEntIndex(0);
+
+            pWorldspawn = tr.pHit;
+
+            const char *Texture = TRACE_TEXTURE(pWorldspawn, start, end);      
+      
+            if (Texture)
+            {
+                  sprintf(out, "%s", Texture);
+      
+            }
+            else
+            {
+                  sprintf(out, "No Texture!");
+            }
+      }
+      
+      return SET_AMXSTRING(amx, params[2], out, len);
+}
+</code>
+ 
+
+--------------------------------------------------
+02/21/03 at 11:04:36  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+You HAVE to call UTIL_MakeVector() with the player's view angles before using gpGlobals->v_forward, v_up, or v_right.
+
+botman
+
+--------------------------------------------------
+02/21/03 at 11:05:26  Reply by: LazyOne (the_lazy_one_09@hotmail.com)
+--------------------------------------------------
+Agh! /me remembers for next time.
+Thanks for the help.
+
+
+--------------------------------------------------
+02/22/03 at 10:17:42  Reply by: LazyOne (the_lazy_one_09@hotmail.com)
+--------------------------------------------------
+Err. 1 more quick question.
+
+Is there any easy way to tell the class of a certain entity? Like CLASS_HUMAN_PASSIVE?
+Again, any info would be appreciated.
+
+
+--------------------------------------------------
+02/22/03 at 11:10:00  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Half-Life stores the classification of a "monster" in the class member variables (which aren't directly accessible from outside the MOD source code).
+
+If you are doing this as a AdminMOD plugin, the best you can do is to look at the classname of the entity to see what type of character it is (monster_snark, monster_barney, player, monster_hgrunt, etc.).
+
+botman
+
+--------------------------------------------------
+02/22/03 at 11:16:18  Reply by: LazyOne (the_lazy_one_09@hotmail.com)
+--------------------------------------------------
+I had a feeling it wasn't possible, I could look up the classname. The problem with that is in svencoop some things like barnies can be friendly or an enemy.
+Thanks for the info.
+
+
+--------------------------------------------------
+02/22/03 at 12:30:27  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+If they are shooting at you, then they are an enemy!  ;D
+
+botman
+
+--------------------------------------------------
+02/22/03 at 12:32:16  Reply by: LazyOne (the_lazy_one_09@hotmail.com)
+--------------------------------------------------
+Actually, I wanted it to see if players were attacking friendly monsters. I think I can do by reading the logs somehow.
+
+
+--------------------------------------------------
+02/27/03 at 09:07:54  Reply by: LazyOne (the_lazy_one_09@hotmail.com)
+--------------------------------------------------
+Ok, There is a problem that has been really confusing me.
+
+code:
+
+void CheckThink( edict_t *pEntity )
+{      
+      if (g_engfuncs.pfnCVarGetFloat("lz_fx_grenade"))
+      {
+            edict_t *pEnt = NULL;
+            
+            while ( ((pEnt = UTIL_FindEntityByClassname(pEnt, "grenade") ) != NULL) )
+            {
+                  MESSAGE_BEGIN(MSG_BROADCAST, SVC_TEMPENTITY);
+                        WRITE_BYTE(TE_BEAMFOLLOW);
+                        WRITE_SHORT(ENTINDEX(pEnt));
+                        WRITE_SHORT(laserbeam);
+                        WRITE_BYTE(10);
+                        WRITE_BYTE(10);
+                        WRITE_BYTE(0);
+                        WRITE_BYTE(255);
+                        WRITE_BYTE(0);
+                        WRITE_BYTE(100);
+                  MESSAGE_END();
+            }
+      }
+      if (g_engfuncs.pfnCVarGetFloat("lz_fx_rocket"))
+      {
+            edict_t *pent = NULL;
+
+            while ( ((pent = UTIL_FindEntityByClassname(pent, "rpg_rocket") ) != NULL) )
+            {
+                  MESSAGE_BEGIN(MSG_BROADCAST, SVC_TEMPENTITY);
+                        WRITE_BYTE(TE_BEAMFOLLOW);
+                        WRITE_SHORT(ENTINDEX(pent));
+                        WRITE_SHORT(xbeam1);
+                        WRITE_BYTE(10);
+                        WRITE_BYTE(10);
+                        WRITE_BYTE(255);
+                        WRITE_BYTE(255);
+                        WRITE_BYTE(255);
+                        WRITE_BYTE(100);
+                  MESSAGE_END();
+            }
+      }
+      if (g_engfuncs.pfnCVarGetFloat("lz_fx_satchel"))
+      {
+            edict_t *Ent = NULL;
+
+            while ( ((Ent = UTIL_FindEntityByClassname(Ent, "monster_satchel") ) != NULL) )
+            {
+                  int iRed = RANDOM_LONG(1, 255);
+                  int iGreen = RANDOM_LONG(1, 255);
+                  int iBlue = RANDOM_LONG(1, 255);
+
+                  Ent->v.renderfx = kRenderFxGlowShell;
+                  Ent->v.rendermode = kRenderNormal;
+                  Ent->v.renderamt = 0;
+                  Ent->v.rendercolor.x = iRed;
+                  Ent->v.rendercolor.y = iGreen;
+                  Ent->v.rendercolor.z = iBlue;
+            }
+      }
+
+      RETURN_META (MRES_IGNORED);
+}
+
+
+
+I've been using that to add trails to grenades, rockets and make satchels glow. The problem is, I cant figure out how to only do it once. Now, each grenade, rocket entity is given a trail multiple times and makes the effect useless. I've been trying to figure this out but just end up confused on how to do this.
+Any tips?
+
+

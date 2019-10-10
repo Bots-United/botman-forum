@@ -1,0 +1,57 @@
+--------------------------------------------------
+Subject: Ammo & bots for TFC
+--------------------------------------------------
+03/23/01 at 12:35:12  Posted by: DukeNukem (tfc_duke@hotmail.com)
+--------------------------------------------------
+Hi all ! I'm new here
+
+I would make bots for TFC and TFC only. 
+
+I would that my bots don't take ammo when they have more 60% of ammo but I don't know how ? I'have found iAmmo1, iAmmo2, ... in bot_current_weapon_t and bot_weapon_t but I don't know of to use it and witch is the good ?
+
+please help me!
+thx.
+
+--------------------------------------------------
+03/27/01 at 07:18:27  Reply by: theimann (killaruna@yahoo.com)
+--------------------------------------------------
+Hi David!
+
+I can't help you with code because I don't have my sources here, but just from memory it's something like this:
+The ammo-variables in bot_current_weapon_t store the amount of ammo the weapon has in its current clip. These get changed when you reload your weapon. 
+The variables in bot_weapon_t do *NOT* contain the amount but the type of ammo that the weapon uses. You will have to use this type as an index to another table (which name I can't remember) that stores the amount of each type of ammo you have got in reserve.
+I hope that I remember things right (it has been a while) - if any of the other guys has corrections or some easy to understand sample code please post it.
+
+Tobias
+
+--------------------------------------------------
+03/27/01 at 14:28:29  Reply by: eLiTe (ali@elitegamer.fsnet.co.uk)
+--------------------------------------------------
+I would actually like to know this too. I didn't know that they pointed to ammo types, I thought they held the ammo levels!
+
+--------------------------------------------------
+03/28/01 at 05:25:23  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+This is from bot_combat.cpp (in the BotFireWeapon function)...
+code:
+pBot->m_rgAmmo[weapon_defs[iId].iAmmo1]
+
+iId is the weapon ID (like VALVE_WEAPON_CROSSBOW) and iAmmo1 is the primary ammo ID value.  The m_rgAmmo[] array gets updated by AmmoX network messages and CurrentWeapon network messages.
+
+The maximum ammount of ammo the weapon can carry (not the clip but the total) is stored in the WeaponList network messages in the iAmmo1Max field.
+
+So if you wanted to know if the bot was carrying at least 70% of the max ammo for a weapon you could do something like this...
+code:
+int iId;
+float percent;
+ 
+iId = VALVE_WEAPON_MP5;
+percent = pBot->m_rgAmmo[weapon_defs[iId].iAmmo1] / weapon_defs[iId].iAmmo1Max;
+ 
+if (percent < 0.70)
+{
+   // not enough ammo yet, go search for more...
+}
+
+botman
+

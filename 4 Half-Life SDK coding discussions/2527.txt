@@ -1,0 +1,354 @@
+--------------------------------------------------
+Subject: Lens Flares in Client DLL
+--------------------------------------------------
+12/07/01 at 04:52:07  Posted by: SLAVIK (dvsoft@i.com.ua)
+--------------------------------------------------
+II am going to use Triangle API (and CLient DLL) to create LensFlare effect, but how can I get information from ClientDLL about Player's view offset (transformation matrix) and his coordinates in space?
+
+--------------------------------------------------
+12/07/01 at 07:25:07  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+If you are trying to convert from world coordinates (player's origin) to screen coordinates (2D screen position), there's a WorldToScreen() function in the triangleapi_t structure.  See common\triangleapi.h for details.
+
+botman
+
+--------------------------------------------------
+12/08/01 at 10:45:14  Reply by: SLAVIK (slava@deep-shadows.com)
+--------------------------------------------------
+Thnx, this is very useful for me, but I still don't know how to get player coordinates from Cleint.dll...
+
+--------------------------------------------------
+12/09/01 at 05:16:17  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+perhaps this post might help you.
+
+http://dynamic.gamespy.com/~botman/yabb/YaBB.pl?board=2&action=display&num=2521
+--------------------------------------------------
+12/09/01 at 06:47:47  Reply by: ReDucTor[FGW] (sjdtmv@tpg.com.au)
+--------------------------------------------------
+code:
+
+for(int i=0;i<32;i++)
+{
+struct cl_entity_s * ent = gEngfuncs.GetEntityByIndex(i);
+vec3_t screen;
+if(ent->player && ent->curstate.solid != SOLID_NOT)
+continue;
+if(gEngfuncs.Triapi->WorldToScreen(ent->origin, screen)
+continue;
+DrawConsoleString(screen[0],screen[1], "%s", GetPlayerName(i));
+}
+
+
+--------------------------------------------------
+12/09/01 at 07:41:58  Reply by: SLAVIK (slava@deep-shadows.com)
+--------------------------------------------------
+Excuise me for my bad knowledge of client.dll. I've worked only with sp.dll and I don't know where I can insert this code.
+ pls.help me!
+
+--------------------------------------------------
+12/09/01 at 08:24:55  Reply by: ReDucTor[FGW] (sjdtmv@tpg.com.au)
+--------------------------------------------------
+Drawing can only be done in HUD_Redraw, but you can do WorldToScreen any where...
+
+--------------------------------------------------
+12/09/01 at 10:35:14  Reply by: SLAVIK (slava@deep-shadows.com)
+--------------------------------------------------
+I've inserted this code into hud_redraw.cpp in HUD_Redraw, but compiler tells me there are errors:
+
+--------------------Configuration: cl_dll - Win32 Debug--------------------
+Compiling...
+hud_redraw.cpp
+C:\Games\FullSDK.Visual\cl_dll\hud_redraw.cpp(93) : error C2027: use of undefined type 'cl_entity_s'
+        c:\games\fullsdk.visual\engine\cdll_int.h(171) : see declaration of 'cl_entity_s'
+C:\Games\FullSDK.Visual\cl_dll\hud_redraw.cpp(93) : error C2227: left of '->player' must point to class/struct/union
+C:\Games\FullSDK.Visual\cl_dll\hud_redraw.cpp(93) : error C2027: use of undefined type 'cl_entity_s'
+        c:\games\fullsdk.visual\engine\cdll_int.h(171) : see declaration of 'cl_entity_s'
+C:\Games\FullSDK.Visual\cl_dll\hud_redraw.cpp(93) : error C2227: left of '->curstate' must point to class/struct/union
+C:\Games\FullSDK.Visual\cl_dll\hud_redraw.cpp(93) : error C2228: left of '.solid' must have class/struct/union type
+C:\Games\FullSDK.Visual\cl_dll\hud_redraw.cpp(93) : error C2065: 'SOLID_NOT' : undeclared identifier
+C:\Games\FullSDK.Visual\cl_dll\hud_redraw.cpp(95) : error C2039: 'Triapi' : is not a member of 'cl_enginefuncs_s'
+        c:\games\fullsdk.visual\engine\cdll_int.h(98) : see declaration of 'cl_enginefuncs_s'
+C:\Games\FullSDK.Visual\cl_dll\hud_redraw.cpp(95) : error C2227: left of '->WorldToScreen' must point to class/struct/union
+C:\Games\FullSDK.Visual\cl_dll\hud_redraw.cpp(95) : error C2027: use of undefined type 'cl_entity_s'
+        c:\games\fullsdk.visual\engine\cdll_int.h(171) : see declaration of 'cl_entity_s'
+C:\Games\FullSDK.Visual\cl_dll\hud_redraw.cpp(95) : error C2227: left of '->origin' must point to class/struct/union
+C:\Games\FullSDK.Visual\cl_dll\hud_redraw.cpp(96) : error C2143: syntax error : missing ')' before 'continue'
+C:\Games\FullSDK.Visual\cl_dll\hud_redraw.cpp(97) : error C2065: 'GetPlayerName' : undeclared identifier
+Error executing cl.exe.
+
+client.dll - 12 error(s), 0 warning(s)
+
+--------------------------------------------------
+12/09/01 at 10:36:24  Reply by: SLAVIK (slava@deep-shadows.com)
+--------------------------------------------------
+I've inserted this code, but compiler tells me there are errors:
+
+--------------------Configuration: cl_dll - Win32 Debug--------------------
+Compiling...
+hud_redraw.cpp
+C:\Games\FullSDK.Visual\cl_dll\hud_redraw.cpp(93) : error C2027: use of undefined type 'cl_entity_s'
+        c:\games\fullsdk.visual\engine\cdll_int.h(171) : see declaration of 'cl_entity_s'
+C:\Games\FullSDK.Visual\cl_dll\hud_redraw.cpp(93) : error C2227: left of '->player' must point to class/struct/union
+C:\Games\FullSDK.Visual\cl_dll\hud_redraw.cpp(93) : error C2027: use of undefined type 'cl_entity_s'
+        c:\games\fullsdk.visual\engine\cdll_int.h(171) : see declaration of 'cl_entity_s'
+C:\Games\FullSDK.Visual\cl_dll\hud_redraw.cpp(93) : error C2227: left of '->curstate' must point to class/struct/union
+C:\Games\FullSDK.Visual\cl_dll\hud_redraw.cpp(93) : error C2228: left of '.solid' must have class/struct/union type
+C:\Games\FullSDK.Visual\cl_dll\hud_redraw.cpp(93) : error C2065: 'SOLID_NOT' : undeclared identifier
+C:\Games\FullSDK.Visual\cl_dll\hud_redraw.cpp(95) : error C2039: 'Triapi' : is not a member of 'cl_enginefuncs_s'
+        c:\games\fullsdk.visual\engine\cdll_int.h(98) : see declaration of 'cl_enginefuncs_s'
+C:\Games\FullSDK.Visual\cl_dll\hud_redraw.cpp(95) : error C2227: left of '->WorldToScreen' must point to class/struct/union
+C:\Games\FullSDK.Visual\cl_dll\hud_redraw.cpp(95) : error C2027: use of undefined type 'cl_entity_s'
+        c:\games\fullsdk.visual\engine\cdll_int.h(171) : see declaration of 'cl_entity_s'
+C:\Games\FullSDK.Visual\cl_dll\hud_redraw.cpp(95) : error C2227: left of '->origin' must point to class/struct/union
+C:\Games\FullSDK.Visual\cl_dll\hud_redraw.cpp(96) : error C2143: syntax error : missing ')' before 'continue'
+C:\Games\FullSDK.Visual\cl_dll\hud_redraw.cpp(97) : error C2065: 'GetPlayerName' : undeclared identifier
+Error executing cl.exe.
+
+client.dll - 12 error(s), 0 warning(s)
+
+--------------------------------------------------
+12/09/01 at 10:47:39  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+I guess reductor wrote this code without testing it!
+
+u got to declare "ent" as entvars_s i think
+
+instead of getplayername(i) just stick in STRING(ent->netname), i think that was probably a funtion made by reductor if it isnt in the template :)
+
+this part... 
+
+code:
+
+if(gEngfuncs.Triapi->WorldToScreen(ent->origin, screen)
+
+
+
+needs another bracket after it !
+
+some more things in it i cant be bothered lookin up ;)
+
+--------------------------------------------------
+12/09/01 at 11:39:14  Reply by: ReDucTor[FGW] (sjdtmv@tpg.com.au)
+--------------------------------------------------
+Its client side, using entvars_s for entitys is wrong, you use cl_entity_t(cl_entity_s)
+
+change struct cl_entity_s * ent to
+
+code:
+
+cl_entity_t *ent;
+
+
+
+Change
+
+code:
+
+if(gEngfuncs.Triapi->WorldToScreen(ent->origin, screen)
+
+
+
+to
+
+code:
+
+if(gEngfuncs.pTriAPI->WorldToScreen(ent->origin, screen))
+
+
+
+I often don't test most things i post on message boards :)
+
+--------------------------------------------------
+12/10/01 at 22:46:08  Reply by: SLAVIK (slava@deep-shadows.com)
+--------------------------------------------------
+Thanks for all the info! All that is very useful, but I need to do the following thing:
+ I must find only ONE entity, for example LIGHT with own, special NAME. Is there any function?
+For example if SPECIAL LIGHT is on the screen on that place on the screen string "ENTITY IS HERE!" must be drawn.
+I know how to find it's 2d coordinates and how to draw the string, but how can I get the index of that entity?
+P.S. I have all the information on creating LensFlares : formulas, theory, etc. this is the last thing, so , please HELP ME!!!
+
+--------------------------------------------------
+12/11/01 at 02:49:36  Reply by: ReDucTor[FGW] (sjdtmv@tpg.com.au)
+--------------------------------------------------
+add the following files to your project
+
+bspfile.cpp
+cmdlib.cpp
+mathlib.cpp
+scriplib.cpp
+
+
+then use the following in an init functions some where, make sure its one that is ran at the start of every map, because if you put it with your code, your hdd will be a crazy mofo, with file i/o
+code:
+
+cl_entity_t * pEnt = gEngfuncs.GetEntityByIndex( 0 );      // get world model
+LoadBSPFile("%s", pEnt->model->name);
+ParseEntities();
+
+
+
+now, to find an entity by class name to the following...
+
+code:
+
+entity_t * FindEntityByClassName(char *classname)
+{
+for(int i=0;i<num_entities;i++)
+{
+entity_t *entity;
+entity = entities[i];
+if(strcmp(classname, ValueForKey(entity,"classname")) == 0)
+return entity;
+}
+return NULL;
+}
+
+
+
+code:
+
+void DrawEntityName(char *classname)
+{
+vec3_t screen;
+entity_t * entity = FindEntityByClassName(classname);
+if(gEngfuncs.Triapi->WorldToScreen(entity->origin, screen))
+DrawConsoleString(screen[0],screen[1], "%s", classname);
+}
+
+
+
+Simple and fun
+
+Edit : Removed square brackets from checking classname, i just like to keep stuff small and clean :)
+
+[modified on 12/11/01 at 02:49:36]
+--------------------------------------------------
+12/11/01 at 08:17:48  Reply by: SLAVIK (slava@deep-shadows.com)
+--------------------------------------------------
+I don't know what is wrong: compiler tells there are errors in cmdlibs.c and others "UTILS/common/" related files.
+
+--------------------------------------------------
+12/11/01 at 17:01:54  Reply by: ReDucTor[FGW] (sjdtmv@tpg.com.au)
+--------------------------------------------------
+What errors?
+
+--------------------------------------------------
+12/12/01 at 22:35:40  Reply by: SLAVIK (slava@deep-shadows.com)
+--------------------------------------------------
+I've inserted LoadBSP code into the initialization of HUD - it is done everytime DLL is loaded.
+
+--------------------Configuration: cl_dll - Win32 Debug--------------------
+Compiling...
+hud.cpp
+c:\games\fullsdk.visual\utils\common\cmdlib.h(32) : error C2059: syntax error : 'constant'
+c:\games\fullsdk.visual\utils\common\cmdlib.h(32) : error C2143: syntax error : missing ';' before '}'
+c:\games\fullsdk.visual\utils\common\cmdlib.h(32) : error C2501: 'qboolean' : missing storage-class or type specifiers
+c:\games\fullsdk.visual\utils\common\cmdlib.h(109) : error C2146: syntax error : missing ';' before identifier 'com_eof'
+c:\games\fullsdk.visual\utils\common\cmdlib.h(109) : fatal error C1004: unexpected end of file found
+Error executing cl.exe.
+
+client.dll - 5 error(s), 0 warning(s)
+
+[modified on 12/12/01 at 22:35:40]
+--------------------------------------------------
+12/12/01 at 02:00:11  Reply by: ReDucTor[FGW] (sjdtmv@tpg.com.au)
+--------------------------------------------------
+You only need to add one include, the other files will do the includes, for you, just include "bspfile.h"
+
+--------------------------------------------------
+12/12/01 at 03:14:00  Reply by: SLAVIK (slava@deep-shadows.com)
+--------------------------------------------------
+new errors:
+
+hud.cpp
+C:\Games\FullSDK.Visual\cl_dll\hud.cpp(225) : error C2027: use of undefined type 'model_s'
+        c:\games\fullsdk.visual\engine\cdll_int.h(183) : see declaration of 'model_s'
+C:\Games\FullSDK.Visual\cl_dll\hud.cpp(225) : error C2227: left of '->name' must point to class/struct/union
+C:\Games\FullSDK.Visual\cl_dll\hud.cpp(312) : error C2679: binary '=' : no operator defined which takes a right-hand operand of type 'entity_t' (or there is no acceptable conversion)
+C:\Games\FullSDK.Visual\cl_dll\hud.cpp(322) : error C2039: 'Triapi' : is not a member of 'cl_enginefuncs_s'
+        c:\games\fullsdk.visual\engine\cdll_int.h(98) : see declaration of 'cl_enginefuncs_s'
+C:\Games\FullSDK.Visual\cl_dll\hud.cpp(322) : error C2227: left of '->WorldToScreen' must point to class/struct/union
+
+--------------------------------------------------
+12/12/01 at 09:10:23  Reply by: ReDucTor[FGW] (sjdtmv@tpg.com.au)
+--------------------------------------------------
+don't remove the includes from hud.cpp just add one new one...
+
+--------------------------------------------------
+12/12/01 at 09:17:50  Reply by: SLAVIK (slava@deep-shadows.com)
+--------------------------------------------------
+this is what I implemented
+
+--------------------------------------------------
+12/12/01 at 14:10:41  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+You may have the #include files in the wrong order.  Did you add the new .h file at the beginning of the list or at the end of the list?
+
+botman
+
+--------------------------------------------------
+12/12/01 at 17:48:41  Reply by: ReDucTor[FGW] (sjdtmv@tpg.com.au)
+--------------------------------------------------
+it will need windows.h included before it, so just add it below them all :)
+
+--------------------------------------------------
+12/12/01 at 22:35:21  Reply by: SLAVIK (slava@deep-shadows.com)
+--------------------------------------------------
+I have the includes in such order:
+
+#include "hud.h"
+#include "cl_util.h"
+#include <string.h>
+#include <stdio.h>
+
+#include "parsemsg.h"
+#include "hud_servers.h"
+#include "vgui_TeamFortressViewport.h"
+
+#include "demo.h"
+#include "demo_api.h"
+
+#include "..\utils\common\bspfile.h"
+#include "cl_entity.h"
+
+When to last files are at the and (like here) then there are 70 errors, if two last files are in the beginning then there are 8 errors :(
+
+--------------------------------------------------
+12/12/01 at 22:36:56  Reply by: SLAVIK (slava@deep-shadows.com)
+--------------------------------------------------
+What about sending and hooking messages from SP to CLIENT.DLL ???
+
+--------------------------------------------------
+12/12/01 at 23:20:41  Reply by: ReDucTor[FGW] (sjdtmv@tpg.com.au)
+--------------------------------------------------
+What are the 8 errors?
+
+--------------------------------------------------
+12/13/01 at 09:12:24  Reply by: SLAVIK (slava@deep-shadows.com)
+--------------------------------------------------
+hud.cpp
+c:\games\fullsdk.visual\utils\common\bspfile.h(190) : error C2146: syntax error : missing ';' before identifier 'styles'
+c:\games\fullsdk.visual\utils\common\bspfile.h(190) : error C2501: 'byte' : missing storage-class or type specifiers
+c:\games\fullsdk.visual\utils\common\bspfile.h(190) : error C2501: 'styles' : missing storage-class or type specifiers
+c:\games\fullsdk.visual\utils\common\bspfile.h(216) : error C2146: syntax error : missing ';' before identifier 'ambient_level'
+c:\games\fullsdk.visual\utils\common\bspfile.h(216) : error C2501: 'byte' : missing storage-class or type specifiers
+c:\games\fullsdk.visual\utils\common\bspfile.h(216) : error C2501: 'ambient_level' : missing storage-class or type specifiers
+c:\games\fullsdk.visual\utils\common\bspfile.h(235) : error C2146: syntax error : missing ';' before identifier 'dvisdata'
+c:\games\fullsdk.visual\utils\common\bspfile.h(235) : fatal error C1004: unexpected end of file found
+
+--------------------------------------------------
+12/13/01 at 12:20:43  Reply by: ReDucTor[FGW] (sjdtmv@tpg.com.au)
+--------------------------------------------------
+Before the include add
+
+code:
+
+typedef unsigned char byte;
+
+
+--------------------------------------------------
+12/14/01 at 07:55:49  Reply by: SLAVIK (slava@deep-shadows.com)
+--------------------------------------------------
+thnx for everything, but that doesn't work, though I will use DrrawText!!! I am going to use messages (see my thread on that forum)
+

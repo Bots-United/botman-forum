@@ -1,0 +1,52 @@
+--------------------------------------------------
+Subject: Question on heights
+--------------------------------------------------
+07/23/01 at 06:26:27  Posted by: Pembunuh (yip_omar@hotmail.com)
+--------------------------------------------------
+Hi..
+
+Thanks botman for your untireless efforts in answering all my questions. Really appreciate it.
+
+I got a new one. While investigating your WaypointReachable(), I dont get it how u seach for the terrain height between v_src and v_dest.
+
+The code is below:
+         while (distance > 10.0)      
+         {
+            // move 10 units closer to the goal...
+            v_check = v_check + (v_direction * 10.0);
+
+            v_down = v_check;
+            v_down.z = v_down.z - 1000.0;  // straight down 1000 units
+
+            UTIL_TraceLine(v_check, v_down, ignore_monsters,
+                           pEntity->v.pContainingEntity, &tr);
+
+            curr_height = tr.flFraction * 1000.0;  // height from ground
+
+            // is the difference in the last height and the current height
+            // higher that the jump height?
+            if ((last_height - curr_height) > 45.0)
+            {
+               // can't get there from here...
+               return FALSE;
+            }
+
+            last_height = curr_height;
+
+            distance = (v_dest - v_check).Length();  // distance from goal
+         }
+
+Basically I think I know what it does, but dunno how u implemented it. Thanks.
+
+************************************************
+Nothing is impossible!
+
+--------------------------------------------------
+07/23/01 at 08:00:53  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+What I try to is trace lines straight down along an imaginary line from one waypoint to another.  I move out 10 units at a time and draw a line down to the ground.  I keep track of the height of the last trace straight down.  If the current trace is more than 45 units difference from the previous trace then I know that a change in elevation has occurred that is higher than the player can jump, therefore the destination waypoint is unreachable from the current waypoint.
+
+There are some special cases where this does not work correctly.  For example, if you had several brushes in a map forming a grate (a bunch of lines separated by some spaces), this can fool this code into thinking that the traces between the solid parts are in open space and the next trace may wind up hitting one of the solid parts therefore it would think that this path is not traversable by the bot when it fact it actually would be traversable and should be a valid path (but it's not).
+
+botman
+

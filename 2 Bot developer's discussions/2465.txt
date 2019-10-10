@@ -1,0 +1,80 @@
+--------------------------------------------------
+Subject: Crashing under release but not in debug...
+--------------------------------------------------
+11/16/01 at 08:01:38  Posted by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+Whenever I use my bot release dll, the bot crashes after a while, but when I use my debug dll the bot doesn't crash at all. That way I cannot even find out where it crashes!!! Are there any common problems like this?!
+Ive done a clean build btw.
+
+The dissambly shows this...
+
+code:
+
+05300073 12 83 C6 30 47 81    adc         al,byte ptr [ebx-7EB8CF3Ah]
+
+
+
+what is werid about it is when I move scroll the dissembly up (to see the location 05300072, the line 05300073 dissapears! What the!
+
+[modified on 11/16/01 at 08:01:38]
+--------------------------------------------------
+11/16/01 at 08:34:58  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+I think I fixed it, I think it had to do with DispatchTouch() As I was trying to get a bot to press use in it (I know setting the v.button in it doesnt work) so I set a flag in the bot structure to press a button, and in bot think, it would press USE when the flag is true. But I commented the whole code out and it's working again. However If you know any way to keep the code in and stop it from crashing then that would be good :)
+
+code:
+
+int bot_index;
+      char TouchedEnt[20];
+      
+      if( pentOther != NULL )
+      {
+            bot_index = UTIL_GetBotIndex( pentOther );
+      }
+      if( (bot_index != -1) && ( bots[bot_index].is_used ) )
+      {
+            if( !(bots[bot_index].is_in_transformation) )
+            {
+                  
+                  if( pentTouched != NULL )
+                  {
+                        strcpy(TouchedEnt, STRING(pentTouched->v.classname));
+                        
+                        if ( strcmp("pickup_drive_apache", TouchedEnt) == 0 )
+                        {
+                              if (RANDOM_LONG(1,100) < 50)
+                                    bots[bot_index].press_use = TRUE;
+                        }
+                        
+                        
+                        //if( pentTouched == bots[bot_index].pBotPickupItem )
+                        //bots[bot_index].pBotPickupItem = NULL;
+                  }
+            }
+      }
+
+
+
+(I just notcide this) But perhaps it has to do with the fact i did NOT initialize bot_index to -1 ... hmm
+
+[modified on 11/16/01 at 08:34:58]
+--------------------------------------------------
+11/16/01 at 08:39:35  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+If "classname" is ever longer than 19 characters, then you will overwrite stuff on the stack (a VERY bad thing).
+
+The example entity you show, "pickup_drive_apache", is 19 characters, which is the limit of your TouchedEnt array.
+
+You might want to change TouchedEnt to...
+
+char TouchedEnt[64];
+
+botman
+
+--------------------------------------------------
+11/16/01 at 08:50:15  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+thanks botman,
+
+Although, is there any reason why it might not happen in debug mode??? ???
+

@@ -1,0 +1,178 @@
+--------------------------------------------------
+Subject: Netprobe and gethostbyaddr()
+--------------------------------------------------
+03/19/02 at 01:18:52  Posted by: CountFloyd (countfloyd@botepidemic.com)
+--------------------------------------------------
+I wrote a short tool to get infos from WON and about game servers running. I don't have problems except for one:
+The game servers are usually specified by a IP address instead of a name. The problem is that gethostbyaddr() doesn't resolve the hostname like it should, always returning NULL instead of a valid ptr to the HOSTENT structure. I first thought it's my mistake but I've seen that the get_info.c which comes with the netprobe sources has exactly the same problem (and always fails here). Now my question is if gethostbyaddr() is known to fail under Win95/98 (might work under WinNT, couldn't test it) and if so is there a workaround ? If I'm just feeding the IP String to gethostbyname() a valid useable ptr is returned.
+
+This is my function:
+code:
+
+void CSocket::NameToHostEntry(char* pszName)
+{
+      m_bError = false;
+      unsigned long addr = inet_addr(pszName);
+      if(addr == INADDR_NONE)
+            m_lpHostEntry = gethostbyname(pszName);
+      else
+            m_lpHostEntry = gethostbyaddr((char*) &addr,4,AF_INET);
+      if(!m_lpHostEntry)
+            m_bError = true;
+}
+
+  
+
+
+
+[modified on 03/19/02 at 01:18:52]
+--------------------------------------------------
+03/19/02 at 04:25:25  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+gethostbyaddr() should work fine as long as the host is registered on a DNS server somewhere (the DNS server that you are using).
+
+Try using gethostbyaddr() on...
+
+207.46.230.220
+64.58.76.225
+207.199.1.105
+
+...and see what you get back.
+
+It sounds like you are confusing the Half-Life server name with the registered domain name.  Half-Life servers typically don't have a registered domain name.
+
+botman
+
+--------------------------------------------------
+03/19/02 at 05:34:09  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Here's a quick little app I wrote called "gethost".  You run it with the hostname or the IP address and it will resolve the name and print the name and the IP address...
+code:
+#include <windows.h>
+#include <winsock.h>
+
+void main(int argc, char *argv[])
+{
+   WSADATA WSAData;
+   HOSTENT *phe;
+   struct in_addr *address;
+
+   if (argc < 2)
+   {
+      printf("usage: gethost host\n");
+      return;
+   }
+
+   WSAStartup(0x0101, &WSAData);
+
+   if (isdigit(argv[1][0]))
+   {
+      unsigned long addr;
+      addr = inet_addr(argv[1]);
+      phe = gethostbyaddr((const char *)&addr, sizeof(long), AF_INET);
+   }
+   else
+      phe = gethostbyname(argv[1]);
+
+   if (phe == NULL)
+   {
+      printf("Invalid or unknown IP address - %s\n", argv[1]);
+      return;
+   }
+
+   address = (struct in_addr *)phe->h_addr;
+   printf("hostname: %s  IP addr: %s\n",phe->h_name, inet_ntoa(*address));
+}
+
+For example...
+code:
+C:\C\WINDOWS\Socket>gethost 207.46.230.220
+hostname: microsoft.com  IP addr: 207.46.230.220
+
+...or...
+code:
+C:\C\WINDOWS\Socket>gethost www.microsoft.com
+hostname: www.microsoft.akadns.net  IP addr: 207.46.230.220
+
+botman
+
+--------------------------------------------------
+03/19/02 at 11:54:58  Reply by: CountFloyd (countfloyd@botepidemic.com)
+--------------------------------------------------
+First, thanks for your helpful reply !
+As you rightly assumed I wasn't sure about the DNS Server stuff. I always thought if a HL Server is online he uses a DNS Entry from his provider. The IP addresses you've given work without problems (I should have said before that using gethostbyaddr() on my local IP did work too). However how to get a ptr to the HOSTENT struct *if* the name can't be resolved ? I'm not sure if you're aware of this, your get_info.c always failed because of the missing ptr.
+Would this be legitimate:
+code:
+
+void CSocket::NameToHostEntry(char* pszName)
+{
+      m_bError = false;
+      unsigned long addr = inet_addr(pszName);
+      if(addr == INADDR_NONE)
+            m_lpHostEntry = gethostbyname(pszName);
+      else
+      {
+            m_lpHostEntry = gethostbyaddr((char*) &addr,4,AF_INET);
+            if(!m_lpHostEntry)            // Couldn't resolve ?
+            {
+                  // Try again using it as a name
+                  m_lpHostEntry = gethostbyname(pszName);
+            }
+      }
+      if(!m_lpHostEntry)
+            m_bError = true;
+}
+
+
+
+That would work all of the time, I just don't know if this is the way to do it. Before you're saying I don't really need to resolve a hostname for game servers: yes you're right but the CSocket::NameToHostEntry Function is a general function in my Socket Class Implementation which I'm using for other Protocols too (HTTP,Usenet,POP3,SMTP,WON so far).  
+
+--------------------------------------------------
+03/19/02 at 13:35:59  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+If the name can't be resolved, your S.O.L.  If I try to ping www.xyz.notadomain, the DNS server will attempt to convert that name to an IP address.  If "www.xyz.notadomain" isn't in the DNS name lookup table, there's nothing that you can do to get the IP address (it doesn't exist).
+
+get_info.c was meant to be used with IP addresses since 99% of Half-Life hosts will not have a fully qualified domain name (FQD) registered on a name server.  I put the gethostbyname stuff in there so that I could test it with servers that I had added to my windows\hosts file.  My DNS configuration checks the hosts file before trying to resolve the name using the DNS server.
+
+You don't need to use gethostbyname() or gethostbyaddr() if you already have an IP address.  Just use inet_addr() to convert the "dotted decimal" IP address to network byte order.  In my example above I assume that any "hostname" that begins with a digit is a dotted decimal IP address (since fully qualified domain names can't contain a numeric digit as the first character these could never be a name in a DNS server).
+
+botman
+
+[modified on 03/19/02 at 13:35:59]
+--------------------------------------------------
+03/19/02 at 14:17:01  Reply by: CountFloyd (countfloyd@botepidemic.com)
+--------------------------------------------------
+S.O.L. ?
+
+QUOTE:
+
+get_info.c was meant to be used with IP addresses since 99% of Half-Life hosts will not have a fully qualified domain name (FQD) registered on a name server
+
+
+
+Umm but that's my point here. I just wanted to point out that the get_info.c program coming with the netprobe sources doesn't work at all because it uses gethostbyaddr instead of gethostbyname. gethostbyaddr doesn't return a hostent struct because as you said most HL Servers aren't registered on a DNS Server and so the tool will close before sending over any data. Phew, I hope I'm clear enough this time. Anyway, my problems are solved and you can close this thread if you like. Thanks again !
+
+--------------------------------------------------
+03/20/02 at 05:03:21  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+S O L = S**t Outta Luck
+
+You're right.  I had forgotten that I had modified the get_info.c and get_serv.c files on my machine some time after I had released the NetProbe source.  I was looking at my newer code and not the versions in the NetProbe source.
+
+For those of you who are interested, I added a timeout to the TCP/IP recvfrom() function so that it won't wait forever for a response.  If it doesn't get a response in 5 seconds, it times out with an error.
+
+Here's the modified files...
+
+planethalflife.com/botman/get_info.cget_info.c planethalflife.com/botman/get_serv.cget_serv.c planethalflife.com/botman/get_won.cget_won.c
+
+The get_won.c is like the old get_serv.c.  It will retrieve the list of servers from WON and store them in a file.  The new get_serv.c will download the server IP addresses from WON, then will querry each server, one after the other, to retrieve server specific information (server name, current map, max players, etc).
+
+botman
+
+--------------------------------------------------
+03/20/02 at 05:32:02  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+P.S. This stuff was written when there was only about 4800 servers.  There is a MAX_SERVERS constant that will need to be changed to 25000 or 30000 (otherwise the application will crash with an array going out of bounds).
+
+botman
+

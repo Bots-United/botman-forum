@@ -1,0 +1,153 @@
+--------------------------------------------------
+Subject: How to debug with MSVC++??
+--------------------------------------------------
+01/17/01 at 09:10:35  Posted by: jerry_stoel (jerry_stoel@hotmail.com)
+--------------------------------------------------
+Does anyone know how to debug a bot??
+I just got MSVC++ and I can compile my bot easily, but I don't know how to debug my bot.
+
+
+
+--------------------------------------------------
+01/17/01 at 09:59:05  Reply by: zoom (fu@shai.com)
+--------------------------------------------------
+Here's what I'm using:
+
+In the menu for Project, Settings, put your executable:
+C:\SIERRA\Half-Life\hl.exe
+
+Your working directory:
+C:\SIERRA\Half-Life
+
+Arguments:
+-sw -console -developer -game tfc
+
+
+Set your breakpoints, compile, copy the DLLs, and you're set!
+
+
+--------------------------------------------------
+01/17/01 at 10:04:18  Reply by: jerry_stoel (jerry_stoel@hotmail.com)
+--------------------------------------------------
+Tnxs I'll try that.
+
+
+--------------------------------------------------
+01/17/01 at 13:20:11  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+Also check out this tutorial by Pink...
+
+http://planethalflife.com/wavelength/coding/tutorials/34.htm
+
+botman
+
+--------------------------------------------------
+01/19/01 at 08:39:39  Reply by: theimann (theimann@stud.fh-heilbronn.de)
+--------------------------------------------------
+Botman, you don't know how much you helped me with that single post... The first time I can actually debug my bot like a normal application. Thanks a lot, man!!!
+
+Tobias
+
+--------------------------------------------------
+01/19/01 at 10:39:55  Reply by: eLiTe (ali@elitegamer.fsnet.co.uk)
+--------------------------------------------------
+I've never used MSVC++ to debug an application, so I don't know how this helps :(
+
+--------------------------------------------------
+01/19/01 at 13:53:14  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+If you've got MSVC and you are NOT using the debugger, you are making things WAY TOO HARD on yourself.
+
+botman
+
+--------------------------------------------------
+01/19/01 at 18:32:23  Reply by: eLiTe (ali@elitegamer.fsnet.co.uk)
+--------------------------------------------------
+Hmm... my dad doesn't like using it he says, but I think he might show me if I asked him. Also whenever I try to start up HL with a debug session, it boots me out just when the server has finished starting up :(
+
+But what does the debugger tell u, does it give the values of certain variables?? I think at least I'm getting good debugging experience if I have to track things down manually, but this sounds like it could save a lot of hassle and time...
+
+--------------------------------------------------
+01/22/01 at 04:49:44  Reply by: theimann (theimann@stud.fh-heilbronn.de)
+--------------------------------------------------
+> Also whenever I try to start up HL with a debug session, it boots me out just when the server has
+ finished starting up :(
+
+Yep, that's because you don't have added the def-file to your debug-configuration and the dll doesn't export the getFunctionPtr() (or whatever the name)... Just look under project-configuration-release and copy the param specifying the def-file to your debug configuration. That should fix it.
+And yes: it will save you a hell of work if you develop in debug-mode!
+
+Tobias
+
+--------------------------------------------------
+01/22/01 at 11:49:19  Reply by: eLiTe (ali@elitegamer.fsnet.co.uk)
+--------------------------------------------------
+Hehe, that means I have been doing everything the hard way!! And is the def file just the one that get's built in the dll folder?? (or maybe it was the debug folder...)
+
+--------------------------------------------------
+02/28/01 at 21:43:54  Reply by: LizardMan (Iantheevil@hotmail.com)
+--------------------------------------------------
+So far I had not been using the debugger; I had been using the debug engine and -dev (bot.txt, etc.) to get through many problems. But for those problems I couldn't find an answer to, I now know what to do!
+
+--------------------------------------------------
+03/01/01 at 15:36:21  Reply by: LizardMan (Iantheevil@hotmail.com)
+--------------------------------------------------
+For some reason when I set the -sw parameter in the command line it stays in a window until the "Loading..." screen appears, then it switches to full screen.
+I am using a Voodoo 5 5500 AGP.
+
+--------------------------------------------------
+03/07/01 at 03:51:53  Reply by: GambiT (arrago_a@epita.fr)
+--------------------------------------------------
+I have the same pb as above ones, except that now, with tempplate#3, i don't see anything going wrong in the project config. The /def:".\HPB_Bot.def" is already set in Debug Project Options, i have the right HL options, i start the CS server, i can glance at the map presentation screen (with the only 'OK' button) and then all HL exits. I don't where doest it come from, and i already check all the things mentioned in the above posts & threads (as wavelength tut).
+Maybe someone as the same pb...
+Thanks.
+
+--------------------------------------------------
+03/07/01 at 04:48:12  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+Valve apparently added code to Counter-Strike 1.0 to kick out of the game if it detects that a debugger is running.
+
+I haven't dug through the CS code yet, but I imagine they are checking to see if the Breakpoint Interrupt Vector (int 3 I believe) points to ROM or to an application (like MSVC).  If they are only doing this in the startup code then you can probably attach to the running process once you have spawned into the game (but it may kick you out again when the map is changed).  If they are checking for a debugger during every frame (like in the StartFrame() function) then you will get kicked out as soon as the debugger attaches to the process.
+
+botman
+
+--------------------------------------------------
+03/07/01 at 04:56:19  Reply by: CountFloyd (countfloyd_1999@yahoo.com)
+--------------------------------------------------
+I guess it's the latter one, because I already checked for hooking INT3 and some other Things with SoftIce and FrogsIce (and I can't attach the debugger to the running process). If I do this, CS quits the game as usual. I think they do one of the simplest but hard to detect ways in the form of checking how much time has passed between each calls to StartFrame. Any experienced Crackers out there ? ;)  
+
+--------------------------------------------------
+03/07/01 at 05:13:00  Reply by: theimann (tobias.heimann@cl.cam.ac.uk)
+--------------------------------------------------
+No, it's not the frame time that gets checked: I tested that by just switching from CS to MSVC without using the debugger which works without any kicking... As far as int3 is concerned, I don't know if it's just detecting whether the pointer is to ROM or memory. I don't know much about Windows-debugging, but the old DOS-debuggers could simulate an entire CPU for the debugged program, inclusive an own interrupt table (in original state). If this is possible under Windows I'm sure SoftIce would use it. But here are a heap of possibilites how to detect debuggers and I guess it would take some days of work to find the method they (in CS) are actually using.
+
+Tobias
+
+
+--------------------------------------------------
+03/07/01 at 05:30:59  Reply by: GambiT (arrago_a@epita.fr)
+--------------------------------------------------
+Hence no more debugging with CS1.0 ??
+
+--------------------------------------------------
+03/07/01 at 15:20:37  Reply by: ExecutionStyle (c_brennan@hotmail.com)
+--------------------------------------------------
+Just out of curiosity, has anyone approached Gooseman to ask him if there is some solution to this problem?  I'm sure he would be glad to encourage people who are developing bots for his mod.
+
+ -Carl
+
+--------------------------------------------------
+03/08/01 at 04:50:41  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+"has anyone approached Gooseman to ask him if there is some solution to this problem?"
+
+I'm not sure that Valve considers this to be a problem, since they, more than likely, did this intentionally to help prevent cheaters from developing cheats for the game.  None of the other MODs have this "problem".  It is unique to Counter-Strike.  Besides, despite what the interviews and news articles say, Gooseman is no longer in charge of Counter-Strike development.  Now that Valve owns the MOD, Value will be making the major decisions about what gets added to it (like the new parametric animation models for example).
+
+Besides, I get the impression that Gooseman is really getting tired of supporting Counter-Strike and is ready to move on to something new.
+
+botman
+
+--------------------------------------------------
+04/22/01 at 08:59:46  Reply by: pikachu (emperorstuart@hotmail.com)
+--------------------------------------------------
+You could make your own StartFrame code to override Cs's ^_^
+

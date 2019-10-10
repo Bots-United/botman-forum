@@ -1,0 +1,59 @@
+--------------------------------------------------
+Subject: bot plugins for Adminmod/Metamod
+--------------------------------------------------
+03/29/01 at 16:48:18  Posted by: WillD (willday@metamod.org)
+--------------------------------------------------
+The upcoming release of Adminmod is going to be using a new DLL plugin infrastructure, where the HL SDK API hooks are handled by a separate DLL (metamod), which provides them to any number of plugin DLLs - the first of which is Adminmod.
+
+The idea is that one could have any number of plugins running on the game server at the same time, hooking whatever SDK routines they need, arbitrated by metamod.
+
+Theoretically, this would also allow the use of bots as plugins, without having to "wrap" around the game DLL.  I haven't tried it, though (yet), since I'm not very familiar with bot coding.
+
+But I thought if anyone was interested in looking at using it for bot plugins, they're more than welcome.  The source and compiled DLLs for linux and win32, and some rudimentary documentation, are available for download at:
+http://www.metamod.org/
+
+If you have any questions, let me know.  I'll check back on the forum every so often, or you can send me email at willday@metamod.org.
+
+--------------------------------------------------
+04/01/01 at 21:15:34  Reply by: WillD (willday@metamod.org)
+--------------------------------------------------
+After looking over the HPB bot code, I've put together at least a preliminary effort of porting it to a metamod plugin.  There's a lot about the world of bots and their code that I don't understand yet, so there may very well be things I've missed.  I've done only limited testing, with cstrike under linux, and used only the "addbot" command.
+
+Some remaining issues that I've identified:
+
+
+
+  
+ The bots don't seem to honor the mp_freezetime at the beginning of the cstrike round.  I'm frozen waiting for the countdown to finish, and they're already running around.  I don't know if this is normal for HPB under cstrike, or if it's related to my diffs to the code or to running under metamod. 
+
+  
+ The HPB plugin has to be loaded at hlds startup (in the metamod.ini); it can't be loaded during a map, or between map changes.  The problem is that the bot code relies on being able to catch the RegUserMsg calls, which appear to occur only at game startup, and are not repeated on changelevels.  
+   
+   One thing I'm planning to look at is to have metamod manage the RegUserMsg calls and then provide the necessary information to plugins through some interface, so that they won't have to catch the actual RegUserMsg calls themselves and thus allow plugins like bots that need the msgs to be loaded at any time.
+
+  
+ I currently have the HPB_bot's plugin info set to allow unloading and pausing at any time.  It's amusing to be able to pause the bot plugin, and see the bots freeze, and then unpause them and let 'em start running again. :)  However, if you unload the plugin, then it unloads without removing/kicking the bots.  
+   
+   Currently the loadable/unloadable settings available in metamod for a plugin don't allow the ability to specify "unloadable between maps, but pausable at any time; there's only "unloadable and pauseable at any time".  I haven't decided if I want to include that option, or if instead HPB should just kick all its bots upon meta_detach; I'm leaning toward the latter, but wasn't familiar enough with the bot code to add that logic.
+
+  
+ In the HPB code, commands from the server console are done through cvars.  This could be re-done to use actual console commands, now that REG_SVR_COMMAND is available in SDK 2.1, but I didn't feel like taking the time to do that. :)
+
+
+
+You can grab the modified code, as well as a unified diff patch, at:
+   http://metamod.org/files/ports/HPB_bot/
+
+This is based on the HPB sourecode (template version #3, v1.2b?) at:
+   http://dl.fileplanet.com/dl/dl.asp?planethalflife/botman/HPB_bot_template_3.zip
+--------------------------------------------------
+04/02/01 at 05:23:00  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+See the following thread for information about the client speed problem with the HPB bot template source code...
+
+http://dynamic.gamespy.com/~botman/yabb/YaBB.pl?board=2&action=display&num=1363
+
+See my code snippet at the bottom of this thread.  This should set the correct bot player speed as well as honor the freeze time.
+
+botman
+

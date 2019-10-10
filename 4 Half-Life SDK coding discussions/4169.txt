@@ -1,0 +1,113 @@
+--------------------------------------------------
+Subject: Add more ammo
+--------------------------------------------------
+02/22/03 at 22:22:45  Posted by: Haunter (haunter1985@hotmail.com)
+--------------------------------------------------
+I have created an item which increases the maximum ammo capacity the player can carry. However, when I tried this: 
+
+int CAK47::GetItemInfo(ItemInfo *p) 
+{ 
+  p->pszName = STRING(pev->classname); 
+  p->pszAmmo1 = "762Nato"; 
+  if ( m_pPlayer->m_fBackpack == TRUE)//if player has the backpack 
+  { 
+    p->iMaxAmmo1 = _762MM_MAXCARRY2; //180 max carry ammo 
+  else ( m_pPlayer->m_fBackpack == FALSE)//if player doesn't have the backpack 
+  { 
+    p->iMaxAmmo1 = _762MM_MAXCARRY; //90 max carry ammo 
+  } 
+  p->pszAmmo2 = NULL; 
+  p->iMaxAmmo2 = -1; 
+  p->iMaxClip = AK47_MAX_CLIP; 
+  p->iSlot = 3; 
+  p->iPosition = 0; 
+  p->iFlags = 0; 
+  p->iId = m_iId = WEAPON_AK47; 
+  p->iWeight = AK47_WEIGHT; 
+
+  return 1; 
+} 
+
+Half-Life crashes when I load the game. Is this the correct way? Or is there another way? Thank you
+
+--------------------------------------------------
+02/23/03 at 01:56:04  Reply by: mmx87 (mmx87@fuckmicrosoft.com)
+--------------------------------------------------
+QUOTE:
+if ( m_pPlayer->m_fBackpack == TRUE)//if player has the backpack 
+  { 
+    p->iMaxAmmo1 = _762MM_MAXCARRY2; //180 max carry ammo 
+  }   //forgot this } here, maybe?
+  
+  else{
+  .....
+  }
+
+  
+
+:).  I would also just put "else{dowhatever;}" instead of "else(whatever){dowhatever;}", like I did in example above.
+
+[modified on 02/23/03 at 01:56:04]
+--------------------------------------------------
+02/24/03 at 20:28:05  Reply by: Haunter (haunter1985@hotmail.com)
+--------------------------------------------------
+Oh yeah, forgot the '}' while typing the code into this forum. But it seems whatever code I enter to this area, HL always crash when I start it up.
+
+--------------------------------------------------
+02/24/03 at 20:38:19  Reply by: Swartz45 (angry_madnow@yahoo.com)
+--------------------------------------------------
+Hmm, maybe it has something to do with having a '_' in front of the max ammo name. It wouldn't give an error about that while compiling so that may be it. Instead (since those type of things cant start with a number) just rename it MAXCARRY_762MM and see if it works.
+
+--------------------------------------------------
+02/26/03 at 18:11:58  Reply by: Haunter (haunter1985@hotmail.com)
+--------------------------------------------------
+Not exactly. Valve also defined a few values using the '_'. The reason the underscore was added is because the compiler would get errors if you are defining numbers to numbers e.g. 
+
+#define 57  200
+
+Definitions like these will cause errors.
+
+Now back to my question, thank you.
+
+--------------------------------------------------
+02/27/03 at 07:58:53  Reply by: Swartz45 (angry_madnow@yahoo.com)
+--------------------------------------------------
+Try removing the "if" statement temporarily.
+
+--------------------------------------------------
+02/27/03 at 09:09:58  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Where does GetItemInfo() get called from?  Do you know for CERTAIN that m_pPlayer will always be non-NULL when this function is called?
+
+botman
+
+--------------------------------------------------
+03/02/03 at 05:59:19  Reply by: Haunter (haunter1985@hotmail.com)
+--------------------------------------------------
+Where does GetItemInfo() get called from?  
+- I assume Botman here is asking where is this function being called. Well, it's being called in the ak47.cpp
+
+Do you know for CERTAIN that m_pPlayer will always be non-NULL when this function is called?
+- Oh, that answers a few things. But what is the correct way to do this?
+
+--------------------------------------------------
+03/02/03 at 06:28:32  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Something like...
+code:
+if (m_pPlayer != NULL)
+{
+   // do stuff with m_pPlayer here
+}
+else
+{
+   ClientPrintf(blah, blah, blah, "Tried to use NULL m_pPlayer!!!");
+}
+
+botman
+
+--------------------------------------------------
+03/02/03 at 23:14:45  Reply by: Haunter (haunter1985@hotmail.com)
+--------------------------------------------------
+Ok, I'll try that and see if it works. Thanks!
+

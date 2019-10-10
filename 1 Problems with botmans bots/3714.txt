@@ -1,0 +1,179 @@
+--------------------------------------------------
+Subject: Bots crashing server daily
+--------------------------------------------------
+09/28/02 at 09:53:28  Posted by: Rick (ric@fortweb.com)
+--------------------------------------------------
+My HPB_bots are crashing my server about once a day. Always right after a map change and nearly always when the server is full or close to full with this error...
+
+L 09/28/2002 - 12:34:21: FATAL ERROR (shutting down): SZ_GetSpace: Tried to write to an uninitialized sizebuf_t: ???
+FATAL ERROR (shutting down): SZ_GetSpace: Tried to write to an uninitialized sizebuf_t: ???
+
+I like your bots, they are easy to set up and modify but it just brings tears to my eyes to see a full server get dumped.
+
+I run TFC
+adminmod (bot protection on)
+halfd (bot protection on)
+HLGuard
+pingboost 2
+
+Any ideas?
+
+
+
+--------------------------------------------------
+09/28/02 at 10:14:15  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+The "tried to write to unitialized sizebuf_t" error is caused when some plugin (AdminMOD, metamod, etc.) tries to send network messages to bots.
+
+First try turning on Bot Protection in AdminMOD (see the AdminMOD documentation for how to do this).
+
+If that doesn't work, try removing your plugins one-by-one until the crashing problem goes away.  The last plugin you removed is probably the one causing the problem (usually sending some kind of text message to clients).
+
+botman
+
+--------------------------------------------------
+09/28/02 at 10:56:55  Reply by: Rick (ric@fortweb.com)
+--------------------------------------------------
+Thank you for your reply, I have bot protection on in adminmod...
+
+admin_bot_protection 1
+
+I was thinking halfd also has a variable for bot protection but looking through the config I don't see anything now. I can't think of anything in halfd that sends text to the bot clients.
+
+Both of those mods are something that I can not do without anyway, not even for a short test. HLGuard on the other hand is debatable if it is even worth the extra load on the server anyway since new releases are usually good for about 24 hours until they are circumvented. 
+
+Have you ever heard of HLGuard causing a problem with the bots? 
+
+
+
+--------------------------------------------------
+09/28/02 at 11:46:48  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+I haven't ever tried HLGuard, so I can't say if it causes problems or not.
+
+The easiest way to track down what's causing the problem is to disable something for a little while (a few hours, a few days, etc.)
+
+botman
+
+--------------------------------------------------
+09/29/02 at 03:53:30  Reply by: Siborg (sgb001@cwcom.net)
+--------------------------------------------------
+I have a similar problem, I was using the bots without any errors until my rented linux server was moved onto a new box, then it started crashing with the uninitialized buffer error. I removed my timerem plugin and it only crashed every few hours as opposed to minutes. I have dio_motm aswell but I don't want to remove that cuz it gives important info to players, is there another way around it botman?
+
+Will it only crash on certain plugins or any that give messages to clients?
+
+--------------------------------------------------
+09/29/02 at 06:06:12  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+If you have a plugin that you know crashes with bots, get the author of the plugin to write it so that it does not try to send a message to fake clients (they can check if "(pev->flags & FL_FAKECLIENT) == FL_FAKECLIENT").
+
+botman
+
+--------------------------------------------------
+10/01/02 at 16:53:06  Reply by: Rick (ric@fortweb.com)
+--------------------------------------------------
+I have nothing but adminmod and halfd running. I killed HLGuard because it was not worth the extra load on the server and i personally know a number of people running these bots with halfd and adminmod... my problem is not with either of those, it is some silly thing either in my hpb config or the way I am applying it.
+
+Woud you please look through this config and see if there is anything obvious I am doing wrong?
+
+
+# wait for 2 seconds
+pause 2
+
+botskill 1
+
+min_bots 0
+max_bots 4
+
+bot_chat_percent 2
+bot_taunt_percent 4
+bot_whine_percent 4
+
+bot_chat_tag_percent 80
+bot_chat_drop_percent 10
+bot_chat_swap_percent 10
+bot_chat_lower_percent 50
+
+bot_logo_percent 0
+bot_reaction_time 1
+
+# add 4 bots using the default skill level (a random skin will be chosen)
+
+addbot
+
+addbot
+
+addbot
+
+addbot
+
+--------------------------------------------------
+10/01/02 at 17:05:21  Reply by: Rick (ric@fortweb.com)
+--------------------------------------------------
+Ok... in discussing this on the halfd board, I am pretty sure I have come up with a solution...
+
+http://www.halfd.org/cgi/ikonboard/ikonboard.cgi?s=3d9a27117af7ffff;act=ST;f=1;t=523;st=0
+
+Rick
+
+
+--------------------------------------------------
+10/03/02 at 08:16:55  Reply by: maquor (countercrab@comcast.net)
+--------------------------------------------------
+I have a similar set up on my cstrike server.  Linux, Halfd, HPB_Bot, Adminmod.  The discussion in the above thread is interesting.  Why would the sz_getspace error happen when a bot is kicked?  Doesn't that command happen as a result of the minbot/maxbot settings?  Perhaps botman can enlighten us.  How does HPB_bot remove(kick) bots from the server.  Correspondingly, can that mechanism cause an error resulting in a server crash?  
+
+
+
+--------------------------------------------------
+10/03/02 at 09:30:29  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Like I said above, the "SZ_GetSpace: 
+Tried to write to an uninitialized sizebuf_t" error is caused by something trying to send a network message to a bot's client.
+
+Bot's don't have a client and you can't send network messages to them.  Trying to do so will cause the engine to crash.
+
+Kicking the bots won't generate this message.
+
+It sounds like something is happening at the same time a player is being removed (i.e. trying to send something to a player before they disconnect) that's causing this crash.
+
+There are clearly other people using AdminMOD, halfd and HPB bot together without crashing.
+
+Running pingboost may be part of the problem.
+
+Like I said above, either remove things one-by-one until you eliminate the problem, or start with a plain vanilla installation (just the dedicated server software and the bots) and add things one-by-one until the problem returns.
+
+If you're not willing to give up components that are causing the crash, then the only solution is to stop using the bots.
+
+botman
+
+[modified on 10/03/02 at 09:30:29]
+--------------------------------------------------
+10/04/02 at 18:29:17  Reply by: mung3r (mung3r@hotmail.com)
+--------------------------------------------------
+Question for botman.
+
+If it's the network messages sent to bots that is crashing the server, is there no way to just ignore the message? Do the messages somehow bypass the bot dll so that there's no chance to ignore?
+
+I'm just curious about the details of how this works. Thanks for your time. 
+
+
+--------------------------------------------------
+10/05/02 at 04:40:54  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+make sure that HLGuard and pingboost 2 come with bot protection, for all we know it's trying to check bots for cheats or "boost" a bots ping, which it obviously cannot do.
+
+--------------------------------------------------
+10/05/02 at 07:40:05  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+"Do the messages somehow bypass the bot dll so that there's no chance to ignore?"
+
+Yes.  Right now there is nothing in the engine functions intercepted by the HPB bot to prevent messages being sent to fake clients.
+
+You could, if you wanted to, add some code to every function in the engine interface to check to see if messages are trying to be sent to fake clients and ignore them.  I choose not to do this because it wasn't necessary with the standard Half-Life SDK or MODs.
+
+These problems only start occuring when you add other add-on programs like AdminMOD (which supposedly has bot protection, but that might not catch all the cases of network messages being sent to bots).
+
+It's not the HPB bot that's causing the problem, it's the add-on that causing the problem by sending stuff to bots.  If you don't use the bot, you won't have a crashing problem.  If you don't use the offending plugin, you won't have a crashing problem.  You pick the one you don't want to use (or modify the bot code to protect against it or get the plugin author to modify his code to prevent it).
+
+botman
+

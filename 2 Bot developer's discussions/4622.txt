@@ -1,0 +1,581 @@
+--------------------------------------------------
+Subject: spawn point issues - (not only) player avoidance
+--------------------------------------------------
+07/08/03 at 11:07:04  Posted by: LightNinja (technobot_mr@web.de)
+--------------------------------------------------
+ Hi, I am LightNinja. For those who do not already know me: I am working on a modified version of CountFloyd's POD-Bot, called E[POD]bot (E for Enhanced). Version IIb is out and can be downloaded at my website http://epod-bot.net.tc.
+
+I see at this forum there are many "professionals" in making bots for HL (Mods). One of the biggest problem of bots in team based mods, especially in CS, is, that the bots have to avoid their teammates to not get too close to each other. Otherwise they will get stuck.
+
+In Counter-Strike the players all spawn at their team's spawn point at the beginning of the round. When you die, you will not respawn until the next round. Imagine the problem: There are 8, 10 or even 16 bots in an area of approximately 10-20 squaremeters. And they all try to proceed in one or perhaps two direction/s at the same time!! I think the player avoidance code in E[POD]bot is quite good - during the game they nearly never collide. But at this spawn point situation, I think, the best avoidance code cannot deal with the problems...
+
+I do not ask for better player avoidance code (if you have some, you can post them anyway) but for suggestions of developing a method to solve this problem.
+
+Thanks in advance!
+
+LN 
+
+--------------------------------------------------
+07/08/03 at 11:22:13  Reply by: rick (rick_helmus8@hotmail.com)
+--------------------------------------------------
+hmmz I have this:
+code:
+
+void CheckBotStrafe(bot_t *pBot)
+{
+    if (!isesfteamplay)
+      return;
+
+    edict_t *pEdict= pBot->pEdict;
+
+    bool wall_left = false;
+    bool wall_right = false;
+
+    wall_left = CheckForCollide(pBot->pEdict, dir_left, 70.0);
+    wall_right = CheckForCollide(pBot->pEdict, dir_right, 70.0);
+
+    if ((wall_left) && (!wall_right))
+    {
+      pBot->f_strafe_speed = pBot->f_max_speed;
+      return;
+    }
+    else if ((!wall_left) && (wall_right))
+    {
+      pBot->f_strafe_speed = -pBot->f_max_speed;
+      return;
+    }
+
+    edict_t *pPlayer = NULL;
+    int player_team, bot_team, PlayerInd = -1;
+    float distance, nearestdistance = 300;
+    Vector vecEnd;
+
+    if (!pBot->MadePlayerList)
+      MakePlayerList(pBot);
+
+    for (int i=0;i<pBot->PlayerCount;i++)
+    {
+      pPlayer = pBot->PlayerList[i];
+            
+        player_team = UTIL_GetTeam(pPlayer);
+      bot_team = UTIL_GetTeam(pEdict);
+
+        // don't target your enemys...
+        if (bot_team != player_team)
+              continue;
+
+      vecEnd = pPlayer->v.origin;
+        if (!FInViewCone( &vecEnd, pEdict ))
+          continue;
+
+      distance = UTIL_Distance(pBot, pPlayer);
+      if (distance < nearestdistance)
+      {
+          nearestdistance = distance;
+          PlayerInd = i;
+      }
+    }
+
+    if (PlayerInd > -1)
+    {
+      pPlayer = pBot->PlayerList[PlayerInd];
+      vecEnd = pEdict->v.origin;
+
+        if (FInViewCone( &vecEnd, pPlayer ))
+      {
+          float y = pPlayer->v.v_angle.y;
+           y = UTIL_WrapAngle(y+180);
+                  
+          if (pEdict->v.v_angle.y < y)
+              pBot->f_strafe_speed = -pBot->f_max_speed;
+          else if (pEdict->v.v_angle.y > y)
+            pBot->f_strafe_speed = pBot->f_max_speed;
+          else
+          {
+            if (pBot->wander_dir == WANDER_LEFT)
+                pBot->f_strafe_speed = -pBot->f_max_speed;
+            else
+                 pBot->f_strafe_speed = pBot->f_max_speed;
+          }
+      }
+      else
+      {
+          if (pPlayer->v.velocity.Length() == 0)
+          {
+            if (pBot->wander_dir == WANDER_LEFT)
+                pBot->f_strafe_speed = -pBot->f_max_speed;
+            else
+                pBot->f_strafe_speed = pBot->f_max_speed;
+          }
+       }
+    }
+}
+
+
+
+though this is not for a mod like cs, but it works fine for me, also look in team bot source, I think he has some good player avoidence code
+
+Maybe an simple idea is, if the player can't strafe/walk away just don't move for a while, also you could check which way other bots/players are moving to determine a good reaction.
+
+--------------------------------------------------
+07/08/03 at 11:32:09  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Welcome here, LightNinja !
+
+The problem you refer to is well known but no solution has been found yet.
+
+As far as I know it, the problem is that fakeclients are relying on the RunPlayerMove engine function to tell the engine to make it perform the player movement for them, during a time window that is typically in order of size of the frame time. But since the frame time can't be 100% predicted, there are often microseconds left during which the bot's player entity has finished its movement and is waiting for the next frame, or contrarily, its movement "overlaps" the one of the next frame, one of them being discarded. And since player bounding boxes seem to exist only during this movement period, there are situations where two bot's bounding boxes get in collision into each other and sorta "imbricate" together, causing the two bots to be stuck for normal movement.
+
+There are typically two directions to search into. At first, you may want to focus on making stuck bots to unstuck. This is very hard to do. The best solution so far consists in making the bot crouch/stand very quickly, forcing the engine to update its bounding box (since the "standing" and "crouched" bounding boxes are not the same). Hopefully, the bots will unstuck below a second. Another solution, which is absolutely inelegant but works also very well, is to make one of the bots a no clipping entity for the time their bounding boxes are colliding, but beware not to make the "unclipped" bot move at all during the process, else you'll end up with bots wandering outside of the map. This solution works immediately, lasts less than a second, and most of the time players don't notice anything. The obvious drawback is that it is cheating, and players can be pissed off if they notice they sometimes shoot at bots and don't kill them.
+
+The second solution is avoiding bots to collide. The best proven solution (cheating too), is to forcibly set their velocity backwards when they get too close to a teammate. Just using the normal player/bot input methods for movement isn't enough to prevent two bots won't get stuck ever together.
+
+There was a long thread already on this topic, several months ago. Did you read it ?
+
+http://dynamic.gamespy.com/~botman/yabb/YaBB.pl?board=2&action=display&num=3255
+
+
+--------------------------------------------------
+07/08/03 at 12:58:37  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+"As far as I know it, the problem is that fakeclients are relying on the RunPlayerMove engine function to tell the engine to make it perform the player movement for them, during a time window that is typically in order of size of the frame time."
+
+Yep.  About the best thing you can do is to try to get them from getting too close to each other.  Check in the direction that they are moving using UTIL_Traceline() and avoid running into another bot (or player) by slowing down or changing direction when someone is in the way.
+
+botman
+
+--------------------------------------------------
+07/08/03 at 14:57:17  Reply by: LightNinja (technobot_mr@web.de)
+--------------------------------------------------
+[OT]
+Hi PMB,
+I'm glad to see you here. Without your work (PODFIX) E[POD]bot hadn't made it through the first release! It wouldn't even exist, I think. I'm very thankful for that!! 
+[/OT]
+
+Yes I read this thread. But I don't think it has much to do with the problem I have, since I want to avoid them to collide with each other anyway. Even if this msec-problem wasn't there, it would not be good if they would run into each other... I don't want them to unstuck. Of course, I'm doing this, but I'm searching for another way to avoid the collisions of them, especially at the spawn point when they all start to run. 
+
+@rick: Thank you for your code, I will look through it and check if there is anything I don't have...
+
+I experienced that either POD-Bot or RACC-Bot have pretty good player avoidance codes, but I think they realize too late, that they could collide with another player. So bot developers should set it to a higher distance and/or to shorter time intervals.
+
+
+
+about unstuck: I'm currently working on something... unsual:
+
+in POD-Bot and E[POD]bot there is a check that finds out, if the bot is stuck or possibly will get stuck soon. This is done frequently, I think every 0.5 seconds. 
+Now, when the bot definetly is NOT stuck, his current coordinates are stored, since this is a "valid" position. 
+When the bot GETS stuck and is stuck for > 1.0 seconds, his position will be reset to the "valid" coordinates. 
+
+Perhaps you will call this cheating, but for now it works good and you have to take a very close look to even notice this In-Game! and if you don't know about it, this shouldn't be a problem, since gameplay is not affected by it. yet some things are strange: E.g. the coords should not be saved if the bot is currently jumping. but if this works it will be included in EPB III. The first results are amazing (but propably it's only a placebo effect, so I only think it works well, because i want it to work well - but in fact it doesn't... I experienced this before again and again during the developement of E[POD]bot...)
+
+[modified on 07/08/03 at 14:57:17]
+--------------------------------------------------
+07/08/03 at 15:07:46  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+code:
+
+pseudocode:
+
+  FOR all entities WITHIN 100 units radius FROM bot
+    IF entity IS a bot
+      angleToEntity = AngleBetween (bot's movement direction,
+                                    bot-to-entity direction)
+      angleToEntity = abs (angleToEntity)
+      IF angleToEntity < 90
+        vecCorrectedMovement = BuildVectorCorrespondingToAngle (AnglesOfVector (bot to entity) +/- 90°)
+        CorrectBotMovementDirection (vecCorrectedMovement)
+      ENDIF
+    ENDIF
+  ENDFOR
+
+
+that's all you need then... :)
+
+What it does is that it "simulates" a larger bounding box... if this function is called systematically each frame, no bots will collide each other anymore ; instead they will "slide" along each other at a certain distance. Not sure if that's what you want either, but in case, that's it...
+
+[€dited: fixed a bug in pseudocode... d'oh, can't even write pseudocode without bugs, what sort of coder am I ??]
+
+[modified on 07/08/03 at 15:07:46]
+--------------------------------------------------
+07/08/03 at 17:33:06  Reply by: RobGP (rob@planetfortress.com)
+--------------------------------------------------
+Expanding on Pierre's comment on making one of the bots noclip if they get stuck. You could make one of the bots non-solid for a little while, that way the bot could still walk as they still collide with the world, whilst also allowing the other stuck bot to move past them freely. The only problem is that weapons will have no effect on them during this time, but if it was done for like half a second at the beginning of the map, noone would notice or care.
+
+--------------------------------------------------
+07/08/03 at 17:48:48  Reply by: Cheesemonster!!! (cheeseh@houstondod.com)
+--------------------------------------------------
+I dont think they need the bot to noclip, you could just simply bypass the DispatchTouch() function when the bot touches another bot, and it thinks its stuck. This would allow other things to touch the bot, except from the bot it is stuck to.
+
+[modified on 07/08/03 at 17:48:48]
+--------------------------------------------------
+07/09/03 at 00:27:59  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+That would work if the DispatchTouch() call was the CAUSE of the bots being stuck. It is not a cause, but a consequence. The bots melt their bounding boxes first, and therefore DispatchTouch() is called. Try again, Cheesy ;D
+
+
+--------------------------------------------------
+07/09/03 at 00:29:47  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+QUOTE:
+You could make one of the bots non-solid for a little while, that way the bot could still walk as they still collide with the world, whilst also allowing the other stuck bot to move past them freely.
+
+
+You mean pev->solid = SOLID_NOT ?
+
+
+--------------------------------------------------
+07/09/03 at 05:15:02  Reply by: Cheesemonster!!! (cheeseh@houstondod.com)
+--------------------------------------------------
+bah crap
+
+
+yes I guess he means: pev->solid = SOLID_NOT 
+
+Well, is it possible to fix this by giving msec a good value? 
+
+I mean, it's only a byte, like an integer, so I typically get around 11 or 12 msec values all the time.
+
+Is there any better way of getting the msec value, and is it possible to fix these problems by just doing this? :-S
+
+I mean just look at my cr-rr-aaaazy Msec function
+
+code:
+
+int RoundToNearestInteger ( float fVal )
+{
+      int loVal = (int)fVal;
+      int hiVal = loVal+1;
+
+      fVal -= (float)loVal;
+
+      if ( fVal >= 0.5 )
+            return hiVal;
+      
+      return loVal;
+}
+
+void CBot :: UpdateMsec(void)
+{
+      // TheFatal - START from Advanced Bot Framework (Thanks Rich!)
+      // adjust the millisecond delay based on the frame rate interval...
+      if ( m_fMsecDel <= gpGlobals->time )
+      {
+            float fPrevSecDelTime = m_fSecDelTime;
+
+            // Use a random update time this time!
+            m_fSecDelTime = RANDOM_FLOAT(0.2,0.5);
+
+            m_fMsecDel = gpGlobals->time + m_fSecDelTime;
+            
+            if (m_fMsecNum > 0)
+            {
+                  // hmm multiply by 1000? or 900? since rich's "The fatal"'s was
+                  // 450 with msec delay time of 0.5 ?
+                  
+                  m_fMsecVal = (float)RoundToNearestInteger((fPrevSecDelTime*900.0)/m_fMsecNum);
+            }
+            
+            m_fMsecNum = 0;
+      }
+      else
+            m_fMsecNum++;
+      
+      if (m_fMsecVal < BOT_MIN_MSECVAL)    // don't allow msec to be less than 1...
+            m_fMsecVal = BOT_MIN_MSECVAL;
+      
+      if (m_fMsecVal > BOT_MAX_MSECVAL)  // ...or greater than 100
+            m_fMsecVal = BOT_MAX_MSECVAL;
+
+      // TheFatal - END
+}
+
+
+
+to test it, im testing it on the Bumpercars mod, where obviously you cant crouch and the bots need to bump into each other! So far this methods probably the best result, but they still get stuck :@
+
+[modified on 07/09/03 at 05:15:02]
+--------------------------------------------------
+07/09/03 at 05:22:39  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+"Well, is it possible to fix this by giving msec a good value?"
+
+The msec value is what causes the bots to move too far during a frame and become embedded in other stuff.
+
+The problem is that you can't predict how long the next video frame will take to render (which is what the msec value is supposed to be an indication of).  You're telling the engine, "move this guy, at this speed, for this amount of time" and when that speed for that amount of time causes the bounding box to become embedded in something else, they get stuck.
+
+If you could accurately predict how long something in the future is going to last, then you wouldn't have this problem, but so far, no one has come up with a reliable method of predicting the future.  :)
+
+botman
+
+--------------------------------------------------
+07/09/03 at 07:20:20  Reply by: LightNinja (technobot_mr@web.de)
+--------------------------------------------------
+@PMB: huh? this seems to be very complicated...
+
+ok, the thing I have now is:
+
+code:
+
+// Not stuck ?
+if(!bBotIsStuck)
+{
+  // Bot isn't stuck:
+  // Take "valid" coordinates of bot's position
+  pBot->f_bot_x = pEdict->v.origin.x;
+  pBot->f_bot_y = pEdict->v.origin.y;
+  pBot->f_bot_z = pEdict->v.origin.z;
+  pBot->f_stuck_time=(-1.11); //just some (impossible) value!
+
+ // [...]
+
+}
+// Bot is stuck !!
+else
+{
+  if(pBot->f_stuck_time == -1.11)
+     pBot->f_stuck_time=gpGlobals->time;
+                                            //Emergency: If stuck for 1 second, 
+  //reset bot's position to previous "valid" coordinates
+  
+  if(gpGlobals->time > pBot->f_stuck_time+1)
+  {
+    pEdict->v.origin.x = pBot->f_bot_x;
+    pEdict->v.origin.y = pBot->f_bot_y;
+    pEdict->v.origin.z = pBot->f_bot_z;
+  }
+
+ // [...]
+
+} 
+
+
+
+
+[modified on 07/09/03 at 07:20:20]
+--------------------------------------------------
+07/09/03 at 11:13:15  Reply by: CountFloyd (countfloyd@botepidemic.com)
+--------------------------------------------------
+I'd suggest doing this in 3 steps:
+
+1. When calculating a path for your bot avoid occupied waypoints nearby. The old PB had half-baked postprocessing of waypoints for this (picking alternative waypoints "on-the-fly"). That way you can already get rid of some unnecessary collisions.
+2. Check if the next target waypoint is the same for 2 Bots everytime a Bot has to advance during movement using pathfinding. If so you'd know that No. 1 failed somewhat and you could try calculating an alternative route.
+3. Assign them priorities/rules for movement like with car traffic. For example you could give humans top priority for movement and prioritize the Bots with their player indexes. So if everything fails you'd know whom to move away and who should carry on. Of course this will become very tricky in complex situations like ladders or tight areas. Then you'd have to pathfind at least 1 of the Bots out of this situation.
+
+Perhaps one should ask Michael Booth about how he dealt with the msec problem because I've never seen the 'official' CS Bots getting stuck inside each other though they do pile up often enough to make this happen.  
+
+--------------------------------------------------
+07/09/03 at 11:53:09  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+"Perhaps one should ask Michael Booth about how he dealt with the msec problem..."
+
+I would guess that he's using the same method that Leon Hartwig used in the Phineas Bot.  Leon's method was somewhat different from Rich Whitehouse's method.
+
+I asked Leon to show me the source code he had, but he was somewhat reluctant to do that since everything he had developed that was Half-Life related became owned by Valve when he started working for Valve.
+
+Since it's been so long since he had done anything bot related, prehaps Leon can shared the code that he used.  Someone who is curious about this issue could try e-mailing Michael and Leon to see what they say.
+
+botman
+
+--------------------------------------------------
+07/09/03 at 13:59:05  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+AFAIK, simple.
+code:
+
+void ComputeBotMsecVal (bot_t *pBot)
+{
+   // the purpose of this function is to compute, according to the specified computation
+   // method, the msec value which will be passed as an argument of pfnRunPlayerMove. This
+   // function is called every frame for every bot, since the RunPlayerMove is the function
+   // that tells the engine to put the bot character model in movement. This msec value
+   // tells the engine how long should the movement of the model extend inside the current
+   // frame. It is very important for it to be exact, else one can experience bizarre
+   // problems, such as bots getting stuck into each others. That's because the model's
+   // bounding boxes, which are the boxes the engine uses to compute and detect all the
+   // collisions of the model, only exist, and are only valid, while in the duration of the
+   // movement. That's why if you get a pfnRunPlayerMove for one bot that lasts a little too
+   // short in comparison with the frame's duration, the remaining time until the frame
+   // elapses, that bot will behave like a ghost : no movement, but bullets and players can
+   // pass through it. Then, when the next frame will begin, the stucking problem will arise !
+
+   if (IsNull (pBot->pEntity))
+      return; // reliability check
+
+   switch (msec_method)
+   {
+      default:
+         msec_method = METHOD_LEON; // use Leon Hartwig's (from Valve Software) method by default
+
+      case (METHOD_PM):
+         // this is Pierre-Marie 'PieM' Baty's method for calculating the msec value.
+
+         pBot->msecval = (int) (FrameDuration () * 1000);
+         if (pBot->msecval > 255)
+            pBot->msecval = 255;
+
+         break;
+
+      case (METHOD_RICH):
+         // this is Rich 'TheFatal' Whitehouse's method for calculating the msec value,
+
+         if (pBot->msecdel <= CurrentTime ())
+         {
+            if (pBot->msecnum > 0)
+               pBot->msecval = 450.0 / pBot->msecnum;
+
+            pBot->msecdel = CurrentTime () + 0.5; // next check in half a second
+            pBot->msecnum = 0;
+         }
+         else
+            pBot->msecnum++;
+
+         if (pBot->msecval < 1)
+            pBot->msecval = 1; // don't allow the msec delay to be null
+         else if (pBot->msecval > 100)
+            pBot->msecval = 100; // don't allow it to last longer than 100 milliseconds either
+
+         break;
+
+      case (METHOD_LEON):
+         // this is Leon 'Jehannum' Hartwig's method for calculating the msec value,
+
+         pBot->msecval = (int) ((CurrentTime () - pBot->f_prev_playermove_time) * 1000);
+         if (pBot->msecval > 255)
+            pBot->msecval = 255;
+
+         break;
+
+      case (METHOD_TOBIAS):
+         // this is Tobias 'Killaruna' Heimann's method for calculating the msec value,
+
+         if ((pBot->msecdel + pBot->msecnum / 1000) < CurrentTime () - 0.5)
+         {
+            pBot->msecdel = CurrentTime () - 0.05; // after pause
+            pBot->msecnum = 0;
+         }
+
+         if (pBot->msecdel > CurrentTime ())
+         {
+            pBot->msecdel = CurrentTime () - 0.05; // after map changes
+            pBot->msecnum = 0;
+         }
+
+         pBot->msecval = (CurrentTime () - pBot->msecdel) * 1000 - pBot->msecnum; // optimal msec value since start of 1 sec period
+         pBot->msecnum = (CurrentTime () - pBot->msecdel) * 1000; // value ve have to add to reach optimum
+
+         // do we have to start a new 1 sec period ?
+         if (pBot->msecnum > 1000)
+         {
+            pBot->msecdel += pBot->msecnum / 1000;
+            pBot->msecnum = 0;
+         }
+
+         if (pBot->msecval < 5)
+            pBot->msecval = 5; // don't allow the msec delay to be too low
+         else if (pBot->msecval > 255)
+            pBot->msecval = 255; // don't allow it to last longer than 255 milliseconds either
+
+         break;
+   }
+
+   return;
+}
+
+
+
+
+--------------------------------------------------
+07/09/03 at 14:16:11  Reply by: LightNinja (technobot_mr@web.de)
+--------------------------------------------------
+So I have 4 or perhaps 5 or 6 (if I search some) methods of calculating the msec value...
+
+perhaps I should run them all and then calcuclate the average...
+
+but I don't think that anything will get better through this, since you will never get the correct value, it's always from the last frame and not from the current... 
+
+--------------------------------------------------
+07/09/03 at 14:37:18  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Yes, but you can have significantly good results through it though. If you're using a msec calculation method that behaves rather linearly with time and your bot happens to invoke a lot of tracelines or heavy maths from frame to frame, you can be sure as hell your msec method is not optimal. For example, my bots sometimes fire ~100 TraceLines a frame just for ONE bot. Imagine when several decide to fire the same amount at once. You get alternatively relatively fast frames followed by long laggy ones. If your msec calculation method invokes ~60 for the fast frames and rises only to 70 for the slow ones, you'll perhaps have 2, 3 or even 4 TIMES the duration of the frame not covered with the movement, making it a potential stuck situation.
+
+I tried them all.
+
+My method is basically the same as Leon's, provided gpGlobals->frametime is reliable, that which I'm not sure anymore for a few days.
+
+Leon's method is basically a n-1 Z transform of the frametime variation, i.e. a derivation. It assumes the next frame will roughly last the same amount of time as the frame which has just elapsed. It very adaptative and thus is good for most of the cases.
+
+Rich's method is an improvement on Leon's method ASSUMING that the frametime doesn't variate much. By calculating the average duration of the frametime on several past frames instead of just one, it gives a better accuracy for bots that don't rely on barbarian methods of TraceLine bursts or quad-A* computation during the same frame. Botman's template is a good example.
+
+Tobias' method is yet another improvement on Rich's, giving it more adaptativeness given the situation, but is basically the same. It is best for bots that are EVEN MORE frametime-linear than the others, and I suspect Parabot is quite.
+
+In either case, whatever the method, if it isn't correct, you can very easily end up with HALF or even 3/4 of the frame time which are not covered by the bot's movement. Since frames elapse very quickly on the client's screen, you won't notice it. All you will notice is bots that get stuck twice, or 3/4 time, more often. No wonder if you're aware of that, but esoteric otherwise. :)
+
+
+--------------------------------------------------
+07/09/03 at 15:24:09  Reply by: botmeister (meister@telus.net)
+--------------------------------------------------
+Why does "cellular automata" theory come to mind?
+
+http://www.red3d.com/cwr/steer/
+
+--------------------------------------------------
+07/09/03 at 18:02:36  Reply by: Cheesemonster!!! (cheeseh@houstondod.com)
+--------------------------------------------------
+Hey PM, thanks for all that ;D
+
+I take it that "pBot->f_prev_playermove_time" is the time when the last pfnRunPlayerMove was called on the bot, correct? :D
+
+--------------------------------------------------
+07/10/03 at 10:13:56  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+QUOTE:
+I take it that "pBot->f_prev_playermove_time" is the time when the last pfnRunPlayerMove was called on the bot, correct? :D
+
+
+
+Yep :)
+
+
+--------------------------------------------------
+07/14/03 at 15:50:37  Reply by: Cheesemonster!!! (cheeseh@houstondod.com)
+--------------------------------------------------
+Heres a simple stuck check I use.
+
+not exactly optimised but it works :P
+
+code:
+
+
+m_fStuckTime is a float variable in bot structure. This is working within a class you may need to cast it as pBot->m_fStuckTime or whatever, you don't even need to call it that ... Always initialise it to 0 at spawn
+
+// somewhere where we define stuff
+#define BOT_STUCK_TIME 4.0 // 4 seconds for bots to realise they are stuck
+#define BOT_STUCK_SPEED_DIVISOR 2 // bot thinks its stuck if its velocity < ideal_speed/BOT_STUCK_SPEED_DIVISOR
+
+...
+...
+
+        // bot thinks it is not stuck if stuck time is 0
+      if ( m_fStuckTime == 0 )
+      {
+                // Actual velocity considerably less than ideal speed
+            if ( pev->velocity.Length2D() < (m_fMoveSpeed / BOT_STUCK_SPEED_DIVISOR) )
+                  m_fStuckTime = gpGlobals->time;      
+      }
+        // if the bots been stuck for BOT_STUCK_TIME seconds...
+      else if ( (m_fStuckTime + BOT_STUCK_TIME) < gpGlobals->time )
+      {
+                // let's duck & jump
+            pev->button |= IN_DUCK;
+            pev->button |= IN_JUMP;
+
+            m_fStuckTime = 0;
+      }
+      else
+      {
+                // keep checking if we've already unstuck.
+            if ( pev->velocity.Length2D() >= (m_fMoveSpeed / BOT_STUCK_SPEED_DIVISOR) )
+                  m_fStuckTime = 0;                  
+      }
+
+

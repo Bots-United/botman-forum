@@ -1,0 +1,85 @@
+--------------------------------------------------
+Subject: Win XP + HLDS(v1.1.0.8) + Bots = Crash??
+--------------------------------------------------
+10/03/01 at 05:41:04  Posted by: RedFox (redfox@nildram.co.uk)
+--------------------------------------------------
+Heres an interesting one for you all.
+Building and testing a new version of my bot, I built a version for v1.1.0.7 and we've been testing it for a while.
+It ran fine on our test machine (with win XP), but when I rebuilt it for v1.1.0.8 the server crashes within 5-10minutes.
+The real problem is that the crashes don't appear to be coming from the bots dll. All the crashes are in either tfc.dll or ntdll.dll (nice...)
+So we thought it might be the v1.1.0.8 HLDS on win XP, tride that for several hours (not bot dll loaded) and it was fine. Tried it with the bot dll and no bots for several hours and it seemed fine.
+
+So its either something wrong with the way my bots dll interects with the game engine calls, or the fakeclients causing a crash in the game dll...(I guess)
+
+Anyone else having/had any problems with WinXP or v1.1.0.8 and bots??
+
+The only crash I managed to track back using the stack list (which may be unrelated to this problem) was to the pfnRunPlayerMove when the bot is spawning...so is their a way to crash the game through this? (not ruleing anything out at the moment)...
+oh, and this crash still wasn't In the bots dll, but it was the only one with reference to the bots dll.
+
+I'm guessing it'll be somthing obviouse, but I really don't know.
+Can anyone ask valve about these?? (as I don't know who to contact) I can provide the load adress of the modules and the offending assembler line it crashed on (tfc.dll or sw.dll).
+heh, that is if they have debug info for this build :)
+
+I really do need some help with this one....oh, the win XP test server is the only one it crashes on..but as the server runs fine without my bot, perhaps its not win xp's fault.
+hmm, perhaps we should try another bot, see if it does the same.
+
+--------------------------------------------------
+10/03/01 at 05:53:31  Reply by: William (william@cgf-ai.com)
+--------------------------------------------------
+you might try running HLDS in W2K compatibility mode (or one of the other compatibility modes offered by XP), and see if that makes any difference.
+
+William
+
+--------------------------------------------------
+10/03/01 at 07:27:07  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+You didn't mention if the same crash happens under other OSes.  Try Win98, WinNT and Win2K if you have them.  You might want to make your PC dual bootable with Win98SE (or WinNT) and WinXP.
+
+botman
+
+--------------------------------------------------
+10/03/01 at 08:08:52  Reply by: RedFox (redfox@nildram.co.uk)
+--------------------------------------------------
+It doesn't crash on my machine (win 98) nor on another test server (win2k I think..)
+Is their a compatability mode under xp? cool
+I'll get them to try that...oh the test server it crashes on is not my machine..so its a bit tricky debugging it :)
+
+Just 1 thing I've just noticed (hmm), I'm still using the Old util.cpp for v1.1.0.7 for my bot..could this cause problems??
+I'll see if that fixes it.
+
+Any other ideas? Thanks
+
+--------------------------------------------------
+10/03/01 at 13:23:33  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+The only significant change between SDK 2.1 (HL 1.1.0.7) and SDK 2.2 (HL 1.1.0.8) was the addition of 2 new engine functions (pfnVoice_GetClientListening and pfnVoice_SetClientListening) that occurs in the enginefuncs_t structure (in engine\eiface.h) right after the pfnAddServerCommand function.
+
+You don't need to override or initialize these and as long as you are only passing a pointer to this structure around to the MOD DLL code (as is done in the functions in h_export.cpp) then you will be okay.  The MOD knows about these functions for voice communication, the bot code does not (and does not need to know about them).
+
+Nothing else should have changed as far as the interface between the MOD and the engine.  If you are using some of the client network messages (especially the TE_ temporary entity messages) the format of some of these may have changed.  So if you are doing any TE_ effects for waypoints or other stuff on a human player's client then you may want to double check some of that stuff (or just comment it out until you isolate the problems).
+
+botman
+
+--------------------------------------------------
+10/03/01 at 13:35:04  Reply by: RedFox (redfox@nildram.co.uk)
+--------------------------------------------------
+Ok, thanks for that botman.
+If anyone has a win XP system and would like to test the current bot out (for crashing on XP) then  that would be useful.
+I think I just need more beta testers too rule out either that test machine or the bot dll.
+Thnaks.
+
+Oh, I have noticed that they changed the util.cpp functions (although the engine calls are still the same), so nothing wrong their.
+
+--------------------------------------------------
+10/11/01 at 10:09:57  Reply by: redlink (redlink_star@hotmail.com)
+--------------------------------------------------
+I have WinXP, Win2k, Win 98 and Win ME installed on my computer i can help u... I haven't had any errors on my bot... American X bot that now supports 15 Mods...
+
+--------------------------------------------------
+10/12/01 at 15:16:42  Reply by: RedFox (redfox@nildram.co.uk)
+--------------------------------------------------
+heh, well found the problem...
+bad server install..haha
+you learn summit every day! :D
+lol
+

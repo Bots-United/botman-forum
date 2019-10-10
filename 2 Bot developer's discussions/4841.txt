@@ -1,0 +1,129 @@
+--------------------------------------------------
+Subject: What is the pev->fixangle use for?
+--------------------------------------------------
+09/22/03 at 05:02:15  Posted by: OffTopic (khomsan.ph@student.chula.ac.th)
+--------------------------------------------------
+from the "engine\progdefs.h" in the 'entvars_t' structure
+
+code:
+
+typedef struct entvars_s
+{
+
+...
+
+   int      fixangle;         // 0:nothing, 1:force view angles, 2:add avelocity
+   float    idealpitch;
+   float    pitch_speed;
+   float    ideal_yaw;
+   float    yaw_speed;
+
+...
+
+} entvars_t;
+
+
+
+is the engine or mod use those variables (if belong to the bot)?, and what is the fixangle variable use for?
+
+
+--------------------------------------------------
+09/22/03 at 05:26:34  Reply by: OffTopic (khomsan.ph@student.chula.ac.th)
+--------------------------------------------------
+it seem to always be zero, and the engine doesn't use them, so we can freely use them right?, or any idea?
+
+--------------------------------------------------
+09/22/03 at 05:34:07  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+fixangles is used when you want to tell the engine to modify the angles of a player.
+
+Take a look at the teleporter code (func_teleport, I believe).  The teleport destination can force the player to rotate to a specific yaw angle before the player lands on the ground.  You set the pev->angles value to the way you want them and set pev->fixangles=1 and the engine will force the player to rotate to that angle.
+
+botman
+
+--------------------------------------------------
+09/22/03 at 06:02:44  Reply by: OffTopic (khomsan.ph@student.chula.ac.th)
+--------------------------------------------------
+For the fakeclient (bots), the way to tell the engine to change the bots angle is to use the pfnRunPlayerMove right?
+
+But from the HPB_bot template i didn't find any code that set the fixangle variable to 1 and the bot still can change his angle, anyway by calling pfnRunPlayerMove?
+
+
+--------------------------------------------------
+09/22/03 at 07:29:52  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Yes, fake client rotations are set by modifying the bot's pev->angles variable directly (you don't even need to call pfnRunPlayerMove to do this).
+
+fixangles is only required when you want to adjust the rotation of a human player (since the engine has to modify the angles on the server AND send these new angles to the client so that the player is facing the correct direction on their machine).
+
+botman
+
+--------------------------------------------------
+09/24/03 at 22:35:02  Reply by: OffTopic (khomsan.ph@student.chula.ac.th)
+--------------------------------------------------
+so i can freely use pev->fixangle like this then
+
+code:
+
+void BotFixAngle(bot_t *pBot)
+{
+   entvars_t *pev = VARS(pBot->pEdict);
+   float pitch_degrees;
+   float yaw_degrees;
+
+   if (pev->fixangle == 1)
+   {
+      // turn towards ideal_pitch by pitch_speed degrees
+      pitch_degrees = BotChangePitch( pBot, pev->pitch_speed );
+      // turn towards ideal_yaw by yaw_speed degrees
+      yaw_degrees = BotChangeYaw( pBot, pev->yaw_speed );
+
+      /* if the bot is already facing the ideal view angle */
+      if (pitch_degrees < 1 && yaw_degrees < 1)
+         pev->fixangle = 0;
+
+      /* always zero (not use) */
+      pev->v_angle.z = 0;
+
+      // set the body angles to point the gun correctly
+      pev->angles.x = pev->v_angle.x / -3.0;
+      pev->angles.y = pev->v_angle.y;
+
+      /* always zero (not use) */
+      pev->angles.z = 0;
+   }
+}
+
+
+
+thanks for the information... botman
+
+[modified on 09/24/03 at 22:35:02]
+--------------------------------------------------
+09/25/03 at 05:16:10  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Not likely.  The engine assumes that "fixangle = 1" means something special (i.e. force the client to instantaneously turn in the direction I am telling you to).
+
+The idealpitch, pitch_speed, ideal_yaw and yaw_speed are only used by monsters (as far as I know) and the engine makes no assumptions about what values they contain (and won't do anything with them).
+
+botman
+
+--------------------------------------------------
+09/27/03 at 07:20:50  Reply by: OffTopic (khomsan.ph@student.chula.ac.th)
+--------------------------------------------------
+ok so shouldn't it then. :)
+
+--------------------------------------------------
+09/27/03 at 07:29:43  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+"ok so shouldn't it then"
+
+Do you mean, shouldn't the engine do something with them?  No, it shouldn't.  You as the MOD coder should decide how you want to use those variables.  They were added to the engine edict_s structure for Quake I which used them to rotate monsters.  You can use them for the same thing in your MOD code or you can use them for something completely different if you want to.  The engine doesn't care about them and doesn't make any assumptions about what they mean.  The engine DOES care about "fixangle" and does make assumptions about what certain values for "fixangle" represents.
+
+botman
+
+--------------------------------------------------
+09/29/03 at 01:34:26  Reply by: OffTopic (khomsan.ph@student.chula.ac.th)
+--------------------------------------------------
+urgg... i have mistyped. i want to say "ok so shouldn't use it then", i mean that I better shouldn't use the fixangle variable and make my own variable in the bot_t structure instead. ;D
+

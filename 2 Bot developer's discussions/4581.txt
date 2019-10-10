@@ -1,0 +1,248 @@
+--------------------------------------------------
+Subject: one of the weirdest bugs ever
+--------------------------------------------------
+06/27/03 at 09:08:52  Posted by: PM (pm@racc-ai.com)
+--------------------------------------------------
+
+
+[modified on 06/27/03 at 09:08:52]
+--------------------------------------------------
+06/27/03 at 09:08:41  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+I have been fighting with the HL engine for 2 weeks now because of an angle lock bug in my bot's aiming code.
+
+Now I finally found what caused it. A variable I thought trusty enough not to check it ever is periodically reset to zero :
+
+gpGlobals->frametime
+
+How is that even possible ???
+It would just mean some frames in the game last purely and simply 0.00000000 second.
+If anyone has an explanation, please post it here. I'll continue looking and see what I can find.
+
+[modified on 06/27/03 at 09:08:41]
+--------------------------------------------------
+06/27/03 at 09:13:31  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+I think it's due to floating point accuracy and timer resolution when calculating how long the previous frame took to render.
+
+That's why the HPB bot goes through a complicated process of determining the msecval (using Rich 'TheFatal' Whitehouse's code from his bot framework).
+
+My early attempts just used gpGlobals->frametime * 1000 for the msecval parameter of pfnRunPlayerMove(), but further testing showed this value to be unreliable, especially on higher speed computers.  Slower CPUs seemed to have a more reliable framerate value but only because it took so long to render a frame that there was less chance of the value being close to 0.0 ms.
+
+botman
+
+--------------------------------------------------
+06/28/03 at 07:15:28  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+More info...
+
+It COULD have been what you say, botman, but my bots have the well-known detestable habit to fire SO much TraceLines the best FPS value I ever get with 10 bots is 30, and this on a PIII 500.
+
+But what is REALLY weird :
+
+I decided to display the value of gpGlobals->frametime each frame on the screen and see how it behaved.
+When one of my bots is experiencing the angle lock bug AND that I (as a listenserver client) am spectating it (my bot's aiming is based on gpGlobals->frametime, so if this one is zero, the bots can't move their crosshair at all), gpGlobals->frametime displays 0 on the screen.
+
+But the other bots still aim flawlessly !
+
+And MORE than this, if I switch spectating to another bot that doesn't experience the bug yet, the gpGlobals->frametime display magically bumps back to a normal non-zero value !
+
+And if I switch back to the bot I was spectating previously, the one whose angles seems forever locked, the gpGlobals->frametime display drops down to zero again !!!
+
+Now this is DEFINITELY the .weirdest .bug .ever
+
+I could fix the bug by replacing every reference to gpGlobals->frametime in my code with another value based on Rich's msec calculation, but I won't be satisfied until I understand what's happening.
+
+
+--------------------------------------------------
+06/29/03 at 21:33:52  Reply by: botmeister (meister@telus.net)
+--------------------------------------------------
+Perhaps I'm crazy, but I never use gpGlobals->frametime for anything, instead, I use pfnTime( ) to get the time used up between frames, or whatever time interval I want to measure. 
+
+For generic time measurement, I use "clock_t clock(void);" for measuring time intervals. This method is ANSI C++ which means it is portable. 
+
+#include <time.h>
+clock_t clock(void);
+
+Description
+
+Determines processor time.
+
+clock can be used to determine the time interval between two events. To determine the time in seconds, the value returned by clock should be divided by the value of the macro CLK_TCK.
+
+Return Value
+
+On success, clock returns the processor time elapsed since the beginning of the program invocation.
+
+On error (if the processor time is not available or its value cannot be represented), clock returns -1.
+
+--------------------------------------------------
+06/30/03 at 03:40:27  Reply by: Cheesemonster!!! (cheeseh@houstondod.com)
+--------------------------------------------------
+gpGlobals->time is also feasable. ;) I can use it succesfully to find out how long my bot code takes to execute each frame by storing the time before and after. I seemed to get a pretty realistic value.
+
+--------------------------------------------------
+06/30/03 at 05:19:43  Reply by: @$3.1415rin (johannes@_-removeifnotavirus-_lampel.net)
+--------------------------------------------------
+profiling using that time source ? huh, never tried that.
+
+I'm using normallycode:
+_int64 CTime::getTime(){
+      _int64 rdtsc_time;
+      __asm 
+      { 
+            rdtsc 
+            mov dword ptr [rdtsc_time],eax 
+            mov dword ptr [rdtsc_time+4],edx 
+      }
+      return rdtsc_time;
+}
+ for measuring time. thx to william :)
+
+dunno if that'll work with the hl engine, since we are all running multitasking environments and therefore hl just gets some slice of cpu time.
+
+--------------------------------------------------
+06/30/03 at 21:49:32  Reply by: botmeister (meister@telus.net)
+--------------------------------------------------
+Never thought about the rdtsc instruction, thanks @$3.1415rin.
+
+The measurement is in cpu cycles, and the number of cycles is dependant on the speed of the cpu. I am wondering what method you use to compute the actual time? 
+
+--------------------------------------------------
+07/01/03 at 05:14:21  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+If you want a CPU speed independant method of timing (Windows only), you can use QueryPerformanceCounter...
+code:
+#include <windows.h>
+#include <stdio.h>
+
+void main(void)
+{
+   long x, y;
+   LARGE_INTEGER PerfFreq;
+   LARGE_INTEGER PerfCountStart, PerfCountEnd, PerfDiff;
+   float interval;
+
+   QueryPerformanceFrequency(&PerfFreq);
+
+   if (PerfFreq.QuadPart == 0)
+   {
+      printf("Your hardware doesn't support High Resolution Perfomance Counters!\n");
+      return;
+   }
+
+   PerfFreq.QuadPart = PerfFreq.QuadPart / 1000;  // ticks per millisecond
+
+   QueryPerformanceCounter(&PerfCountStart);
+
+   y = 0;
+   for (x=0; x < 4000000000L; x++)
+      y = y + x;
+
+   printf("y = %d\n", y);
+
+   QueryPerformanceCounter(&PerfCountEnd);
+
+   PerfDiff.QuadPart = PerfCountEnd.QuadPart - PerfCountStart.QuadPart;
+
+   interval = (float)PerfDiff.QuadPart / (float)PerfFreq.QuadPart;
+
+   printf("PerfDiff=%12I64d interval=%7.4fms\n", PerfDiff.QuadPart, interval);
+}
+
+botman
+
+--------------------------------------------------
+07/01/03 at 11:41:30  Reply by: @$3.1415rin (johannes@_-removeifnotavirus-_lampel.net)
+--------------------------------------------------
+but the performance counter from windows is just running at normally about 1193182 Hz, therefore it isnt really very accurate. but you can use it of course to determine the cpu frequency ...
+
+--------------------------------------------------
+07/01/03 at 12:25:31  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+...and what about my bug, people ? :)
+
+No one has a clue ?
+I had no luck so far finding out why gpGlobals->frametime has this strange behaviour. Perhaps a side-effect ? gpGlobals->frametime is the first field of the globalvars_t structure...
+
+
+--------------------------------------------------
+07/07/03 at 12:31:08  Reply by: botmeister (meister@telus.net)
+--------------------------------------------------
+
+QUOTE:
+...and what about my bug, people ? :)
+
+
+
+
+
+I think we are suggesting that you abandon gpGlobals->frametime and try one of the proven alternate methods which were suggested. If the frametime is inaccurate, then only the people at Valve can fix it.
+
+
+--------------------------------------------------
+07/07/03 at 12:47:15  Reply by: rick (rick_helmus8@hotmail.com)
+--------------------------------------------------
+hmm slightly offtopic but whats your fps, when someone used a bot of mine whith your aim, with low fps the aim was really crap the bot just aimed all directions you could think off...
+
+Anyway I don't have a clue, just use one of these examples i guess :|
+
+--------------------------------------------------
+07/07/03 at 15:17:11  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+QUOTE:
+hmm slightly offtopic but whats your fps, when someone used a bot of mine whith your aim, with low fps the aim was really crap the bot just aimed all directions you could think off...
+
+Anyway I don't have a clue, just use one of these examples i guess :|
+
+
+
+I usually play at 30 fps, rarely below 20. The aiming code I'm using technically messes up below 1 fps, can't compensate at strictly 1 fps, and hardly does below 10. Human players are not good either at all in such situations...
+
+
+--------------------------------------------------
+07/08/03 at 00:35:33  Reply by: botmeister (meister@telus.net)
+--------------------------------------------------
+Given that a server will run at about 100 FPS I never have a problem with timing resolution. Each frame will comsume 1/100th of a second, which is a very long time in computer terms. 
+
+I was thinking that you may be having a problem if you are running as a listen server because the frame rate will drop even lower. However, you'd think that a lower frame rate will lessen the problem of time resolution!!! For an exagerated example, if your frame rate dropped to 1 frame per minute, then a clock that measured in increments of a second and nothing inbetween would be more than sufficient to measure the timing between frames. So, in conclusion, only if your frame rate *increased* could you expect insufficient resoution to become a problem.
+
+Since you may have very low FPS, perhaps the problem is that the frame time system will not measure frames which are too long resulting in your bug (rollover?) ... all I can think of.
+
+
+
+--------------------------------------------------
+07/08/03 at 07:44:14  Reply by: rick (rick_helmus8@hotmail.com)
+--------------------------------------------------
+
+QUOTE:
+hmm slightly offtopic but whats your fps, when someone used a bot of mine whith your aim, with low fps the aim was really crap the bot just aimed all directions you could think off...
+
+Anyway I don't have a clue, just use one of these examples i guess :|
+
+I usually play at 30 fps, rarely below 20. The aiming code I'm using technically messes up below 1 fps, can't compensate at strictly 1 fps, and hardly does below 10. Human players are not good either at all in such situations...
+
+
+
+
+
+Yeah well its weird, I usely play with 50-60 fps and the aiming was good by then, although someone else who tried this online with a low end computer who had a low fps experienced this, sure its natural that your aim is crappy on low fps but this aim was for from natural, anyway I don't use your aim code anymore cuz it didn't fit for some reason in my mod(hard to explain, if you played it I can tell where it went wrong...)
+
+Btw nice first post lol
+
+And I go offtopic again...
+
+--------------------------------------------------
+07/15/03 at 13:51:48  Reply by: J_T_Biggs (J_T_Biggs@yahoo.com)
+--------------------------------------------------
+have you ever had more then one bot expierence this bug at a time? im thinking, and i dont even know if this is possible, that the hpGlobals->frametime variable is different for each client.  That would at least explain why only one of your bots get its and all the others are uneffected.  then again, what do i know, i only started working with the sdk about a week ago.
+
+--------------------------------------------------
+07/15/03 at 16:34:21  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+I can't imagine something like that. I would eventually give up the point if it was about real clients, with real network wires and real latency, but here the bots live on the server ; and the globalvars_t structure they read is the very one of the server.
+
+I still don't understand, and I'm seriously thinking about replacing every occurence of gpGlobals->time and frametime with a locally-handled time struct. Unless someone tells me NOT to do this.
+
+
+[modified on 07/15/03 at 16:34:21]

@@ -1,0 +1,88 @@
+--------------------------------------------------
+Subject: What's wrong with my code ?
+--------------------------------------------------
+01/05/02 at 11:35:18  Posted by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+Hello.
+
+I got a little problem with this code and I can't see what mistake I have done. This code makes my bot trace rays in their field of view (this is working...) to finally store the location of where the longest line hit an obstacle (and THIS, is not working). The location is incorrectly stored and I can't figure out why.
+
+code:
+
+void BotSampleFOV (bot_t *pBot)
+{
+   // scan 120 degrees of field of view in 60 samples
+
+   float angle, longest_angle = 0, longest_distance = 0;
+   Vector v_viewangle;
+   TraceResult tr;
+
+   // scan bot's field of view from the bot's eyes forward...
+   for (angle = -60; angle < 60; angle += 2)
+   {
+      v_viewangle = pBot->pEdict->v.v_angle; // restore bot's current v_angle
+      v_viewangle.y += angle; // pan it from left to right
+      UTIL_MakeVectors (v_viewangle); // build base vectors in that direction
+      UTIL_TraceLine (pBot->pEdict->v.origin + pBot->pEdict->v.view_ofs + gpGlobals->v_forward * 20,
+                      pBot->pEdict->v.origin + pBot->pEdict->v.view_ofs + gpGlobals->v_forward * 10000,
+                      ignore_monsters, pBot->pEdict->v.pContainingEntity, &tr);
+
+      if (10000 * tr.flFraction > longest_distance)
+      {
+         longest_distance = 10000 * tr.flFraction;
+         longest_angle = angle;
+      }
+   }
+
+   // ok so far, bot has a direction to head off into...
+   v_viewangle = pBot->pEdict->v.v_angle; // restore view angle
+   v_viewangle.y += longest_angle; // offset it to the most interesting one
+   UTIL_MakeVectors (v_viewangle); // build base vectors in that direction
+   // store the location where the bot should get
+   pBot->v_reach_point = pBot->pEdict->v.origin + pBot->pEdict->v.view_ofs
+                         + (gpGlobals->v_forward * longest_distance - 60);
+   pBot->f_samplefov_time = gpGlobals->time + 1.5; // delay next sample time
+
+   // quite similar to Botman's WaypointDrawBeam ()
+   UTIL_DrawBeam (pFirstNonNPCPlayer,
+                  pBot->pEdict->v.origin + pBot->pEdict->v.view_ofs + gpGlobals->v_forward * 20,
+                  pBot->v_reach_point,
+                  600, 10, 2, 250, 250, 250, 200, 10);
+}
+
+
+
+Any help greatly appreciated.
+
+
+[modified on 01/05/02 at 11:34:38]
+
+[modified on 01/05/02 at 11:35:18]
+--------------------------------------------------
+01/06/02 at 10:19:34  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+Happiness, Joy and Felicity, there's no esoteric behaviour in my code. No, no, no, in fact I am a perfect government-patented nowadays-rare specie of Idiot.
+
+It would work _muuuuuch_ better like this:
+code:
+
+  // store the location where the bot should get
+  pBot->v_reach_point = pBot->pEdict->v.origin
+                        + pBot->pEdict->v.view_ofs
+                        + (gpGlobals->v_forward * (longest_distance - 60));
+
+
+
+A pair of parenthesis make all the difference. I just can't tell you how ashamed I am, that's just beyond human cognitive capabilities. Or if you can guess how much, you're very tough.
+
+Well now, my brand-new bot wander code works ; and that's quite impressive. They're almost able to travel through cs_italy mansions without stopping hurting a wall, and all this with NO waypoints (erm... but an extensive use of TraceLines). But the result is VERY good for a non-waypointed navigation system. I feel it is more human-like like this.
+
+Btw, I also wrote some corner detection stuff, so bots roam better between corridors, or are able to turn around the cs_italy marketplace, for example. And also basic grenade support for my CS bots.
+
+The system is not perfect though, some slope detection and vertical offset adaptation of FOV scan process has to be done, as one could still expect a few situations where bots will have difficulties choosing where to climb a slope.
+
+I'm gonna merge all this in the other MODS and probably will be uploading all that on my site that night (poor site has not seen much uploading for one long month or two), for those who are interested...
+
+happy happy joy joy =) =)
+
+

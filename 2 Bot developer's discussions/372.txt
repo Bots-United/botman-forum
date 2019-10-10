@@ -1,0 +1,78 @@
+--------------------------------------------------
+Subject: Manual map change fix (stupid bug)
+--------------------------------------------------
+10/21/00 at 08:15:36  Posted by: botman (botman@mailandnews.com)
+--------------------------------------------------
+Ok, I figured out why the manual map change caused problems.  It puzzled me why map changes due to time limits or frag limits worked fine, but manual map changes did not work (most of the time).  The solution has to do with the ORDER that things happen in StartFrame().  When a map change occurs due to frag limit or time limit, the MOD DLL calls pfnChangeLevel() (in the engine.cpp file).  pfnChangeLevel kicks all of the bots off of the server and marks them as needing to be respawned.  StartFrame() (in the dll.cpp file) will see that they need to be respawned and will call the BotCreate() function to add those bots back to the server.  This all works fine.
+
+When a manual map change occurs, the MOD DLL (and hence the HPB bot) gets NO notification beforehand that a map change is occuring.  The only way I have of detecting a map change is to look at the current time in StartFrame() and see if the current time is LESS than the previous current time in the last call to StartFrame().  If the current time is less than it was the time before, I know that a map change has occurred (and that the engine code has kicked all the bots off of the server automatically).  If a manual map change has occurred I again go through the list of bots and mark them as needing to be re-created.
+
+Here's the problem.  I should be doing this check for a map change THE VERY FIRST THING in StartFrame(), since I need to indicate that these bots (that are valid) aren't really in the game and I should NOT run the BotThink() function on them!!!  That's what's happening, I'm calling BotThink() before I realize that these bots AREN'T EVEN IN THE GAME!  This should cause problems in all MODs, not just TFC.
+
+When I fixed the bug in CS where you kick a bot and the game crashes during the start of the next round, I introduced this bug.  I modified the way the BotThink() function is called and changed the code in StartFrame() that calls the BotThink() function.  Look at the HPB bot template source to see the way I am currently doing things in StartFrame() in my HPB bot.  Here's the psuedo code of what I'm doing to fix this problem...
+code:
+void StartFrame( void )
+{
+   // if a new map has started then (MUST BE FIRST IN StartFrame)...
+   if (previous_time > gpGlobals->time)
+   {
+      // mark bots as needing to be respawned...
+      for (index = 0; index < 32; index++)
+      {
+         if (bots[index].is_used)  // is this slot used?
+            bots[index].respawn_state = RESPAWN_NEED_TO_RESPAWN;
+      }
+
+      // OTHER MAP CHANGE STUFF HERE
+   }
+
+   for (bot_index = 0; bot_index < gpGlobals->maxClients; bot_index++)
+   {
+      if ((bots[bot_index].is_used) AND  // is this slot used AND
+          (bots[bot_index].respawn_state == RESPAWN_IDLE))  // not respawning
+      {
+         BotThink(&bots[bot_index]);
+      }
+   }
+}
+
+
+That change seems to take care of the "map" = CRASH problem.  Now if I can also fix the "kick" = NO JOIN WHEN RE-CREATED problem then I'll be happy.
+
+botman
+
+--------------------------------------------------
+10/21/00 at 09:06:23  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+Uh-oh, spoke too soon.  This doesn't completely fix the crashing problem.  It does reduce the problem to only crashing about 10% of the time (instead of the 80%-90% that it was before).  There must be other places where I'm not clearing something properly or I'm using something that hasn't been created yet.  This apparently is causing TFC fits when it executes the code for that player.
+
+I'll keep looking into this and see if I can't make the map change problem go away altogether.
+
+botman
+
+--------------------------------------------------
+10/21/00 at 11:52:38  Reply by: DarkYouth (darkyouth@thegraze.freeserve.co.uk)
+--------------------------------------------------
+did you add this when the bot was kicked?
+
+pEdict->free = TRUE;
+
+when a bot is re-added issue a:
+
+pEdict->free = FALSE;
+
+in CS when I used to kick bots I noticed that if only the newly spawned bots were left the round would finish... The reason?
+
+The game thought the bots were not using an edict..
+
+This might work for you...
+
+Arrrrgggghhhhh
+
+--------------------------------------------------
+10/21/00 at 13:49:52  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+Nope.  I had tried that, but it creates orphaned memory.  The free flag is used by the engine to indicate if it has freed up the memory that was allocated in GetClassPtr template code.  I worked around this problem by changing the StartFrame() code so that only bots that are connected to the server had the BotThink() called for them.  Bots that were kicked no longer continue to call BotThink() only to have it return after doing nothing.  You can look at how things were changed by downloading the HPB bot template source.  The HPB bot template code won't have the problem where you kick a bot and CS later crashes at the start of the next round.
+
+botman
+

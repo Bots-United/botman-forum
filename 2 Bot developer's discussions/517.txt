@@ -1,0 +1,151 @@
+--------------------------------------------------
+Subject: Msec value
+--------------------------------------------------
+11/04/00 at 03:57:57  Posted by: mattkimbo (mattkimbo@yahoo.co.uk)
+--------------------------------------------------
+Botman, do you know that your msec value does not work? ... You know, the one from Rich's bot framework?
+
+Well, help is at hand.
+
+As you know, Rich said to use gpGlobals->frametime * 1000, but the problem here is that it can only be used once, sooo, we initialise a global variable (such as gfHack) and assign gpGlobals->frametime to it ONLY once. Then, where we assign the msec value (g_enginefuncs.RunPlayerMove or something like that, I can't remember!) we use gfHack * 1000 and then each bot will run at the correct speed. I got that from Rich himself at "http://www.telefragged.com/TheFatal"
+
+
+--------------------------------------------------
+11/04/00 at 05:07:51  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+Yes, I was using gpGlobals->frametime * 1000 originally in the HPB bot code.  It worked for a while but then Valve released the 1.1.0.0 patch and it stopped working (on my machine at home).  The funny thing is it still continued to work (most of the time) on my machine at work.  I believe that the "frametime" global variable isn't always calculated correctly by the engine.  It may also depend on what kind or frame rate you have on your machine (similar to the jump & spin problem).  Since it's very difficult to test on many different types of machines with many different types of video cards (and frame rates), I opted for the solution that seems to work correctly on ALL machines (even though I can't test it on machines with 100+ FPS frame rates because I don't have access to one).
+
+Leon Hartwig (of Phineas Bot) sent me a fairly lengthy description about the msec value used in pfnRunPlayerMove().  He said he also noticed problems with the "frametime" value and wound up creating his own calculations for the msec value.
+
+The msec value represents how much time (in milliseconds) you want to allocate to the next move that the bot will make.  If you total all of the msec values you pass into pfnRunPlayerMove during a 1 second period, they should total to EXACTLY 1000.  If you pass in values that are too small or too large, the engine begins to do some pretty weird things (try it and see what I mean).  You can keep a running average of how much time elapsed between the last few frames and that will give you a pretty good estimate of what the msec value will be, but you need to be able to get a good reference for "real time" that gives you millisecond (or better) accuracy.  I'm not sure how accurate the gpGlobals->time variable is (from what I've seen it's not very accurate because I've had cases where 2 frames see exactly the same gpGlobals->time value).
+
+botman
+
+
+
+--------------------------------------------------
+11/06/00 at 09:25:44  Reply by: theimann (theimann@stud.fh-heilbronn.de)
+--------------------------------------------------
+Now these are some news! I already wondered why these msec-calculations have to be that complicated... In my first bot-version (HL1009) I just passed "5" to the RunPlayerMove and it worked well. Although it really should have been 42 :-)
+
+Tobias
+
+--------------------------------------------------
+11/06/00 at 14:39:39  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+The msec value GREATLY depends on what type of video card you have (and what the current frame rate you are getting).  The frame rate will change at runtime when you enter areas with high r_speeds.  Making the msec value a constant is not a good thing.
+
+botman
+
+--------------------------------------------------
+11/07/00 at 04:19:52  Reply by: theimann (theimann@stud.fh-heilbronn.de)
+--------------------------------------------------
+Yepp, you are right. I just remember some of the bugs this bot had and begin to understand what you meant with "the engine begins to do some pretty weird things". Do these problems sound familiar:
+You shoot at the bot and the bullets pass through, you shoot at the air behind him and he will get hurt. He seems to be able to walk right into walls as well as fly over gaps...
+All this has to do with the bounding box that is calculated incorrectly: I noticed the problem but didn't know it had to do with the msec value.
+
+Tobias
+
+--------------------------------------------------
+11/07/00 at 05:41:00  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+Yep.
+
+botman
+
+--------------------------------------------------
+11/10/00 at 13:23:14  Reply by: mattkimbo (mattkimbo@yahoo.co.uk)
+--------------------------------------------------
+Do you do Voodoo?
+
+I was just wandering how greatly the msec value is afected by video cards, I mean, didn't valve take this into account (or Id) when creating their engines? Surely there is a general trend to the patter which the msec value should follow to take into account that some lucky people can reach framerates of 70fps... gits!
+
+Also, many cards do different things (Alpha blending, bump mapping and such) and how is this compensated for? if at all?
+
+Also, I believe most of the msec info came from Jehannum, did he get it from Valve, or is there some hint in the SDK?
+
+--------------------------------------------------
+11/10/00 at 14:37:51  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+Leon (Jehannum) originally e-mailed Valve about what the msec value represented (which I described in my first reply in this thread).  Rich (TheFatal) figured out by trial-and-error what values worked best for his machine.  Leon created his own method of determining the msec value and I believe he is not using gpGlobals->time to determine how much time has elapsed since the previous frame (since you need fairly good accuracy down to the millisecond level).
+
+The frame rate will vary depending on whether or not you have a 3D graphics card and the speed of your systems CPU.  Frame rates will also vary on the same machine depending on whether you use Software, OpenGL, or Direct 3D for the video mode.  Frame rates can be anywhere from 10-15 frames per second all the way up to 100+ frames per second.  You can easily test slower frame rates just by increasing the resolution of your display (more pixels = slower frame rate).  You can not easily test with a high frame rate (>60 fps) unless you've got a graphics card and CPU that will support it.
+
+If you want to work out an algorithm that provides more accurate msec values on all types of video cards, video modes, and CPU configurations, you'll need to make sure you test your code on several different types of machines (both high end and low end) so that the bots don't move too slowly or too quickly.
+
+botman
+
+--------------------------------------------------
+11/13/00 at 14:02:26  Reply by: mattkimbo (mattkimbo@yahoo.co.uk)
+--------------------------------------------------
+Oooo, I've worked somthing out, I can not access my compo just yet to post the code but this sums it up; try dividing 1000 over the msecnum (the fps if you think about it :) ) and then change the code for a minimum msec val and maximum val, (so you can be picky about the min/max fps) It acctualy work FINE on a 11 fps machine, but when down to 4 fps, it goes a bit weird (well, the bots move slow)
+
+You can check the fps by setting "cl_showfps" to "1"...
+
+I'll post the code latter on :)
+
+--------------------------------------------------
+11/18/00 at 05:58:56  Reply by: Jehannum (hartwig@valvesoftware.com)
+--------------------------------------------------
+Actually, I didn't e-mail Valve about it.  :)  I've been working as a contractor for Valve for almost a year now, and they usually defer bot questions to me.
+
+Anyway...All this talk about video cards and machine speeds and whatnot really doesn't make any difference.  All you need is a very small algorithm to determine msec and it will keep your bots moving smoothly on ANY system that doesn't fall into the 'sorry, this system is just TOO slow' category.
+
+As far as 'why didn't Valve account for different speeds'...this is nonsense.  Sure, Valve could have put in their own algorithm for calculating the msec.  Instead, Valve left pfnRunPlayerMove flexible, so we can call it at whatever interval we like with whatever msec value we want.  So, it's a tradeoff, but I'd rather have the power in my own hands, even if I have to write a little extra code.
+
+One thing you have to realize is that the msec value and the interval at which you call RunPlayerMove() are completely dependent upon one another.  As botman mentioned, the engine requires that for each one second period of time elapsed, you need to execute 1000 msec worth of RunPlayerMove() commands.  So, if you are calling RunPlayerMove() 10 times a second (0.1 interval), your msec should be 100.
+
+In a perfect world, you could just use these constants.  For example, if you wanted to change the to calling RunPlayerMove() 20 times a second (0.05 interval), then you could change your msec to 50.
+
+The problem is that while your code may be designed to run X times per second, you might not always get your wish.  Any number of things can prevent this from happening (video card too slow, cpu too slow, user out of memory and disk swapping is occurring, user has icq running and it just sucked away a little time from HL, etc, etc, etc).  You just have to account for this in your code.  It's really nothing new, programmers have been dealing with this issue for all kinds of applications since there was such a thing as programming.  For an example of programmers who DIDN'T deal with this issue, try running some of those old DOS games that run so fast on modern computers that we have to also run another program that actually slows our entire computer down in order to play the games!  Dumbass '80s & early '90s programmers. ;)
+
+So, what you have to do is your own speed calculations.  The only important piece of information you need is 'how long has it been since the last time?'  So, save this information before you call RunPlayerMove(), and use it in the calculations next time.
+
+Here are the relevant variables for the problem:
+Ideal elapsed time interval
+Ideal msec
+Actual elapsed time interval
+Actual msec
+
+It's a simple proportion that looks like this:
+
+Ideal interval / Ideal msec = Actual interval / Actual msec
+
+You know how often your code is designed to run (i.e. every 0.1 seconds).  This is the ideal interval.  Based on this information, you know what your ideal msec is.  0.1 * x = 1000.  (i.e. for 0.1 interval, ideal msec is 100).  If you keep track, as above, of the actual interval, then it's a simple calculation to determine what the actual msec should be.  I leave the coding to you.
+
+The only problem with the above system is that the msec value is a byte variable.  So, if the actual msec value turns out to be > 255, you need to change it to 255 instead.  If this is consistently happening for anyone using your bot, that means something about their setup is just too slow.  There's really nothing you can do about that.  I don't think that should be a problem for anyone who can actually run HL decently though.
+
+Ok, I'm finished now.  If you enjoyed this chapter, please send me $1.00 and if response is high enough I will continue with chapters 2 and 3.
+
+
+--------------------------------------------------
+11/18/00 at 08:36:51  Reply by: mattkimbo (mattkimbo@yahoo.co.uk)
+--------------------------------------------------
+WOW!
+
+Looks like the problem can finally be solved now :)
+Here is the code I was on about earlier... I will probably change it in light of what Leon said, Oh well! :)      
+
+if (bot->msecdel <= gpGlobals->time) 
+{
+       bot->msecdel = gpGlobals->time + 1;
+
+       if (bot->msecnum > 0)
+         bot->msecval = 1000/bot->msecnum;
+         bot->msecnum = 0;
+}
+else
+bot->msecnum++;
+
+if (bot->msecval < 5)
+ bot->msecval = 5;
+ //This should mean a maximum of 200fps         Unrealistic... Maybe in a few years!
+
+if (bot->msecval > 500)
+ bot->msecval = 500;     //This should mean a minimum of 2fps
+
+-Source code adapted from Rich Whitehouse's ABframe
+
+Thanks.
+
+

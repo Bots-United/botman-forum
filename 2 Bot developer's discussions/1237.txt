@@ -1,0 +1,71 @@
+--------------------------------------------------
+Subject: Access error in HPB
+--------------------------------------------------
+02/19/01 at 23:03:45  Posted by: DarthBobo (DarthBobo@swarm.edgegaming.com)
+--------------------------------------------------
+I have jsut started getting an access erro in the HPB, which is lovely because I have not touched it for weeks and it has been running fine :/ Whenever I "addbot" the error appears.
+
+Below are lines 1782 - 1785 of bot.cpp, the error is apparently on line 1784. Now by my reasoning all these things must have been checked before this code is reached ... weired to say the least.
+
+if ((RANDOM_LONG(1, 1000) <= pause_frequency[pBot->bot_skill]) &&
+(pEdict->v.movetype != MOVETYPE_FLY) &&
+(pBot->pBotUser == NULL))
+{
+
+
+
+
+--------------------------------------------------
+02/20/01 at 04:56:20  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+Your "Access Violoation" is probably this...
+
+pause_frequency[pBot->bot_skill]
+
+...the bot_skill is probably getting trashed (overwritten by something above it in memory) and the array index is going beyond the programs memory range.  Try adding something like this above this code...
+
+if ((pBot->bot_skill <0) || (pBot->bot_skill>5))
+{
+   ALERT(at_error, "Whoa!  bot_skill is garbage!");
+}
+
+botman
+
+--------------------------------------------------
+02/20/01 at 13:25:05  Reply by: bigjesus (holybigjesus@hotmail.com)
+--------------------------------------------------
+Do we even need the botskill in there? All it controlls so far to my knowledge is which weapons they like to use.
+
+--------------------------------------------------
+02/20/01 at 13:42:00  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+You don't need the bot_skill variable if you aren't implementing different skill levels.  bot_skill is used in the HPB bot to control how accurate the aiming is and how quickly the bot fires the weapon.  Also lower skilled bots will tend to pause more often as they are running around in a level.  More advanced players know that they should always keep moving to help avoid being killed.
+
+botman
+
+--------------------------------------------------
+02/22/01 at 04:19:16  Reply by: DarthBobo (DarthBobo@swarm.edgegaming.com)
+--------------------------------------------------
+It appears from debugging that pBot->pBotUser is also not correct. It is not null, but it should be :{ The main question is why this would suddenly start happening when I have not edited the bots for weeks?
+
+--------------------------------------------------
+02/22/01 at 05:33:25  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+If you haven't tried rebuilding everything recently that may fix your problem.
+
+In Microsoft Visual C++, use "Build->Rebuid All".
+
+In MingW32 or Borland C++, use "make clean", then "make"
+
+botman
+
+--------------------------------------------------
+02/22/01 at 17:28:27  Reply by: DarthBobo (DarthBobo@swarm.edgegaming.com)
+--------------------------------------------------
+I did a rebuild all on all three dll's, no joy :( I commented out that block, little buggers are hard to shoot now ;)
+
+--------------------------------------------------
+02/25/01 at 20:31:54  Reply by: DarthBobo (DarthBobo@swarm.edgegaming.com)
+--------------------------------------------------
+Well I think this problem is just a sample of bad things that are going on. I get a memory read error in hlds after a bot has started on the server. If I don't use the bot dll no crash. The same thing happens on the Linux server, it took me ages to figure out as hlds and Linux server both report errors in the sw.dll or the main Linux executable. Oh well, at least I know where to look now :}
+

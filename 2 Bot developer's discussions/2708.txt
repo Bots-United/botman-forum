@@ -1,0 +1,102 @@
+--------------------------------------------------
+Subject: soar and bots
+--------------------------------------------------
+02/07/02 at 06:08:50  Posted by: stevegump (tim_myers99@hotmail.com)
+--------------------------------------------------
+Howdy people.
+
+Right, I'm new to this bot developing lark.  I'm doing a bot for CS for my final year disserrtation.  I've downloaded botman's HPB bot template and am getting to grips with it OK.
+
+BUT... I'm wanting to develop the bot using soar, and as such, I need to get the dll to add WMEs as entities are spawned.  Will I need to do that in the LINK_ENTITY_TO_FUNC definition, or whilst looking for messages? (Is there a message to spawn a wall and suchlike??)
+
+Has anyone made a soar bot for HL before?? I know there is one for UT and I have contacted John Laird and am looking at the source for his Quake bot...at the mo I haven't got teh source for the dll.
+
+Once I get the dll sorted I can start work on my bot for real.  Any help would be much appreciated on the subject
+
+cheers.
+
+--------------------------------------------------
+02/07/02 at 07:27:33  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+When entities are created, the MOD will call pfnCreateEntity() or pfnCreateNamedEntity() to create/allocate space for the entity.
+
+The LINK_ENTITY_TO_FUNC() macro simply defines a exported function from the DLL that the engine can call (similar to the LINK_ENTITY_TO_CLASS macro in the SDK).  As an example, LINK_ENTITY_TO_FUNC(weapon_shotgun) will create a function named "weapon_shotgun".  This function will be exported from the bot DLL file.  The engine will call this function when it wants to create an entity of that type (i.e. spawning an item in a map .bsp file).  This function will not be called by the game DLL code when it want's to create an entity.  The game DLL code simply calls the ::Create() function of the appropriate class.
+
+I'm sure what WMEs are, but if you only need them for the bots, it would make more sense to put the code for that in the BotCreate() function found in the bot.cpp file.
+
+botman
+
+--------------------------------------------------
+02/07/02 at 07:58:01  Reply by: stevegump (tim_myers99@hotmail.com)
+--------------------------------------------------
+right...
+
+let me see if I've got this straight.  the LINK_ENTITY_TO_FUNC macro defines the list of functions that the engine can call when trying to spawn something...BUT it doen't actualy do the spawning or anything - I presume that's up to the MOD.
+
+I'll try to explain what a WME is so you might understand my question a bit easier.
+
+WME stands for Working Memory Element.  the entire internal structure of soar is made up of these WMEs.  Think of it as a tree - each node in the tree (WME) has a set of attributes associated with it - the leaves.  Each of the leaves can themselves be a WME.
+
+wrt my bot I may have the following WME:
+  - My_Bot
+       - health - 100
+       - armour - 100
+       - Current_weapon (WME)
+         - name - mp5_navy
+         - cur_ammo - 30
+...etc. etc.
+
+Now the crux of the problem, is where do I find out the relevent information in order to buile these WME's.  The health, armour, etc will not be too difficult - I can get that all from the messages passed from the engine.
+
+However, I also need to represent things like direction the bot is facing (also not a problem) and what the bot can see (problem :))
+
+Where can I get the entity information for stuff like walls and other people - can I get at it directly, or will I need to add them as they are being spawned?
+
+Hope you understand me
+
+thanks
+
+
+--------------------------------------------------
+02/07/02 at 08:04:35  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+WME for dummies :
+
+The same thing that you see when you do a quickwatch in MSVC++ ;)
+
+[modified on 02/07/02 at 08:04:35]
+--------------------------------------------------
+02/07/02 at 11:03:42  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+The way the spawning stuff works is like this...
+
+When the engine wants to create something (weapon, ammo, player, etc.), it calls the game DLL function of the same name, for example weapon_shotgun().  This will allocate the space needed for this entity.  Since each entity is a different size (the size of the class is different since they have different member variables), the engine doesn't know how much space to allocate for it (the MOD game DLL is the only one that knows how much space to allocate).
+
+Once the space for the entity has been allocated, the engine will set up any key/value pair information using DispatchKeyValue().  The DispatchKeyValue() function will call the proper code to set key/value data based on the C++ class of that entity (obtained from the classname field of the entity edict_t structure).
+
+Once all of the key/value pairs have been initialized, the engine will call DispatchSpawn() to have that entity initialize itself and spawn itself into the world (setting up it's location/origin, bounding box size, move type, Think function, etc.).  DispatchSpawn() will call the ::Spawn() function for that C++ class (where all the initialization happens).
+
+Once the DispatchSpawn() function returns to the engine, the engine adds this entity to it's internal list of entities and will call the DispatchTouch(), DispatchThink() and DispatchUse() function whenever the entity is touched, when it's time to think, or when it gets used.
+
+This only applies to entities that are spawned from a BSP map file.
+
+For entities that are created from within the MOD game DLL code, the MOD code will call pfnCreateEntity() or pfnCreateNamedEntity() to create an entity (the engine will then call the exported function name to allocate space for that entity).  The MOD code will then assign any necessary key/value pairs and spawn that entity by calling the ::Spawn() function for that C++ class directly.  The only point where the engine is involved is in the pfnCreateEntity() or pfnCreateNamedEntity() call.  Everything after that is completely contained within the game DLL code (which you have no access to).
+
+botman
+
+--------------------------------------------------
+02/07/02 at 11:39:05  Reply by: William (william@cgf-ai.com)
+--------------------------------------------------
+Last year, I talked to one of John's students. If I remember correctly, SOAR had serious troubles using Q2 maps. It was limited to using maps with rectangular rooms on the same height. I suspect they hardwired the waypoints/areas as SOAR rules/facts.
+
+In other words, you may have troubles getting a SOAR based bot understand the terrain/do pathfinding.
+
+If my understanding is wrong, or the problem has been addressed in the SOAR/Unreal combinations, please let me know.
+
+William
+
+--------------------------------------------------
+02/08/02 at 13:23:51  Reply by: CountFloyd (countfloyd@botepidemic.com)
+--------------------------------------------------
+I would think it will be very hard to sample all entities in view without a huge Performce loss. I mean other than doing a FindEntityInSphere and checking them all against the viewing cone and visibility I wouldn't know an alternative approach.
+

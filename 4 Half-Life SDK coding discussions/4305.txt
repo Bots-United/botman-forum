@@ -1,0 +1,37 @@
+--------------------------------------------------
+Subject: custom sounds
+--------------------------------------------------
+04/09/03 at 22:30:13  Posted by: dx72ict (dx72ict@yahoo.com)
+--------------------------------------------------
+I am having problems getting new sounds to play in my mod, ive precached the sounds, do they need to be a specific format or length?  and im not sure exactly what i need to use, emitsound or some other function, and which channel, like CHAN_BODY, CHAN_ITEM, etc
+
+--------------------------------------------------
+04/10/03 at 02:13:51  Reply by: Phreak (dead_sexy_simon@hotmail.com)
+--------------------------------------------------
+
+From what i know, the sounds dont have to be < or > a certain length. You use EMIT_SOUND but the channel you use depends on what the sound is for. If the sound is for an item, you would use CHAN_ITEM for weapons CHAN_WEAP (i think its that). As for format, every single sound of mine was Wave Sound (.wav)
+
+Hope this helped
+
+
+Phreak
+
+--------------------------------------------------
+04/10/03 at 03:59:41  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+A good format for sounds is mono, 8-bit, 22kHz. Use 16-bit encoding and higher sample rates only if you want high-quality sounds.
+
+The game can only precache a certain amount of sounds at once, I think it's 300, more or less. This includes ALL the sounds precached, not only the additional ones you precache in your MOD.
+
+Sound precaching should be done in ServerActivate() using the macro PRECACHE_SOUND ("sound_path/relative/to/MODs/sound/directory/sound_name.wav").
+
+Once your sounds are precached, use the EMIT_SOUND, EMIT_SOUND_DYN and EMIT_SOUND_DYN2 macros to play them. Depending on the macro you will be using, you'll need to specify different parameters. EMIT_SOUND_DYN2 is the more complete, in which you can specify the "channel" (which is a mask for the internal engine handling of sounds), the origin where it is emitted from, the volume (fraction of 1.0), and the pitch rate, which recommended values go between 90 and 130.
+
+Sounds emitted with the EMIT_SOUND_* macros are handled through the PAS (Potentially Audible Set) system of the engine, and are dispatched dynamically to all clients with a network message. On the other hand, if you want a sound to be played ONLY on a certain client, and don't need/want to change the volume nor the pitch, you can force this client to issue the "play" ClientCommand. Sounds played with the "play" client command are only played on the client and don't need to be precached (since they don't go through the PAS) ; it's just as if your client was playing the WAV file using a sound program from Windows, like SNDREC32.EXE.
+
+
+--------------------------------------------------
+04/11/03 at 19:42:37  Reply by: dx72ict (dx72ict@yahoo.com)
+--------------------------------------------------
+I got emit_sound to work finally, but cant get pm_playsound to work for some reason, but i need this one to work also. 
+

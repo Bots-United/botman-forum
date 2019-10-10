@@ -1,0 +1,51 @@
+--------------------------------------------------
+Subject: Cycler and changing anim. sequence
+--------------------------------------------------
+07/19/03 at 14:26:12  Posted by: flex (parsek@gmx.net)
+--------------------------------------------------
+Hello,
+
+Normally a cycler entity changes the sequence by a shot. It looks so in the sdk.
+The function increments sequence and updates the framerate. 
+
+Now my problem:
+Im trying to change sequence while the game is running (with an amx module which allows to change entity properties), but it seems as the framerate isnt correct for each sequence of the model. On some the animation is played to fast, on other to slow and it looks choopy. I've tried to modify the framerate by setting the 'pev->framerate' property but that doesnt take any positive effects. While i read framerate its either 0, then the animation is stopped or 1 when its playing.
+Is there maybe other property i could change to let the cycler play other sequence with correct framerate?
+
+--------------------------------------------------
+07/21/03 at 16:01:53  Reply by: flex (parsek@gmx.net)
+--------------------------------------------------
+Till someone will post a solution, im trying to use alternative dirty ways:
+A cycler changes animation when it got damaged. So ive tried to send a Damage message but that crashed the server (entity is not a client).
+Then i just played with some properties dam_take, dam_save etc. with no luck.
+
+I guess it is not really that difficult to change animations, but im starting to lost myself on it.
+
+--------------------------------------------------
+07/21/03 at 16:39:16  Reply by: RobGP (rob@planetfortress.com)
+--------------------------------------------------
+look at what the SDK does, just do the same.
+
+--------------------------------------------------
+07/22/03 at 02:27:43  Reply by: flex (parsek@gmx.net)
+--------------------------------------------------
+I cant do all what the sdk does cause as i said above i can only modify Entity properties (pev).
+This is the only interface i got by a module for amx mod to change properties while the game is running.
+
+This is a part from sdk (dlls/h_cycler.cpp):
+
+pev->sequence++;
+ResetSequenceInfo( );
+
+if (m_flFrameRate == 0.0)
+{
+  pev->sequence = 0;
+  ResetSequenceInfo( );
+}
+pev->frame = 0;
+
+So all i can do is to set pev->sequence and pev->frame. But that seems to be not enough cause the framerate stays same for every sequence which is not correct.
+
+ResetSequenceInfo() seems to update the framerate, but on intern member called m_flFrameRate which cant be accessed by the 'pev' structure (and the amx module).
+I thought maybe there exists another global property which could fix it.
+

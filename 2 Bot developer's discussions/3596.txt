@@ -1,0 +1,173 @@
+--------------------------------------------------
+Subject: My ideas on auto waypoint generation. Pick holes!
+--------------------------------------------------
+08/17/02 at 03:41:55  Posted by: DarkYouth (darkyouth@planetannihilation.com)
+--------------------------------------------------
+I was working late last night on some code with reguards to automatic generation of of waypoints and came up with a possible solution, while retaining some of the benifits of the Floyd algorithm.
+
+The code I'm thinking of uses floodfill from the players position, spreading out in 6 directions (up, down, left,right, forward & back) from the player in intervals of say 100 units. Nodes up will not be placed if there is no ground beneath the node below it. (For example, you wont get more than two nodes upwards in a vertical space)
+
+When all these nodes have been placed and the floodfill cannot do any more, (Should take ~5 to 10 minutes by my guesses for most maps)
+
+Once thats done, we'll have thousands of nodes. That plain old wont work with Floyd's algo, seeing as it would take days to calculate the from-to lookup tables. 
+
+I was considering "scrubbing" for this. This would be a process where each node is examined along with the ones surrounding it. If each of those can reach each other node in the square then that node would be eliminated. For example:
+
+code:
+
+X X X    All of these nodes can
+X * X    reach each other. The
+X X X    center one can be removed.
+
+
+
+Repeated until no more nodes can be 'scrubbed', this process should help filter out obvious wastages in nodes. 
+
+The second scrubber function would clean up nodes that are in the air. Firstly it would see if the ground beneath has a node on it, and if not it would drop the node down to ground level. Any nodes that are simply floating above another node at this point can probably be removed. At this point, we re-run the first cleanup function and nuke wasted ones.
+
+Then, the third and final filter to reduce the number of nodes would work thus:
+
+code:
+
+1 2 3 
+4   6
+7 8 9
+
+
+
+Examining each node in turn for duplication of paths could be useful. For example:
+
+1 can reach 3, but 1 can reach 2, which can in turn reach 3. If this applies from the other direction, the waypoint could be removed without damaging the pathing. 
+
+This would easily remove hundreds, but is my concern area. Firstly it could produce some errors and result in destroying too many waypoints. I'll be looking into it for sure though.
+
+Hopefully this would result in the table being reduced to < 1024 waypoints, at which point running Floyd's algo is feasable. In order to maintain some dynamic element to pathing, I already run one outer loop out of the three per frame (Which takes ~1 1/2 minutes to totally update itself it seems), which is used to slowly modify paths depending on danger etc.
+
+Anyone got any ideas on the subject, I've not been getting the typical "I'm running into a brick wall" feeling when I try out ideas, but maybe it's due to my poor sleeping habbits :)
+
+--------------------------------------------------
+08/17/02 at 04:18:34  Reply by: @$3.1415rin (joebot@botepidemic.com)
+--------------------------------------------------
+there was already a thread about removing unnecessary waypoints after flooding the maps with waypoints, especially stefan and tub did a lot of experiments there, maybe you should ask them.
+
+About your continuous updated floyd tables : Wouldnt it be easier to use e.g. A*, because that way now, if you want to take the danger into account, you have to have several floyd tables, one normal one, one for the anxious bots, one for aggressive bots, one for whoever. In my opinion this just uses up too much memory, although it's pretty fast ( if you have enought memory ). Additionally this background floyd calculating isnt fast enough to calculate appropriate paths for pulling back maneuvers, regarding the positions of enemies and looking for cover, maybe making use of covering fire, or estimating the enemies paths, e.g. 90 seconds till the related floyd table is generated is just too slow and additionally these have to be different for each bot, at least for each team.
+
+--------------------------------------------------
+08/17/02 at 04:59:12  Reply by: DarkYouth (darkyouth@planetannihilation.com)
+--------------------------------------------------
+I used tiers with my floyd tables. The first is a sector system, determining which areas are under the control of which team, updated regularly through the round. Bots will generalise their navigation based on the sectors, not the individual nodes in the map.
+
+For example, if the garage entrance on siege has a CT hostility thing going on, the sector fromto table will be modified to reflect the situation, regardless of what the actual shortest path is.
+
+What you've got to consider, is that using 1024x1024 nodes in a short-int table only chews up a few megs. I use traceline caching too, something Im quite pleased with. It's better to use RAM for storing data, rather than working it out on the fly constantly. Even bugdet PC's these days come with 256mb.
+
+If you free up the CPU at game-time do to thinking, rather than grunt work then you can concentrate on getting the best actual bang for your buck with the actual AI functions.
+
+Also, the floyd table's can be used for determining cover a lot more quickly than you think. A simple level, just finding random nodes within the local area with a short from-to travel time which are not visible from any given point is easy enough and speed effective.
+
+With A*, you cannot really implement a CPU effective solution for 20 bots that is dynamic and unique for each bot. If you can, please share how, because I've tried to look into it and had to settle for my comprimise.
+
+I'll check into that thread you mentioned too, I'd love to see some alternative viewpoints on cleaning up waypoint tables.
+
+Another question: Does anyone else here cache traceline's? :)
+
+Mine works a little like this:
+
+1) Is this traceline's origin within 50 units of another traceline that was run recently (last 100 cached)
+
+-> Yes
+
+2) If the end point is within 50 units of this cached traceline's end point then return the old result, providing the traceline is less than two seconds old.
+
+-> No
+
+2) Trace and save to cache.
+
+At run-time I noticed a substantial improvement in performance using this. It also seems to dull the bot's senses a little too, giving a realistic looking enemy targetting delay.  
+
+Anyway, I'm deviating from the plot....*sips coffee and cries*
+
+
+
+--------------------------------------------------
+08/17/02 at 08:33:18  Reply by: @$3.1415rin (joebot@botepidemic.com)
+--------------------------------------------------
+ok, you use some sort of "hirarchical floyd tables", maybe this is fast enough then.
+Yes, for searching cover or simple following behaviours the floyd tables are pretty useful, I used them a lot in my 'old' bot.
+
+about caching tracelines :
+i'm only having a visibility table for storing the visibility between waypoints. It's 'dynamic', i.e. you can add waypoints on the fly without having to recalculate the whole table. parabot uses this type of visibility tables too, and when CF was still working on Podbot, it used a vis table too.
+
+how many tracelines do you normally cache within this 2 seconds lifetime ? do sequentially search them if there is one which fits, or do you use some type of hash table ?
+
+About fast finding cover with A* : maybe we should wait till tobias is back :)
+
+[modified on 08/17/02 at 08:33:18]
+--------------------------------------------------
+08/17/02 at 05:41:43  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+With regard to flood filling, have you taken a look at the autowaypoint generator in my BSP tools?  It does a flood fill on the level and drops waypoints down at ground level for each location visited in the map.
+
+One problem with the way it's implemented is that it uses one step size for the flood fill and the same step size for waypoint placement.  This means if you spread waypoints out too far apart, the flood fill won't find it's way into narrow openings (see the documentation included with the BSP tools for details).
+
+I have played around with modifying this to use one size for the flood fill (64 unit spacing) and a different size for the waypoint locations (user configurable).  This allows it to find it's way into smaller areas that might not be found if flood filling using large step sizes (like 200 units or more).
+
+The bad thing is that waypoint placement using flood fills is pretty poor.  You have to reposition waypoints based on nearby walls, ledges or other obstacles that you don't want the bot getting too close to.  Finding these surfaces takes quite a bit of tracelines, but if you want the PC to crank away all night generating a waypoint file, it shouldn't make much difference whether it takes 5 minutes or 5 hours to generate a waypoint file.
+
+botman
+
+--------------------------------------------------
+08/18/02 at 03:30:29  Reply by: DarkYouth (darkyouth@planetannihilation.com)
+--------------------------------------------------
+
+QUOTE:
+With regard to flood filling, have you taken a look at the autowaypoint generator in my BSP tools?  It does a flood fill on the level and drops waypoints down at ground level for each location visited in the map.
+
+
+
+
+I've reinvented the wheel, damn :)
+
+QUOTE:
+
+One problem with the way it's implemented is that it uses one step size for the flood fill and the same step size for waypoint placement.  This means if you spread waypoints out too far apart, the flood fill won't find it's way into narrow openings (see the documentation included with the BSP tools for details).
+
+
+
+
+Perhaps some kind of centering function could be used, but there's very little programmatically that could be done here, I have to admit.
+
+QUOTE:
+
+I have played around with modifying this to use one size for the flood fill (64 unit spacing) and a different size for the waypoint locations (user configurable).  This allows it to find it's way into smaller areas that might not be found if flood filling using large step sizes (like 200 units or more).
+
+The bad thing is that waypoint placement using flood fills is pretty poor.  You have to reposition waypoints based on nearby walls, ledges or other obstacles that you don't want the bot getting too close to.  Finding these surfaces takes quite a bit of tracelines, but if you want the PC to crank away all night generating a waypoint file, it shouldn't make much difference whether it takes 5 minutes or 5 hours to generate a waypoint file.
+
+
+
+
+Damn. I've just been looking at my first output from this, and you are right. Firstly, for assault it took easily an hour.
+
+The issues were:
+
+(1) Waypoint elimination functions seemed to work incorrectly, deleting just about every node in a wide open area. Sky nodes still existed in places too.
+
+(2) Although waypoints generally seemed to be away from walls, there were several locations where the bots got jammed one by one and were unable to get unstuck.
+
+Perhaps we are going about waypointing the wrong way. I've got a wierd idea relating to expanding zones (Imagine a box expanding until it clips a wall or another box) that link areas, and probably require the solving of quadratics to navigate. That will be the subject of another crackpot experiment later in the month in all likelyhood.
+
+I somehow feel the urge to try and implement AAS and "get it over with".
+
+--------------------------------------------------
+08/18/02 at 04:04:44  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+
+QUOTE:
+
+Perhaps we are going about waypointing the wrong way. I've got a wierd idea relating to expanding zones (Imagine a box expanding until it clips a wall or another box) that link areas, and probably require the solving of quadratics to navigate. That will be the subject of another crackpot experiment later in the month in all likelyhood.
+
+
+
+Not seen the foxbot lately? ;)
+
+http://dynamic3.gamespy.com/~foxbot/forum/news.php

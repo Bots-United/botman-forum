@@ -1,0 +1,106 @@
+--------------------------------------------------
+Subject: Not all my bots buy weapon then the round start
+--------------------------------------------------
+02/25/03 at 05:49:31  Posted by: ZX-81 (lobo@diku.dk)
+--------------------------------------------------
+Hallo,
+
+I'am trying to make a bot for CS and the problem is that not all my bots buy weapon at the start of each round.
+It seems like that the terrorist buy weapons but the counter terroist does not (but sometimes some of them the does)
+
+My botbuy look like this:
+void BotBuy(bot_t *pBot)
+{
+ edict_t *pEdict = pBot->pEdict;
+ pBot->bot_money_before_buy = pBot->bot_money; 
+
+  FakeClientCommand(pEdict,"buy",NULL,NULL);
+
+ if (pBot->start_action == MSG_CS_BUY_MENU)
+ {
+   char* navn= pBot->name;
+   fp=fopen("bottest.txt","a");fprintf(fp,navn); fclose(fp); 
+   pBot->start_action = WAIT_CS;
+       FakeClientCommand(pEdict,"menuselect","3",NULL);  
+ }
+
+  if (pBot->start_action == MSG_CS_MENU_BUY_PISTOL)
+ {
+   pBot->start_action = WAIT_CS;      
+       FakeClientCommand(pEdict,"menuselect","3",NULL);         fp=fopen("bottest.txt","a");fprintf(fp,"Køber DEAGLE \n"); fclose(fp); 
+ }
+  if (pBot->start_action == MSG_CS_MENU_BUY_SUBMACHINE)
+  {
+  pBot->start_action = WAIT_CS;      
+       FakeClientCommand(pEdict,"menuselect","1",NULL);  //Køber sub
+
+  }
+
+ //Køber HE granat
+
+  FakeClientCommand(pEdict,"buy",NULL,NULL);
+
+  if (pBot->start_action == MSG_CS_BUY_MENU)
+  {
+   pBot->start_action = WAIT_CS;
+       FakeClientCommand(pEdict,"menuselect","8",NULL);  //vælger equiment
+     fp=fopen("bottest.txt","a");fprintf(fp,"vælger equiment\n"); fclose(fp); 
+  }
+
+  if (pBot->start_action == MSG_CS_EQUIPMENT_MENU)
+ {
+   pBot->start_action = WAIT_CS;      
+       FakeClientCommand(pEdict,"menuselect","4",NULL);  //Køber HE granat
+       fp=fopen("bottest.txt","a");fprintf(fp,"Køber HE granat \n"); fclose(fp); 
+
+ }
+  
+  pBot->har_koebt = TRUE;  
+}
+_________________________________-
+
+My botthink look like this
+
+ if (pBot->har_koebt)
+ {          
+       g_engfuncs.pfnRunPlayerMove( pEdict, pEdict->v.v_angle, pBot->f_move_speed,                                0, 0, pEdict->v.button, 0, pBot->msecval);  
+ }
+ else
+ {   
+       BotBuy(pBot);
+ }
+
+____________
+
+Should i implement a pause between each botbuy ?
+
+regards
+Martin
+
+
+--------------------------------------------------
+02/25/03 at 06:29:08  Reply by: CountFloyd (countfloyd@botepidemic.com)
+--------------------------------------------------
+You don't enter the buying function once pBot->har_koebt is set to true and this variable is set the first time your buying routine is entered (it's funny that they will buy at all).
+Another reason might be that the round is restarted in between being resulting in some bot variables to be reset and the buying is skipped (since the Bot thinks he already finished buying).
+
+--------------------------------------------------
+02/25/03 at 06:48:16  Reply by: ZX-81 (lobo@diku.dk)
+--------------------------------------------------
+Hi,
+I'am resetting the "har_koebt" i engine.cpp.
+I tried to let the bots buy without moving at all and then all is fine !?!
+ 
+
+
+_________________________________________
+  if (strcmp(pszValue,"info_map_parameters") == 0) 
+   {
+       for (int bot_index = 0; bot_index < gpGlobals->maxClients; bot_index++)
+      {
+          bots[bot_index].har_koebt = false;
+              bots[bot_index].bot_money_before_buy = bots[bot_index].bot_money;
+              bots[bot_index].f_pause_time  = gpGlobals->time + 1.0; //CVAR_GET_FLOAT("mp_freezetime"); //PAUSER BOT
+       }
+  }
+

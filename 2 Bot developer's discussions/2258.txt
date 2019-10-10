@@ -1,0 +1,123 @@
+--------------------------------------------------
+Subject: dotproducts....
+--------------------------------------------------
+09/09/01 at 19:27:06  Posted by: Onslaught (None)
+--------------------------------------------------
+What exactly does DotProduct do, what does it return?
+
+--------------------------------------------------
+09/10/01 at 04:27:08  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Ask Dr. Math...
+
+http://forum.swarthmore.edu/dr.math/problems/waycaster4.5.98.html
+
+P.S. It helps to have taken advanced algebra, trigonometry and calculus to understand Vectors and Vector operations.
+
+botman
+
+--------------------------------------------------
+09/10/01 at 14:10:40  Reply by: theimann (killaruna@botepidemic.com)
+--------------------------------------------------
+What is important to know: You can use the dotproduct to determine the angle between two vectors. E.g. you can use it to check if an entity is in the viewcone of the bot by
+bool inViewCone = dotProduct( viewDir, entityDir) < 0.7;
+viewDir is the normalized vector of the direction where the bot is looking at, entityDir the normalized vector from the bot towards the entity.
+
+Tobias
+
+--------------------------------------------------
+09/11/01 at 03:28:34  Reply by: Onslaught (None)
+--------------------------------------------------
+I see, but what does the .7 signify? The angle in radians?
+
+--------------------------------------------------
+09/11/01 at 04:12:16  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+.7 is the cosine of the angle, yes in radians.
+
+45 degrees = 0.7854 radians (45 * PI / 180)
+
+cosine(45 degrees) = cosine (0.7854 radians) = 0.7071
+
+45 degrees is because the normal view angle is 90 degrees.  Half of this is 45 degrees, so if the enemy is within 45 degrees to the left or 45 degrees to the right they are within the field of view.
+
+botman
+
+--------------------------------------------------
+09/11/01 at 16:10:43  Reply by: Onslaught (None)
+--------------------------------------------------
+I see, thanks for your replies!
+
+--------------------------------------------------
+01/21/02 at 12:29:31  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+resurected :)
+
+I was checking my old maths book...
+
+I thought up something like this for 3d vectors, I weonder if it would work (and it would return degrees properly) ??
+
+code:
+
+float UTIL_AngleBetweenVectors(Vector vec1, Vector vec2)
+{
+      float vec1Dotvec2 = vec1.x*vec2.x + vec1.y*vec2.y + vec1.z*vec2.z;
+      float veclengths = vec1.Length() * vec2.Length();
+
+      return ( (acos( vec1Dotvec2/veclengths ) /pi)*180 );
+}
+
+
+--------------------------------------------------
+01/21/02 at 14:13:20  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Yes, that's the same as the arccosine of the dot product (converted from radians to degrees).
+
+botman
+
+--------------------------------------------------
+01/22/02 at 00:55:32  Reply by: hullu (hullu@jussikivilinna.cjb.net)
+--------------------------------------------------
+QUOTE:
+
+bool inViewCone = dotProduct( viewDir, entityDir) < 0.7;
+viewDir is the normalized vector of the direction where the bot is looking at, entityDir the normalized vector from the bot towards the entity.
+
+
+
+
+QUOTE:
+
+float UTIL_AngleBetweenVectors(Vector vec1, Vector vec2)
+{
+      float vec1Dotvec2 = vec1.x*vec2.x + vec1.y*vec2.y + vec1.z*vec2.z;
+      float veclengths = vec1.Length() * vec2.Length();
+
+      return ( (acos( vec1Dotvec2/veclengths ) /pi)*180 );
+}
+
+
+
+
+Because viewDir and entityDir are normalized
+viewDir.Length()*entityDir.Length() is 1 and .. 
+
+ DotProduct(viewDir,entityDir)/viewDir.Length()*entityDir.Length() == DotProduct(viewDir,entityDir)
+
+
+--------------------------------------------------
+01/22/02 at 13:58:42  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+ok so if I want my bot to avoid things by strafing depending on the angle from the bot to the object/enemy.. i could do this???
+
+code:
+                        
+
+Vector v_avoid = (VecBModelOrigin(pBot->pBotEnemy) - (pEdict->v.origin + pEdict->v.view_ofs));
+
+                        float angle_to_entity = UTIL_AngleBetweenVectors( ((pEdict->v.origin + pEdict->v.view_ofs)+ gpGlobals->v_forward * 30), v_avoid );
+                        
+
+
+
+[modified on 01/22/02 at 13:58:42]

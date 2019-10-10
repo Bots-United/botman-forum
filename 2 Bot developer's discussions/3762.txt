@@ -1,0 +1,157 @@
+--------------------------------------------------
+Subject: You wanted to remove weapons? w00t!
+--------------------------------------------------
+10/20/02 at 03:39:47  Posted by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+This should work... (for use in botmans template)
+
+What I do is just make a player_weaponstrip on the spot, use it and kill it. It might be better to spawn one per map and store its edict as a global and use that instead of making numerous ones (although I kill them after creation so there wont be loads of them, but say you want to strip all 32 players at the same time, 1 player_strip would do the same job )
+
+code:
+
+void UTIL_StripWeapons( edict_t *pEdict )
+{
+            CBaseEntity *pWeaponStrip = CreateEnt("player_weaponstrip",pEdict->v.origin,Vector(0,0,0),NULL);
+
+            DispatchUse(pWeaponStrip->edict(),pEdict);
+
+            pWeaponStrip->pev->flags = FL_KILLME;
+
+            pEdict->v.weapons = 0;
+}
+
+
+
+I made my own Create cbase entity function as the one in the CBaseEntity class won't work (because unresolved externals etc..)
+
+code:
+
+CBaseEntity *CreateEnt( char *szName, const Vector &vecOrigin, const Vector &vecAngles, edict_t *pentOwner )
+{
+      edict_t      *pent;
+      CBaseEntity *pEntity;
+
+      pent = CREATE_NAMED_ENTITY( MAKE_STRING( szName ));
+      if ( FNullEnt( pent ) )
+      {
+            ALERT ( at_console, "NULL Ent in Create!\n" );
+            return NULL;
+      }
+
+      if ( !pent )
+            pent = ENT(0);
+      pEntity = (CBaseEntity *)GET_PRIVATE(pent); 
+
+      pEntity->pev->owner = pentOwner;
+      pEntity->pev->origin = vecOrigin;
+      pEntity->pev->angles = vecAngles;
+      DispatchSpawn( pEntity->edict() );
+      return pEntity;
+}
+
+
+
+[modified on 10/20/02 at 03:39:47]
+--------------------------------------------------
+10/20/02 at 13:58:49  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+QUOTE:
+
+            DispatchUse(pWeaponStrip->edict(),pEdict);
+
+
+
+
+goddamnit, does THIS work ???
+
+I used to make sorta the same thing once ago, I wanted my players in HLDM to start with strictly NO weapons, and to allow just ONE weapon in the game (e.g, the crossbow, or the crowbar - lots of fun). I did virtually the same thing as you did, creating a player_weaponstrip entity somewhere and putting a trigger_multiple to it on every player's spawn point. I HAD to do this because just doing :
+
+DispatchUse (pWeaponStripEntity, pPlayerEdict);
+
+would never work !
+WTF ?
+Are you sure you get it working this way ???
+
+
+
+--------------------------------------------------
+10/21/02 at 14:43:21  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+Yeah It worked, although I actually had more stuff in... Ive updateedmy Strip weapon function below, forgot the Current Weapon message that might help!
+
+code:
+
+void UTIL_StripWeapons( edict_t *pEdict )
+{ 
+  extern int message_CurWeapon;
+
+  CBaseEntity *pWeaponStrip = CreateEnt("player_weaponstrip",pEdict->v.origin,Vector(0,0,0),NULL);
+
+  DispatchUse(pWeaponStrip->edict(),pEdict);
+
+  pWeaponStrip->pev->flags = FL_KILLME;
+
+  pEdict->v.weapons = 0;
+
+  MESSAGE_BEGIN( MSG_ONE, message_CurWeapon, NULL, &pEdict->v );
+  WRITE_BYTE(0);
+  WRITE_BYTE(0);
+  WRITE_BYTE(0);
+  MESSAGE_END();
+}
+
+
+
+[modified on 10/21/02 at 14:43:21]
+--------------------------------------------------
+10/20/02 at 17:32:06  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+I don't want to include the CBaseStuff crap.
+/me will try this
+code:
+
+void UTIL_StripWeapons (edict_t *pEdict)
+{
+   edict_t *pWeaponStripEntity = NULL;
+
+   CreateEnt ("player_weaponstrip", pEdict->v.origin, Vector (0, 0, 0), NULL);
+
+   // issue a FIND_ENTITY_BY_STRING to get a hand on that player_weaponstrip
+   // I'm too lazy to code it here, but you see the idea...
+
+   DispatchUse (pWeaponStripEntity, pEdict);
+   pWeaponStripEntity->v.flags = FL_KILLME;
+
+   pEdict->v.weapons = 0;
+   MESSAGE_BEGIN (MSG_ONE, message_CurWeapon, NULL, &pEdict);
+   WRITE_BYTE (0);
+   WRITE_BYTE (0);
+   WRITE_BYTE (0);
+   MESSAGE_END ();
+}
+
+
+
+...would be great if it works ! will see...
+
+
+--------------------------------------------------
+10/21/02 at 14:37:30  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+Tell me if it works or not.. If it still doesn't you could try it with the CBaseEntity stuff in or I can send you the exact code I used, to be honest it is more or less the exact code I used anyway, incase other things may have made it work :)
+
+--------------------------------------------------
+10/21/02 at 14:44:18  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+oh oh... actually watch out here :D
+
+MESSAGE_BEGIN (MSG_ONE, message_CurWeapon, NULL, &pEdict); 
+
+the pEdict should be &pEdict->v (entvars)
+
+i.e.
+
+MESSAGE_BEGIN (MSG_ONE, message_CurWeapon, NULL, &pEdict->v);
+
+:p
+

@@ -1,0 +1,66 @@
+--------------------------------------------------
+Subject: odd....
+--------------------------------------------------
+03/13/02 at 09:24:32  Posted by: mofuter (dosap25@hotmail.com)
+--------------------------------------------------
+skipspace:
+in scriptlib.cpp line: 169.
+
+that does it do?
+
+
+
+--------------------------------------------------
+03/13/02 at 11:51:04  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+code:
+//
+// skip space
+//
+skipspace:
+      while (*script->script_p <= 32)
+      {
+            if (script->script_p >= script->end_p)
+                  return EndOfScript (crossline);
+            if (*script->script_p++ == '\n')
+            {
+                  if (!crossline)
+                        Error ("Line %i is incomplete\n",scriptline);
+                  scriptline = script->line++;
+            }
+      }
+
+      if (script->script_p >= script->end_p)
+            return EndOfScript (crossline);
+
+      if (*script->script_p == ';' || *script->script_p == '#' ||             // semicolon and # is comment field
+            (*script->script_p == '/' && *((script->script_p)+1) == '/')) // also make // a comment field
+      {                                                                  
+            if (!crossline)
+                  Error ("Line %i is incomplete\n",scriptline);
+            while (*script->script_p++ != '\n')
+                  if (script->script_p >= script->end_p)
+                        return EndOfScript (crossline);
+            goto skipspace;
+      }
+
+While the thing pointed to by the script_p pointer is less than or equal to a space, check to see if the script_p pointer has reached the end of the input, if so return EndOfScript(crossline), if not, check is script_p is pointing at a newline character.  If so, check if not allowed to crosslines in input (crossline is false) and print an error, otherwise set scriptline to the next line of input.
+
+After skipping white space (spaces and newlines), check if script_p has reached the end of input, if so return EndOfScript(crossline).
+
+If the terminating character (character that was greater than a space character) is a semicolon, or pound sign (hash) or is a forward slash AND the next character is a forward slash, then treat this line as a comment.  Keep reading input from script_p until we reach a newline character returning EndOfScript(crossline) if we reach the end of the input before the end of a line.
+
+botman
+
+--------------------------------------------------
+03/13/02 at 13:52:20  Reply by: Jedi_Master (jimhunterjr@bellsouth.net)
+--------------------------------------------------
+I think he may have been asking about the 'skipspace' itself.  If so, it is just a label, which can be used to jump to that part of the code using 'goto skipspace'.
+
+--------------------------------------------------
+03/13/02 at 23:34:21  Reply by: mofuter (dosap25@hotmail.com)
+--------------------------------------------------
+no, what botman was talking about.
+
+
+

@@ -1,0 +1,91 @@
+--------------------------------------------------
+Subject: Going prone
+--------------------------------------------------
+06/17/01 at 16:34:12  Posted by: flaegren (flaegren@hotmail.com)
+--------------------------------------------------
+I've been doing a lot of work on a bot for DoD (working on creating a cognitive map for higher order state transitions).
+So far I've created my own waypoint class structure and bot class. The bot class is, ofcourse, based on Botmans code.  The one snag i've had testing the bot movements is going prone.
+The next free IN_XXX message expands to (1<<16) - this would be like IN_DUCK, which expands to (1<<2). 
+I've tried (1<<16) through (1<<19) and (1<<29) through (1<<32) to no avail.  Anyone have any clue as to how to accomplish going prone?
+
+
+--------------------------------------------------
+06/18/01 at 05:13:10  Reply by: kevone (kevone@gmx.net)
+--------------------------------------------------
+hi...
+
+u can use a simple FakeClientCommand with 'prone', like this:
+
+FakeClientCommand(pEdict, "prone", NULL, NULL);
+
+that should make the bot prone...
+(don't forget to store the current prone status
+ somewhere, 'cause u will need it!)
+
+k3v
+
+--------------------------------------------------
+06/18/01 at 08:04:06  Reply by: flaegren (flaegren@hotmail.com)
+--------------------------------------------------
+FakeClientCommand Did the trick!  Thanks alot Kevin.  
+
+--------------------------------------------------
+07/17/01 at 12:27:35  Reply by: @$3.1415rin (as3.1415rin@gmx.de)
+--------------------------------------------------
+has anybody expenriences with getting information of a player if it's prone ? i looked a bit closer at entvars_t.gaitsequence and sequence, but i cannot find a system there. Or do i have to get all these diffenrent values by experiment and compare them to the values of the enemies i wanna test if they are prone ? has anybody experiences in this field ? or do i have to log all 'prone' commands and get the information that way ?
+
+--------------------------------------------------
+07/17/01 at 19:30:35  Reply by: Noodles (lancecoleborne@mad.scientist.com)
+--------------------------------------------------
+Yeah i'm having the same problem, I had a idea to read what sequence the bot model is using like *prone* (firearms models) but I don't know how to read the sequences. 
+
+Like how the MOD dll tells the bot model to do a prone sequence when the bot goes prone and to constantly read this when the bot is doing prone_crawl or prone_idle sequences
+
+[modified on 07/17/01 at 19:30:35]
+--------------------------------------------------
+07/18/01 at 03:59:58  Reply by: jerry_stoel (jerry_stoel@hotmail.com)
+--------------------------------------------------
+Hi guys,
+
+You are all looking in the wrong direction like I did, but this solution is more solid and easier to implement :P
+Here is the code:
+
+code:
+
+if(pEdict->v.size.z < VEC_HUMAN_HULL_DUCK.z)
+      {
+            ALERT(at_console, "Lying prone\n");
+            pBot->prone = TRUE; //or something like this :P
+      }
+
+
+
+I used this for my flamerbot for action half-life when they stunt and lie on there stomach or back and it works without a flaw. Maybe it works with DoD too, I think so. Hope this helps.
+
+Seeya,
+
+--------------------------------------------------
+07/18/01 at 04:02:56  Reply by: jerry_stoel (jerry_stoel@hotmail.com)
+--------------------------------------------------
+Hmmm,
+
+I forgot to explain the thing here. When I stunt in action half-life the mod changes my vec_hull or something like that to don't get hit by a bullet higher than the duck position. So that is what it does. And just implement the code into bot.cpp.
+
+Seeya,
+
+--------------------------------------------------
+07/18/01 at 06:00:05  Reply by: @$3.1415rin (as3.1415rin@gmx.de)
+--------------------------------------------------
+no, unfortunately it's not workin'
+
+--------------------------------------------------
+07/18/01 at 06:07:32  Reply by: @$3.1415rin (as3.1415rin@gmx.de)
+--------------------------------------------------
+but pEdict->v.view_ofs.z seems to work
+
+--------------------------------------------------
+07/18/01 at 06:59:55  Reply by: jerry_stoel (jerry_stoel@hotmail.com)
+--------------------------------------------------
+Well than DoD uses another way to determine there lying down :P.
+But you can go on coding now :P.
+

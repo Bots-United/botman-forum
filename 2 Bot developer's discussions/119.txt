@@ -1,0 +1,348 @@
+--------------------------------------------------
+Subject: Botman: Floyd/Warshall anyone ?
+--------------------------------------------------
+09/19/00 at 16:12:24  Posted by: CountFloyd (countfloyd_1999@yahoo.com)
+--------------------------------------------------
+I read on your page that your busy implementing Path-Finding in your Framework. I already did this in my Version using the Floyd/Warshall Algorithm and it works without flaws (thx goes to you and Williams for pointing to the links). So my question is: are you still in need of this ? If yes, I would be glad to give you my sources (I would have done it anyway after I have commented/restructured the whole thing).
+If no, then what Algo do you have implented yourself ? Dijkstras, A* maybe ? I also have used A*, but it had bugs and the drawback was the permanent calculation of routes, where the Floyd Matrix only gets calculated once...
+
+--------------------------------------------------
+09/20/00 at 00:52:32  Reply by: William (william@botepidemic.com)
+--------------------------------------------------
+Send me a mail, and I'll get you the same sources Botman has.
+
+It's gonna cost you credits, and a link to my site :)
+
+William
+
+--------------------------------------------------
+09/20/00 at 05:07:14  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+I do plan on using Floyd's algorithm, but I'm still working some other generic waypoint following problems.
+
+What I had planned on doing was to use the existing waypoint structure (the nodes) and the path structure (the edges) to create the Floyd matrix.  I haven't done any coding on this yet so I'm not sure how much time is involved in the N^3 computation, but here's what I was thinking....
+
+If you start a game and the waypoint file exists, but the Floyd matrix doesn't then each BotThink() call would calculate a little bit of the matrix (maybe one row) while the bots were randomly wandering around.  Periodically it would save what it had so far to disk.  Once the entire matrix was complete bots would be able to make use of it to know how to navigate from point A to point B.
+
+This way you wouldn't have to tie up the game doing number crunching for several minutes before actually playing the game.  I was also going to write a quick Windows App that would allow you to click on waypoint files and generate the Floyd matrix outside of the game, if you didn't want it to be done during the gameplay.
+
+I would be interested to see what you have modified as far as the waypoint structure goes.  Are you still using the path structure?  I put that in there so I could create one-way paths (directed graphs) as well as to prevent the bots from picking paths that were "reachable" but not necessarily "desirable".
+
+botman
+
+--------------------------------------------------
+09/20/00 at 05:30:19  Reply by: William (william@botepidemic.com)
+--------------------------------------------------
+From memory: Floyd takes about 30 seconds for 600 nodes on a PIII/500. If this is incorrect, I'll update the post later today.
+
+Most of you have far fewer waypoints than I use. If you'd use only 100, Floyd would take about (100/600)^3 * 30= < 0.2 seconds (because of O(N^3) time complexity).
+If, in your case, the delay is under 2 seconds, I'd try to just compute it (unless HL drops the connection).
+
+Note that Floyd handles directed graphs.
+
+William
+
+--------------------------------------------------
+09/20/00 at 14:17:53  Reply by: CountFloyd (countfloyd_1999@yahoo.com)
+--------------------------------------------------
+<b>William:</b>
+Hey, I would even link your Site if you don't give me Sources, since it's a rare pearl regarding Bot AI (maybe a a bit too much general content and AQ2 but it's ok). I'll will do it when I take a break from bot coding (after the first release which hopefully will be in approx. 2 weeks. And yes, there's a problem with the directed graphs I didn't think of first. 
+The Bots always choose the shortest path from A to B not knowing the real direction or the environment they go through. This wouldn't be the case with A* where you could add terrain costs. It's not sooo bad in my bot since they have a variety of waypoints to choose from, but on the other hand I really should do a second attempt on A* maybe later.
+
+<b>Botman:</b>
+I merged the Waypoint information and the PathNodes together, so that the Pathnodes contain now the Origin,Flags, etc. and still hold the Indexes to all connected Pathnodes. Also I only have waypoints for all teams. The usual Number of Pathnodes in my Level is about 200-220. These Pathnodes by now have the Flags of
+a) normal waypoint
+b) Important Terrorist Waypoint
+c) "         Counter Terrorist Waypoint
+d) Goal Waypoint (depends on Maptype, Bomb planting, Hostage rescue etc.)
+
+So depending on Maptype Terrorist/Counter patrol their routes or storm the front. This works good and is already fun to play with...
+I don't really see why you should call the Matrix calculation routine in BotThink. Like I said before there are 300< (and most of the time there are less than that) Waypoints in a Level. I do all of the Distance/Path Matrix calculations when a Level is loaded and I really don't notice a break. So in the Game all you have to do is some lookups in the precalculated Tables, which is IMHO the fastest approach. You could even disconnect existing Path Connections on the fly when a Bot is occupying this Waypoint (I don't do this right now). This somehow leads me to your ladder problem. Just some ideas:
+When setting a waypoint on a ladder couldn't you just check for MOVETYPE_FLY, then searching for the func_ladder entity, getting the VecbModelOrigin and with it the center of it, placing a waypoint automatically at that origin ? When the Bot then encounters a MOVETYPE_FLY (or ladder flag if prefer) he would know he's on a ladder and wants to go up or down...
+But maybe that's just a stupid idea...ladders are the next evil thing I have to implement (shiver).
+
+
+--------------------------------------------------
+09/20/00 at 15:34:57  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+The ladder problem I've got comes from the convoluted mess of code I've got that allows the bot to randomly wander the levels when no waypoints exist.  For example, when the bot hasn't moved much since the last time it tried to move, it assumes it is stuck and will jump to try to hop over something (like a box or railings).
+
+When waypoints are set and the player is on a ladder (movetype = MOVETYPE_FLY), I set a bit in the waypoint flags (W_FL_LADDER) that indicates this waypoint is on a ladder.  The bots go up ladders following waypoints just fine.  The problem I've got now is when they go down a ladder.  I've got a waypoint at the top of the ladder that is clearly visible from the ledge where the ladder ends at.  The bot will slow down when approaching this "ladder waypoint" in an attempt to slowly go over the edge and touch the ladder so that it can climb down the ladder.
+
+The bot does slow down as it approaches the ladder, but somewhere in my mishmash of code the bot decides it needs to speed up again and winds up running off of the ledge instead of landing on the ladder.  I've got so many "special flags" and "special timers" that handle certain situations that it is becoming difficult to keep one piece from interferring with another piece.
+
+I'm almost to the point where I want to rip out ALL of the navigation stuff and completely re-write it but this would mean that I wouldn't be able to release anything for at least 2 or 3 months.  I guess I'll fight with it some more tonight and see what I can get done.
+
+botman
+
+--------------------------------------------------
+09/20/00 at 16:49:49  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+Okay I figured out what was screwing up the bot approaching the ladders to go down.
+
+In the BotThink() function I keep adjusting the bots angle to approach the ideal yaw.  If the bot is turning more than 20 degrees then the bot doesn't move forward (it turns in place).  If the bot is turning between 10 and 20 degrees it only moves forward at 1/4 speed.  Otherwise the bot moves at full speed.
+
+If the bot is turning 10 or more degrees, I don't call the code that handles waypoint navigation since the bot isn't changing positions if it's just turning in place.
+
+What was happening was that the bot was approaching the ladder waypoint at a 45 degree angle to the face of the ladder, so it started going slowly, but then as it started to turn (between 10 and 20 degrees) it would begin moving at 1/4 speed instead of the slower "ladder approaching speed".  I corrected this problem, but now when they get to the bottom of the ladder they drop off the ladder then immediately try to go back up the ladder again because I have them always trying to go up a ladder that is near enough to them.  So I'll have to put a check in that code to NOT try to go up a ladder if they just finished going DOWN a ladder! :(
+
+They also only manage to "grab" the ladder about 25% of the time.  Even going at a speed of 10 units per movement isn't slow enough to have them grab the ladder all the time.  I'll have to change things so that they try to go BACKWARD as they are falling down in an attempt to touch the ladder before they hit the ground.  Then they can do a controlled descent.
+
+One problem I'll have is that they may have pasted by one or two waypoints on the ladder before they manage to grab hold of it and they will still think they are trying to get to the waypoint at the top of the ladder (since they haven't "touched" it yet).  I'll have to set the ladder direction and then if the bots are getting further from the waypoint they wanted to get to I'll make them forget about that waypoint and start trying to find a new waypoint further down the ladder.
+
+WHAT A MESS!!!
+
+botman
+
+--------------------------------------------------
+09/20/00 at 17:00:31  Reply by: CountFloyd (countfloyd_1999@yahoo.com)
+--------------------------------------------------
+QUOTE:
+The ladder problem I've got comes from the convoluted mess of code I've got that allows the bot to randomly wander the levels when no waypoints exist
+
+
+
+
+Well, I think at this point you should limit your BOT-NO-WAYPOINT movement to a very sparse minimum. And yes, your BotThink Routine is a hell of if-else statements which are very likely to have bugs nobody notices (no offence). Basically I have 2 movement Routines. The first one is based on your BotFindWaypoint Routine and searches the next available (reachable) waypoint. The 2nd does nothing more than let the Bot walk from one calculated Pathnode to the next (without testing if this is really reachable). Both and also the Combat AI share some handy Traceline Checks to test if the Bot can duck,jump or strafe to move there. I don't have any free movement code since this is not needed anymore.
+
+QUOTE:
+For example, when the bot hasn't moved much since the last time it tried to move, it assumes it is stuck and will jump to try to hop over something (like a box or railings).
+
+
+
+I would (and I have) limit this check only to a Timer which checks if there was no waypoint reached for let's say 5 secs (of course this timer needs to be reset when encountering an enemy or searching for an item).
+
+QUOTE:
+I've got a waypoint at the top of the ladder that is clearly visible from the ledge where the ladder ends at.
+
+
+
+I think that you can get rid off this by using predefined checked waypoints. In your original Bot Code you check if the next Waypoint is visible. But when climbing down a ladder, there's a big chance the Bot doesn't see the waypoint since if I'm getting it right you only manipulate the Bots Body Angle (not the way he's looking). By using connected Waypoints you do not need this extra check and you can be sure the Bot knows where to go...
+
+I'm sure you'll find the best solution to your problems and if this means a rewrite, well why not ? You know you're the only competitor in the TFC Bot Programming so take your time if needed. And no, I wouldn't release your navigation code to the public or could you imagine some handfull more crappy Cs Bots based on your hard Framework :) ?
+
+Best wishes,
+Count Floyd
+
+--------------------------------------------------
+09/21/00 at 04:31:57  Reply by: William (william@botepidemic.com)
+--------------------------------------------------
+Count,
+
+do I notice a flaw of thought here?
+>And yes, there's a problem with the directed 
+>graphs I didn't think of first.
+>The Bots always choose the shortest path from
+>A to B not knowing the real direction or the
+>environment they go through. This wouldn't be
+>the case with A* where you could add terrain
+>costs. 
+
+If you know the terrain traversal costs (for A*), why don't you use them in the (directional) graph?
+
+I'm using weighted directional graphs so often that I might have forgotten to mention they are weighted...
+
+My AI reasons about distance in terms of travel time. This allows you to tackle (using estimates) even teleporters, elevators, doors, whatever.
+
+William
+p.s. feedback on the CGF site is welcome (but outside this board please)
+
+
+--------------------------------------------------
+09/22/00 at 14:48:03  Reply by: CountFloyd (countfloyd_1999@yahoo.com)
+--------------------------------------------------
+Oh William you're so damn right !!! Yes, I only measured the distances between Pathnodes not the actual Traveltime (I also used it in the A* Algo). It's so obvious (*banging my head against the screen*) ! I'll implement this right now. Do you know what this means to me ? Again doing waypoints for about 3 maps. I bet this is the 4th time I have to this...thank you, you're so cool !
+But I still have the shortest Path problem. Let me try to explain:
+Let's say you've got a big hallway which is bent through the left leading into another room. This hallway is also connected to this room through a window (which is a shorter path). Since my bots do know they can shoot the window, they will _ALWAYS_ take this shortcut. Is there a workaround without marking this shortcut as special "skilled" way ? Doesn't this mean I have to connect/disconnect Waypoints in realtime ?
+
+Thanks again,
+Count
+
+
+
+--------------------------------------------------
+09/22/00 at 16:15:51  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+This is probably one of the cases where the A* heuristic for the path wins out over Floyd's.
+
+Different functions for the cost of the traversal from one node to another can be based on skill level, terrain, or other factors.  So you could have different costs based on the skills of the player (high speed, endurance, etc.).  The problem with Floyd's is you precalculate the paths based on the weight (distance, time, whatever).  If you change the weight, you have to recalculate the paths.
+
+You could create a separate Floyd matrix for each class of player, but this would be costly in terms of memory usage (for a large number of nodes).
+
+Maybe you should go back and re-evaluate the A* approach to see if you can create a better function for the heuristic.
+
+botman
+
+
+--------------------------------------------------
+09/23/00 at 00:26:33  Reply by: DarkYouth (darkyouth@thegraze.freeserve.co.uk)
+--------------------------------------------------
+Can anyone post an example of code here?
+
+I just cant get my head around A* :-(
+or that Djistra one........
+
+At the moment my code is very inefficient
+
+Heres a rough* path finder I tried to use      (* = ULTRA ROUGH)
+
+I havent finished it since it wouldnt work anyway..............
+
+bool BotGetDest (pBot)
+{
+    Vector dest
+    lastdest = pBot->lasttype
+    if (lastdest !=2 )      // If we last hunted
+      dest = BotFindObjective(pBot);
+    else if (lastdest = 2)      // Did we try objective
+      dest = BotFindObjectiveENEMY(pBot);
+
+      int cost;
+        int points;
+        int origin = pBot->curr_wpt_index;
+        int pathdist = 0; 
+        int bestpath = 99999;
+        int templinks[50];
+        int pathlinks[50];
+        templinks[1] = origin;
+        int maxloops;
+        for (int x = 0; x < maxloops; x++)
+      {
+            for (int z = 1; z < 50; z++)
+            {
+                
+                        int numdone = 0;
+                  int reachables[3];
+                        for (y = 0; y < num_waypoints[team]; y++)
+                  {
+                             int t = templinks[z]
+                             if (reachgraph[z][y] = 1)
+                             {
+                        numdone++;
+                        reachables[numdone] = y;
+                        }
+
+
+
+--------------------------------------------------
+09/23/00 at 01:45:58  Reply by: William (william@botepidemic.com)
+--------------------------------------------------
+
+QUOTE:
+But I still have the shortest Path problem. Let me try to explain:
+Let's say you've got a big hallway which is bent through the left leading into another room. This hallway is also connected to this room through a window (which is a shorter path). Since my bots do know they can shoot the window, they will _ALWAYS_ take this shortcut. Is there a workaround without marking this shortcut as special "skilled" way ? Doesn't this mean I have to connect/disconnect Waypoints in realtime ?
+
+
+
+
+a. You'd need to mark that window way point any way in order to vary your decisions for that way point
+b. Something I'm planning for a next generation CGF AI would probably work for you:
+- post-processing the path returned by Floyd/Warshall lookup
+Just inspect the resulting path, and see whether it contains any 'special' way points. Then, decide whether this fits the current bot state, or whether you'd need to redo part of the path.
+Given a problem at entry x in your path, you could do a A* to get from entry x-5 to x+5, which wouldn't be that expensive.
+(Current CGF does an expensive way of post-processing to translate the resulting path in a number of actions, including complex ones to have the bot handle rotating doors that rotate towards the bot - they'd need to step back, wait, and move forward again.)
+c. I have my bots dump path and node info to a log file anytime they get stuck. This helps you in identifying which parts of the way points and links to touch again. Normally, that isn't much work.
+
+DarkYouth: do a web search using Google on Warshall, and you'll find an algorithm. You can get working A* algorithms from gameai.com
+
+William
+
+--------------------------------------------------
+09/23/00 at 02:59:45  Reply by: DarkYouth (darkyouth@thegraze.freeserve.co.uk)
+--------------------------------------------------
+Theres nothing really tangible in the search engines.
+
+But I found at least 999999x10(4) universities that will teach C++ A* theory and all that.
+
+ANY ONE SITE THAT PROVIDES AN EXAMPLE THAT MAKES MODERATE SENSE.
+
+By the way CGF was f**kin' awesome....
+I like it "Action!!!".....
+
+
+
+--------------------------------------------------
+09/23/00 at 04:01:47  Reply by: William (william@botepidemic.com)
+--------------------------------------------------
+Links such as:
+http://wannabe.guru.org/alg
+and (for Floyd)
+http://wannabe.guru.org/alg/node88.html
+should be in your favorites list.
+
+Don't forget you'd need to do most of the coding yourself anyway. If bot programming was just a matter of finding algorithms and compiling them together, everybody would be making great bots.
+
+William
+p.s. for more scientific searches, try the Google.com search engine. Returns less rubbish.
+
+--------------------------------------------------
+09/23/00 at 21:27:59  Reply by: CountFloyd (countfloyd_1999@yahoo.com)
+--------------------------------------------------
+DarkYouth:
+There are a lot of resources on Pathfinding and A* specifically. For a good start you may want to visit here http://www.red3d.com/breese/navigation.html
+or do a web search for "spath.zip" which is a fairly easy tile-based implementation of A* in C.
+
+William:
+Your post-processing ideas sound interesting. But I think I will stick to Botmans idea of precalculating different matrices based on skills since this is the easy and fast way. Maybe I will do the post processing version later when I have more time. Anyway, thanks for your suggestions. Ah yes, I found this link quite interesting:
+http://www.red3d.com/cwr/steer/
+I don't think we will see the methods described here in a bot in the near future. But who knows, maybe Realbot will adapt this sometime,somehow :)
+
+
+--------------------------------------------------
+09/24/00 at 07:48:08  Reply by: DarkYouth (darkyouth@thegraze.freeserve.co.uk)
+--------------------------------------------------
+Thanks will/count.
+
+I really get p*ss*d off with that stupid google search engine.
+
+The one yahoo used to use was pretty good before they got googled...
+
+--------------------------------------------------
+09/24/00 at 20:12:01  Reply by: Mercenary (adamc_@hotmail.com)
+--------------------------------------------------
+Whew...that whole conversation went over my head.  How old are you 'guys' anyway?  I am 15, and trying my hardest to figure what you just said in this topic.  I'm glad I don't do AI.
+
+--------------------------------------------------
+09/25/00 at 05:05:05  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+We'll lets see, I bought a Radio Shack TRS-80 Model I a few months after they came out when I was a teenager and that was over twenty years ago.  You do the math.
+
+botman
+
+--------------------------------------------------
+09/25/00 at 14:06:26  Reply by: CountFloyd (countfloyd_1999@yahoo.com)
+--------------------------------------------------
+And I still remember the harsh winter of 1978 when I finally got a Mattel Intellivision as a present (I wanted a Colecovision *sniff* and Atari VCS sucked IMHO). I had a good time pulling the cartridges out of the running system when I was bored, which had the effect of copying the VRAM to TV (of course I didn't know that at that time). But I think that moment made me want to know about programming...
+Erm...is this Bot related anymore ?
+
+A boring old fart...
+
+--------------------------------------------------
+09/26/00 at 05:35:47  Reply by: theimann (theimann@stud.fh-heilbronn.de)
+--------------------------------------------------
+For all of you who prefer printed paper instead of net-resources: the "Algorithms" book of R.Sedgewick should be available in any bigger library and contains quite a lot of graph algorithms. I'm currently studying (so much for the age) and this book is a kind of bible to all students having to pass the informatics exam...
+
+Tobias
+
+--------------------------------------------------
+09/27/00 at 05:23:23  Reply by: William (william@botepidemic.com)
+--------------------------------------------------
+Count,
+
+wrt. to Craig Reynolds work (on flocking and steering):
+- some of the flocking is present in most games today (and most likely also in the HL monster AI); CGF has some 'flocking' back-off when moving in close formation
+- if you'd design a fuzzy logic steering based algorithm for a robot, you'll most likely end up in a solution similar to Craig's steering behavior. (Most of the fuzzy logic examples in literature already come close to that behavior).
+
+Note that most of CWR's work seems to aim for entities with as little information about the path as possible. When designing a bot, you have far more information available, and typically, it is wise to use it.
+For example, in CS, it is important to move to a location while simultaneously scanning the key locations in the surroundings. To do so, the player will have to strafe-move a lot. 
+The steering algorithms don't offer much help (except inspiration) for such a problem, whereas a fuzzy logic based algorithm taking into account preferred viewing direction, movement direction, current speed and direction, path node annotations (jump, crouch, etc.), and resolving that to forward movement, sideward movement, rotation and jump will really lead to a solution.
+
+William
+
+(Timex/Sinclair ZX81 (from a friend) in '81, ZX Spectrum in '84 (my own). The ZX81 had an instruction 'FAST' which disabled the screen output in order reduce memory access contention by the display chipset. Computations were done twice as fast in that mode. A subsequent 'SLOW' enabled the display chipset to read again from the main memory area reserved for 'VRAM'.)
+
+--------------------------------------------------
+10/01/00 at 15:42:53  Reply by: Mechntosh (mech@kyana.net)
+--------------------------------------------------
+I don't suppose anyone remembers punched cards and teletype do they ?
+

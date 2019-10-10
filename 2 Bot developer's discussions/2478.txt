@@ -1,0 +1,313 @@
+--------------------------------------------------
+Subject: Library loading questions.
+--------------------------------------------------
+11/21/01 at 13:04:05  Posted by: jldailey (jldailey@uchicago.edu)
+--------------------------------------------------
+ok, so i just got my bot to compile on linux, and didnt have to change much, and certainly nothing in dll.cpp nor h_export.cpp, but now this happens when i try to launch the dedicated server.
+
+Any idea why this would happen? I am using the template 3 versions of GiveFnptrstoDLL and GetEntityAPI, without modification... 
+
+
+LoadLibrary failed on /usr/hlds2/cstrike/dlls/MossBot_i486.so: /usr/hlds2/cstrike/dlls/MossBot_i486.so: undefined symbol: __vt_3ios
+Host_Error: Couldn't get DLL API from /usr/hlds2/cstrike/dlls/MossBot_i486.so!
+Error Host_Error: Couldn't get DLL API from /usr/hlds2/cstrike/dlls/MossBot_i486.so!
+
+
+
+--------------------------------------------------
+11/21/01 at 13:40:11  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+see this thread if it helps..!
+
+http://dynamic.gamespy.com/~botman/yabb/YaBB.pl?board=2&action=display&num=2410
+--------------------------------------------------
+11/21/01 at 15:29:43  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+"symbol: __vt_3ios"
+
+This looks like something from the C++ iostream.  You will need to include libc++ in the link command line of the makefile.
+
+It would probably be easier to change your source code to just to use Standard C I/O statements (printf, fprintf, etc.) instead of the C++ streams functions (cout, etc.).
+
+botman
+
+--------------------------------------------------
+11/21/01 at 23:56:21  Reply by: Tub (tubpc@authmann.de)
+--------------------------------------------------
+CheeseMonster: No, my problem was not including math libs, therefore the linker couldn't find "sin()"... but "--vt_3ios" does not belong to math libs.
+
+Botman put it right.
+
+--------------------------------------------------
+11/22/01 at 09:00:12  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+I know of someone with a similar problem although it says it can't find the symble cos() !!! :)
+
+have a lookie here... although I think hes trying to run the MOD in linux. http://www.planethalflife.com/rocketcrowbar/board/topic.asp?topic_id=56468&forum_id=3401&Topic_Title=Linux+RC+Server+help&forum_title=Server+Op+Forum+&M=1&S=True
+--------------------------------------------------
+11/22/01 at 09:38:18  Reply by: Tub (tubpc@authmann.de)
+--------------------------------------------------
+sin and cos are math lib related. But Jesse's problem is not (I think)
+
+he's running under linux too btw (see the paths)
+
+--------------------------------------------------
+01/08/03 at 17:19:35  Reply by: RX (robotix2000@hotmail.com)
+--------------------------------------------------
+Botman,
+I'm running into similar errors when trying to compile my bot, and noticed it was a stream error too.  I like using streams because it's a much simpler format...  you mentioned in your post here that to "include libc++" in the link command line of the makefile.  I alos used your suggestion of the -lm to get rid of some other undefined symbol problems.  I tried -libc++ as a switch, but that gave me an error.  How do I format the link command line to include libc++?
+TIA
+ReX
+
+
+QUOTE:
+"symbol: __vt_3ios"
+
+This looks like something from the C++ iostream.  You will need to include libc++ in the link command line of the makefile.
+
+It would probably be easier to change your source code to just to use Standard C I/O statements (printf, fprintf, etc.) instead of the C++ streams functions (cout, etc.).
+
+botman
+
+
+
+--------------------------------------------------
+01/09/03 at 05:30:10  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+The name of the library will depend on which version of Linux you are using and what that version calls the C++ standard I/O library.
+
+I would suggest just removing the C++ stream I/O stuff and replacing it with Standard C I/O routines (fprintf, fwrite, etc. since they will be faster anyway).
+
+If you want to persist in using the C++ streams, see the man page for your C++ compiler to determine which libraries need to get included to support C++ stream I/O.
+
+botman
+
+[modified on 01/09/03 at 05:30:10]
+--------------------------------------------------
+01/09/03 at 08:10:45  Reply by: RX (robotix2000@hotmail.com)
+--------------------------------------------------
+Yes, I am persistent in wanting to use streams, since I do this for casual pleasure and am not concerned with optimization, besides I can't see changing how I'm coding if it's just a switch that needs setting, there's no money in it. :) I also have been using Visual C++ on the windows side, and have not had to deal with pointing to libraries, etc on the linux side.  So forgive my ignorance, but I ask you again:  What is the line syntax for actually including the library in the link command line?
+The version of linux I'm using is Redhat 8.0, which is using the 2.4.18-19.8.0 kernal.
+Also, since I'm new to compiling on linux, should I not be using gcc?  Perhaps something diff?
+Thanks again for your time.
+ReX
+
+--------------------------------------------------
+01/09/03 at 08:51:30  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+gcc is the C++ compiler to use.  To add a libary when creating the executable use the "-l" option for gcc.  The "-l" is followed by the name of the library file (this will usually be found in /usr/lib, /usr/shlib).  For example, "-lm" will include /usr/lib/libm.a, which is the standard C math library (for things such as sin(), cos(), sqrt(), etc.).
+
+Look in your /usr/lib directory for a "c++" folder (or something similar) then see what lib*.a files are in there.  One of those will be the C++ streams library.
+
+I don't currently have access to my Linux machine right now, so I can't tell you specifically what the file name will be.  I also don't have RedHat 8.0 installed (I'm still using RH 6.2) so I can't tell you if the newer gcc compiler uses different filenames for the C++ libraries.
+
+botman
+
+[modified on 01/09/03 at 08:51:30]
+--------------------------------------------------
+01/09/03 at 11:06:22  Reply by: RX (robotix2000@hotmail.com)
+--------------------------------------------------
+Cool, tx for the reply.  However, I just replaced gcc with g++ and it compiles, works fine.  Also, just as an FYI, to optimize for 686, ie p2+, instead of using -m486, I'm using -mcpu=i686.  The newer compilers complain about -m486 being depricated anyway, though still accepting it.  The same switches work fine for g++ too.  Thanks for the info!
+ReX
+
+--------------------------------------------------
+01/09/03 at 13:49:43  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+In such a case, maybe it would be better to rename your library as my_mod_dll_i686.so instead of _i386 (just because I'm a Posix integrist ;))
+
+
+--------------------------------------------------
+01/09/03 at 15:57:36  Reply by: RX (robotix2000@hotmail.com)
+--------------------------------------------------
+lol, already been there, done that ;)
+
+now im getting segmentation faults ... happens after a player chooses a class though, dunno what's causing this... sigh, debugger here i come.  i'm spoiled on visual c++ 6.0.  makes it so easy to debug, i have no idea how to do it in linux.  someone mentioned gdb somewhere?
+
+ReX
+
+
+--------------------------------------------------
+01/09/03 at 16:44:36  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Let the Linux dedicated server crash and write the 'core' dump file (it may take several minutes, don't interrupt it, just let it go).
+
+Then run 'gdb' using 'gdb hlds core' and it will load the core file.  Then at the gdb prompt, enter "where" and it will give you a traceback showing which functions lead up to the crash (with the most recent function at the top of the list, showing them in reverse order the way they would be on the stack).
+
+You might want to build with debug symbols "gcc -v" in order to have more debugging information if you can't tell what the functions are in the traceback.
+
+botman
+
+--------------------------------------------------
+01/13/03 at 16:55:06  Reply by: RX (robotix2000@hotmail.com)
+--------------------------------------------------
+Hi,
+I tried what you mentioned, and am still not quite sure what's causing the crashes...
+The bots will spawn fine and play by themselves for a while then a crash will occur.  Also, when you attempt to join the game as a player, you can join, get the team choice, choose a team and class, then once you spawn, immediately it crashes.
+The thing that's baffling me, is that the code compiles fine, on both linux and win32.  On win32, I'm using Visual c++ 6.0.  My dll has not crashed 24/7 for months in win32 with the server loaded with players and/or bots.  I can't quite figure out why it would crash with segment faults on linux.  Is there anything in paricular that I can look for that should be resident in the code to make it work on the linux side?
+Here's the makefile I'm using:
+MOD_DIR = /halflife/hlds_l/tfc
+
+CPP = g++
+
+BASEFLAGS = -Dstricmp=strcasecmp -Dstrcmpi=strcasecmp
+
+CPPFLAGS = ${BASEFLAGS} -mcpu=i686 -O2 -w -g -v -I../engine -I../common -I../pm_shared
+
+OBJ = bot.o bot_client.o bot_combat.o bot_navigate.o bot_start.o \
+      dll.o engine.o h_export.o linkfunc.o util.o waypoint.o
+
+ReX_Bot_i686.so: ${OBJ}
+      ${CPP} -fPIC -shared -v -g -o $@ ${OBJ} -ldl -lm
+      cp -f ReX_Bot_i686.so ${MOD_DIR}/dlls
+
+clean:
+      -rm -f *.o
+      -rm -f *.so      
+
+%.o:      %.cpp
+      ${CPP} ${CPPFLAGS} -c $< -o $@
+
+%.o:      %.c
+      ${CPP} ${CPPFLAGS} -c $< -o $@
+
+To start hlds in debug mode I'm doing this:
+./hlds_run -game tfc +maxplayers 25 +map 2fort -debug -norestart
+
+After it crashes, I run gdb as you suggest and then do a 'where' and all I get is this:
+
+#0 0x00000001 in ?? ()
+Cannot access memory at address 0xbfffeeb4
+
+In the past, when I would forget to check whether a player had left the game, or bot was still there using if (clients[i] != NULL) before acting on it, it would cause access errors in win32, but I've cleaned all that code up.  Like I said, my dll has yet to crash under intense use and 24/7 abuse online running under win32, but seems to compile fine under linux.  Any ideas what I might be overlooking?  TIA
+rex
+
+
+--------------------------------------------------
+01/13/03 at 17:15:44  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+"After it crashes, I run gdb as you suggest and then do a 'where' and all I get is this: 
+
+#0 0x00000001 in ?? () 
+Cannot access memory at address 0xbfffeeb4"
+
+Bummer, looks like you will have to run the game in the debugger and have the debug catch it when it crashes (the run the "where" command to get the stack callback information).
+
+Linux is MUCH more caring about memory related issues.  Windows is VERY forgiving if you free up a memory block twice and will often times let you write over the top of memory that you haven't allocated (as long as that block is still within your process memory space).  Linux doesn't let you get away with such memory nastiness.
+
+To run the game inside the debugger, you will need to use 'gdb' like you did before.  Use 'gdb hlds' to start the debugger, then use 'run' followed by the commands that you would normally use on the command line when starting the dedicated server.  For example...
+code:
+gdb hlds
+(gdb) run -game tfc +maxplayers 16 +map 2fort
+
+...the dedicated server should start up like it normally would.  It will stay running until the point where is would normally crash and dump core.  At this point the debugger prompt will pop back up and you can use the 'where' command to get the stack traceback of what lead up to the crash (and hopefully track down which code is being naughty).
+
+I don't think you can use 'Screen' or other such applications to run gdb (although I haven't tried it myself), so if you don't have actual physical access to the Linux console (or command line login via telnet), you might be SOL on using the debugger.
+
+botman
+
+--------------------------------------------------
+06/20/03 at 18:21:09  Reply by: Cheesemonster!!! (cheeseh@houstondod.com)
+--------------------------------------------------
+hey, I'd just like to ressurect this thread as I'm having similar problems, now as you may have guessed I'm trying to build my bot for Linux.
+
+Here is the deal:
+
+I finally got the bot .so file working with HL without "undefined symbols" thanks to some threads I searched for, now I'm getting similar problems:
+
+Segmentation Faults!
+
+I've ran -debug, gdb Etc, debug points to HL functions i believe? And gdb doesn't seem to work properly :/
+
+gdb outputs...
+
+QUOTE:
+
+[paul@linuxserver hlds_l]$ gdb hlds_run core
+GNU gdb 5.1.1
+Copyright 2002 Free Software Foundation, ...
+Core was generated by `./hlds -game ns -dev -debug'.
+Program terminated with signal 11, Segmentation fault.
+#0  0x401c50f4 in ?? ()
+(gdb) where
+#0  0x401c50f4 in ?? ()
+Cannot access memory at address 0xbffeef18
+
+
+
+
+more gdb dribble...
+
+QUOTE:
+
+This GDB was configured as "i386-mandrake-linux"...
+(gdb) run -game ns -dev +map ns_eclipse
+Starting program: /home/paul/hlds/hlds_l/hlds -game ns -dev +map ns_eclipse
+[New Thread 1024 (LWP 17139)]
+Error:libhlwon.so: cannot open shared object file: No such file or directory
+Unable to load engine, image is corrupt.
+
+Program exited with code 0377.
+(gdb)
+
+
+
+
+debug outputs...
+
+QUOTE:
+(debug.log)
+
+----------------------------------------------
+CRASH: Sat Jun 21 01:43:20 BST 2003
+Core was generated by `./hlds -game ns -debug +map ns_eclipse'.
+Program terminated with signal 11, Segmentation fault.
+[New Thread 1024 (LWP 17171)]
+#0  0x401c50f4 in COM_LoadFile () at ../../../libio/iostream.h:270
+      in ../../../libio/iostream.h
+#0  0x401c50f4 in COM_LoadFile () at ../../../libio/iostream.h:270
+End of crash report
+----------------------------------------------
+
+
+
+
+As you can see I'm loosing sleep on trying to get this to work...
+
+It seems as though I cant run GDB because of the libhlwon.so file, whyever that is, it exists and it's in the hlds_l folder, perhaps it doesn't like debuggers.
+
+And I can't really think of anything else except read thorugh all my bot code again :/ if that is the problem....
+
+--------------------------------------------------
+06/20/03 at 18:42:00  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+The libhlwon.so file should be copied to your shared library folder (probably /usr/shlib).
+
+There is a ReadMe file included in the Linux dedicated server distribution that tells you how to set up a Linux dedicated server (search the file for LD_LIBRARY_PATH).
+
+Once you get the shared library set up properly, you should be able to start up gdb running hlds...
+
+gdb hlds
+
+When you get the gbd prompt, 'run' will start the application running.  You will want to give the command line arguments to the 'run' command...
+
+run -game ns +maxplayers 8 +map mymap +sv_lan 1
+
+(make sure you give 'maxplayers' and 'map' or the level won't start).
+
+When an error is encountered, gdb will trap back to the gdb command prompt and you can do 'where' or 'traceback' at that point to see where it went wrong.
+
+botman
+
+--------------------------------------------------
+06/20/03 at 18:56:21  Reply by: Cheesemonster!!! (cheeseh@houstondod.com)
+--------------------------------------------------
+ahh. okay thanks...
+I've traces it back to ... guess where.. "LoadFileForMe"
+
+Obviously the bufsize I put in it was wrong (referring to my post in C++ discussion) about linux FILE type compared to windows FILE type..
+
+So I guess this means I got the buffer size bit wrong for linux in the file structure. Any Ideas???
+
+i.e. anyone know what the variable that stores the bufsize in linux FILE (_IO_FILE) type is called???
+
+[modified on 06/20/03 at 18:56:21]

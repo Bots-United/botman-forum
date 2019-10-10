@@ -1,0 +1,135 @@
+--------------------------------------------------
+Subject: Snipers & aiming
+--------------------------------------------------
+03/16/02 at 04:23:17  Posted by: Darkhunter (darkhunter@hackermail.net)
+--------------------------------------------------
+Hi,
+
+I am making my own bot for TFC
+But now i have a problem with the snipers.
+They walk up to a sniper waypoint but when they are aiming at a enemy the keep turning 180 degrees.
+So from the enemy to the wall behind them...
+Can anyone tell me were to look for my mistake?
+
+Grtz,
+Darkhunter
+
+Sorry for my english it is a little bit weird
+
+
+
+--------------------------------------------------
+03/16/02 at 05:12:55  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+That sounds like you aren't setting the yaw (v_angle.y) value correctly.  Perhaps you aren't calculating which direction the enemy is correctly or perhaps you are setting this value to zero somewhere in your code.  If you are setting it to zero, all the snipers should face the same direction (relative to the world) regardless of where the sniper spot is located.  Try moving the sniper spots to somewhere else (they don't have to be real sniper spots, just test locations) to see which way they face then.
+
+botman
+
+--------------------------------------------------
+03/16/02 at 06:27:51  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+Is your aim code the same for snipers and non-snipers bots ?
+Do non-sniper bots aim correctly ?
+When sniper bots should aim down (for example if they're standing upstairs and enemy is downstairs), is the vertical deviation correct or inverted too ?
+I would say pBot->pEdict->v.v_angle.y is inverted...
+
+
+--------------------------------------------------
+03/16/02 at 14:27:58  Reply by: Darkhunter (darkhunter@hackermail.net)
+--------------------------------------------------
+well i am using the hpb template 3.
+So is it a default "bug" in template 3  ?
+
+Grtz,
+Darkhunter
+
+--------------------------------------------------
+03/16/02 at 14:50:35  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Nope.  If you are using an unmodified HPB bot template #3, the snipers should aim at an enemy while standing at a sniper waypoint.  They won't move back towards the sniper waypoint if they get knocked away from it, but they should not be aiming in the wrong direction if you haven't changed any of the template code at all.
+
+botman
+
+--------------------------------------------------
+03/16/02 at 15:09:38  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+Make sure you use the BotFixIdealYaw(pBot->pEdict) function after changing bots yaw angle
+
+--------------------------------------------------
+03/16/02 at 16:17:01  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+If it was some angle overflow problem, his HL engine would be locking up much more often, believe me...
+
+--------------------------------------------------
+03/17/02 at 02:05:54  Reply by: Darkhunter (darkhunter@hackermail.net)
+--------------------------------------------------
+I guess there is something wrong in here then?
+
+code:
+
+// check if the waypoint is a sniper waypoint AND
+      // bot isn't currently aiming at an ememy...
+      if ((waypoints[pBot->curr_waypoint_index].flags & W_FL_SNIPER) &&
+          (pBot->pBotEnemy == NULL))
+      {
+         if ((mod_id != TFC_DLL) ||
+             ((mod_id == TFC_DLL) && (pEdict->v.playerclass == TFC_CLASS_SNIPER)))
+         {
+            // check if the bot need to move back closer to the waypoint...
+
+            float distance = (pEdict->v.origin - waypoints[pBot->curr_waypoint_index].origin).Length();
+
+            if (distance > 25)
+            {
+               // turn towards the sniper waypoint and move there...
+
+               Vector v_direction = waypoints[pBot->curr_waypoint_index].origin - pEdict->v.origin;
+
+               Vector bot_angles = UTIL_VecToAngles( v_direction );
+
+               pEdict->v.ideal_yaw = bot_angles.y;
+
+               BotFixIdealYaw(pEdict);
+
+               pBot->f_move_speed = pBot->f_max_speed / 2;
+
+               pBot->f_sniper_aim_time = 0.0;  // reset aiming time
+
+               // make the body face the same way the bot is looking
+               pEdict->v.angles.y = pEdict->v.v_angle.y;
+
+               // save the previous speed (for checking if stuck)
+               pBot->prev_speed = pBot->f_move_speed;
+
+               f_strafe_speed = 0.0;
+
+               g_engfuncs.pfnRunPlayerMove( pEdict, pEdict->v.v_angle, pBot->f_move_speed,
+                                            f_strafe_speed, 0, pEdict->v.button, 0, pBot->msecval);
+
+               return;
+            }
+
+
+--------------------------------------------------
+03/17/02 at 06:09:26  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+I don't see any noticeable bug here... I would rather look at the bot aiming code.
+
+--------------------------------------------------
+03/17/02 at 07:54:15  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+You should get the bot to face the nearest AIMING waypoint (with flag W_FL_AIMING) near your sniper waypoint instead of the actual sniper waypoint.
+
+--------------------------------------------------
+03/17/02 at 11:02:14  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+No Cheesy, not here, because the distance > 25.
+It means that the bot is HEADING towards the waypoint. Later in the function, when the bot has REACHED it, yes.
+
+
+--------------------------------------------------
+03/17/02 at 11:44:47  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+Well in that case tell the bots to face the aiming waypoint when distance is euqal or less than 25 if they havent already. I never noticed that :P
+
+[modified on 03/17/02 at 11:44:47]

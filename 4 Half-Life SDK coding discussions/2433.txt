@@ -1,0 +1,83 @@
+--------------------------------------------------
+Subject: CBaseMonster to edict_t?
+--------------------------------------------------
+11/07/01 at 11:11:13  Posted by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+IS there any way to find the edict_t variables from a CBaseMonster structure? I.e. I know all of the monsters CBaseMonsters structure but I want to store its edict_t values.
+
+I want to do this without having to search thorugh every entity for it
+
+--------------------------------------------------
+11/07/01 at 11:40:14  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+Well I came up with a solution, it works but it aint the best. Still the two or more entities with the same classname and origin is really unlikely, so its pretty unique. Although, if you have a better solution please tell me!
+
+
+ps: botman thanks for the privatedata stuff, I found out my prob because the pointer I had was incorrect, it was right but it didnt point to the right memory location.
+
+code:
+
+int UpdateTransformationStatus(bot_t *pBot)
+{
+      
+      edict_t *pEdict = pBot->pEdict;
+      edict_t *pent = NULL;
+
+      CBaseMonster *pTransM = (CBaseMonster *) *(int *)((int)pBot->pEdict->pvPrivateData + 0x00000658);
+
+      if( pTransM != NULL )
+      {
+            char TransName[25];
+
+            strcpy(TransName, STRING(pTransM->pev->classname));
+
+            while ((pent = UTIL_FindEntityByClassname( pent, TransName )) != NULL)
+            {
+
+                  if( pent->v.origin == pTransM->pev->origin )
+                  pBot->pTransformation = pent;
+            }
+
+            if( strcmp("drive_apache", TransName)==0 )             // Apache
+                  return(BOT_TRANS_APACHE);
+            else if( strcmp("drive_assassin", TransName)==0 )       // Assassin
+                  return(BOT_TRANS_ASSASSIN);
+            else if( strcmp("drive_garg", TransName)==0 )             // Gargantua
+                  return(BOT_TRANS_GARG);
+            else if( strcmp("drive_houndeye", TransName)==0 )       // Houndeye
+                  return(BOT_TRANS_HOUNDEYE);
+            else if( strcmp("drive_icky", TransName)==0 )             // Icky (fish thing)
+                  return(BOT_TRANS_ICKY);
+            else if( strcmp("drive_panth", TransName)==0 )             // Panther thingy!
+                  return(BOT_TRANS_PANTH);
+            else if( strcmp("drive_asl", TransName)==0 )              // Alien Slave
+                  return(BOT_TRANS_SLAVE);
+            else if( strcmp("drive_turret", TransName)==0 )             // Turret or Sentry
+                  return(BOT_TRANS_TURRET);
+            else if( strcmp("drive_headcrab", TransName)==0 )             // Headcrab
+                  return(BOT_TRANS_HEADCRAB);
+            else if( strcmp("drive_controller", TransName)==0 )             // Alien Controller
+                  return(BOT_TRANS_CONTROLLER);
+            else if( strcmp("drive_chumtoad", TransName)==0 )             // Chum Toad
+                  return(BOT_TRANS_CHUMTOAD);
+            else if( strcmp("drive_bullsquid", TransName)==0 )             // Bull Squid
+                  return(BOT_TRANS_BULLSQUID);
+            else if( strcmp("drive_bm", TransName)==0 )             // Big Momma
+                  return(BOT_TRANS_BIGMOMMA);
+            else if( strcmp("drive_agrunt", TransName)==0 )             // Alien Grunt
+                  return(BOT_TRANS_AGRUNT);
+            else
+                  return(BOT_TRANS_UNKNOWN);
+            
+      }
+      else
+            return(BOT_TRANS_NONE);
+
+      return(BOT_TRANS_NONE);
+      
+
+}
+
+
+
+[modified on 11/07/01 at 11:40:14]

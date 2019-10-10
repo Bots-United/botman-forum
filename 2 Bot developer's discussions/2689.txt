@@ -1,0 +1,130 @@
+--------------------------------------------------
+Subject: My way to wrap serverside dlls :)
+--------------------------------------------------
+02/03/02 at 14:49:32  Posted by: ReDucTor[FGW] (sjdtmv@tpg.com.au)
+--------------------------------------------------
+http://php-webmaster.com/hl-hook.rar
+
+Hehe :)
+
+Simple, and easy..
+
+Features over other Server Side hooks/wrappers:
+* No need to worry about extra entites
+* Easy to port to other mods
+
+Features:
+Nothing that would require me having to make a binary...
+
+Downfalls:
+Some Anti-cheat progs might detect it...But That can be easliy fixed...hopefully they only check the IAT when the client is being loaded...coz it go's in the following order
+
+
+HL.exe -> Loading Screen -> hw.dll -> client.dll -> Console -> if starting server(after map command is issued) Game DLL(mp.dll) -> Auth -> Play
+
+--------------------------------------------------
+02/03/02 at 14:53:35  Reply by: ReDucTor[FGW] (sjdtmv@tpg.com.au)
+--------------------------------------------------
+Oh, yes and i forget to mention, Im thinking of making a little app, that you specify two DLLs, one a wrapper(e.g. bot.dll) the other a game dll(e.g. mp.dll) it will scan mp.dll for all the entities, then it will change bot.dll to have tho's exports/entities(probley using forwarders) that way, people can easliy make a bot, which can be easliy ported, just by hex editing, the strings, or if they allow ppl to specify dlls to be loaded....
+
+--------------------------------------------------
+02/04/02 at 17:44:58  Reply by: ReDucTor[FGW] (sjdtmv@tpg.com.au)
+--------------------------------------------------
+One download today
+Three downloads yesterday
+
+Four downloads all up...
+
+So out of tho's four people how many think it sucks?
+
+--------------------------------------------------
+02/04/02 at 21:36:16  Reply by: CountFloyd (countfloyd@botepidemic.com)
+--------------------------------------------------
+I don't think it sucks :)
+
+Only 2 drawbacks:
+- With the added cheat protection in Half-Life it might be hard to use memory patching.
+- You can't call engine functions without forwarding it through the MOD.
+
+Anything else I've overseen ?
+
+--------------------------------------------------
+02/05/02 at 00:45:54  Reply by: ReDucTor[FGW] (sjdtmv@tpg.com.au)
+--------------------------------------------------
+Replace
+code:
+
+if(!strcmp(DllFile, "hl-hook.dll"))
+      hModule = hOriginalDll;
+
+
+With
+code:
+
+if(!strcmp(DllFile, "hl-hook.dll")&&!strcmp(lpProcName, "GiveFnptrsToDll"))
+      hModule = hOriginalDll;
+
+
+
+code:
+
+typedef void (*GiveFnptrsToDll_t)(enginefuncs_t*,globalvars_t*);
+GiveFnptrsToDll_t orig_GiveFnptrsToDll=NULL;
+enginefuncs_t g_engfuncs;
+globalvars_t  *gpGlobals;
+void DLLEXPORT GiveFnptrsToDll(      enginefuncs_t* pengfuncsFromEngine, globalvars_t *pGlobals )
+{
+        if(orig_GiveFnptrsToDll==NULL)
+            orig_GiveFnptrsToDll = GetProcAddress(hOriginalDll, "GiveFnptrsToDll");
+
+      memcpy(&g_engfuncs, pengfuncsFromEngine, sizeof(enginefuncs_t)); // Get the engine functions for us..
+       // pengfuncsFromEngine->func = my_func
+       gpGlobals = pGlobals;
+       orig_GiveFnptrsToDll(pengfuncsFromEngine,pGlobals)
+}
+
+
+
+
+code:
+
+typedef int (*GetEntityAPI) (DLL_FUNCTIONS*, int);
+DLL_FUNCTIONS gFunctionTable;
+int DLLEXPORT GetEntityAPI( DLL_FUNCTIONS *pFunctionTable, int interfaceVersion )
+{
+      if ( !pFunctionTable  interfaceVersion != INTERFACE_VERSION )
+            return FALSE;
+      
+      memcpy(pFunctionTable, &gFunctionTable, sizeof(DLL_FUNCTIONS));
+        // pFunctionTable->func = func;
+      return TRUE;
+}
+
+
+
+
+Also another method for the GPA
+
+code:
+
+if(!strcmp(DllFile, "hl-hook.dll")&&OrigGetProcAddress(DllFile, lpProcName)==NULL)
+hModule = hOriginalDll; 
+
+
+
+Easy :)
+
+
+Edit fixed Code tags, and added another method of using functions exported by this dll
+
+[modified on 02/05/02 at 00:45:54]
+--------------------------------------------------
+02/05/02 at 07:40:28  Reply by: DarkYouth (darkyouth@planetannihilation.com)
+--------------------------------------------------
+Thats some cool code, very compact. Do you have a basic bot template showing how to insert bots into this?
+
+--------------------------------------------------
+02/05/02 at 13:46:41  Reply by: CountFloyd (countfloyd@botepidemic.com)
+--------------------------------------------------
+This won't work with Linux btw.
+

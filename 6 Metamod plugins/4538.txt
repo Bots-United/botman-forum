@@ -1,0 +1,210 @@
+--------------------------------------------------
+Subject: VIP Escape Zones
+--------------------------------------------------
+06/15/03 at 12:21:48  Posted by: {PAF}c0ldfyr3 (c0ldfyr3@punkassfraggers.com)
+--------------------------------------------------
+Botman, any idea on how I can add..
+A) Bomb Sites
+B) VIP Escape Zones
+C) Hostage Rescue Zones
+I think I can do C, just add hostage entities and the hostage escape zone entity added the same as the hostages, just an entity ?
+
+--------------------------------------------------
+06/15/03 at 13:20:52  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+"func_bomb_target", "func_escapezone" are probably the entities that you want.
+
+See some Counter-Strike mapping tutorials and the Counter-Strike .fgd file for details.
+
+botman
+
+--------------------------------------------------
+06/15/03 at 16:59:25  Reply by: {PAF}c0ldfyr3 (c0ldfyr3@punkassfraggers.com)
+--------------------------------------------------
+I know howto add entities, but the func_vip_escapezone needs veritces dont it ?
+Like X,Y,Z and Length and Breath ???
+I have created a map with WorldCraft before but never added things manually.
+Its not the enties thats my problem, its howto define their areas.
+
+--------------------------------------------------
+06/16/03 at 05:44:18  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+bbox_min and bbox_max are used in Stripper2 to create a bounding box around an entity (so that you can touch it and it has 'volume').
+
+See the teleporter in the crossfire_str.cfg file as an example of creating a bounding box around an entity.
+
+Also see the last few posts at the end of this thread...
+
+http://dynamic.gamespy.com/~botman/yabb/YaBB.pl?board=6&action=display&num=4499&start=0
+
+botman
+
+[modified on 06/16/03 at 05:44:18]
+--------------------------------------------------
+06/16/03 at 20:17:22  Reply by: {PAF}c0ldfyr3 (c0ldfyr3@punkassfraggers.com)
+--------------------------------------------------
+I think we are still on seperate issues here.
+When I open a bsp file to examine where the bomb sites are, all I get is this...
+{
+"model" "*18"
+"target" "targeta"
+"classname" "func_bomb_target"
+}
+
+Which doesnt tell me how big the site is.
+How do I set the size of the bomb site and how do I precache that model ? Aswell as what the hell model do bombsites use ?
+
+--------------------------------------------------
+06/17/03 at 05:51:10  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+"Which doesnt tell me how big the site is."
+
+The size comes from the size of the bounding box for brush model 18 (the '*18' in the 'model' key/value pair).
+
+Run BSP_tool.exe (from my BSP tools) and dump the models for that map (use the '-m option).  Look at the bounding box size for model #18 from that output.  This will give you the min coordinate and the max coordinate.  You can determine the size by subtracting the min values from the max values (i.e. max X - min X, max Y - min Y, max Z - min Z).
+
+See the BSP_tool_ReadMe.txt file for details on running the BSP_tool.exe utility.
+
+P.S. You can redirect the output of BSP_tool.exe to a text file by using the MS-DOS redirection character '>' like this...
+
+C:\BSP_tool> bsp_tool.exe -m bootcamp.bsp > bootcamp.txt
+
+botman
+
+--------------------------------------------------
+06/17/03 at 07:02:47  Reply by: {PAF}c0ldfyr3 (c0ldfyr3@punkassfraggers.com)
+--------------------------------------------------
+Ya Im ahead of ya on that one.
+I might sound newbish here, but thats because Im new to both C++ and game entities.
+I can code in Java, VB and PHP like a pro, but C has never been something I took up.
+Change of topic completely....
+Im editing your Stripper2.dll source to reflect some changes Id like.
+Is it possible to get the co-ordinates of an entity before you strip it ?
+Thanks
+c0ld
+
+--------------------------------------------------
+06/17/03 at 07:20:14  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Entities that have an origin will have an origin key value (something like "origin" "140 -270 1520").
+
+Not all entities have an origin.  Entities that are brush based (like func_door, func_ladder, func_wall, etc) don't have an origin (the brush model determines the size and origin).
+
+For brush models, you can use the "model/*xxx" key to determine which model it is, but getting the min and max coordinates from the engine for that model is not easy (it might be easier to parse the .bsp file in your own code and determine these values for yourself).
+
+botman
+
+[modified on 06/17/03 at 07:20:14]
+--------------------------------------------------
+06/17/03 at 08:24:47  Reply by: {PAF}c0ldfyr3 (c0ldfyr3@punkassfraggers.com)
+--------------------------------------------------
+Ok, im going all out here.
+Im editing your source for the dll.
+In the DispatchSpawn function, about 10 lines down, after it strips the entity...
+
+float d_x, d_y, d_z;
+char *origin;
+d_x = pent->v.origin.x;
+d_y = pent->v.origin.y;
+d_z = pent->v.origin.z;
+REMOVE_ENTITY(pent);
+origin = "";
+sprintf(origin,"%f %f %f",d_x, d_y, d_z);
+LOG_CONSOLE(PLID, "[STRIPPER2] origin: %s", origin );
+LOG_MESSAGE(PLID, "Origin: %s", origin );
+RETURN_META_VALUE(MRES_SUPERCEDE, 0);
+
+Shouldnt that work ?
+What im trying to do is use different hostage models.
+I need their origin to do it on the fly, and this doesnt want to give me their origins =(
+That crashes cs, maybe its something to do with the sprintf though !
+Thanks for all your help so far botman !
+
+[modified on 06/17/03 at 08:24:47]
+--------------------------------------------------
+06/17/03 at 08:42:34  Reply by: {PAF}c0ldfyr3 (c0ldfyr3@punkassfraggers.com)
+--------------------------------------------------
+Whoohooo !!
+Nevermind bro, I got it workin...
+I added some variables...
+================================================================================
+static char sOrigins[10][40];
+static int  iOrigins = -1;
+================================================================================
+I changed that function to ...
+================================================================================
+int DispatchSpawn( edict_t *pent ) {
+      char *pClassname = (char *)STRING(pent->v.classname);
+
+      if (strcmp(pClassname, "worldspawn") == 0)
+      {
+            if (process_config_file())
+            {
+                  LOG_CONSOLE(PLID, "[STRIPPER2] ERROR: Error processing .cfg file!");
+                  LOG_MESSAGE(PLID, "ERROR: Error Processing .cfg file!");
+            }
+      }
+      else
+      {
+            if (stricmp(pClassname, "hostage_entity") == 0)
+            {
+                  float d_x, d_y, d_z;
+                  d_x = pent->v.origin.x;
+                  d_y = pent->v.origin.y;
+                  d_z = pent->v.origin.z;
+                  REMOVE_ENTITY(pent);
+                  iOrigins++;
+                  sprintf(sOrigins[iOrigins],"%f %f %f",d_x, d_y, d_z);
+                  RETURN_META_VALUE(MRES_SUPERCEDE, 0);
+            }
+      }
+   // 0==Success, -1==Failure ?
+   RETURN_META_VALUE(MRES_IGNORED, 0);
+}
+================================================================================
+Added a function...
+================================================================================
+void AddHostages()
+{
+      edict_t      *pent;
+      int x;
+      if ( iOrigins == -1 )
+      {
+            LOG_CONSOLE(PLID, "[STRIPPER2] ERROR: Nothing to add !");
+            LOG_MESSAGE(PLID, "ERROR: Nothing to add !");
+      }
+      else
+      {
+            LOG_CONSOLE(PLID, "[STRIPPER2] Adding Entities" );
+            LOG_MESSAGE(PLID, "Origin: Adding Entities" );
+            for(x=0; x<=iOrigins; x++)
+            {
+                  strcpy(classname, "hostage_entity");;
+                  if (FNullEnt(pent = GameCreateEntity(classname)))
+                  {
+                        LOG_CONSOLE(PLID, "[STRIPPER2] ERROR: Error adding entities 2 !");
+                        LOG_MESSAGE(PLID, "ERROR: Error adding entities 2 !");
+                  }
+                  else
+                  {
+                        GameKeyValue(pent, nullname, "classname", classname);
+                        GameKeyValue(pent, classname, "angle", "0");
+                        GameKeyValue(pent, classname, "skin", "1");
+                        GameKeyValue(pent, classname, "model", "models/paf_14.mdl");
+                        GameKeyValue(pent, classname, "origin", sOrigins[x]);
+                        gpGamedllFuncs->dllapi_table->pfnSpawn( pent );
+                  }
+            }
+      }
+}
+================================================================================
+And called my functionf from ServerActivate.
+
+Thanks for all your help bro.
+You are one of the nicest guys I ever talked to.
+Thanks thanks thanks !
+Drop by our website (http://www.PunkAssFraggers.com) or mine (http://www.EliteProdigy.com) or my other one (http://www.c0ld.net)
+
+Thanks thanks thanks again !
+c0ld
+

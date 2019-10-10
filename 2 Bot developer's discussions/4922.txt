@@ -1,0 +1,880 @@
+--------------------------------------------------
+Subject: navmesh to .BMP and .DXF
+--------------------------------------------------
+10/22/03 at 09:19:45  Posted by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Okay, my mental challenge is a secret for nobody I think, but maybe your reaction to what follows will help me measuring its curability.
+
+I still have problems with my navmesh, bots that don't seem to find which walkface they stand on, and walkfaces that are inadequately distributed through the topology hashtable.
+
+That's why I have written a lovely set of server commands which dump the navmesh into a .BMP file to disk, that you can read with mspaint :D (I have to credit botman again for his unavoidable BSP_tools)
+
+But since the world is very big (the virtual one, that is), it is obvious that even a 4000*4000 pixels bitmap with 256 colors cannot represent all the navmesh accurately. I'd have liked the possibility to zoom on the small walkfaces. And not counting the hard disk space this takes (omg!)
+
+That's why I'm naively pondering about the DXF format. Wouldn't it be cool to have it exported in 3D instead, and exploit it using AutoCAD, or any other vector 3D aware software ?
+
+Do you think it's worth the challenge ?
+Of course, if I manage to succeed and you're interested in the source code, you'll be free to use it to develop your own waypoint/navmesh editor, or whatever tool straight out of it.
+
+I don't know much if any at all about the DXF format, apart the fact that it seems the industry standard for 3D data. And I don't want to choose another format to toy with because for my work I do know that in a middle future I will *HAVE* to write a DXF generator. But I know the people who wrote the Hammer Editor wrote a lovely DXF export module, of which I'd have loved to have the source code, but bah.
+
+botman, do you know the name and eventually the email of the guy who wrote this module ? I'd like to get in touch with him, at least to know where he took his reference & docs.
+
+Others, do you know working with DXF already ? Have you ever done something similar, eventually ? Ideas ? Tips ? whatever ?
+
+
+--------------------------------------------------
+10/22/03 at 10:28:21  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+"botman, do you know the name and eventually the email of the guy who wrote this module ?"
+
+No, I don't know any of the guys at Valve that work on Hammer.  I imagine you could e-mail Chris Bokitch (at the VERC website) and he can tell you who at Valve works on Hammer and/or the exporters.
+
+Autodesk has a nice guide on the DFX file format...
+
+http://www.autodesk.com/techpubs/autocad/acad2000/dxf/drawing_interchange_file_formats.htm
+
+...and some psuedo code for reading and writing DFX files...
+
+http://www.autodesk.com/techpubs/autocad/acad2000/dxf/reading_a_dxf_file_dxf_aa.htm
+http://www.autodesk.com/techpubs/autocad/acad2000/dxf/writing_a_dxf_file_dxf_aa.htm
+
+..and here's a DFX viewer source code using OpenGL...
+
+http://www.bearcave.com/dxf/dxfintro.htm
+
+botman
+
+--------------------------------------------------
+10/22/03 at 10:34:16  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+WOW!!!!!!!!!!!!!
+
+Hey, no need to ask the guys at Valve after that, will-do-it-myself-alone-like-a-grown-up !
+
+Man you are awesome! How come you find better info in 15 seconds than what it takes 15 minutes for me on the net ?? Am I so bad at English or what ?? But thanks !!
+
+
+--------------------------------------------------
+10/22/03 at 16:03:31  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+I'm a Google whiz!  I've used Google.com so much to search for things that I've pretty much learned how to order search terms to find the best results.
+
+For example, searching for "DFX source code format file" might yield better results than "DFX file format source code" (or it might not), but when I don't find many good links in the top 5 URLs from Google.com, I'll often times rearrange the search terms in a different order and see if other URLs pop up on the list.
+
+Also, you don't always get the same results each time you search (especially for very new items).  Google has hundreds of servers and your request may get routed to any one of them (which aren't always up-to-date).  Sometimes searching for the same keywords 30 seconds later can give better results (but if you do it too quickly you tend to hit the same server over and over).
+
+botman
+
+--------------------------------------------------
+10/22/03 at 17:58:26  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+...FINISHED!!!
+;D;D;D<-- mean I'm happy ;D
+
+just putting it together in a less ugly way and tidying the code a bit... I'll post the whole stuff tomorrow (hey, it's 3:00 AM -again- here, let me sleep okay...)
+
+
+--------------------------------------------------
+10/22/03 at 18:10:25  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+:):):):):):);););):);););):);):):)
+;):):):);):);):);):);):);):);););)
+;):);):);):);):);):);):);):);):):)
+;):);):);):);):);):);):);):);):):)
+:););););):);););):);););):):););)
+
+(and here, you're supposed to say... "wtf???")
+nm, I'm happy :D
+
+[edited: changed colors for bette contrast ;D]
+
+[modified on 10/22/03 at 18:10:25]
+--------------------------------------------------
+10/23/03 at 04:03:35  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Wahey, I told it, so here it is ;D
+
+Here's the BMP library first, the DXF library follows (both are written in much the same way)
+code:
+
+// RACC - AI development project for first-person shooter games derived from Valve's Half-Life
+// (http://www.racc-ai.com/)
+//
+// The game to engine interfacing code is based on the work done by Jeffrey 'botman' Broome
+// (http://planethalflife.com/botman/)
+//
+// This project is partially based on the work done by Eric Bieschke in his BSDbot
+// (http://gamershomepage.com/csbot/)
+//
+// This project is partially based on the work done by Brendan "Spyro" McCarthy in his ODD Bot
+// (http://oddbot.hlfusion.com/)
+//
+// This project is partially based on the work done by Alistair 'eLiTe' Stewart in his TEAMbot
+// (http://www.planethalflife.com/teambot/)
+//
+// The BMP writing functions in this file come primarily from botman's BSP slicer utility 
+// (http://planethalflife.com/botman/)
+//
+// Rational Autonomous Cybernetic Commandos AI
+//
+// bmpfile.cpp
+//
+
+#include <racc.h>
+
+
+// width and height of the debug bitmap image
+#define DEBUG_BMP_WIDTH 2000
+#define DEBUG_BMP_HEIGHT 2000
+
+
+char *bmp_buffer;
+
+
+
+void InitDebugBitmap (void)
+{
+   // this function allocates memory and clears the debug bitmap buffer
+
+   if (bmp_buffer)
+      free (bmp_buffer); // reliability check, free BMP buffer if already allocated
+   bmp_buffer = NULL;
+   bmp_buffer = (char *) malloc (DEBUG_BMP_WIDTH * DEBUG_BMP_HEIGHT); // allocate memory
+   if (bmp_buffer == NULL)
+      TerminateOnError ("InitDebugBitmap(): unable to allocate %d kbytes for BMP buffer!\n", DEBUG_BMP_WIDTH * DEBUG_BMP_HEIGHT / 1024);
+
+   memset (bmp_buffer, 0, DEBUG_BMP_WIDTH * DEBUG_BMP_HEIGHT); // zero all the crap out
+   return; // yes, it's as simple as that
+}
+
+
+void DrawLineInDebugBitmap (const Vector v_from, const Vector v_to, unsigned char color)
+{
+   // blind copy of botman's Bresenham(). This function prints a vector line into a bitmap dot
+   // matrix. The dot matrix (bmp_buffer) is a global array. The size of the bitmap is always
+   // assumed to be DEBUG_BMP_WIDTH * DEBUG_BMP_HEIGHT pixels (currently 2000 * 2000 to fit with
+   // the size of the universe, with an adaptative unit scale, up to 1 pixel = 10 vector units).
+
+   int x0, y0, x1, y1;
+   int dx, stepx, dy, stepy;
+   int offset, fraction;
+   float scalex, scaley, scale;
+
+   if (bmp_buffer == NULL)
+   {
+      TerminateOnError ("DrawLineInDebugBitmap(): function called with NULL BMP buffer!\n");
+      return; // reliability check: cancel if bmp buffer unallocated
+   }
+
+   // first compute the X and Y divider scale, and take the greatest of both
+   scalex = (map.v_worldmaxs.x - map.v_worldmins.x) / DEBUG_BMP_WIDTH;
+   scaley = (map.v_worldmaxs.y - map.v_worldmins.y) / DEBUG_BMP_HEIGHT;
+   if (scalex > scaley)
+      scale = scalex + scaley / 100; // add a little offset (margin) for safety
+   else
+      scale = scaley + scaley / 100; // add a little offset (margin) for safety
+
+   // translate the world coordinates in image pixel coordinates
+   x0 = (int) ((v_from.x - map.v_worldmins.x) / scale);
+   y0 = (int) ((v_from.y - map.v_worldmins.y) / scale);
+   x1 = (int) ((v_to.x - map.v_worldmins.x) / scale);
+   y1 = (int) ((v_to.y - map.v_worldmins.y) / scale);
+
+   dx = (x1 - x0) * 2;
+   dy = (y1 - y0) * 2;
+   if (dx < 0) { dx = -dx;  stepx = -1; } else stepx = 1;
+   if (dy < 0) { dy = -dy;  stepy = -1; } else stepy = 1;
+
+   offset = y0 * DEBUG_BMP_WIDTH + x0;
+   if ((offset < 0)  (offset >= DEBUG_BMP_WIDTH * DEBUG_BMP_HEIGHT))
+      TerminateOnError ("DrawLineInDebugBitmap(): bad BMP buffer index %d (range 0 - %d)\n", offset, DEBUG_BMP_WIDTH * DEBUG_BMP_HEIGHT);
+
+   bmp_buffer[offset] = color; // draw the first point of the line
+
+   // is the line rather horizontal than vertical ? We need to know this to determine the step
+   // advance in the Bresenham grid, either we draw y = f(x), or x = f(y).
+   if (abs (dx) > abs (dy))
+   {
+      // the line is rather horizontal, we can draw it safely for incremental values of x
+
+      fraction = 2 * dy - dx; // fraction of height in x0 pixel's 'square' where y0 should be
+
+      // while we've not reached the end of the segment...
+      while (x0 != x1)
+      {
+         // if y0 should rather be drawn on a different height than its previous height...
+         if (fraction >= 0)
+         {
+            y0 += stepy; // draw it one pixel aside, then (depending on line orientation)
+            fraction -= 2 * dx; // and reset its fraction (Bresenham, not sure I get the math)
+         }
+         x0 += stepx; // in either case, draw x0 one pixel aside its previous position
+         fraction += 2 * dy; // and update y0's fraction (not sure I get the math - but whatever)
+
+         // compute the offset in the BMP buffer corresponding to this point
+         offset = y0 * DEBUG_BMP_WIDTH + x0;
+         if ((offset < 0)  (offset >= DEBUG_BMP_WIDTH * DEBUG_BMP_HEIGHT))
+            TerminateOnError ("DrawLineInDebugBitmap(): bad BMP buffer index %d (range 0 - %d)\n", offset, DEBUG_BMP_WIDTH * DEBUG_BMP_HEIGHT);
+
+         bmp_buffer[offset] = color; // set this point to have the specified color
+      }
+   }
+   else
+   {
+      // else the line is rather vertical, we NEED to draw it for incremental values of y (if we
+      // did it for incremental values of x instead, we would drop half the pixels).
+
+      fraction = 2 * dx - dy; // fraction of width in y0 pixel's 'square' where x0 should be
+
+      // while we've not reached the end of the segment...
+      while (y0 != y1)
+      {
+         // if x0 should rather be drawn on a different width than its previous width...
+         if (fraction >= 0)
+         {
+            x0 += stepx; // draw it one pixel aside, then (depending on line orientation)
+            fraction -= 2 * dy; // and reset its fraction (Bresenham, not sure I get the math)
+         }
+         y0 += stepy; // in either case, draw y0 one pixel aside its previous position
+         fraction += 2 * dx; // and update x0's fraction (not sure I get the math - but whatever)
+
+         // compute the offset in the BMP buffer corresponding to this point
+         offset = y0 * DEBUG_BMP_WIDTH + x0;
+         if ((offset < 0)  (offset >= DEBUG_BMP_WIDTH * DEBUG_BMP_HEIGHT))
+            TerminateOnError ("DrawLineInDebugBitmap(): bad BMP buffer index %d (range 0 - %d)\n", offset, DEBUG_BMP_WIDTH * DEBUG_BMP_HEIGHT);
+
+         bmp_buffer[offset] = color; // set this point to have the specified color
+      }
+   }
+
+   return; // finished, segment has been printed into the BMP dot matrix
+}
+
+
+void DrawWalkfaceInDebugBitmap (const walkface_t *walkface, unsigned char color)
+{
+   // this function is a superset for DrawLineInDebugBitmap() which calls it often enough as
+   // necessary so as to draw each of the edges of the walkface pointed to by walkface, using the
+   // palette color specified by color.
+
+   Vector v_from, v_to;
+   int index;
+
+   if (bmp_buffer == NULL)
+   {
+      TerminateOnError ("DrawWalkfaceInDebugBitmap(): function called with NULL BMP buffer!\n");
+      return; // reliability check: cancel if bmp buffer unallocated
+   }
+
+   if (walkface == NULL)
+   {
+      TerminateOnError ("DrawWalkfaceInDebugBitmap(): function called with NULL walkface!\n");
+      return; // reliability check
+   }
+
+   // for each walkface, cycle through all corners...
+   for (index = 0; index < walkface->corner_count; index++)
+   {
+      // build all the walkface edges out of its corners
+      v_from = walkface->v_corners[index]; // get the start corner
+      if (index < walkface->corner_count - 1)
+         v_to = walkface->v_corners[index + 1]; // take the next one for the end corner
+      else
+         v_to = walkface->v_corners[0]; // on last corner, loop back to corner #0
+
+      DrawLineInDebugBitmap (v_from, v_to, color); // and draw them in the bitmap
+   }
+
+   return; // finished, walkface has been printed into the BMP dot matrix
+}
+
+
+void DrawSectorInDebugBitmap (int sector_i, int sector_j, unsigned char color)
+{
+   // this function is a superset for DrawLineInDebugBitmap() which calls it often enough as
+   // necessary so as to draw each of the edges of the sector whose coordinates are [sector_i]
+   // [sector_j], using the palette color specified by color. A range test is made to ensure
+   // sector_i and sector_j do not exceed the parallels and meridians limits.
+
+   float sector_left, sector_right, sector_top, sector_bottom;
+
+   if (bmp_buffer == NULL)
+   {
+      TerminateOnError ("DrawSectorInDebugBitmap(): function called with NULL BMP buffer!\n");
+      return; // reliability check: cancel if bmp buffer unallocated
+   }
+
+   if ((sector_i < 0)  (sector_i >= map.parallels_count))
+   {
+      TerminateOnError ("DrawSectorInDebugBitmap(): sector [%d, %d] out of range! (max [%d, %d])\n", sector_i, sector_j, map.parallels_count, map.meridians_count);
+      return; // reliability check: bomb out if sector out of range
+   }
+
+   if ((sector_j < 0)  (sector_j >= map.meridians_count))
+   {
+      TerminateOnError ("DrawSectorInDebugBitmap(): sector [%d, %d] out of range! (max [%d, %d])\n", sector_i, sector_j, map.parallels_count, map.meridians_count);
+      return; // reliability check: bomb out if sector out of range
+   }
+
+   // first compute the sector limits...
+   sector_left = map.v_worldmins.x + sector_i * ((map.v_worldmaxs.x - map.v_worldmins.x) / map.parallels_count);
+   sector_right = map.v_worldmins.x + (sector_i + 1) * ((map.v_worldmaxs.x - map.v_worldmins.x) / map.parallels_count);
+   sector_bottom = map.v_worldmins.y + sector_j * ((map.v_worldmaxs.y - map.v_worldmins.y) / map.meridians_count);
+   sector_top = map.v_worldmins.y + (sector_j + 1) * ((map.v_worldmaxs.y - map.v_worldmins.y) / map.meridians_count);
+
+   // and draw the sector square
+   DrawLineInDebugBitmap (Vector (sector_left, sector_bottom, 0), Vector (sector_left, sector_top, 0), color);
+   DrawLineInDebugBitmap (Vector (sector_right, sector_bottom, 0), Vector (sector_right, sector_top, 0), color);
+   DrawLineInDebugBitmap (Vector (sector_left, sector_bottom, 0), Vector (sector_right, sector_bottom, 0), color);
+   DrawLineInDebugBitmap (Vector (sector_left, sector_top, 0), Vector (sector_right, sector_top, 0), color);
+
+   return; // finished, sector has been printed into the BMP dot matrix
+}
+
+
+void WriteDebugBitmap (const char *filename)
+{
+   // this function writes the debug bitmap image buffer in a .BMP file to disk. The format is
+   // 256 color and 2000 * 2000 pixels. The center of the world being rounghly the center of the
+   // bitmap. The bitmap is stored in the file specified by 'filename' (which can be a relative
+   // path from the Half-Life base directory).
+
+   FILE *fp;
+   int data_start, file_size;
+   unsigned long dummy;
+
+   if (bmp_buffer == NULL)
+   {
+      TerminateOnError ("WriteDebugBitmap(): function called with NULL BMP buffer!\n");
+      return; // reliability check: cancel if bmp buffer unallocated
+   }
+
+   // open (or create) the .bmp file for writing in binary mode...
+   fp = fopen (filename, "wb");
+   if (fp == NULL)
+   {
+      ServerConsole_printf ("RACC: WriteDebugBitmap(): unable to open BMP file!\n");
+      if (bmp_buffer)
+         free (bmp_buffer); // cannot open file, free DXF buffer
+      bmp_buffer = NULL;
+      return; // cancel if error creating file
+   }
+
+   // write the BMP header
+   fwrite ("BM", 2, 1, fp); // write the BMP header tag
+   fseek (fp, sizeof (unsigned long), SEEK_CUR); // skip the file size field (will write it last)
+   fwrite ("\0\0", sizeof (short), 1, fp); // dump zeros in the first reserved field (unused)
+   fwrite ("\0\0", sizeof (short), 1, fp); // dump zeros in the second reserved field (unused)
+   fseek (fp, sizeof (unsigned long), SEEK_CUR); // skip the data start field (will write it last)
+
+   // write the info header
+   dummy = 40;
+   fwrite (&dummy, sizeof (unsigned long), 1, fp); // write the info header size (does 40 bytes)
+   dummy = DEBUG_BMP_WIDTH;
+   fwrite (&dummy, sizeof (long), 1, fp); // write the image width (2000 px)
+   dummy = DEBUG_BMP_HEIGHT;
+   fwrite (&dummy, sizeof (long), 1, fp); // write the image height (2000 px)
+   dummy = 1;
+   fwrite (&dummy, sizeof (short), 1, fp); // write the # of planes (1)
+   dummy = 8;
+   fwrite (&dummy, sizeof (short), 1, fp); // write the bit count (8)
+   dummy = 0;
+   fwrite (&dummy, sizeof (unsigned long), 1, fp); // write the compression id (no compression)
+   dummy = DEBUG_BMP_WIDTH * DEBUG_BMP_HEIGHT;
+   fwrite (&dummy, sizeof (unsigned long), 1, fp); // write the image size (2000 * 2000)
+   dummy = 0;
+   fwrite (&dummy, sizeof (long), 1, fp); // write the X pixels per meter (not specified)
+   fwrite (&dummy, sizeof (long), 1, fp); // write the Y pixels per meter (not specified)
+   dummy = 256;
+   fwrite (&dummy, sizeof (unsigned long), 1, fp); // write the # of colors used (all)
+   fwrite (&dummy, sizeof (unsigned long), 1, fp); // write the # of important colors (wtf ?)
+
+   // write the color palette (R, G, B, reserved byte)
+   fputc (0x00, fp); fputc (0x00, fp); fputc (0x00, fp); fputc (0x00, fp); // 0=BLACK
+   fputc (0xFF, fp); fputc (0xFF, fp); fputc (0xFF, fp); fputc (0x00, fp); // 1=WHITE
+   fputc (0x80, fp); fputc (0x80, fp); fputc (0x80, fp); fputc (0x00, fp); // 2=GREY
+   fputc (0xC0, fp); fputc (0xC0, fp); fputc (0xC0, fp); fputc (0x00, fp); // 3=SILVER
+   fputc (0x80, fp); fputc (0x00, fp); fputc (0x00, fp); fputc (0x00, fp); // 4=DARK RED
+   fputc (0xFF, fp); fputc (0x00, fp); fputc (0x00, fp); fputc (0x00, fp); // 5=RED
+   fputc (0x80, fp); fputc (0x80, fp); fputc (0x00, fp); fputc (0x00, fp); // 6=DARK YELLOW
+   fputc (0xFF, fp); fputc (0xFF, fp); fputc (0x00, fp); fputc (0x00, fp); // 7=YELLOW
+   fputc (0x00, fp); fputc (0x80, fp); fputc (0x00, fp); fputc (0x00, fp); // 8=DARK GREEN
+   fputc (0x00, fp); fputc (0xFF, fp); fputc (0x00, fp); fputc (0x00, fp); // 9=GREEN
+   fputc (0x00, fp); fputc (0x00, fp); fputc (0x80, fp); fputc (0x00, fp); // 10=DARK BLUE
+   fputc (0x00, fp); fputc (0x00, fp); fputc (0x80, fp); fputc (0x00, fp); // 11=BLUE
+   fputc (0x80, fp); fputc (0x00, fp); fputc (0x80, fp); fputc (0x00, fp); // 12=DARK PURPLE
+   fputc (0x80, fp); fputc (0x00, fp); fputc (0x80, fp); fputc (0x00, fp); // 13=PURPLE
+
+   for (dummy = 14; dummy < 256; dummy++)
+   {
+      // fill out the rest of the palette with zeros
+      fputc (0x00, fp); fputc (0x00, fp); fputc (0x00, fp); fputc (0x00, fp);
+   }
+
+   // write the actual image data
+   data_start = ftell (fp); // get the data start position (that's where we are now)
+   fwrite (bmp_buffer, DEBUG_BMP_WIDTH * DEBUG_BMP_HEIGHT, 1, fp); // write the image
+   file_size = ftell (fp); // get the file size now that the image is dumped
+
+   // now that we've dumped our data, we know the file size and the data start position
+
+   fseek (fp, 0, SEEK_SET); // rewind
+   fseek (fp, 2, SEEK_CUR); // skip the BMP header tag "BM"
+   fwrite (&file_size, sizeof (unsigned long), 1, fp); // write the file size at its location
+   fseek (fp, sizeof (short), SEEK_CUR); // skip the first reserved field
+   fseek (fp, sizeof (short), SEEK_CUR); // skip the second reserved field
+   fwrite (&data_start, sizeof (unsigned long), 1, fp); // write the data start at its location
+
+   fclose (fp); // finished, close the BMP file
+
+   if (bmp_buffer)
+      free (bmp_buffer); // and free the BMP buffer
+   bmp_buffer = NULL;
+
+   return; // and return
+}
+
+
+
+
+[modified on 10/23/03 at 04:03:35]
+--------------------------------------------------
+10/23/03 at 04:10:07  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+And now, ladies and gentlemen, here's the DXF one ;D;D;D
+code:
+
+// RACC - AI development project for first-person shooter games derived from Valve's Half-Life
+// (http://www.racc-ai.com/)
+//
+// The game to engine interfacing code is based on the work done by Jeffrey 'botman' Broome
+// (http://planethalflife.com/botman/)
+//
+// This project is partially based on the work done by Eric Bieschke in his BSDbot
+// (http://gamershomepage.com/csbot/)
+//
+// This project is partially based on the work done by Brendan "Spyro" McCarthy in his ODD Bot
+// (http://oddbot.hlfusion.com/)
+//
+// This project is partially based on the work done by Alistair 'eLiTe' Stewart in his TEAMbot
+// (http://www.planethalflife.com/teambot/)
+//
+// Rational Autonomous Cybernetic Commandos AI
+//
+// dxffile.cpp
+//
+
+#include <racc.h>
+
+
+// hex value for a white space (stupid fprintf() ignores leading whitespaces if not explicit)
+#define SPC "\40"
+
+// DXF buffer size (8 Mb should be enough)
+#define DEBUG_DXF_SIZE 8000000
+
+
+char *dxf_buffer;
+long dxf_buffer_index;
+
+
+
+void InitDebugDXF (void)
+{
+   // this function allocates memory and clears the debug DXF buffer
+
+   if (dxf_buffer)
+      free (dxf_buffer); // reliability check, free DXF buffer if already allocated
+   dxf_buffer = NULL;
+   dxf_buffer = (char *) malloc (DEBUG_DXF_SIZE); // allocate memory
+   if (dxf_buffer == NULL)
+      TerminateOnError ("ClearDebugDXF(): unable to allocate %d kbytes for DXF buffer!\n", DEBUG_DXF_SIZE / 1024);
+
+   dxf_buffer_index = 0; // reset the DXF buffer pointer
+
+   memset (dxf_buffer, 0, DEBUG_DXF_SIZE); // zero all the crap out
+   return; // yes, it's as simple as that
+}
+
+
+void DrawLineInDebugDXF (const Vector v_from, const Vector v_to, unsigned char color, const char *layer_name)
+{
+   // this function adds a line in the DXF data going from the vector location v_from to
+   // v_to, using the specified color, on the specified layer.
+   // Note that color should be an AutoCAD palette color index.
+
+   // You wonder why I don't use strcat() perhaps ? Well, because strcat() is SLOOOOOOOOOOOOOOW.
+   // It needs to run all along the string in order to find the terminator character and then
+   // append from there. Better store the buffer write index as I do. Saves me UNCONCEIVABLE time.
+
+   static char line_buffer[256];
+
+   if (dxf_buffer == NULL)
+   {
+      TerminateOnError ("DrawLineInDebugDXF(): function called with NULL DXF buffer!\n");
+      return; // reliability check: cancel if dxf buffer unallocated
+   }
+
+   // write the line header
+   sprintf (line_buffer, SPC SPC SPC "0\n"); // DXF chunk name follows...
+   sprintf (&dxf_buffer[dxf_buffer_index], line_buffer); dxf_buffer_index += strlen (line_buffer);
+   sprintf (line_buffer, "LINE\n"); // declare a new polyline
+   sprintf (&dxf_buffer[dxf_buffer_index], line_buffer); dxf_buffer_index += strlen (line_buffer);
+   sprintf (line_buffer, SPC SPC SPC "8\n"); // layer name follows...
+   sprintf (&dxf_buffer[dxf_buffer_index], line_buffer); dxf_buffer_index += strlen (line_buffer);
+   sprintf (line_buffer, "%s\n", layer_name); // sets layer name (will be created if unexistent)
+   sprintf (&dxf_buffer[dxf_buffer_index], line_buffer); dxf_buffer_index += strlen (line_buffer);
+
+   // write the line starting point coordinates
+   sprintf (line_buffer, SPC SPC SPC "10\n"); // start point X follows...
+   sprintf (&dxf_buffer[dxf_buffer_index], line_buffer); dxf_buffer_index += strlen (line_buffer);
+   sprintf (line_buffer, "%f\n", v_from.x); // sets starting X
+   sprintf (&dxf_buffer[dxf_buffer_index], line_buffer); dxf_buffer_index += strlen (line_buffer);
+   sprintf (line_buffer, SPC SPC SPC "20\n"); // start point Y follows...
+   sprintf (&dxf_buffer[dxf_buffer_index], line_buffer); dxf_buffer_index += strlen (line_buffer);
+   sprintf (line_buffer, "%f\n", v_from.y); // sets starting Y
+   sprintf (&dxf_buffer[dxf_buffer_index], line_buffer); dxf_buffer_index += strlen (line_buffer);
+   sprintf (line_buffer, SPC SPC SPC "30\n"); // start point Z follows...
+   sprintf (&dxf_buffer[dxf_buffer_index], line_buffer); dxf_buffer_index += strlen (line_buffer);
+   sprintf (line_buffer, "%f\n", v_from.z); // sets starting Z
+   sprintf (&dxf_buffer[dxf_buffer_index], line_buffer); dxf_buffer_index += strlen (line_buffer);
+
+   // write the line end point coordinates
+   sprintf (line_buffer, SPC SPC SPC "11\n"); // start end X follows...
+   sprintf (&dxf_buffer[dxf_buffer_index], line_buffer); dxf_buffer_index += strlen (line_buffer);
+   sprintf (line_buffer, "%f\n", v_to.x); // sets end X
+   sprintf (&dxf_buffer[dxf_buffer_index], line_buffer); dxf_buffer_index += strlen (line_buffer);
+   sprintf (line_buffer, SPC SPC SPC "21\n"); // end point Y follows...
+   sprintf (&dxf_buffer[dxf_buffer_index], line_buffer); dxf_buffer_index += strlen (line_buffer);
+   sprintf (line_buffer, "%f\n", v_to.y); // sets end Y
+   sprintf (&dxf_buffer[dxf_buffer_index], line_buffer); dxf_buffer_index += strlen (line_buffer);
+   sprintf (line_buffer, SPC SPC SPC "31\n"); // end point Z follows...
+   sprintf (&dxf_buffer[dxf_buffer_index], line_buffer); dxf_buffer_index += strlen (line_buffer);
+   sprintf (line_buffer, "%f\n", v_to.z); // sets end Z
+   sprintf (&dxf_buffer[dxf_buffer_index], line_buffer); dxf_buffer_index += strlen (line_buffer);
+
+   return; // finished, line has been printed into the DXF buffer
+}
+
+
+void DrawWalkfaceInDebugDXF (const walkface_t *walkface, unsigned char color, const char *layer_name)
+{
+   // this function adds a polyface mesh in the DXF data representing the walkface pointed to by
+   // walkface, using the specified color, on the specified layer. It is called by WriteDebugDXF()
+   // which calls it often enough as necessary so as to draw each of the walkfaces of the global
+   // navmesh. Note that color should be an AutoCAD palette color index.
+
+   // You wonder why I don't use strcat() perhaps ? Well, because strcat() is SLOOOOOOOOOOOOOOW.
+   // It needs to run all along the string in order to find the terminator character and then
+   // append from there. Better store the buffer write index as I do. Saves me UNCONCEIVABLE time.
+
+   int corner_index;
+   static char line_buffer[256];
+
+   if (dxf_buffer == NULL)
+   {
+      TerminateOnError ("DrawWalkfaceInDebugDXF(): function called with NULL DXF buffer!\n");
+      return; // reliability check: cancel if dxf buffer unallocated
+   }
+
+   if (walkface == NULL)
+   {
+      TerminateOnError ("DrawWalkfaceInDebugDXF(): function called with NULL walkface!\n");
+      return; // reliability check
+   }
+
+   // write the polyline header
+   sprintf (line_buffer, SPC SPC SPC "0\n"); // DXF chunk name follows...
+   sprintf (&dxf_buffer[dxf_buffer_index], line_buffer); dxf_buffer_index += strlen (line_buffer);
+   sprintf (line_buffer, "POLYLINE\n"); // declare a new polyline
+   sprintf (&dxf_buffer[dxf_buffer_index], line_buffer); dxf_buffer_index += strlen (line_buffer);
+   sprintf (line_buffer, SPC SPC SPC "66\n"); // tell that we're starting a sequence
+   sprintf (&dxf_buffer[dxf_buffer_index], line_buffer); dxf_buffer_index += strlen (line_buffer);
+   sprintf (line_buffer, "1\n"); // ...fixed flag, not useful to anybody with this opcode but mandatory
+   sprintf (&dxf_buffer[dxf_buffer_index], line_buffer); dxf_buffer_index += strlen (line_buffer);
+   sprintf (line_buffer, SPC SPC SPC "8\n"); // layer name follows...
+   sprintf (&dxf_buffer[dxf_buffer_index], line_buffer); dxf_buffer_index += strlen (line_buffer);
+   sprintf (line_buffer, "%s\n", layer_name); // sets layer name (will be created if unexistent)
+   sprintf (&dxf_buffer[dxf_buffer_index], line_buffer); dxf_buffer_index += strlen (line_buffer);
+   sprintf (line_buffer, SPC SPC SPC "70\n"); // option bitmap follows...
+   sprintf (&dxf_buffer[dxf_buffer_index], line_buffer); dxf_buffer_index += strlen (line_buffer);
+   sprintf (line_buffer, "%d\n", 64); // 64 = 0x00100000, sets the "polyface mesh" option bit
+   sprintf (&dxf_buffer[dxf_buffer_index], line_buffer); dxf_buffer_index += strlen (line_buffer);
+   sprintf (line_buffer, SPC SPC SPC "71\n"); // vertexes count follows...
+   sprintf (&dxf_buffer[dxf_buffer_index], line_buffer); dxf_buffer_index += strlen (line_buffer);
+   sprintf (line_buffer, "%d\n", 2 * walkface->corner_count); // sets the vertexes count (2 * corners)
+   sprintf (&dxf_buffer[dxf_buffer_index], line_buffer); dxf_buffer_index += strlen (line_buffer);
+   sprintf (line_buffer, SPC SPC SPC "72\n"); // edges/faces count follows (faces count, here)...
+   sprintf (&dxf_buffer[dxf_buffer_index], line_buffer); dxf_buffer_index += strlen (line_buffer);
+   sprintf (line_buffer, "%d\n", 2 * walkface->corner_count); // sets the faces count (2 * corners)
+   sprintf (&dxf_buffer[dxf_buffer_index], line_buffer); dxf_buffer_index += strlen (line_buffer);
+   sprintf (line_buffer, SPC SPC SPC "62\n"); // entity color follows...
+   sprintf (&dxf_buffer[dxf_buffer_index], line_buffer); dxf_buffer_index += strlen (line_buffer);
+   sprintf (line_buffer, "%d\n", color); // sets the polyline color
+   sprintf (&dxf_buffer[dxf_buffer_index], line_buffer); dxf_buffer_index += strlen (line_buffer);
+
+   // loop through all the corners this walkface has and write the vertexes...
+   for (corner_index = 0; corner_index < walkface->corner_count; corner_index++)
+   {
+      // top side of the face
+      sprintf (line_buffer, SPC SPC SPC "0\n"); // DXF chunk name follows...
+      sprintf (&dxf_buffer[dxf_buffer_index], line_buffer); dxf_buffer_index += strlen (line_buffer);
+      sprintf (line_buffer, "VERTEX\n"); // declare a new vertice
+      sprintf (&dxf_buffer[dxf_buffer_index], line_buffer); dxf_buffer_index += strlen (line_buffer);
+      sprintf (line_buffer, SPC SPC SPC "8\n"); // layer name follows...
+      sprintf (&dxf_buffer[dxf_buffer_index], line_buffer); dxf_buffer_index += strlen (line_buffer);
+      sprintf (line_buffer, "%s\n", layer_name); // sets layer name (same as the polyline's)
+      sprintf (&dxf_buffer[dxf_buffer_index], line_buffer); dxf_buffer_index += strlen (line_buffer);
+      sprintf (line_buffer, SPC SPC SPC "10\n"); // start point X follows...
+      sprintf (&dxf_buffer[dxf_buffer_index], line_buffer); dxf_buffer_index += strlen (line_buffer);
+      sprintf (line_buffer, "%f\n", walkface->v_corners[corner_index].x); // sets starting X
+      sprintf (&dxf_buffer[dxf_buffer_index], line_buffer); dxf_buffer_index += strlen (line_buffer);
+      sprintf (line_buffer, SPC SPC SPC "20\n"); // start point Y follows...
+      sprintf (&dxf_buffer[dxf_buffer_index], line_buffer); dxf_buffer_index += strlen (line_buffer);
+      sprintf (line_buffer, "%f\n", walkface->v_corners[corner_index].y); // sets starting Y
+      sprintf (&dxf_buffer[dxf_buffer_index], line_buffer); dxf_buffer_index += strlen (line_buffer);
+      sprintf (line_buffer, SPC SPC SPC "30\n"); // start point Z follows...
+      sprintf (&dxf_buffer[dxf_buffer_index], line_buffer); dxf_buffer_index += strlen (line_buffer);
+      sprintf (line_buffer, "%f\n", walkface->v_corners[corner_index].z); // sets starting Z
+      sprintf (&dxf_buffer[dxf_buffer_index], line_buffer); dxf_buffer_index += strlen (line_buffer);
+      sprintf (line_buffer, SPC SPC SPC "70\n"); // option bitmap follows...
+      sprintf (&dxf_buffer[dxf_buffer_index], line_buffer); dxf_buffer_index += strlen (line_buffer);
+      sprintf (line_buffer, "%d\n", 192); // 192 = 0x01100000, "polyface mesh" + "3D polygon mesh"
+      sprintf (&dxf_buffer[dxf_buffer_index], line_buffer); dxf_buffer_index += strlen (line_buffer);
+
+      // bottom side of the face
+      sprintf (line_buffer, SPC SPC SPC "0\n"); // DXF chunk name follows...
+      sprintf (&dxf_buffer[dxf_buffer_index], line_buffer); dxf_buffer_index += strlen (line_buffer);
+      sprintf (line_buffer, "VERTEX\n"); // declare a new vertice
+      sprintf (&dxf_buffer[dxf_buffer_index], line_buffer); dxf_buffer_index += strlen (line_buffer);
+      sprintf (line_buffer, SPC SPC SPC "8\n"); // layer name follows...
+      sprintf (&dxf_buffer[dxf_buffer_index], line_buffer); dxf_buffer_index += strlen (line_buffer);
+      sprintf (line_buffer, "%s\n", layer_name); // sets layer name (same as the polyline's)
+      sprintf (&dxf_buffer[dxf_buffer_index], line_buffer); dxf_buffer_index += strlen (line_buffer);
+      sprintf (line_buffer, SPC SPC SPC "10\n"); // start point X follows...
+      sprintf (&dxf_buffer[dxf_buffer_index], line_buffer); dxf_buffer_index += strlen (line_buffer);
+      sprintf (line_buffer, "%f\n", walkface->v_corners[corner_index].x); // sets starting X
+      sprintf (&dxf_buffer[dxf_buffer_index], line_buffer); dxf_buffer_index += strlen (line_buffer);
+      sprintf (line_buffer, SPC SPC SPC "20\n"); // start point Y follows...
+      sprintf (&dxf_buffer[dxf_buffer_index], line_buffer); dxf_buffer_index += strlen (line_buffer);
+      sprintf (line_buffer, "%f\n", walkface->v_corners[corner_index].y); // sets starting Y
+      sprintf (&dxf_buffer[dxf_buffer_index], line_buffer); dxf_buffer_index += strlen (line_buffer);
+      sprintf (line_buffer, SPC SPC SPC "30\n"); // start point Z follows...
+      sprintf (&dxf_buffer[dxf_buffer_index], line_buffer); dxf_buffer_index += strlen (line_buffer);
+      sprintf (line_buffer, "%f\n", walkface->v_corners[corner_index].z - 0.1); // sets starting Z a bit lower
+      sprintf (&dxf_buffer[dxf_buffer_index], line_buffer); dxf_buffer_index += strlen (line_buffer);
+      sprintf (line_buffer, SPC SPC SPC "70\n"); // option bitmap follows...
+      sprintf (&dxf_buffer[dxf_buffer_index], line_buffer); dxf_buffer_index += strlen (line_buffer);
+      sprintf (line_buffer, "%d\n", 192); // 192 = 0x01100000, "polyface mesh" + "3D polygon mesh"
+      sprintf (&dxf_buffer[dxf_buffer_index], line_buffer); dxf_buffer_index += strlen (line_buffer);
+   }
+
+   // loop through all the corners again and write the side faces...
+   for (corner_index = 0; corner_index < walkface->corner_count; corner_index++)
+   {
+      // first half (first triangle) of this side
+      sprintf (line_buffer, SPC SPC SPC "0\n"); // DXF chunk name follows...
+      sprintf (&dxf_buffer[dxf_buffer_index], line_buffer); dxf_buffer_index += strlen (line_buffer);
+      sprintf (line_buffer, "VERTEX\n"); // declare a new vertice (same chunk name as vertex)
+      sprintf (&dxf_buffer[dxf_buffer_index], line_buffer); dxf_buffer_index += strlen (line_buffer);
+      sprintf (line_buffer, SPC SPC SPC "8\n"); // layer name follows...
+      sprintf (&dxf_buffer[dxf_buffer_index], line_buffer); dxf_buffer_index += strlen (line_buffer);
+      sprintf (line_buffer, "%s\n", layer_name); // sets layer name (same as the polyline's)
+      sprintf (&dxf_buffer[dxf_buffer_index], line_buffer); dxf_buffer_index += strlen (line_buffer);
+      sprintf (line_buffer, SPC SPC SPC "10\n"); // start point X follows...
+      sprintf (&dxf_buffer[dxf_buffer_index], line_buffer); dxf_buffer_index += strlen (line_buffer);
+      sprintf (line_buffer, "0\n"); // starting X always 0 for face, but line is mandatory anyway
+      sprintf (&dxf_buffer[dxf_buffer_index], line_buffer); dxf_buffer_index += strlen (line_buffer);
+      sprintf (line_buffer, SPC SPC SPC "20\n"); // start point Y follows...
+      sprintf (&dxf_buffer[dxf_buffer_index], line_buffer); dxf_buffer_index += strlen (line_buffer);
+      sprintf (line_buffer, "0\n"); // starting Y always 0 for face, but line is mandatory anyway
+      sprintf (&dxf_buffer[dxf_buffer_index], line_buffer); dxf_buffer_index += strlen (line_buffer);
+      sprintf (line_buffer, SPC SPC SPC "30\n"); // start point Z follows...
+      sprintf (&dxf_buffer[dxf_buffer_index], line_buffer); dxf_buffer_index += strlen (line_buffer);
+      sprintf (line_buffer, "0\n"); // starting Z always 0 for face, but line is mandatory anyway
+      sprintf (&dxf_buffer[dxf_buffer_index], line_buffer); dxf_buffer_index += strlen (line_buffer);
+      sprintf (line_buffer, SPC SPC SPC "70\n"); // option bitmap follows...
+      sprintf (&dxf_buffer[dxf_buffer_index], line_buffer); dxf_buffer_index += strlen (line_buffer);
+      sprintf (line_buffer, "%d\n", 128); // 128 = 0x01000000, "edge"
+      sprintf (&dxf_buffer[dxf_buffer_index], line_buffer); dxf_buffer_index += strlen (line_buffer);
+      sprintf (line_buffer, SPC SPC SPC "71\n"); // face vertex #1 index follows...
+      sprintf (&dxf_buffer[dxf_buffer_index], line_buffer); dxf_buffer_index += strlen (line_buffer);
+      sprintf (line_buffer, "%d\n", 1 + 2 * corner_index); // 1st vertex = 1st corner
+      sprintf (&dxf_buffer[dxf_buffer_index], line_buffer); dxf_buffer_index += strlen (line_buffer);
+      sprintf (line_buffer, SPC SPC SPC "72\n"); // face vertex #2 index follows...
+      sprintf (&dxf_buffer[dxf_buffer_index], line_buffer); dxf_buffer_index += strlen (line_buffer);
+      sprintf (line_buffer, "%d\n", 1 + 2 * corner_index + 1); // 2nd vertex = vertex below 1st corner
+      sprintf (&dxf_buffer[dxf_buffer_index], line_buffer); dxf_buffer_index += strlen (line_buffer);
+      sprintf (line_buffer, SPC SPC SPC "73\n"); // face vertex #3 index follows...
+      sprintf (&dxf_buffer[dxf_buffer_index], line_buffer); dxf_buffer_index += strlen (line_buffer);
+      sprintf (line_buffer, "%d\n", 1 + (corner_index + 1 < walkface->corner_count ? 2 * corner_index + 2 : 0));
+      sprintf (&dxf_buffer[dxf_buffer_index], line_buffer); dxf_buffer_index += strlen (line_buffer);
+
+      // second half (second triangle) of this side
+      sprintf (line_buffer, SPC SPC SPC "0\n"); // DXF chunk name follows...
+      sprintf (&dxf_buffer[dxf_buffer_index], line_buffer); dxf_buffer_index += strlen (line_buffer);
+      sprintf (line_buffer, "VERTEX\n"); // declare a new face (same chunk name as vertex)
+      sprintf (&dxf_buffer[dxf_buffer_index], line_buffer); dxf_buffer_index += strlen (line_buffer);
+      sprintf (line_buffer, SPC SPC SPC "8\n"); // layer name follows...
+      sprintf (&dxf_buffer[dxf_buffer_index], line_buffer); dxf_buffer_index += strlen (line_buffer);
+      sprintf (line_buffer, "%s\n", layer_name); // sets layer name (same as the polyline's)
+      sprintf (&dxf_buffer[dxf_buffer_index], line_buffer); dxf_buffer_index += strlen (line_buffer);
+      sprintf (line_buffer, SPC SPC SPC "10\n"); // start point X follows...
+      sprintf (&dxf_buffer[dxf_buffer_index], line_buffer); dxf_buffer_index += strlen (line_buffer);
+      sprintf (line_buffer, "0\n"); // starting X always 0 for face, but line is mandatory anyway
+      sprintf (&dxf_buffer[dxf_buffer_index], line_buffer); dxf_buffer_index += strlen (line_buffer);
+      sprintf (line_buffer, SPC SPC SPC "20\n"); // start point Y follows...
+      sprintf (&dxf_buffer[dxf_buffer_index], line_buffer); dxf_buffer_index += strlen (line_buffer);
+      sprintf (line_buffer, "0\n"); // starting Y always 0 for face, but line is mandatory anyway
+      sprintf (&dxf_buffer[dxf_buffer_index], line_buffer); dxf_buffer_index += strlen (line_buffer);
+      sprintf (line_buffer, SPC SPC SPC "30\n"); // start point Z follows...
+      sprintf (&dxf_buffer[dxf_buffer_index], line_buffer); dxf_buffer_index += strlen (line_buffer);
+      sprintf (line_buffer, "0\n"); // starting Z always 0 for face, but line is mandatory anyway
+      sprintf (&dxf_buffer[dxf_buffer_index], line_buffer); dxf_buffer_index += strlen (line_buffer);
+      sprintf (line_buffer, SPC SPC SPC "70\n"); // option bitmap follows...
+      sprintf (&dxf_buffer[dxf_buffer_index], line_buffer); dxf_buffer_index += strlen (line_buffer);
+      sprintf (line_buffer, "%d\n", 128); // 128 = 0x01000000, "edge"
+      sprintf (&dxf_buffer[dxf_buffer_index], line_buffer); dxf_buffer_index += strlen (line_buffer);
+      sprintf (line_buffer, SPC SPC SPC "71\n"); // face vertex #1 index follows...
+      sprintf (&dxf_buffer[dxf_buffer_index], line_buffer); dxf_buffer_index += strlen (line_buffer);
+      sprintf (line_buffer, "%d\n", 1 + 2 * corner_index + 1); // 1st vertex = 1st corner
+      sprintf (&dxf_buffer[dxf_buffer_index], line_buffer); dxf_buffer_index += strlen (line_buffer);
+      sprintf (line_buffer, SPC SPC SPC "72\n"); // face vertex #2 index follows...
+      sprintf (&dxf_buffer[dxf_buffer_index], line_buffer); dxf_buffer_index += strlen (line_buffer);
+      sprintf (line_buffer, "%d\n", 1 + (corner_index + 1 < walkface->corner_count ? 2 * corner_index + 2 : 0)); // 2nd vertex = vertex above 1st corner
+      sprintf (&dxf_buffer[dxf_buffer_index], line_buffer); dxf_buffer_index += strlen (line_buffer);
+      sprintf (line_buffer, SPC SPC SPC "73\n"); // face vertex #3 index follows...
+      sprintf (&dxf_buffer[dxf_buffer_index], line_buffer); dxf_buffer_index += strlen (line_buffer);
+      sprintf (line_buffer, "%d\n", 1 + (corner_index + 1 < walkface->corner_count ? 2 * corner_index + 3 : 1));
+      sprintf (&dxf_buffer[dxf_buffer_index], line_buffer); dxf_buffer_index += strlen (line_buffer);
+   }
+
+   // TODO: write top and bottom faces too (but need to divide non-triangular walkfaces into
+   // triangles, what a crap - bah, will do that latah *yawn*)
+
+   // close the sequence
+   sprintf (line_buffer, SPC SPC SPC "0\n"); // type of entity follows...
+   sprintf (&dxf_buffer[dxf_buffer_index], line_buffer); dxf_buffer_index += strlen (line_buffer);
+   sprintf (line_buffer, "SEQEND\n"); // it's not a new entity, it's we're finishing the current one
+   sprintf (&dxf_buffer[dxf_buffer_index], line_buffer); dxf_buffer_index += strlen (line_buffer);
+
+   return; // finished, walkface has been printed into the DXF buffer
+}
+
+
+void DrawSectorInDebugDXF (int sector_i, int sector_j, unsigned char color, const char *layer_name)
+{
+   // this function is a superset for DrawWalkfaceInDebugDXF(). It is used to draw topologic
+   // sectors in the DXF buffer in much the same way as we draw walkfaces (i.e, as polyface
+   // meshes). We are passing a dummy walkface pointer (statically defined) for this, which we
+   // fill in before with the sector's info, as if the sector was itself a walkface.
+
+   static walkface_t dummy_walkface;
+   static Vector dummy_walkface_corners[4];
+   float sector_left, sector_right, sector_bottom, sector_top;
+
+   if (dxf_buffer == NULL)
+   {
+      TerminateOnError ("DrawSectorInDebugDXF(): function called with NULL DXF buffer!\n");
+      return; // reliability check: cancel if dxf buffer unallocated
+   }
+
+   // first compute the sector limits...
+   sector_left = map.v_worldmins.x + sector_i * ((map.v_worldmaxs.x - map.v_worldmins.x) / map.parallels_count);
+   sector_right = map.v_worldmins.x + (sector_i + 1) * ((map.v_worldmaxs.x - map.v_worldmins.x) / map.parallels_count);
+   sector_bottom = map.v_worldmins.y + sector_j * ((map.v_worldmaxs.y - map.v_worldmins.y) / map.meridians_count);
+   sector_top = map.v_worldmins.y + (sector_j + 1) * ((map.v_worldmaxs.y - map.v_worldmins.y) / map.meridians_count);
+
+   // and build a dummy walkface of the size of the sector (only the corners part, anyway)
+   dummy_walkface.v_corners = dummy_walkface_corners;
+   dummy_walkface.v_corners[0] = Vector (sector_left, sector_bottom, 0);
+   dummy_walkface.v_corners[1] = Vector (sector_right, sector_bottom, 0);
+   dummy_walkface.v_corners[2] = Vector (sector_right, sector_top, 0);
+   dummy_walkface.v_corners[3] = Vector (sector_left, sector_top, 0);
+   dummy_walkface.corner_count = 4;
+
+   DrawWalkfaceInDebugDXF (&dummy_walkface, 7, layer_name); // then draw it
+
+   return; // finished, sector has been printed into the DXF buffer
+}
+
+
+void WriteDebugDXF (const char *filename)
+{
+   // this function writes the global navmesh (walkfaces array) in a .DXF file to disk. We use
+   // the ASCII format for better readability and backwards compatibility. The main advantage of
+   // exporting to 3D vector formats such as .DXF is that everything that is exported is exported
+   // at the 1:1 scale, i.e. the coordinates you will read in AutoCAD will be the coordinates in
+   // the virtual world. The DXF is stored in the file specified by 'filename' (which can be a
+   // relative path from the Half-Life base directory). The walkfaces and sectors colors can be
+   // specified separately, but they need to belong to AutoCAD's standard palette.
+
+   // WARNING: in a DXF file, most of the indices (such ase vertex indices) are 1 based.
+
+   FILE *fp;
+
+   if (dxf_buffer == NULL)
+   {
+      TerminateOnError ("WriteDebugDXF(): function called with NULL DXF buffer!\n");
+      return; // reliability check: cancel if dxf buffer unallocated
+   }
+
+   // open (or create) the DXF file for writing in ASCII mode...
+   fp = fopen (filename, "w");
+   if (fp == NULL)
+   {
+      ServerConsole_printf ("RACC: WriteNavmeshInDebugDXF(): unable to open DXF file!\n");
+      if (dxf_buffer)
+         free (dxf_buffer); // cannot open file, free DXF buffer
+      dxf_buffer = NULL;
+      return; // cancel if error creating file
+   }
+
+   // write the DXF header...
+   fprintf (fp, SPC SPC SPC "999\n"); // a comment follows...
+   fprintf (fp, RACC_WELCOMETEXT "\n"); // start with the welcome text and a comment...
+   fprintf (fp, SPC SPC SPC "999\n"); // a comment follows...
+   fprintf (fp, "Drawing generated from map '%s' for MOD '%s'\n", server.map_name, server.mod_name);
+   fprintf (fp, SPC SPC SPC "0\n"); // DXF chunk name follows...
+   fprintf (fp, "SECTION\n"); // we're opening a section
+   fprintf (fp, SPC SPC SPC "2\n"); // DXF section name follows...
+   fprintf (fp, "ENTITIES\n"); // it's the "ENTITIES" section (the one with the drawing elements data)
+
+   fputs (dxf_buffer, fp); // write the elements currently defined in the DXF buffer
+
+   fprintf (fp, SPC SPC SPC "0\n"); // DXF chunk name follows...
+   fprintf (fp, "ENDSEC\n"); // we're closing the current section
+   fprintf (fp, SPC SPC SPC "0\n"); // DXF chunk name follows...
+   fprintf (fp, "EOF\n"); // we're finishing the whole DXF file
+
+   fclose (fp); // finished, close the DXF file
+
+   if (dxf_buffer)
+      free (dxf_buffer); // and free the DXF buffer
+   dxf_buffer = NULL;
+
+   return; // and return
+}
+
+
+
+[modified on 10/23/03 at 04:10:07]
+--------------------------------------------------
+10/23/03 at 04:14:21  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+I should add a note on how to use both:
+
+1. You first call InitDebugBMP() or InitDebugDXF() to tell the program to mallocate enough memory for the drawing you want to put.
+
+2. You call DrawStuffInDebugBMP() or DrawStuffInDebugDXF() to add whatever stuff (lines, sectors, walkfaces) to your drawing
+
+3. You call WriteDebugBMP() or WriteDebugDXF() to write the resulting drawing to disk, it will also free() the memory that was allocated for the drawing.
+
+Have fun! ;D
+
+[edited: Oh, and btw, don't be afraid. I tested it, it WORKS.
+http://www.racc-ai.com/crossfire-MESH.rar
+for a sample DXF of a RACC mesh on the map crossfire]
+
+[modified on 10/23/03 at 04:14:21]

@@ -1,0 +1,59 @@
+--------------------------------------------------
+Subject: Unresolved externals! PLEASE HELP!
+--------------------------------------------------
+08/03/01 at 04:23:35  Posted by: SLAVIK (wud@i.com.ua)
+--------------------------------------------------
+Can someone help me with such problem?:
+I am compiling my dll (not Half-Life, just simple DLL) and I have such message:
+...
+unresolved external void ___encodepcx...
+error: 1 unresolved externals...
+
+what is this?
+
+What is data type for LPCSTR in DELPHI?
+
+--------------------------------------------------
+08/03/01 at 05:34:23  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+How did you declare your encodepcx() function?
+
+botman
+
+--------------------------------------------------
+08/03/01 at 10:31:57  Reply by: SLAVIK (wud@i.com.ua)
+--------------------------------------------------
+typedef struct
+{
+      LPCTSTR      szFileName;
+      LPBYTE      lpImageData;
+      DWORD      dwWidth;
+      DWORD      dwHeight;
+      LPBYTE      lpPalette;
+      DWORD      dwPaletteSize;      
+} PCX_ENCODE, *LPPCX_ENCODE;
+
+LPVOID MakeFile( LPCTSTR szFileName, DWORD dwFileSize);
+void   EncodePCX( LPPCX_ENCODE lpEncode);
+
+#endif            // #ifndef _PCX_H_
+
+
+
+--------------------------------------------------
+08/03/01 at 11:23:41  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+If the function is exported like this...
+code:
+void   EncodePCX( LPPCX_ENCODE lpEncode); 
+
+in a .cpp file then it will have the C++ name mangling symbol as the export and won't find "EncodePCX" as a valid function.
+
+You should make sure to declare it as...
+code:
+extern "C" void EncodePCX(...)
+
+...if you are trying to reference it just using the "EncodePCX" symbol in GetProcAddress().
+
+botman
+

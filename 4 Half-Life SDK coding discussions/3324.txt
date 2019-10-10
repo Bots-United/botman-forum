@@ -1,0 +1,108 @@
+--------------------------------------------------
+Subject: making a noclip command...
+--------------------------------------------------
+06/23/02 at 01:12:28  Posted by: kippie (da_matt@hotmail.com)
+--------------------------------------------------
+Ok, so I made a client command to get noclip and to deactivate it, but it doesn't seem to work and I have no idea why not...
+Here's the code:
+code:
+
+else if ( FStrEq(pcmd, "noclip" ))
+      {
+            if(pev->movetype != MOVETYPE_NOCLIP)
+            {
+                  pev->movetype = MOVETYPE_NOCLIP;
+                  pev->solid = SOLID_NOT;
+            }
+            else
+            {
+                  pev->movetype = MOVETYPE_WALK;
+                  pev->solid = SOLID_SLIDEBOX;
+            }
+      }
+
+
+
+any ideas?
+
+--------------------------------------------------
+06/23/02 at 05:05:11  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+Heres mine, it works, just forget about the find player stuff and allowed player stuff, this is for people using the command on others if they are allowed to use it that is.
+
+one thing is you don't need to change the solid property of the player.
+
+
+code:
+
+            else if (FStrEq(pcmd, "noclip_mode"))
+            {
+                  if ((arg1 != NULL) && (*arg1 != 0))
+                  {
+                        edict_t *pPlayer = UTIL_FindPlayerByTruncName ( arg1 );                                                
+
+                        if(( pPlayer != NULL )&&(!pPlayer->free) )
+                        {
+                              if( !PlayerIsAllowed(pEntity) )
+                              {
+                                    if( pEntity != pPlayer )
+                                    {
+                                          ClientPrint(pEntity,HUD_PRINTCONSOLE,"You can't use commands on other players\n");
+                                          return;
+                                    }
+                              }
+                              int noclip = -1;
+                              
+                              if( pPlayer->v.movetype != MOVETYPE_NOCLIP )
+                              {
+                                    pPlayer->v.movetype = MOVETYPE_NOCLIP;
+                                    noclip = 1;
+                              }
+                              else
+                              {
+                                    pPlayer->v.movetype = MOVETYPE_WALK;
+                                    noclip = 0;
+                              }
+                              
+                              char msg[128];
+                              
+                              sprintf(msg,"%s used noclip %d on %s\n",STRING(pEntity->v.netname),noclip,STRING(pPlayer->v.netname));
+                              
+                              UTIL_HUDPrintMessageAll(msg);
+                        }
+                  }
+                  return;
+            }
+
+
+
+
+[modified on 06/23/02 at 05:05:11]
+--------------------------------------------------
+06/23/02 at 05:33:44  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+I store their wonids in a simple 2 dimensional array. I add their WON_Id to it using a command in client command and they can also be removed (I also store them in a file so they are saved when you changelevel and restart the server)
+
+So I just see if their won_Id is in the list and if it is, they are allowed, if not they are not allowed!
+
+--------------------------------------------------
+06/23/02 at 05:43:09  Reply by: kippie (da_matt@hotmail.com)
+--------------------------------------------------
+Well, in general I don't see an actual difference between yours and mine, except u use a pPlayer and use v.movetype instead of pev->movetype
+but do you see an actual mistake I could be making which makes the noclip not working?
+
+--------------------------------------------------
+06/23/02 at 17:32:52  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+I think it depends on when you make this modification of the movetype player attribute. Do you make it at the beginning or at the end of your StartFrame() ? Before or after the engine's actual StartFrame() gets called ? If it is for a bot, before or after their RunPlayerMove() gets called ?
+If you make it at the incorrect location, chances are that the value you set gets overwritten somewhere by the engine before it is actually checked to determine the move type.
+
+
+--------------------------------------------------
+06/24/02 at 00:18:58  Reply by: kippie (da_matt@hotmail.com)
+--------------------------------------------------
+hehe, I already got it :)
+stupid mistake actually, the noclip command already existed >_<
+but then I get a problem of the server being the only one able to use the noclip/godmode.
+but I guess I should do it the way cheese did it then...
+

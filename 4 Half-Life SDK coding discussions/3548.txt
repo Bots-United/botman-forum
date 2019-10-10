@@ -1,0 +1,118 @@
+--------------------------------------------------
+Subject: Adding commands in HPB bot?
+--------------------------------------------------
+08/07/02 at 00:59:24  Posted by: kippie (da_matt@hotmail.com)
+--------------------------------------------------
+Hi, I've downloaded the sourcecode of HPB bot v 2.1. I haven't changed anything, just added some commands in dll.cpp .
+But the problem is, they only seem to work for me, the host. Does anybody have an idea why they won't work for the other clients and what I could do to fix this problem?
+
+--------------------------------------------------
+08/07/02 at 06:09:48  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+There is a check at the top of the ClientCommand() function to make sure the player issuing the commands is the player running the listen server client.  Just remove that check (it will expose all bot commands to any player) or place your new commands outside the scope of that "if" statement.
+
+botman
+
+--------------------------------------------------
+08/07/02 at 06:46:10  Reply by: kippie (da_matt@hotmail.com)
+--------------------------------------------------
+oki, tnx
+
+
+oh yeah, I have another question too :)
+I saw somewhere it is possible to put a * in front of the command which would make the command do something different, how can I do that?
+or would I need to make a new command "*" ?
+
+[modified on 08/07/02 at 06:46:10]
+--------------------------------------------------
+08/07/02 at 07:32:27  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+'*' is a character just like any other ASCII character.  If you want '*' to have a special meaning (like a wild card for example), you would have to create the code to do something with that yourself or include source code from some regular expression parser (see the grep source code from GNU for some sample (and compilicated) regular expression parsing code).
+
+botman
+
+--------------------------------------------------
+08/07/02 at 10:57:23  Reply by: kippie (da_matt@hotmail.com)
+--------------------------------------------------
+oki, another question :)
+I want to be able to let all the clients hear a couple of *.wav files after each other, how would I go about it?
+so it would basically be speak ..., when first wav is done: speak ..., when second wav is done: speak ..., etc.
+any advice on that? :)
+
+--------------------------------------------------
+08/07/02 at 13:25:24  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Nope.  You'd have to time the .wav files yourself and implement a delay on the server between each CLIENT_COMMAND("play filename.wav\n"); command.
+
+botman
+
+--------------------------------------------------
+08/07/02 at 13:39:45  Reply by: kippie (da_matt@hotmail.com)
+--------------------------------------------------
+ok, but how could I make the clients play the wav files?
+
+--------------------------------------------------
+08/08/02 at 06:16:13  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+CLIENT_COMMAND("play filename.wav\n");
+
+botman
+
+--------------------------------------------------
+08/08/02 at 12:18:14  Reply by: kippie (da_matt@hotmail.com)
+--------------------------------------------------
+and will that play to all the clients?
+(soz for noob questions :p )
+
+--------------------------------------------------
+08/08/02 at 12:50:04  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+it should be 
+
+CLIENT_COMMAND(pPlayer,"play filename.wav\n");
+
+:-P
+
+
+And no it wont play to each client, you'll need to do a for loop through each player and do the client command for that player. (I would use INDEXENT(index of loop) to get the pPlayer (edict_t *) But of course, after getting the pPlayer check to see if it isn't NULL first and the ->v.netname is valid because then that would indicate its a player thats playing. Also you can't use CLIENT_COMMAND on bots, so skip through bots.
+
+I hope you understood that, I'd rather give you an explanation rather than code, so you'll try it yourself and learn from it :p
+
+--------------------------------------------------
+08/08/02 at 13:31:07  Reply by: msummers (msummers@scires.com)
+--------------------------------------------------
+You could also use
+EMIT_SOUND_DYN2(pPlayer, CHAN_VOICE, "halt.wav", 1, ATTN_NORM, 0, 100);
+You will need to precache the wav file if it isn't precached automatically. 
+
+Put
+PRECACHE_SOUND("halt.wav");
+in your dispatch spawn function to precache the wav
+
+[modified on 08/08/02 at 13:31:07]
+--------------------------------------------------
+08/08/02 at 13:48:37  Reply by: kippie (da_matt@hotmail.com)
+--------------------------------------------------
+yeah, but I don't wanna precache all of the sounds :p
+but tnx anyways :D
+
+oh yeah and cheese, thanks again :) (not that I really get what u mean ;p )
+(same goes for you botman :P )
+
+
+[modified on 08/08/02 at 13:48:37]
+--------------------------------------------------
+08/08/02 at 16:28:53  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Look in my bot's source code, I have basic stuff to make the bots talk... It's using both CLIENT_COMMAND and EMIT_SOUND_DYN2.
+
+You might want to use scripted sentences too, just like the grunts in Half-Life... Try : CLIENT_COMMAND ("speak \"clik(p100) damn! you! bastard! clik\"\n");
+and hear your bot insulting your players... :D
+
+[modified on 08/08/02 at 16:28:53]
+--------------------------------------------------
+08/09/02 at 03:14:59  Reply by: kippie (da_matt@hotmail.com)
+--------------------------------------------------
+rofl, yeah, but I'm just using HPB as a hooking dll for serverside mods, I'm not making a new bot.
+BTW, I have found something in client.cpp where it loops through all the players, could I use that as a start to speak to all players?
+

@@ -1,0 +1,83 @@
+--------------------------------------------------
+Subject: weapon position
+--------------------------------------------------
+03/20/01 at 09:26:07  Posted by: zoom (fu@shai.com)
+--------------------------------------------------
+Sometimes bots can see the enemy, but something obstructs the weapon's projectile.  In general, is the edict's origin the starting position of the projectile?  It should probably change to eye position for the sniper...
+
+--------------------------------------------------
+03/20/01 at 13:02:14  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+The HPB bot uses the eye position when looking for and aiming at enemies.  As far as I know there is nothing in the engine that indicates the position of the weapon.
+
+I'm not sure what you mean by "obstructs the weapon's projectile".  Are you talking about a weapon like the RPG or crossbow?  The sniper rifle doesn't have a "projectile".
+
+botman
+
+--------------------------------------------------
+03/21/01 at 21:57:50  Reply by: zoom (fu@shai.com)
+--------------------------------------------------
+By "projectile" I meant the bullet coming out of (say) the TFC scout's gun.  Suppose the scout is stationary on a platform above you.  You can barely see its head (and it can see your head), but you can't see its gun, thus there is no clear line of fire.  The scout fires, but the bullets hit the platform instead.  Or, if a soldier, the rocket would blast him back and into the air.
+
+I figure the origin is a good rough approximation for tracing a line between the gun and enemy position.  This can help the bot aim if the enemy is only partially visible; i.e., just see the head or feet.  We can trace a line from the weapon to the head or foot.
+
+--------------------------------------------------
+03/22/01 at 04:30:56  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+Ah, I see what you are saying.  Yes, for some weapons the bullet path would come from the center of the body (the origin).  For other weapons, like the RPG, the path comes from shoulder height which would be closer to eye level.
+
+botman
+
+--------------------------------------------------
+03/22/01 at 10:51:35  Reply by: jldailey (jldailey@uchicago.edu)
+--------------------------------------------------
+there are some comments in the SDK about a hacked gun position, in which they simply approximate the end of the barrel by getting a spot just above the origin and out in front of the player a little... i assume the same approach would work... there is even a GetGunPosition() in utils.cpp (which now only returns origin + view_ofs) that could simply run several checks on weapon type and then return a (somewhat) realistic barrel origin.
+
+--------------------------------------------------
+03/26/01 at 18:39:21  Reply by: zoom (fu@shai.com)
+--------------------------------------------------
+Thanks.  I remember seeing that "hacked gun position" comment, but figured the gun position had to change based on weapon.
+
+
+--------------------------------------------------
+03/26/01 at 21:18:45  Reply by: jldailey (jldailey@uchicago.edu)
+--------------------------------------------------
+if you think about holding any gun, rifle or handgun, you have to aim it with your eye order for it to be useful (considering that most people cant hit the broad side of a barn from the hip, contrary to the way the guns look when playing CS). so you hold the reticles (either scope of open sights) right up in line between your eye and the target, and since the  reticles are essentially then just barely above the barrel position, to get an end of gun position you want to somewhere close to
+
+the origin + (view_ofs - Vec(0,0,5)) + (a unit length vector pointing along the view angle * a scalar based on weapon length)
+
+and to do a simply /decent/ job of finding the gun position you dont have to use the scaled length in front, you can simply use a fixed length vector along the aim angle and skip measuring the models... this is i think a decent approxiamtion because when you hold a rifle, the butt is pressed against your shoulder leaving the barrel tip about 60 centimeters in front of the player, and when you hold a handgun you lock the elbows so you are holding the barrel close to the same position... the trick would be to find the right scalar which could probably be done using a hacked up version of the DrawBeam() stuff in the HPB template, or if someone knew an easy way to convert from game units to metric that would work much easier... 
+
+which is a good question, and perhaps should get its own thread but.... 
+ the units in halflife, how to convert to something useful like metric units? anyone know? 
+
+--------------------------------------------------
+03/27/01 at 04:45:06  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+"the units in halflife, how to convert to something useful like metric units? anyone know?"
+
+The map units in Half-Life correspond to inches.  The player is 72 units high (6 feet).  The deathmatch player speed is 270 units per second (15.34 miles per hour).  Convert these values to metric using the standard English to Metric conversions.
+
+botman
+
+--------------------------------------------------
+03/27/01 at 07:09:00  Reply by: theimann (killaruna@yahoo.com)
+--------------------------------------------------
+It's interesting that as a player you always seem to be able to shoot at things that you can see, so one would assume that the weapon position is always near the eye-position. However Botman is right and for some weapons (like the shotgun in HL-deathmatch) the projectiles start near the player origin: I've seen my bot shooting walls more than once because of this thingy. I guess you would need some table where you store the offset to the player's origin for each weapon.
+
+Tobias 
+
+--------------------------------------------------
+03/27/01 at 07:26:23  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+Also remember that you CAN'T control the accuracy of the weapon (unless you are the one creating the MOD).  Even if you have perfect aiming you can still miss the target if the weapon accuracy is pretty bad (like running with an AWP, etc.).
+
+botman
+
+--------------------------------------------------
+03/31/01 at 06:15:25  Reply by: actionhank (clandday@hotmail.com)
+--------------------------------------------------
+Just a warning.....
+If you make the origen of the bullets/projectile the same as the eye level then models (ie in TFC) will look like they have magical vision that shoots bullets from there eye's
+(Just like superman)
+

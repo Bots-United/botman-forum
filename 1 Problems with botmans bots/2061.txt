@@ -1,0 +1,129 @@
+--------------------------------------------------
+Subject: Server crash under linux !
+--------------------------------------------------
+07/29/01 at 02:43:20  Posted by: McKillroy (mckillroy@planetfortress.com)
+--------------------------------------------------
+I installed HPBBot and later Oddbot under Linux. 
+The Server alone runs fine. 
+Then i added oddbot. The server started up and crashed after the 7th bot entered. This happened with hpb_bot too. It happened when I entered as a 7th player too. I sometimes got an error when connecting like 
+
+Request for player info index 7 exceeds max player limit 6 
+
+my maxplayers is 14 and reported such in gametiger. 
+I'm not sure if that is a general HL problem or due to the bots. 
+I'm using the newest downloadable version of the f Linux HLDS-pack: 
+
+Any Help ??
+
+--------------------------------------------------
+07/29/01 at 05:17:35  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+What's "gametiger"?
+
+Are you using any other kind of add-on like Admin MOD?  If so, do you get the same results without running and and running hlds with the bot alone?
+
+botman
+
+--------------------------------------------------
+07/29/01 at 06:02:46  Reply by: McKillroy (mckillroy@planetfortress.com)
+--------------------------------------------------
+Finally i figured it out:
+
+I had a method of calling hlds_run through a set of shell scripts that restarted the server after a crash:
+
+script 1: LoopHLTFC
+-------------------
+#!/bin/tcsh
+#
+#  Just loops running the server.
+#  You can use the STOP.tfc file to stop the server at certain times.. e.g.
+#  to stop it:  crontab the creation of STOP.tfc and a server quit.
+#  to start it: crontab the deletion of STOP.tfc
+#
+
+setenv LD_LIBRARY_PATH .
+while (1)
+    if ( -e STOP.tfc ) then
+      sleep 60
+    else
+      ./hlds_run -game tfc -port 27016 +map well 
+       sleep 10
+    endif
+end
+
+--------------------------------------------------
+
+Script 2: ScreenHLTFC
+--------------------------------------
+#!/bin/tcsh
+
+setenv TERM linux
+
+exec screen -c ./screenrc -S tfc ./LoopHLTFC
+
+-----------------------------------------------
+
+
+script 3: the resource file: screenrc
+----------------------------------------
+scrollback   2000
+bindkey \003 detach
+bindkey \033 detach
+detach
+------------------------------------------
+
+
+Script 4: con
+-------------------------
+#!/bin/tcsh
+
+#
+#  Use ./con to get a list of detached screens...
+#
+#      or just use './con tfc'  or  './con dm'
+#
+#      when in the console use ESC or CTRL-C to deatch again.      
+#
+if ( $# > 0 ) then
+      set scr = $1
+else
+      screen -list | grep -v Socket | sed -e 's/[0-9]*\.//' -e 's/(.*)//'
+      echo -n "when in console, dont use quit, use ESC. Pick a screen [tfc]: "
+      set scr = $<
+      if ( $scr == "" ) set scr = tfc
+endif
+
+screen -r $scr
+
+---------------------------------------------
+
+
+When I called the server in a more simple way, just with a pure startup script the bug was suddenly gone - don't ask me why.
+
+The server now runs admin mod and the bots and seems to be stable....
+
+Before it even didn't run the bots alone.
+
+Your bots own ! Thanks for making them !
+
+Yours 
+/McK.
+
+P.S. Gametiger is a web-based HL launcher: http://www.gametiger.com
+
+--------------------------------------------------
+08/02/01 at 01:51:58  Reply by: McKillroy (mckillroy@planetfortress.com)
+--------------------------------------------------
+Finally i figured out what the bug was !
+
+You can forget all that crap diagnosis above !
+
+I simply forgot to set maxplayers in the command line/in the autoexec.
+The server assumed a maximum of 6 players.
+
+It allowed to enter the 7th player but then crashed.
+
+The server is now running with ODD_bot and admin-mod and seems to be stable now.
+
+/McK
+

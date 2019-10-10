@@ -1,0 +1,185 @@
+--------------------------------------------------
+Subject: WaypointFindPath is driving me insane - plz help!
+--------------------------------------------------
+05/07/01 at 11:33:09  Posted by: Dobbs (stephen.dobbs@btinternet.com)
+--------------------------------------------------
+OK, so after finding out about the WaypointFindPath function, I decided to use it in my navigation. However, my bot doesn't seem to want to use WaypointFindPath to find a path! Instead, it just hangs around the nearest reachable waypoint which it should only do if the bot has no current waypoint (curr_waypoint_index). Below is the code for my BotFindWaypoint and BotHeadTowardWaypoint functions, excluding my 'find objective' code :)
+
+Essentially, can some intelligent lifeform please indicate where I've gone wrong and perhaps give me the code to sort it out? Botman? someone?
+
+(P.S. my bot uses HPB template v3)
+
+----------------- code from bot_navigate.cpp ----------------- 
+
+
+bool BotFindWaypoint( bot_t *pBot )
+{
+   int team; 
+   int dest;
+   int temp1;
+edict_t *pEdict = pBot->pEdict;
+team = UTIL_GetTeam(pEdict);
+int i, wpt_index[3], select_index;
+
+ // HERE WOULD NORMALLY BE CODE TO FIND AN OBJECTIVE SUCH AS THE FLAG, BOMB ETC.
+// ELSE, do the idle navigation below.
+
+ PATH *pPath = NULL; 
+ int path_index; 
+ int ind, s, waypoint_index[11], selected_index; 
+
+ s = 1; 
+ selected_index = -1; 
+ i = -1; 
+ ind = 1; 
+
+ // Start Crash - Fix 
+ for (int t=0; t<10; t++) 
+ { 
+  waypoint_index[t] = -1; // If this is set to above -1, navigation works but bot always hangs around this numbered waypoint, indicating that the bot cannot find a path using the function below
+ } 
+ // End Crash - Fix 
+
+ while ((i=WaypointFindPath(&pPath, &path_index, pBot->curr_waypoint_index, team)) != -1) 
+ { 
+
+    if ((i != pBot->curr_waypoint_index) && 
+        (i != pBot->prev_waypoint_index[0]) && 
+        (i != pBot->prev_waypoint_index[1]) && 
+        (i != pBot->prev_waypoint_index[2]) && 
+        (i != pBot->prev_waypoint_index[3]) &&
+      (i != pBot->prev_waypoint_index[4]))
+    { 
+       waypoint_index[s] = i; 
+       if (s < 10) 
+       { 
+          s = s + 1; 
+       } 
+    } 
+ } 
+
+ ind = RANDOM_LONG(1, s); 
+ if ((ind <= 10) && (ind >= 1)) 
+ { 
+ selected_index = waypoint_index[ind]; 
+ } 
+ else 
+ { 
+ selected_index = -1;
+ } 
+ if (selected_index != -1)  // was a waypoint selected? 
+ {
+    pBot->prev_waypoint_index[4] = pBot->prev_waypoint_index[3]; 
+    pBot->prev_waypoint_index[3] = pBot->prev_waypoint_index[2]; 
+    pBot->prev_waypoint_index[2] = pBot->prev_waypoint_index[1]; 
+    pBot->prev_waypoint_index[1] = pBot->prev_waypoint_index[0]; 
+    pBot->prev_waypoint_index[0] = pBot->curr_waypoint_index; 
+
+    pBot->curr_waypoint_index = selected_index; 
+    pBot->waypoint_origin = waypoints[selected_index].origin; 
+
+    return TRUE; 
+ } 
+ return FALSE; 
+} 
+
+
+bool BotHeadTowardWaypoint( bot_t *pBot )
+{
+   int i, team;
+   Vector v_src, v_dest;
+   TraceResult tr;
+   int index;
+   bool status;
+   float wpt_distance;
+   edict_t *pEdict = pBot->pEdict;
+
+   team = UTIL_GetTeam(pEdict);
+
+   // check if we need to find a waypoint...
+   if (pBot->curr_waypoint_index == -1)
+   {
+      i=WaypointFindReachable(pEdict,REACHABLE_RANGE,team);
+
+      pBot->curr_waypoint_index = i;
+      pBot->waypoint_origin = waypoints[i].origin;
+   }
+
+   // find the distance to the target waypoint
+   wpt_distance = (pEdict->v.origin - pBot->waypoint_origin).Length();
+
+
+   // are we close enough to a target waypoint...
+   if (wpt_distance < 50)
+   {
+      index = 4;
+
+      // try to find the next waypoint
+      while (((status = BotFindWaypoint( pBot )) == FALSE) &&
+             (index > 0))
+
+      if (status)
+      {
+         // found waypoint, adjust ideal yaw...
+
+         Vector v_direction = pBot->waypoint_origin - pEdict->v.origin;
+
+         Vector v_angles = UTIL_VecToAngles(v_direction);
+
+         if (v_angles.y > 180)
+            v_angles.y -= 360;
+
+         pEdict->v.ideal_yaw = v_angles.y;
+
+        BotFixIdealYaw(pBot->pEdict);
+
+      // Paulo-La-Frite - START bot aiming bug fix (from bot_combat.cpp)
+      //pBot->pEdict->v.v_angle.x = bot_angles.x;
+
+      if (pBot->pEdict->v.v_angle.x > 180)
+      pBot->pEdict->v.v_angle.x -=360;
+
+      // adjust the view angle pitch to aim correctly (MUST be after body v.angles stuff)
+      pBot->pEdict->v.v_angle.x = -pBot->pEdict->v.v_angle.x;
+      
+      // Paulo-La-Frite - END
+
+      }
+      else
+      {
+         pBot->curr_waypoint_index = -1;  // indicate no waypoint found
+
+         // clear all previous waypoints...
+         for (index=0; index < 4; index++)// was 10
+            pBot->prev_waypoint_index[index] = -1;
+      }
+   }
+   else
+   {
+      // keep turning towards the waypoint...
+
+      Vector v_direction = pBot->waypoint_origin - pEdict->v.origin;
+
+      Vector v_angles = UTIL_VecToAngles(v_direction);
+
+      pEdict->v.ideal_yaw = v_angles.y;
+
+      BotFixIdealYaw(pEdict);
+   }
+
+   return FALSE;
+}
+
+
+--------------------------------------------------
+05/07/01 at 12:50:13  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+You might want to start with some VERY simple waypoints to begin with (i.e. create a single line of waypoints from the spawn point to somewhere off in the distance, 10 or 12 should do).  Add some output code to your waypoint functions to print out what the bot is doing while searching for waypoints.  Spawn a bot and watch it to see if it follows the path to the end.  When it gets to the end it should turn around and come back the same way (which you don't currently have any code to cover in your BotFindWaypoint function.  what if "i" ONLY matches one of the previous waypoints?  you should clear out the previous waypoints in this case and use "i" anyway).
+
+botman
+
+--------------------------------------------------
+05/08/01 at 00:56:41  Reply by: bigjesus (holybigjesus@hotmail.com)
+--------------------------------------------------
+Or you can borrow my strait jacket till things calm down a lil bit. :)
+

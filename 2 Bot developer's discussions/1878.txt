@@ -1,0 +1,81 @@
+--------------------------------------------------
+Subject: Bots detecting spies and wether disguised
+--------------------------------------------------
+06/27/01 at 06:10:56  Posted by: ABot-Steve (Steve1219@Yahoo.com)
+--------------------------------------------------
+I've been researching the pBot structure and how would i be able to tell, if i already know what class (spy) and team (!= player_team) that the bot is on, if the bot is disguised as another player.  This would really help for the ABot.  I've tried with this and asked a few friends.  But no help.  If anyone knows, please converse with me.
+
+--------------------------------------------------
+06/27/01 at 08:03:20  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+For TFC, the team and class contained within the edict structure will reflect which team the bot is on and which class they are using (see the UTIL_GetTeam function in util.cpp for team information).  You can use something like this to determine which player class they are using...
+code:
+if (pEdict->v.playerclass == TFC_CLASS_SNIPER)
+{
+   // do sniper specific stuff here...
+}
+
+Here's the code that I use to check if a player on another team is disguised...
+code:
+      if ((mod_id == TFC_DLL) &&
+          (pPlayer->v.playerclass == TFC_CLASS_SPY))
+      {
+         // check if spy is disguised as my team...
+         char *infobuffer;
+         char color[32];
+         int color_bot, color_player;
+
+         infobuffer = (*g_engfuncs.pfnGetInfoKeyBuffer)( pEdict );
+         strcpy(color, (g_engfuncs.pfnInfoKeyValue(infobuffer, "topcolor")));
+         sscanf(color, "%d", &color_bot);
+
+         infobuffer = (*g_engfuncs.pfnGetInfoKeyBuffer)( pPlayer );
+         strcpy(color, (g_engfuncs.pfnInfoKeyValue(infobuffer, "topcolor")));
+         sscanf(color, "%d", &color_player);
+
+         if (((color_bot==140) || (color_bot==148) || (color_bot==150) || (color_bot==153)) &&
+             ((color_player==140) || (color_player==148) || (color_player==150) || (color_player==153)))
+            continue;  // skip this player if I think he's on my team
+
+         if (((color_bot == 5) || (color_bot == 250) || (color_bot==255)) &&
+             ((color_player == 5) || (color_player == 250) || (color_player == 255)))
+            continue;  // skip this player if I think he's on my team
+
+         if ((color_bot == 45) && (color_player == 45))
+            continue;  // skip this player if I think he's on my team
+
+         if (((color_bot == 80) || (color_bot == 100)) &&
+             ((color_player == 80) || (color_player == 100)))
+            continue;  // skip this player if I think he's on my team
+      }
+
+This code is contained within the BotFindEnemy() function in the bot_combat.cpp file.  It basically gets the current color of the bot (which indicates which team it's on) and compares that to the color of the other player.  If the other player is set to a color that is used by the bot's team then the bot will think that the other player is a teammate and won't attack them.
+
+botman
+
+--------------------------------------------------
+06/27/01 at 08:51:16  Reply by: ABot-Steve (Steve1219@Yahoo.com)
+--------------------------------------------------
+thanks.  Now, one more question.  I've had a bunch of people asking me to add "rocket jumping" and "bunny-hopping".  I am un-sure of how to do this.  I'm sure ARES doesn't know either (yet, he might).  But, if anyone here knows (including you botman ;)  how to do it, please inform me on the procedure.
+
+Thanks
+
+--------------------------------------------------
+06/27/01 at 09:01:02  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+Rocket jumping itself isn't too hard.  Have the bot aim the rocket at the ground, jump up, then press the fire button soon after jumping.  The REAL trick is getting them to jump in the appropriate places AND navigate towards a goal while in the air.
+
+Bunny-hopping is similar.  Have the bots jump and strafe, turn jump and strafe, turn jump and strafe, etc.  The big problem here is getting enough feedback to know WHEN to jump and WHEN to strafe.  You might try to keep a delta time between jumps and keep track of the current velocity.  Then by trial and error, adjust the delta time between jumps to try to maximize the velocity (i.e. if adjusting the delta time larger makes the bots slow down then try adjusting the delta time smaller).
+
+I think many people take for granted the amount of cranial complexity (i.e. brain power) it takes to pull off these types of maneuvers while playing the game.  Bots can't do everything that human players can since their brains are SOOOOO tiny.
+
+botman
+
+
+--------------------------------------------------
+06/27/01 at 11:26:33  Reply by: ABot-Steve (Steve1219@Yahoo.com)
+--------------------------------------------------
+Well, how can i change the damage given to armor, health and ammo loss?  I just want to toy with it a little.  Maybe include a cheat-mode for bots to partially cheat so the players can have a little more fun.
+
+Thanks again :)
+

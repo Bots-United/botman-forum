@@ -1,0 +1,133 @@
+--------------------------------------------------
+Subject: HPB bot waypoint flags
+--------------------------------------------------
+01/13/01 at 16:01:17  Posted by: eLiTe (ali@elitegamer.fsnet.co.uk)
+--------------------------------------------------
+I'm using HPB bot waypoints to test my bot, but since some levels are not just basic CTF, the bots don't work properly with them... could you please tell me what flags you use with your waypoints Botman? I think that 13 is 'use', but I'm not sure about the rest...
+
+--------------------------------------------------
+01/13/01 at 22:10:52  Reply by: dannywent (dannywent@hotmail.com)
+--------------------------------------------------
+ok, first a disclaimer:
+My bots don't even use waypoints so i might be totally wrong in trying to answer someone's question about waypoints :)
+but i'll try anyway
+if you're refering to the bit definitions of waypoint flags, you can find them in waypoint.h
+stuff like:
+#define W_FL_LADDER      (1<<4)  /* waypoint on a ladder */
+hope this helps :)
+
+Dan
+
+--------------------------------------------------
+01/14/01 at 06:39:02  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+Here's the flags bits from the waypoint.h file...
+code:
+// defines for waypoint flags field (32 bits are available)
+#define W_FL_TEAM        ((1<<0) + (1<<1))  /* allow for 4 teams (0-3) */
+#define W_FL_TEAM_SPECIFIC (1<<2)  /* waypoint only for specified team */
+#define W_FL_CROUCH      (1<<3)  /* must crouch to reach this waypoint */
+#define W_FL_LADDER      (1<<4)  /* waypoint on a ladder */
+#define W_FL_LIFT        (1<<5)  /* wait for lift to be down before approaching this waypoint */
+#define W_FL_DOOR        (1<<6)  /* wait for door to open */
+#define W_FL_HEALTH      (1<<7)  /* health kit (or wall mounted) location */
+#define W_FL_ARMOR       (1<<8)  /* armor (or HEV) location */
+#define W_FL_AMMO        (1<<9)  /* ammo location */
+#define W_FL_SNIPER      (1<<10) /* sniper waypoint (a good sniper spot) */
+
+#define W_FL_TFC_FLAG    (1<<11) /* flag position (or hostage or president) */
+#define W_FL_FLF_CAP     (1<<11) /* Front Line Force capture point */
+
+#define W_FL_TFC_FLAG_GOAL (1<<12) /* flag return position (or rescue zone) */
+#define W_FL_FLF_DEFEND  (1<<12) /* Front Line Force defend point */
+
+#define W_FL_PRONE       (1<<13) /* go prone (laying down) */
+#define W_FL_AIMING      (1<<14) /* aiming waypoint */
+
+
+There isn't a bit defined to USE an item.  The code knows which items can be used (buttons, wall mounted Health/HEV stations, etc.) and the bot will use those entities when it is close enough to them.
+
+botman
+
+--------------------------------------------------
+01/15/01 at 16:22:20  Reply by: eLiTe (ali@elitegamer.fsnet.co.uk)
+--------------------------------------------------
+Oh, okay... I thought you must have added in more - on the 'well' waypoints I got from cheesemonster's waypoint site, one of the waypoints had a 'prone' flag set!!
+
+Since this is only for FLF I thought you must have made the 'prone' bit a 'use' bit when you play TF.
+
+Looks like the waypointers sending in to cheesemonsters site have no idea what they are doing!!!
+
+And how does the HPB_bot do those attack/defend maps if it has no specific 'capture point' waypoint? Does it not keep a record of which points it has captured? Or does it simply choose a random goal waypoint to visit?
+
+I'm thinking about just making my bot for CS, because I find TF a bit boring after playing CS bots for so long :(
+
+CS has much simpler navigation also, but since I'd started doing TF stuff I thought it would be lame just to give up!
+
+BTW - If you know of any other bugs in your Template 2 could you please tell me? I checked for any more silly string concatenation bugs (I thought the whine code may be causing my bots to crash with long messages, but it seems like I have a bug somewhere else, as crashes don't seem to happen at any specific time :( )
+
+--------------------------------------------------
+01/16/01 at 06:24:24  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+Prone is W_FL_PRONE.  This doesn't do anything at the moment since there isn't anything in the code to handle this prone bit being set.  That will be added to the HPB bot in a future release.
+
+W_FL_FLF_CAP is a capture point waypoint in FLF.  W_FL_FLF_DEFEND is a defend waypoint in FLF.  The bots search through the list of capture points randomly selecting one of the points that has not been captured yet.  Then they search for a W_FL_FLF_CAP point that is closest to that capture point.  The attacking bots will head towards those waypoints.
+
+The defending bots search through the list of capture points and randomly select one that hasn't been captured.  They will search for a W_FL_FLF_DEFEND waypoint that is "close" to that capture point.  Since there can be many DEFEND points close to a capture point, the bots will randomly select one defend point within 800 units of the capture point.  The defending bots will then head towards these defend points.  W_FL_FLF_DEFEND points can also have the W_FL_CROUCH bit set if you want the bot to crouch down to hide behind boxes, barrels or low walls.
+
+botman
+
+--------------------------------------------------
+01/16/01 at 07:47:04  Reply by: eLiTe (ali@elitegamer.fsnet.co.uk)
+--------------------------------------------------
+Thankyou :) I've not used the HPB_bot recently (apart from to get the bot_whine.txt and the bot_names.txt in case my bot was crashing bcoz they weren't there), but I thought that it was very advanced in that area... obviously it woudln't be too difficult to duplicate that behaviour (but I've mucked up somehing in my code in the last week so I'm just going to start over, this time having a proper playtest after each addition).
+
+But I meant what do the bots do in TF when they have to capture certain points? Is it something like:
+
+if (num_goals > 1)
+{
+   if (goal_has_been_captured)
+   {
+      no_destination;
+   }
+
+   if (no_destination)
+      choose_random_uncaptured_goal;
+}
+else
+{
+   go straight for flag! (only one flag so must be CTF)
+}
+
+I could make a system like this, I thought it would be very simple, but when doing CTF the bots crash after 20 mins (with one bot the computer doesn't crash, so I think it is the enemy finding code may access a NULL pointer under sertain conditions :(, so I'm just going to recode the whole thing).
+
+I originally intended to make a CS bot, so I think that I should do that b4 I get involved with TF again, but I just had to know this. The TF capture-point missions will be very similar to FLF I think, so if I like FLF, I will be able to merge the TF/FLF navigation to be like the pseudo-code above I think :D
+
+I am sorry for posting so much about nothing! Just when I had got my bots navigation working, I had a long playtest and it crashed. This just has me so annoyed that I keep posting, but I have no work to show for it (unless u want to play a bot that crashes)... I think I should just stop being so lame, shut up, then get my @ss in gear and rewrite my code. I don't think that I am a BAD programmer, probably just inexperienced (I can do the logic like if statements and things, but I am only a beginner in C/C++).
+
+Again, sorry for unloading all my emotional baggage onto u guys :P
+
+--------------------------------------------------
+01/16/01 at 13:03:50  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+"But I meant what do the bots do in TF when they have to capture certain points?"
+
+The HPB bot currently doesn't support this gameplay mode.  The HPB bot can play capture the flag, reverse capture the flag, and escort the civilian (although they don't really have a concept of escorting anyone and guarding them).  The HPB bot currently can't capture points in any kind or order (like maps where you have to capture point 1, then point 2, then point 3, etc.).  This would require some kind of "waypoint sequence" tag to indicate which waypoints should be approached first.  Things get more complicated if one side is capturing points and the other side is un-capturing points and the bots have to return to points they have previously captured to capture them again.  This is why I didn't attempt to support this type of gameplay mode.
+
+botman
+
+--------------------------------------------------
+01/16/01 at 13:23:43  Reply by: eLiTe (ali@elitegamer.fsnet.co.uk)
+--------------------------------------------------
+Ah, so I don't need to feel too bad about that :)
+Thought that my bots would be playing rubbish if they just went to a random waypoint without having any proper structure. Wondered how u did it with inly 1 flag telling which goal was which, but it would bepretty simple just to records that numbers of the goal waypoints
+
+But I think that you should change my bot just to be for CS for the moment, I feel a bit dirty whoring around every single mod for HL, hehe. I may add in TF support later... but it will be a while b4 they can play CS as a proper team, and I think TF bites (takes way too long to kill somwone, so even if you're more accurate than them, they can still kill u if they're a HWGuy and you're a soldier, etc), lol, hope FLF is better :|
+
+So, while my bot will still add into other mods, I originally intended it to be just for CS, with the TF stuff as an added bonus :P
+   Sorry to do that, but I feel like I'm wasting time (all the other CS bots are getting pretty advanced, while I'm sitting around trying to squash stupid bugs). Next thing I'm gonna do is delete my current code, then plan out what features I'm gonna add, and not just add them as I feel like it :(
+
+I'm also going to try and make an NNBot like waypoint system - now that I've seen the floyd code I realise I can easily make a function that calculates which path leads to a goal and stuff.
+
+Thanks for the great template!!! Just don't know what any of us can do in return (apart from possibly shut up) :)
+

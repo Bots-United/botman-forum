@@ -1,0 +1,101 @@
+--------------------------------------------------
+Subject: Catching messages. i.e. buyzone
+--------------------------------------------------
+11/09/00 at 05:17:05  Posted by: gommo (gommo@geocities.com)
+--------------------------------------------------
+I think I am missing something here when trying to catch messages.
+
+In my BotClient_CS_ShowMessage function I have this code
+
+else if (strcmp((char *)p, "buyzone") == 0) // Are we in a buying zone?
+   {
+         bots[bot_index].start_action = MSG_CS_BUY;
+         UTIL_ClientPrintAll( HUD_PRINTNOTIFY, "I am trying to buy2\n");
+   }
+
+does this detect when a buyzone is put up on the HUD????
+
+--------------------------------------------------
+11/10/00 at 07:29:01  Reply by: FuckFace (gellert.lukacs@dbs.hu)
+--------------------------------------------------
+Consider the following code: (I hope it will be not too messy when it is displayed in the discussion thread) Explanation after the code.
+
+void BotClient_CS_StatusIcon(void *p, int bot_index)
+{
+      static int state = 0;
+      static int on_off;
+      
+      if ( state == 0 )
+      {
+            on_off = *(int *)p;
+            state++;
+            return;
+      }
+      if ( state == 1 )
+      {
+            if ( strcmp( (char*) p,"buyzone" ) == 0 )
+            {
+                  bots[bot_index].BL.BuyZone = (on_off == 1);
+            }
+            if ( strcmp( (char*) p,"rescue" ) == 0 )
+            {
+                  bots[bot_index].BL.RescueZone = (on_off == 1);
+            }
+            if ( strcmp( (char*) p,"c4" ) == 0 )
+            {
+                  bots[bot_index].BL.C4Zone = (on_off == 1);
+            }
+
+            if ( on_off == 0 )
+            {
+                  state = 0;
+                  return;
+            }
+      }
+
+      state++;
+      if ( state == 4 )
+            state = 0;
+
+      return;
+}
+
+This function is very similar in structure, to the other message handlers. The internal working is just about nothing. When a StatusIcon message cames in, it may have several parameters. I'm not sure but using just a few of them seems enough to solve the buyzone, escapezone, c4zone etc.. problems.
+
+You may notice the
+"[bot_index].BL.RescueZone" etc..
+variable reference, this is just my attempt to gather info about the env. You probably want to store this info somewhere else. The point is that after the message fully interpreted any statusicon visibility info will be at your fingerprints.
+
+When the function gets called the first time, the byte that comes in is the on/off state of the next string representing the zone or the statusicon itself.
+
+IMPORTANT:
+
+This message handler can only work if you do some other things in the source. Namely: You have to register the message you are tracing, this is done in: (I'm using botman's framework to show you, but it would look like similar anyway)
+
+pfnRegUserMsg(...) (engine.cpp)
+{
+ //
+ // do something like this:
+ //
+ ... in VALVE branch ...
+ else if (strcmp(pszName, "StatusIcon") == 0)
+ {
+     message_StatusIcon = msg;
+ }
+  ...
+}
+
+do not forget to define message_StatusIcon, etc... but it will be clear from the other code fragments..
+
+than you also have to modify the pfnMessageBegin() function as follows:
+
+somewhere in the CS_DLL specific branch put in:
+
+  else if (msg_type == message_StatusIcon)
+     botMsgFunction = BotClient_CS_StatusIcon;
+
+this is the function which actually will call botclient_CS_StatusIcon()...
+
+Hope it helps,
+
+

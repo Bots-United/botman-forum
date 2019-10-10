@@ -1,0 +1,177 @@
+--------------------------------------------------
+Subject: okay, HLGMI for Win32 done ;)
+--------------------------------------------------
+04/23/01 at 00:25:33  Posted by: Clean (botmans@divinegods.net)
+--------------------------------------------------
+After two days I'm done. Sorry it couldn't be sooner, yesterday friends nabbed me out in the morning to night partying. Any how, HLGMI for any Win32 (esp. NT) is done. It handles all entities linked to classes as static exported functions defined or not. It also allows bot/admin programmers to see what new entities there are. In cases like newer CS mods adding a few new entities, it usually breaks bot/admin mod codes--as you can tell when you load the server and it crashes. HLGMI will dynamically create those missing exported functions during runtime and call existing ones if needed. The product is not online yet. I'm going to let it run with the final version of HLREF for a day or two. If it doesn't crash by then I will send it up on the web. Happy coding! :)
+
+
+--------------------------------------------------
+04/23/01 at 04:47:40  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+How are you dynamically exporting the function name with C style linkage?
+
+botman
+
+--------------------------------------------------
+04/23/01 at 22:48:58  Reply by: Clean (botmans@divinegods.net)
+--------------------------------------------------
+This is a simple API filtering technique:
+
+1. inject our custom DLL into target process's memory-space
+2. trap GetProcAddress
+3. redirect entity/class functions to our own custom filter
+4. notify the first client DLL's HLGMI handler if exported by that client DLL so that it may recieve the function sw.dll/hw.dll is trying to access
+5. execute the original MP.DLL's entity/class function as intercepted from step #2
+6. make sure to manage multiple subprocesses
+
+Since I restarted programmming again after over a year and a half, I have to give due credits to you guys for public domain. Thank you! :) Take this little API filtering concept as my token of appreciation.
+
+
+
+
+--------------------------------------------------
+04/24/01 at 07:26:27  Reply by: CountFloyd (countfloyd_1999@yahoo.com)
+--------------------------------------------------
+LOL ! Hey Animadei:
+"Greetings to Xoanon,Marquis de Soiree,The Owl ..." looks like you've got some very impressive friends (I only miss 'FrogsPrint' in your list) ;)
+Remember when these -> http://www.woodmann.com/fravia/ pages were a 'treasure of information' ?
+
+PS: Is Neural Noise really a chick ? 
+
+
+
+--------------------------------------------------
+04/25/01 at 00:00:42  Reply by: Clean (botmans@divinegods.net)
+--------------------------------------------------
+Count Floyd. My intent is not to impress ;) They just bitch at me everytime because I never included any greets, esp. I never release "anything" under this nick ;) Good to know you are up to date on r.e. Fravia's site is one of the only few places for our field. Please don't take me wrong, but I think most are amatures. I take it you think it's kind of odd I'm doing this Half Life thing outta a million other things. Who plays CS? Everyone. Reason enough? Heheh. Neural Noise is really a freaky Italian *mann*. I remember him when he couldn't type English ;) hehe. And lastly there a few chicks doing r.e. and some in the scene, yes they do exist ;) [okay need to go back to code testing ;)]
+
+
+
+Update: Spent today making HLGMI hook into target processes as well + compressed/trashed import table handling.
+
+
+--------------------------------------------------
+04/25/01 at 05:22:21  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+I've been doing some research on intercepting GetProcAddress and the only things I could find were references to web sites discussing writing viruses for Windows platforms.
+
+Trapping GetProcAddress seems to required locating kernel32.dll in memory and modifying the GetProcAddress callback.  Is this method of hacking the OS the way that you are handling this?  I wouldn't think it would be very widely supported on different versions of Windows.
+
+botman
+
+--------------------------------------------------
+04/25/01 at 08:34:33  Reply by: Clean (botmans@divinegods.net)
+--------------------------------------------------
+QUOTE:
+I've been doing some research on intercepting GetProcAddress and the only things I could find were references to web sites discussing writing viruses for Windows platforms.
+
+Trapping GetProcAddress seems to required locating kernel32.dll in memory and modifying the GetProcAddress callback.  Is this method of hacking the OS the way that you are handling this?  I wouldn't think it would be very widely supported on different versions of Windows.
+
+botman
+
+
+
+
+
+It's more work than it seems. I've been around doing this since Win 95 and up to Windows NT5. It's simply a matter of hooking APIs imported and exported by programs. What you want to do is hook into the program and inject some code that has only one duty, that is to load your DLL that you want to inject. From there on, your code is in the target process's memory-space. One major obstacle is getting the already bounded IAT entries with its OriginalFirstThunk destroyed to compare it with the exporting DLLs export table at runtime. You can compare the addresses and deduce the actual API name, ordinal, or hint this way. This API hooking is very old. It will work as long as Windows 9x/NT uses the COFF/PE format.
+
+
+Btw, HLGMI is done =) Take it for a spin ;)
+
+
+--------------------------------------------------
+04/25/01 at 10:19:43  Reply by: CountFloyd (countfloyd_1999@yahoo.com)
+--------------------------------------------------
+"Trapping GetProcAddress seems to required locating kernel32.dll in memory and modifying the GetProcAddress callback.  Is this method of hacking the OS the way that you are handling this?"
+
+Animadei doesn't trap any OS Routine. Instead he modifies the import table (DLL Calls) of his target process to have his DLL executed in the targets space with the same priorities & limitations as his target (and to be able to modify everything in the program itself). As Animadei says, there aren't any compatibility problems as long as the Windows PE Format is supported and most of the available Game Trainers, Cracks, Patches work in a similar way. It wouldn't work on Linux though, you would need to support its 'Elf' Exe Format to do it and In-Memory Patches aren't that easy on Linux AFAIK.
+
+"Fravia's site is one of the only few places for our field. Please don't take me wrong, but I think most are amatures."
+
+I think Fravia has lost its unique 'feeling' when +Reverser left it all to Tseph. Since then it's just one of those useless 'how-to-register-this-shareware-app-for-free-ASAP' Sites. Can't say the same about the messageboard though. Speaking about RE:
+Did you bother to write an IDA Pro REF Plugin for disassembling HL DLLs ? Might be cool and come quite handy to spy on different things (did disassemble Android Bot long ago). While at the topic, did you take a closer look at the Debug Protection of CS ? It's quite annoying having to start a DS each time just to debug some lines. I did take a look with SoftIce & FrogsIce some time ago but couldn't find anything suspicious (didn't invest more than 10 mins though).
+
+"Neural Noise is really a freaky Italian *mann*."
+
+Damn, I knew it ! I just fell for the smart looking girl on his page :)
+*mann* (r u german?)
+
+"And lastly there a few chicks doing r.e. and some in the scene, yes they do exist"
+
+The only cool chick I know in RE is Christina Civuentes who did the cool Reference Plugin for IDA Pro :(
+
+"Btw, HLGMI is done =) Take it for a spin ;)"
+
+LOL ! HLGMI the ProcDump of all HL Loggers ;)
+Great job, Animadei !
+
+--------------------------------------------------
+04/25/01 at 10:33:30  Reply by: DeltaShark (snake@magpage.com)
+--------------------------------------------------
+Piece of cake. This is essentailly the technique i used to make my client side bot. Good old Virus writing tactics.  Quite a bit overkill for making the server side bot though.
+
+--------------------------------------------------
+04/25/01 at 17:18:24  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+After browsing around some more for DLL intercepting stuff I found APIHijack, which looks pretty interesting...
+
+http://www.codeproject.com/useritems/apihijack.asp
+
+botman
+
+--------------------------------------------------
+04/25/01 at 20:24:12  Reply by: Clean (botmans@divinegods.net)
+--------------------------------------------------
+Botman ;) http://elicz.cjb.net
+
+--------------------------------------------------
+04/28/01 at 03:53:41  Reply by: pikachu (emperorstuart@hotmail.com)
+--------------------------------------------------
+Why don't you make Your OWn Dll Loading stuff?
+^_^
+
+www.reactos.com
+
+--------------------------------------------------
+04/28/01 at 06:45:04  Reply by: BrianL (halfkiller@hotmail.com)
+--------------------------------------------------
+Your HLGMI had a little error here.  I read the hlgmi.txt file followed every instruction in there and this is what it did. <b>members.nbci.com/_XMCM/blind_20/GMI_Error.jpgHere!</b> You have to right-click and save-as to view the picture.
+
+--------------------------------------------------
+04/29/01 at 03:43:51  Reply by: Clean (botmans@divinegods.net)
+--------------------------------------------------
+Brian: I apologize for not having stated earlier and in the document that I did not test this on Win9x. I spent the day today trying to repair the SAM from the Win2k machine and ended up reinstalling Win2k and then going back to refix the SAM. For the time being, HLGMI is Windows NT until I have reinstalled production tools.
+
+Pikachu: I give credits to where it's due. Did you see me acknowledging any other authors except for Botman's code in the manual?
+
+--------------------------------------------------
+04/29/01 at 05:18:55  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+I think what Pikachu mean was why don't I make MY own DLL loading stuff.
+
+That was why I posted the link about API hijacking to see if the bot DLL could hijack the Half-Life engines' loading of exported DLL functions.
+
+botman
+
+--------------------------------------------------
+04/29/01 at 07:03:23  Reply by: Clean (botmans@divinegods.net)
+--------------------------------------------------
+Brian: Since I didn't install any tools yet I went ahead with verifying a hunch. It's been ages since I've last touched Win9x. For NT I relied on a technique called copy-on-write. System memory that is modified is automatically substituted with new instance of the memory containing the modified data, thus the original system shared data is left intact. Now this is a unique per-process operation and the next program that runs will see the original shared data and not the modified version. Win9x does not have copy-on-write memory attribute. Its virtual memory manager does not have this capability. Thus, it is not possible to backtrack the trashed API import table unless we place heavy dependency on line-by-line code tracing. This is not a very good alternative because unlike ProcDump or any other decompressors/program decryptors, when you want to run the Half Life server, you want it now and in "real time." For Win9x, any changes to system memory causes it to be applied globally. In layman's terms, it means without proper precautions the system DLLs when hooked need to be monitored at all times otherwise when your program crashes unexpectedly, so does your *system*. Since I did this thing in less than two days, I'm not going to put more effort into supporting an OS that is going to die. I'm sorry ;( So, HLGMI is now NT only. As for the source code, I will need to make a few changes and release it one day. Most of the engine comes from my previous runtime process manipulation classes that is used for work ;) (I am software security consultant nowadays :)
+
+
+--------------------------------------------------
+05/02/01 at 19:50:30  Reply by: BrianL (halfkiller@hotmail.com)
+--------------------------------------------------
+Just for alittle info I ran this on Windows ME.  I have Win2k Pro, WinNT 4, Windows Whistler Beta, Win98 & 98SE, Win 95 I have virtually every OS on CD! hehe.  I didn't try it on NT yet but thanks I just wanted to know.
+
+--------------------------------------------------
+05/03/01 at 14:32:02  Reply by: DeltaShark (snake@magpage.com)
+--------------------------------------------------
+I dunno what you did, but it certainly doesnt have to be NT only, i doit now in WinME, and it works in 95/98 too. never tried in nt/2k since i dont care to install them. oh wells
+
+--------------------------------------------------
+05/07/01 at 00:58:27  Reply by: Clean (botmans@divinegods.net)
+--------------------------------------------------
+Delta: Dunno, it failed to load on the Win95 OSR 1. I don't think Win95 employs "cow", but Win98/Me may. My MSDN is dated 1998 so I'm not quite sure what's new with the 9x kernel. If it works great, if not, ...
+

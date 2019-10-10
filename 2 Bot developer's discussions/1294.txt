@@ -1,0 +1,1127 @@
+--------------------------------------------------
+Subject: I have a algoritme that analyses maps
+--------------------------------------------------
+03/02/01 at 06:25:27  Posted by: Avater (avater1@hotmail.com)
+--------------------------------------------------
+Look Here for a picture
+
+http://www.avaproggies.freeservers.com/index.html
+--------------------------------------------------
+03/02/01 at 06:30:47  Reply by: theimann (tobias.heimann@cl.cam.ac.uk)
+--------------------------------------------------
+That's great! But what does it do and how does it work?
+
+Tobias
+
+--------------------------------------------------
+03/02/01 at 06:53:40  Reply by: William (william@botepidemic.com)
+--------------------------------------------------
+It looks like a height map, derived from a hi resolution approximation of the map, either by means of waypoints, or using the raw bsp.
+
+If there's more to it, I love to hear it.
+
+Avater, you might want to look into a graph tool called Sigmaplot: it can do contour and surface charts in more colors (continuous color spectrum). They have a 'trial version' which can load and save spreadsheet data.
+
+William
+
+
+--------------------------------------------------
+03/02/01 at 13:07:39  Reply by: Avater (avater1@hotmail.com)
+--------------------------------------------------
+Tobias:
+My bot analyses the map and save it in a file.
+
+I have updated my homepage there are now pictures of cs_estate/cs_italy and de_dust and some files
+
+
+--------------------------------------------------
+03/02/01 at 15:27:20  Reply by: CountFloyd (countfloyd_1999@yahoo.com)
+--------------------------------------------------
+But some of the files aren't accessible because the server prohibits the extension... 
+
+--------------------------------------------------
+03/03/01 at 04:55:58  Reply by: Avater (avater1@hotmail.com)
+--------------------------------------------------
+Yes it don't work.
+
+i'm propably make a mistake if you want the files you must email me 
+
+E-mail : avater1@hotmail.com
+
+--------------------------------------------------
+03/04/01 at 09:12:05  Reply by: ARES (j.sdubbelboer@freeler.nl)
+--------------------------------------------------
+How did you make it? How do you scan the map?
+
+--------------------------------------------------
+03/04/01 at 19:28:44  Reply by: Mercenary (adamc_@hotmail.com)
+--------------------------------------------------
+Cool!
+
+--------------------------------------------------
+03/05/01 at 04:50:20  Reply by: GambiT (arrago_a@epita.fr)
+--------------------------------------------------
+Avater,
+Could we have a little more info about the algorithm you used ?
+Is it time consumming a lot ?
+
+--------------------------------------------------
+03/05/01 at 06:27:09  Reply by: ExecutionStyle (c_brennan@hotmail.com)
+--------------------------------------------------
+It looks like he's using tracelines in a grid and testing where the floor is.  At least that's what I was thinking of doing at first when I realized I wanted my bot to use all the information of the level instead of just waypoints, but then I realized that doing a bunch of tracelines was kind of roundabout to actually analyzing the bsp tree.  
+
+However, Avater has some real results :)  Keep it up, Avater!  I'm glad to see you're posting the code to the program that creates the diagrams of the levels from the data files the bot creates.  Can you post the code for the bot too?
+
+ -Carl
+
+--------------------------------------------------
+03/05/01 at 07:06:27  Reply by: GambiT (arrago_a@epita.fr)
+--------------------------------------------------
+About helping the bot "see" what is in a map, is it actually possible to "simulate" the vision of a bot ?
+Not making visual pattern recognition of course, but just knowing what kind of stuff (crates, walls, ...) are aside the bot ?
+I do not know anything about bsp trees, but maybe should I in order to do this ?
+
+--------------------------------------------------
+03/05/01 at 07:31:53  Reply by: CountFloyd (countfloyd_1999@yahoo.com)
+--------------------------------------------------
+In the NNBot Forum Avater told he's using the information gathered from human players to record nodes , so no Collision checking should be needed. Seeing any similarities here Tobias ? ;)
+
+
+--------------------------------------------------
+03/05/01 at 10:20:34  Reply by: Avater (avater1@hotmail.com)
+--------------------------------------------------
+
+This is my source code for save and load information
+
+code:
+
+class Avabot_opslag
+{
+public: 
+   //variabelen
+   long Array_XYZ[50004];  //Where you are
+   long Array_PL[50004];   //You can here save some information about this place
+   long Array_PL1[50004];  //And here to 
+   //functies
+   void Decodeer(int *a,int *b,int *c,long invoer);
+   void Decodeer(int *a,int *b,long invoer); 
+   void Codeer(int a,int b,int c,long *uitvoer);
+   void Codeer(int a,int b,long *uitvoer);
+   void Arrays_Leegmaken(int Lengte_Array);
+   int  Zoek_Bstr(long Zoek_Waarde,int Lengte_Array,int *prev1,int *prev2);
+   int  Plaats_Zoeken (int Lengte_Array,long Zoek_Waarde);
+   int  Plaats_Muteer(int Lengte_Array,long Zoek_Waarde);
+   //io functies
+   void Maak_Bestand(char Bestand[30]);   
+   void Lees(char Bestand[30],int Lengte_Array);
+   void Schrijf(char Bestand[30],int Lengte_Array);
+};
+
+
+
+void Avabot_opslag::Decodeer(int *a,int *b,int *c,long invoer)
+{
+
+    //a 3 cijfers
+      //b 3 cijfers
+      //c 3 cijfers
+      *a=0; *b=0; *c=0;
+      if (invoer<999999999)
+      {
+            *a=0; *b=0; *c=0;
+      }
+      else
+      {
+            invoer=invoer-1000000000;
+            *a=invoer/1000000;
+            invoer=invoer-(*a*1000000);
+            *b=invoer/1000;
+            invoer=invoer-(*b*1000);
+            *c=invoer;
+      }
+}
+
+void Avabot_opslag::Decodeer(int *a,int *b,long invoer)
+{
+      // a 3 cijfers
+      // b 6 cijfers
+      *a=0; *b=0;
+      if (invoer<999999999)
+      {
+            *a=0; *b=0;
+      }
+      else
+      {
+            invoer=invoer-1000000000;
+            *a=invoer/1000000;
+            invoer=invoer-(*a*1000000);
+            *b=invoer;
+    }
+}
+
+void Avabot_opslag::Codeer(int a,int b,int c,long *uitvoer)
+{
+      //a 3 cijfers
+      //b 3 cijfers
+      //c 3 cijfers
+      
+      *uitvoer=0;
+      *uitvoer=*uitvoer+(a*1000000);
+      *uitvoer=*uitvoer+(b*1000);
+      *uitvoer=*uitvoer+c;
+      *uitvoer=*uitvoer+1000000000;
+}
+
+void Avabot_opslag::Codeer(int a,int b,long *uitvoer)
+{
+      // a 3 cijfers
+      // b 6 cijfers
+      *uitvoer=0;
+      *uitvoer=*uitvoer+(a*1000000);
+      *uitvoer=*uitvoer+b;
+      *uitvoer=*uitvoer+1000000000;
+}
+
+
+
+int Avabot_opslag::Zoek_Bstr(long Zoek_Waarde,int Lengte_Array,int *prev1,int *prev2)
+{
+      int hulp,hulp1;
+      hulp1=Lengte_Array/2;
+      hulp=hulp1;
+        //THE THREE
+      for (int i=0; i<=25; i++)
+      {
+            if (hulp>1)
+                hulp=hulp/2;
+            if (Zoek_Waarde>Array_XYZ[hulp1])
+            {
+                  if (hulp1+hulp<=Lengte_Array)
+                  {
+                        hulp1=hulp1+hulp;
+                  }
+            }
+            else
+            {
+                  if (Zoek_Waarde<Array_XYZ[hulp1])
+                  {
+                        if (hulp1-hulp>=0)
+                        {
+                              hulp1=hulp1-hulp;
+                        }      
+                  }
+            }
+            if (Zoek_Waarde==Array_XYZ[hulp1])
+            {
+                  return hulp1;
+            }
+            else
+            {
+                  *prev2=*prev1;
+                  *prev1=hulp1;
+            }
+      }
+      return 999999;
+}
+
+void Avabot_opslag::Arrays_Leegmaken(int Lengte_Array)
+{
+      for (int i=0; i<=Lengte_Array; i++)
+      {
+            Array_XYZ[i]=2000000000;
+            Array_PL[i]=1000000000;
+            Array_PL1[i]=1000000000;
+      }
+}
+
+int Avabot_opslag::Plaats_Zoeken (int Lengte_Array,long Zoek_Waarde)
+{
+
+    int hulp,hulp1;
+    return Zoek_Bstr(Zoek_Waarde,Lengte_Array,&hulp,&hulp1); 
+}    
+  
+int Avabot_opslag::Plaats_Muteer(int Lengte_Array,long Zoek_Waarde)
+{
+      int hulp,hulp1,Plaats;
+      Plaats = Zoek_Bstr(Zoek_Waarde,Lengte_Array,&hulp,&hulp1);
+      if (Plaats==999999)
+      {
+            if (hulp>=hulp1)
+            {
+               for (int i1=Lengte_Array; i1>=hulp; i1--)
+               {
+                     Array_XYZ[i1]=Array_XYZ[i1-1];
+                     Array_PL[i1]=Array_PL[i1-1];
+                     Array_PL1[i1]=Array_PL1[i1-1];
+               }
+               Array_XYZ[hulp]=2000000000;
+               Array_PL[hulp]=1000000000;
+               Array_PL1[hulp]=1000000000;
+               return hulp;
+            }
+            else
+            {
+               for (int i1=Lengte_Array; i1>=hulp1; i1--)
+               {
+                     Array_XYZ[i1]=Array_XYZ[i1-1];
+                     Array_PL[i1]=Array_PL[i1-1];
+                     Array_PL1[i1]=Array_PL1[i1-1];
+               }
+               Array_XYZ[hulp1]=2000000000;
+               Array_PL[hulp1]=1000000000;
+               Array_PL1[hulp1]=1000000000;
+               return hulp1;
+            }
+    }
+      else
+      {
+            return Plaats;
+      }
+}
+    
+void Avabot_opslag::Maak_Bestand(char Bestand[30])
+{
+      FILE *fp;
+      fp = fopen(Bestand,"w+");
+      fclose(fp);
+}
+
+    
+void Avabot_opslag::Lees(char Bestand[30],int Lengte_Array)
+{
+      FILE *fp;
+    fp = fopen(Bestand,"r+");
+      if (fp==NULL)
+      {
+            Maak_Bestand(Bestand);
+            Arrays_Leegmaken(Lengte_Array);
+            return; 
+      }
+      fseek(fp,0,SEEK_SET);
+      for (int i=0; i <= Lengte_Array; i++)
+      {
+            fscanf(fp,"%ld ",&Array_XYZ[i]);
+            fscanf(fp,"%ld ",&Array_PL[i]);
+            fscanf(fp,"%d ",&Array_PL1[i]);
+      }
+      fclose(fp);
+}
+
+void Avabot_opslag::Schrijf(char Bestand[30],int Lengte_Array)
+{
+      FILE *fp;
+      fp = fopen(Bestand,"r+");
+      if (fp==NULL)
+      {
+            Maak_Bestand(Bestand);
+            Arrays_Leegmaken(Lengte_Array);
+            fp = fopen(Bestand,"r+");
+      }
+      fseek(fp,0,SEEK_SET);
+      for (int i=0; i <= Lengte_Array; i++)
+      {
+            fprintf(fp,"%ld %ld %d ",Array_XYZ[i],Array_PL[i],Array_PL1[i]);
+      }
+      fclose(fp);
+} 
+
+
+
+
+code:
+
+void XYZ_decoderen(int xIn,int yIn,int zIn,int *xOut,int *yOut,int *zOut,int grootte_stap)
+{
+      *xOut=XIn*grootte_stap;
+      *xOut=*xOut-10000;
+      *yOut=yIn*grootte_stap;
+      *yOut=*yOut-10000;
+      *zOut=zIn*25;
+      *zOut=*zOut-7000;
+}
+
+
+
+
+
+
+
+
+
+Example how you can use my opslag code 
+
+code:
+
+void main()
+{
+   Avabot_opslag ops;
+   int plaats,x,y,z;
+   float x1,y1,z1;
+   ops.lees("c:\DE-DUST.TXT",50000); 
+   plaats=ops.Plaats_Zoeken(50000,1123432543);
+   if (ops.Plaats_Zoeken(50000,1123432543)==999999);
+   { 
+       cout << "Not found" << endl;
+   }
+   else
+   {
+       cout << "Found" << endl;
+       ops.Decodeer(&x,&y,&z,Array_XYZ[plaats])
+       cout << x << endl << y << endl << z << endl;   
+       XYZ_decoderen(x,y,z,x1,y1,z1,30);
+       cout << "This information can you use in halflife " << endl;
+       cout << x1 << endl << y1 << endl << z1 << endl; 
+  }
+  ops.Codeer(100,200,300,&XYZ);
+  ops.Plaats_muteer(50000,XYZ);
+  cout <<  ops.Plaats_Zoeken(50000,XYZ) << endl;
+}
+
+
+
+
+
+With this source code you can use the data files for your own bot.
+I hope the source code work 
+
+
+
+
+
+
+--------------------------------------------------
+03/05/01 at 10:38:54  Reply by: Avater (avater1@hotmail.com)
+--------------------------------------------------
+Take a look on my homepage i have a new picture of cs_arabstreets.(It has take 45 minutes to analyse cs_arabstreets.)
+
+
+
+--------------------------------------------------
+03/05/01 at 11:01:31  Reply by: William (william@botepidemic.com)
+--------------------------------------------------
+Uhm. That source code doesn't tell how you obtain the data. Can you tell us how get the data? Do you dump coordinates when walking around yourself?
+
+[or in Dutch - apologies - but it's probably easier for Avater]
+Kun je uitleggen hoe je aan de data komt? Maak je die aan terwijl je zelf door 't level loopt? Of lees je echt de .bsp file in? Als Nederlands makkelijker is, gebruik dat maar.
+
+William
+
+--------------------------------------------------
+03/05/01 at 13:56:19  Reply by: Avater (avater1@hotmail.com)
+--------------------------------------------------
+Ja dat is zeker makkelijker. Fijn dat er hier ook nederlanders zijn.
+
+
+Nee ik gebruik de bsp files niet. 
+
+Ik gebruik de bots om de levels in kaart te brengen. De bots gebruiken een algoritme om door het level te lopen. Ze lopen dus niet random. Maar volgens een bepaald patroon. 
+
+Het hele level is in blokjes(x(ter grootte van 30 units)y(ter grootte van 30 units)z(ter grootte van 25 units)) opgedeeld. De bot weet in welk blokje hij zich bevindt en slaat dit blokje in een array(long ArrayXYZ,long ArrayPL,long ArrayPL1) op . Als het blokje een muur is dan geeft hij bijvoorbeeld de waarde 1905905905 mee aan Array_PL. Zo weet ik later dus wat een muur is en wat niet. 
+
+Elke ArrayXYZ en ArrayPL bestaan uit 3 cijfers(3 cijfers ter grootte van 2 zie decodeer functie) en ArrayPL1 bestaat uit 2 cijfers(zie tweede decodeer functie).
+
+Dit is ook handig voor het sorteren(nodig voor de tree(zie functie Zoek_Bstr)(functie plaats_muteer sorteerd de array)) van xyz waarden.
+
+
+Ik gebruik geen enkele traceline ook niet om een muur te detecteren, omdat ik het niet nauwkeurig genoeg vindt.
+
+bijvoorbeeld: de traceline raakt iets, maar je weet niet waar hij iets raakt.
+
+Ik gebruik deze manier:
+Als de bot een muur raakt blijft hij stilstaan. Als hij een poosje stil gestaan heeft weet ik dus dat er voor hem een muur is.
+
+
+Ik wil de analyse van de maps verbeteren door als ik tegen een muur aanloop en dus een tijdje blijf stilstaan. Niet gelijk door te lopen maar dat hij eerst probeert om op de muur te springen(buk-sprong) of met bukken onder de muur door te kruipen. Zo kan de bot op veel meer plaatsen komen.
+
+
+Waarvoor kan ik deze informatie gebruiken:
+
+-Om op te slaan waar menselijke players lopen(precies)(realistisch lopen)
+-Hoe vaak men in een gedeelte dood gaat.(gevaarlijke zone)
+-Hoe lang men in een gedeelte blijft staan.(campers)
+
+
+
+
+Algoritme:
+
+De bot kiest steeds het blokje met de laagste waarde. 
+
+Als de bot door een blokje heen loopt verhoogt hij dat blokje met 1. En zal er dus minder vaak komen. Als de bot tegen een muur aanloopt wordt het blokje muur 905. Daar zal hij dus nooit komen.
+
+En zo loopt de bot de hele map door.
+
+Simpel of niet. 
+
+Nou veel plezier ermee ik hoop dat jullie er wat aan hebben. 
+
+Misschien hebben jullie verbeteringen of suggesties. Ik hoor ze graag.
+
+Als iemand die goed nederlands en engels kan dit even kan vertalen(wiliam maybe ;)). Dan is iedereen tevreden.
+
+
+
+
+
+
+--------------------------------------------------
+03/05/01 at 14:07:00  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+Oh great, now I gotta use babel fish to read the messages on my board!  :)
+
+http://babelfish.altavista.digital.com/translate.dyn
+
+botman
+
+--------------------------------------------------
+03/05/01 at 15:26:54  Reply by: ExecutionStyle (c_brennan@hotmail.com)
+--------------------------------------------------
+I think he's saying that William will be able to explain what he said in English?  Hope so!
+
+
+--------------------------------------------------
+03/05/01 at 16:16:46  Reply by: bigjesus (holybigjesus@hotmail.com)
+--------------------------------------------------
+well lol looks like we will just have to wait LOL!!!
+
+--------------------------------------------------
+03/05/01 at 16:51:17  Reply by: William (william@botepidemic.com)
+--------------------------------------------------
+Aargh. The next time I offer to translate something, I mention a maximum number of lines. It's a free translation. In other words, you cannot learn Dutch from comparing the two messages.
+
+Avater doesn't use the bsp file. Instead, he has the bots methodically explore the complete level.
+He stores the info in 30x30x25 volume boxes (the array has an entry for each of those boxes).
+He uses some complex code to translate the x,y,z coordinates to an array index, and back.
+
+Avater doesn't use any traceline. Instead he monitors the bot's movement (or lack thereof). 
+Walls are detected by having the bot executed all kinds of maneuvers to get past that wall: crouching, jumping, etc.
+
+Avater can use the info to record (rather precisely) where players walk, where clients die frequently (danger zone), and where clients stay for some time (camper spot?).
+
+The procedure to have the bot explore the whole map is:
+- initialize all blocks with 1.
+- for every block visited, the value is incremented
+- for every wall found, the value is set to 905
+
+As a result, the bot will explore all accessible blocks.
+
+William
+
+
+--------------------------------------------------
+03/05/01 at 19:18:16  Reply by: Mercenary (adamc_@hotmail.com)
+--------------------------------------------------
+SWEET!  I want to see a bot navigate with this!
+
+--------------------------------------------------
+03/05/01 at 19:18:50  Reply by: Mercenary (adamc_@hotmail.com)
+--------------------------------------------------
+Stupid double post
+
+--------------------------------------------------
+03/05/01 at 20:05:17  Reply by: bigjesus (holybigjesus@hotmail.com)
+--------------------------------------------------
+LOL!! thanx WILLIAM your the greatest... shh I tell that to all the boys...
+
+--------------------------------------------------
+03/06/01 at 13:31:15  Reply by: ARES (j.sdubbelboer@freeler.nl)
+--------------------------------------------------
+Er zijn wel veel nederlanders die een bot maken.
+
+Over dat systeem:
+Op deze manier loopt de bot wel random door de levels waar je in tfc niks aan hebt.
+
+Waar wonen jullie? Ik woon in deriebergen. 
+
+--------------------------------------------------
+03/08/01 at 04:05:27  Reply by: theimann (tobias.heimann@cl.cam.ac.uk)
+--------------------------------------------------
+I am just wondering how it should be possible to map an entire level to an array of 50.000 entries: Given the size of the volume boxes you can map a maximum area of 1100*1100*900 units. Unfortunately, some maps are larger.
+Don't get me wrong, the idea is very good (I'm using something similar myself), but it's infeasable to store this information in an array at this high resolution. Phineas bot does the same but with volume boxes of 256*256*256 (if I remember well). Another question: What happens if a player visits the same box the 904th time? Will it become a wall? Why do you use this odd value and not something like 0 or -1?
+
+Tobias
+
+
+
+
+--------------------------------------------------
+03/19/01 at 04:24:18  Reply by: Avater (avater1@hotmail.com)
+--------------------------------------------------
+Tobias:
+Answer 1:
+
+QUOTE:
+He stores the info in 30x30x25 volume boxes (the array has an entry for each of those boxes).
+
+
+
+each entrie stores 1 volume box.
+
+50000 * 30 = x;(1500000)
+50000 * 30 = y;(1500000)
+50000 * 25 = z;(1250000)
+
+
+Answer 2:
+
+if >904 then
+for (int i=0; i<=50000; i++)
+{  
+   904/10
+}
+
+Ares
+
+Ja voor TFC wil ik een andere navigatie code gaan gebruiken zoiets als de korste route naar een bepaald punt in de map.  
+
+
+ 
+
+--------------------------------------------------
+03/21/01 at 11:17:27  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+DUTCH:
+
+Eigenlijk is traceline hartstikke naukeurig , je kunt namelijk wel de vector waar ie iets raakt uit de traceresult halen :)
+
+Ik heb zelf ook een idee, en de scan duurt hopelijk korter dan een paar minuten. Al enig idee hoe je dit in een bot real-time wilt laten doen? want je kan nu wel alle info lezen, maark un je het ook toepassen
+
+btw, ik woon in Purmerend :D
+
+ENGLISH:
+Traceline CAN get you the position where it hits a wall or something.
+
+Anywayz, to be short. I have an own theory , and hopefully it does a scan in a few mins and will be appliable on bots real-time too :)
+
+
+
+--------------------------------------------------
+03/21/01 at 15:54:35  Reply by: Ariejan (ariejan@gmx.net)
+--------------------------------------------------
+English:
+I think working with vectors is much more efficient. How about picking some larger blocks out of the map. an instead of storing each block after that, just store where it ends. 
+
+This way your bot could find it's own waypoints. And, if needed choose another path, without bumping into walls, because these 'paths' are 'dead'. 
+
+BTW: I'm from Veldhoven.
+
+Dutch.
+Werken met vectoren is waarschijnlijk efficienter. Maar waarom niet wat grotere blokken pakken en ipv. 't hele pad op te slaan, niet alleen op slaan waar het pad begint en waar het eindigd?
+
+Op deze manier zou een bot z'n eigen waypoints kunnen vinden, en die evt. aanpassen. Tegen muren rennen gebeurd niet, omdat die paden doodlopend zijn. 
+
+NB: Ik kom uit Veldhoven (NB)
+
+--------------------------------------------------
+03/22/01 at 02:10:01  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+Dutch:
+Mee eens!
+Ik heb gister even mijn theorie in code gezet en uitgeprobeert. Ik kan nog niet de resultaten aflezen, dus ik hoop dat het natuurlijk wel goed gaat. Vanuitgaande dat de scan goed is gecode ben ik best blij met een 1 seconde scan op IEDERE map! 
+
+English:
+I agree , the theory i tried in code took only 1 second. I hope it works since i cant test it out yet if the scan does its job. But 1 second is still really fast! On EVERY map :)
+
+
+
+--------------------------------------------------
+03/22/01 at 04:29:17  Reply by: Ariejan (ariejan@gmx.net)
+--------------------------------------------------
+English: 
+Could you post some code? And: do you use the bsp files? Or just by running around?? 
+
+Dutch:
+Zou je wat code kunne posten? En: gebruik je de bsp files of gewoon door rond te rennen?
+
+--------------------------------------------------
+03/23/01 at 02:06:47  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+Ok, ik post mijn code, maar de scan werkte al niet had ik gemerkt met de bots. Ik doe iets verkeerd dus :)
+
+MAAR, ik had een ideetje. Dat idee van een counter per vector positie bijhouden kan nog simpeler denk ik. Hoop ik tenminste.
+
+Ik ben nu met het volgende bezig. Ik heb een struct mpINFO met een counter erin. Daarna maak je die variable aan met:
+
+mpINFO map_info[16048][16048][16048];
+
+Nu heb je dus voor de hele HL kaart (van -8024 tot 8024) voor de X, Y, en Z waarde een counter!
+Geen grid dus, dat wordt wat lastig voor de optimalisatie, amar het gaat om het idee ok? In feite wordt het nu vrij simpel als je de X , Y en Z waarden van de origin van een bot kan afleiden. 
+
+Dan kun je heel makkelijk
+
+x = origin.x
+y = origin.y
+z = origin.z
+
+dit doen:
+
+map_info[x][y][z].counter++;
+
+als een bot daar is, dan kun je ook supersnel dus de gegevens ophalen en dus ook heel makkelijk de waarden verhogen tot je denkt dat een bot vast zit. Als je weet in welke richting een bot gaat, dan kun je berekenen welke origin hij 'wordt' en dus van te voren al bekijken of het nuttig is of niet! Zo kun je in principe hetzelfde doen as Avater right?
+
+Ik wil deze code wel eens uitproberen. De bots zullen als idioten tegen van alles aan lopen, maar na verloop van tijd zullen ze 'leren' waar ze wel of niet kunnen lopen. Als je de waarden vande mapinfo variable terug zet op 0 (alleen diegenen die lager al waren dan 100 bijvoorbeeld). Dan kun je in principe te muren eruit vilteren! 
+
+De code die ik 'gebruikte':
+
+      Vector goal = Vector(9999.0, 9999.0, 9999.0);
+      Vector counter = Vector(9999.0, 9999.0, 9999.0);
+      Vector terror = Vector(9999.0, 9999.0, 9999.0);
+
+      edict_t *pent;
+
+      pent = NULL;
+            // goal
+      while ((pent = UTIL_FindEntityByClassname( pent, "hostage_entity" )) != NULL) 
+      {
+            // Found entity, set vector, break loop
+            goal = pent->v.origin;
+      }
+      // counter pos
+      while ((pent = UTIL_FindEntityByClassname( pent, "info_player_start" )) != NULL) 
+      {
+            // Found entity, set vector, break loop
+            counter = pent->v.origin;
+      }
+      // terror pos
+      while ((pent = UTIL_FindEntityByClassname( pent, "info_player_deathmatch" )) != NULL) 
+      {
+            // Found entity, set vector, break loop
+            terror = pent->v.origin;
+      }
+
+/*      
+wpt temptable[1000];            // temptable
+
+TraceResult tr;
+
+int x, y, z;
+int times = 0;
+int realtable_id = 0;
+int i, j, table_id;
+int distg, distct,distt;
+bool valid;
+x = -9000; // start at
+y = -9000; // these
+z = -9000; // positions
+
+      // clear real table
+      for (i = 0; i < 5000; i++)
+      {
+      waypoint[i].next_id = -1;
+    waypoint[i].GOAL_DIST = -1;
+    waypoint[i].CT_DIST = -1;
+    waypoint[i].T_DIST = -1;  
+      }
+
+Vector toy_v;      //Vector to toy with
+Vector wpt1;
+
+ for (times; times < 18; times++)
+ {
+      table_id = 0;
+ // Clear temp table
+  for (i = 0; i < 1000; i ++)
+  {
+  temptable[i].GOAL_DIST = -1;
+  temptable[i].CT_DIST = -1;
+  temptable[i].T_DIST = -1;  
+  temptable[i].next_id = -1;      // this is the flag we look for 
+  }
+
+  for (x; x < ((-9000)+(times * 1000)); x += 100)
+  {
+      for (y; y < ((-9000)+(times * 1000)); y += 100)
+      {
+            for (z; z < ((-9000)+(times * 1000)); z += 100)
+            {
+            
+                  valid = true;      // Valid to add... 
+                  // Well, we got a vector
+
+                  // ... valid to add or not!?!?!
+                  // Check if its outside the level. So do a tracescan to the left 9999 units
+                  // to the right, up and down. if any  of those things are not blocked, then it is outside
+                  // a level, and thus, not worth to add in the table.
+
+                  wpt1  = Vector(x,y,z);
+                  toy_v = Vector(x,y - 9999,z); // entirely up
+
+
+               // trace a line from bot's eyes to destination...
+                  UTIL_TraceLine( wpt1, toy_v, ignore_monsters, NULL, &tr );
+                  
+                  // Check if it hits something
+                  // UP
+                  if (tr.flFraction < 1.0)
+                  {
+                        // LEFT
+                        // Hit something
+                        toy_v = Vector(x-9999,y,z); // left
+
+                           // trace a line from bot's eyes to destination...
+                        UTIL_TraceLine( wpt1, toy_v, ignore_monsters, NULL, &tr );
+                        if (tr.flFraction < 1.0)
+                        {
+                        // RIGHT
+                              toy_v = Vector(x + 9999,y,z); // right
+                              UTIL_TraceLine( wpt1, toy_v, ignore_monsters, NULL, &tr );
+                              
+                              if (tr.flFraction < 1.0)
+                              {
+                              // UP
+                              toy_v = Vector(x,y + 9999,z); // Down
+                              UTIL_TraceLine( wpt1, toy_v, ignore_monsters, NULL, &tr );
+                                    
+                                    if (tr.flFraction < 1.0)
+                                    {
+                                          // Hit 4 sides. good :)
+                                    } else
+                                          valid = false; // Nothing hit BAD
+
+                              } else
+                                    valid = false; // Nothing hit BAD
+
+                        } else
+                              valid = false; // Nothing hit BAD
+
+                  } else
+                        valid = false;      // Nothing hit BAD
+
+
+            // If we arent valid anymore, then break this loop
+                  if (valid == false)
+                        break;
+
+                  // Ok, so we are still in...
+                  // check if the wpt is on ground..
+                  // So, a wpt must hit the ground after 125 units
+
+                  toy_v = Vector(x,y + 125,z); // Down
+                  UTIL_TraceLine( wpt1, toy_v, ignore_monsters, NULL, &tr );
+                  
+                  if (tr.flFraction < 1.0)
+                  {
+                        // Hit the ground. good one                  
+                  } else
+                        valid = false;
+
+                  // Check if its still valid
+                  if (valid == false)
+                        break;
+
+                  // Ok, its valid.. for now. So add this one and set distances.
+
+
+            /*
+            vector = x,y,z;                  
+            
+            - Check if it is outside a level
+            - Check how far from the GOAL , CT begin and T begin. Store those distances in:
+              GOAL_DIST , CT_DIST en T_DIST.
+            - Store all these records in our temp table
+            */                        
+/*                  
+                  distt  = 0;
+                  distct = 0;
+                  distg  = 0;
+
+                  distg  = (goal - wpt1).Length( );
+                  distct = (counter - wpt1).Length( );
+                  distt  = (terror - wpt1).Length( );
+
+                  temptable[i].origin = wpt1;
+                  temptable[i].GOAL_DIST = distg;
+                  temptable[i].CT_DIST = distct;
+                  temptable[i].T_DIST = distt;
+                  temptable[i].next_id = 0;      // Set to 0 so its not 'invalid' anymore
+                    
+                  
+                  table_id++;
+            }
+
+
+      }
+
+  }
+
+  // Now filter the temp table
+  for (i = 0; i < 1000; i++)
+  {
+  valid = false; // A wpt is automaticly NOT valid
+  // So prove it otherwise
+      for (j = 0; j < 1000; j++)
+      {
+            if ((temptable[i].next_id > -1 && temptable[j].next_id > -1) && ( i != j))
+            {
+                  // Ok 2 different waypoints. 
+                  wpt1 = temptable[i].origin;
+                  toy_v = temptable[j].origin;
+
+                  // Scan from WPT1 to TOYV .. 
+                  UTIL_TraceLine( wpt1, toy_v, ignore_monsters, NULL, &tr );
+                  if (tr.flFraction >= 1.0)
+                  {
+                              // Ok, so WPT1 can reach toyV
+                              // Now check back. If not then WPT1 is IN A WALL!!! and must be removed
+                              UTIL_TraceLine( toy_v, wpt1, ignore_monsters, NULL, &tr );
+                              if (tr.flFraction >= 1.0)
+                              {
+                                    // Good can reach it
+                                    
+                              } else
+                              {
+                                    // Wpt1 should be removed
+                                    temptable[i].next_id = 0;
+                              }      
+
+                              
+
+                  }
+                                    
+
+
+            }
+
+      }
+
+  } 
+
+
+
+  // At the end, add the section entries to the real table.
+  for (i = 0; i < 1000; i++)
+  {
+            // If its a valid one then....
+        if (temptable[i].next_id > -1)
+        {
+                  // copy it on the realtable
+              if (realtable_id < 5000)
+              {
+              waypoint[realtable_id].origin = temptable[i].origin;
+              waypoint[realtable_id].GOAL_DIST = temptable[i].GOAL_DIST;
+              waypoint[realtable_id].CT_DIST = temptable[i].CT_DIST;
+              waypoint[realtable_id].T_DIST = temptable[i].T_DIST;
+              waypoint[realtable_id].next_id = temptable[i].next_id;
+              realtable_id++;             
+              }
+        }
+
+  }
+
+
+ } // TIMES
+
+// At the very end we do an all-time check on the real_table and link the wpts
+
+// What i do:
+/*
+
+  All wpts that can reach each other will be connected. However, the wpts connect each other
+  Only when the next wpt is closer to wpt. 
+  When a wpt cant find anything that is closer , then a wpt will link to a wpt which is close to
+  him and will be higher. 
+
+
+  */
+/*
+  int dist_c, dist, handle_id;
+  
+for (i = 0; i < 5000; i++)
+{
+      if (waypoint[i].next_id > -1)
+      {
+            dist_c = 9999;
+            handle_id = -1;
+            // Ok search through all wpts...
+            for (j = 0; j < 5000; j ++)
+            {
+                  if (waypoint[j].next_id > -1)
+                  {
+                        // Valid wpt here too
+                        // Be sure you dont check yourself
+                        if (i != j)
+                        {
+                              
+                              // Ok, its not the same wpt
+                              wpt1 = waypoint[i].origin;
+                              toy_v = waypoint[j].origin;
+
+                              // Check distance, closest wpt will be handled...
+                              dist  = (toy_v - wpt1).Length( );
+
+                              // Ok, now check if he is closer to goal or not
+                              if (waypoint[i].GOAL_DIST > waypoint[j].GOAL_DIST)
+                              {
+
+                              if (dist < dist_c)
+                              {
+                                    dist_c = dist;
+                                    handle_id = j; // remember the index of the closest wpt so far.
+                              }
+
+                              } // Closer
+                              
+                        } 
+
+
+                  } 
+
+            
+
+
+            } // for J
+
+      // Now we have found a handle_id... 
+      if (handle_id > -1)
+      {
+      // Handle ID      
+      // Found one. So next_id is this one
+            waypoint[i].next_id = handle_id;
+                  
+      
+      } else
+      {
+
+            // Ok, not found... find one which is further away.
+            for (j = 0; j < 5000; j ++)
+            {
+                  if (waypoint[j].next_id > -1)
+                  {
+                        // Valid wpt here too
+                        // Be sure you dont check yourself
+                        if (i != j)
+                        {
+                              
+                              // Ok, its not the same wpt
+                              wpt1 = waypoint[i].origin;
+                              toy_v = waypoint[j].origin;
+
+                              // Check distance, closest wpt will be handled...
+                              dist  = (toy_v - wpt1).Length( );
+
+                              // Ok, now check if he is closer to goal or not
+                              if (waypoint[i].GOAL_DIST <= waypoint[j].GOAL_DIST)
+                              {
+
+                              if (dist < dist_c)
+                              {
+                                    dist_c = dist;
+                                    handle_id = j; // remember the index of the closest wpt so far.
+                              }
+
+                              } // Closer
+                              
+                        } 
+
+
+                  } 
+
+            
+
+
+            } // for J
+
+            if (handle_id > -1)
+            {
+                  waypoint[i].next_id = handle_id;
+            }
+
+
+      }
+ 
+
+
+      }
+
+
+
+}
+
+
+
+// Ok wpts are linked. Now bots should know what their first wpt must be. So the closest to the 
+// GOAL_CT and GOAL_T must be determined.
+
+for (i = 0; i < 5000; i++)
+{
+ if (waypoint[i].next_id > -1)
+ {
+      if (waypoint[i].CT_DIST < 200 && RANDOM_LONG(0,100) > 50)
+            counter_startid = i;
+
+      if (waypoint[i].T_DIST < 200 && RANDOM_LONG(0,100) > 50)
+            terror_startid = i;
+ }
+
+}
+
+btw, er zitten wat commentaar tekens doorheen , maar dat komt omdat ik deze code al inmiddels eruit heb gefiltered/gecommentaart :D
+
+
+
+
+
+--------------------------------------------------
+03/23/01 at 06:20:10  Reply by: jerry_stoel (jerry_stoel@hotmail.com)
+--------------------------------------------------
+Dutch:
+Cool ik dacht dat er niet veel nederlanders waren op deze forum dus wel :D
+Kan ik als ik hulp nodig heb dus ook een probleem in het nederlands uitleggen :)
+
+English:
+Cool I thought that there weren't much Dutch people here at this forum I was wrong.
+So I can ask some questions in Dutch if I want :)
+
+BTW: I live in WOERDEN :)
+
+--------------------------------------------------
+03/23/01 at 06:58:07  Reply by: theimann (tobias.heimann@cl.cam.ac.uk)
+--------------------------------------------------
+Ok, I think I've got it - nearly understanding Dutch now ;-)
+Just some things you might consider: 
+
+> Ik heb een struct mpINFO met een counter erin. Daarna maak je die variable aan met:
+> mpINFO map_info[16048][16048][16048];
+
+You realize that this table would take up more than three terrabytes, do you? Mapping coordinates directly to a threedimensional array is computationally the most effective method of storing local values, but it just consumes too much memory. Shifting to blocks or clusters helps, but you've got to try to maintain a reasonable resolution. Blocks of 128*128*128 would work pretty well I guess, but even that takes too much memory if you want to map the whole potential level. Maybe you need some more advanced data-structures like trees to represent a map in this cluster-form.
+
+Regarding the waypoint-connections:
+This problem is harder than it seems. Not every waypoint that is visible from another one is automatically reachable. It might be visible through a small window that can't be passed or there may be a gap between the two that can't be crossed. You should have the possibility of automatically deleting connections that bots couldn't use after several attempts in the game.
+
+Tobias
+
+--------------------------------------------------
+03/23/01 at 08:48:03  Reply by: CountFloyd (countfloyd_1999@yahoo.com)
+--------------------------------------------------
+[quote]code:
+
+// Ok, so we are still in... 
+// check if the wpt is on ground.. 
+// So, a wpt must hit the ground after 125 units 
+toy_v = Vector(x,y + 125,z); // Down[quote]
+
+
+The HL Engine uses a different Coordinate System than we're used to. The y fraction isn't the one going up/down so this code is wrong ...
+
+--------------------------------------------------
+03/23/01 at 16:41:44  Reply by: eLiTe (ali@elitegamer.fsnet.co.uk)
+--------------------------------------------------
+[English]
+AAAAAAAAAAAAAAAAAAAAARRRRRRRRRGGGGGHHHHHHH!!!! Help! I can't speak dutch!
+
+[Dutch]
+AAAAAAAAAAAAAAAAAAAAARRRRRRRRRGGGGGHHHHHHH!!!! Hilfe! Ich konnen nicht Dutch gesprach!
+
+[English]
+Oops. Maybe that's too much like german, hehe :)
+
+--------------------------------------------------
+03/27/01 at 05:45:38  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+CF, lol. You're right. This is however not yet implented in HL. So in ' theory'  this would be right. Btw, i use those tracelines etc for simulating HL engine. 
+
+Anyhow, this whole scanning idea is quite nice and such, but i've other ideas right now :D
+
+
+

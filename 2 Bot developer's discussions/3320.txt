@@ -1,0 +1,88 @@
+--------------------------------------------------
+Subject: client commands and g_argv
+--------------------------------------------------
+06/22/02 at 10:18:34  Posted by: Integrator (integrator@triasoft.com)
+--------------------------------------------------
+I'm just about manipulating with client commands and working with some strings, but I still can't understand where does the ClientCommand(edict_t* pEdict) function take contents of command... Even in it's defenition there are no strings at all. For example, if you type in console "+attack"
+ClientCommand(pPlayer) is called (where pPlayer is you) and it gets from "I don't know where" a
+string that conteins "+attack" and after that ClientCommand executes that command.
+I also don't know how works (*g_engfuncs.pfnCmd_Argv)
+I guess that command line is conteined in char* g_argv but I'm not sure...
+
+So, in other words I need to convert  ClientCommand(edict_t* pEdict)  function to  ClientCommand(edict_t* pEdict, char *command_line)  Thanks to everyone who have even read this!
+
+--------------------------------------------------
+06/22/02 at 11:36:58  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+The command entered by the client comes from the Cmd_Argv() function.
+
+Cmd_Argv(0) will return a pointer to the first argument of that command (which will always be the command itself, in your example, "+attack").
+
+Cmd_Argv(n) will return a pointer to the Nth argument of the command.  So for example if you had this command "addbot Gordon 3", Cmd_Argv(0) would return a pointer to "addbot".  Cmd_Argv(1) would return a pointer to "Gordon".  Cmd_Argv(2) would return a pointer to "3".
+
+You can use Cmd_Argc() to return the number of arguments on that command line.  In my example above, Cmd_Argc() would return 3 (since "addbot Gordon 3" has 3 arguments).
+
+botman
+
+--------------------------------------------------
+06/24/02 at 09:14:26  Reply by: Integrator (integrator@triasoft.com)
+--------------------------------------------------
+Thanx, but I still have some misunderstanding about :
+1) what is g_argv (I think that command line is stored there, am I right?)
+2) how to change the command line in ClientCommand ( I mean what should I do if command is, for example, "addbot Gordon 3" and I want to remove "Gordon " so that CMD_ARGV(2) will return "3" instead of "gordon?) 
+
+--------------------------------------------------
+06/24/02 at 13:33:28  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+I don't seem to find any reference to "g_argv" anywhere in the SDK.  Which file are you looking at that has "g_argv"?
+
+You can't (shouldn't) modify the command line.  That command is stored in a buffer in the engine and there wouldn't be any need for you to modify it.
+
+--------------------------------------------------
+06/25/02 at 06:25:57  Reply by: Integrator (integrator@triasoft.com)
+--------------------------------------------------
+well, I've found g_argv in source code of BotMixer5000, in h_export.cpp, line 28 :
+code:
+
+char *g_argv;
+
+
+There is another definition of something like that (I mean h_global_argv), as it seemes to me (h_export.cpp, line 17):
+code:
+
+#ifndef __linux__ // line 17
+HGLOBAL h_global_argv = NULL;
+#else
+char h_global_argv[1024];
+#endif
+// ...........
+char *g_argv; // line 28
+// ...........
+#ifndef __linux__ //line 211
+   h_global_argv = GlobalAlloc(GMEM_SHARE, 1024);
+   g_argv = (char *)GlobalLock(h_global_argv);
+#else
+   g_argv = (char *)h_global_argv;
+#endif
+
+
+After that, I do not understand enough clearly how (in botmixer5000) you rebuild command line when you convert "hpb addbot" to "addbot", for example...
+
+[modified on 06/25/02 at 06:25:57]
+--------------------------------------------------
+06/25/02 at 07:59:36  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+g_argv is what I use to store the buffer that will be sent to the MOD when it requests a command line that was issued by a bot (since bot's can't use the normal ClientCommand function).
+
+If you want to implement something like the FakeClientCommand() for normal players, you too could redirect MOD Cmd_Argv() requests to use data that you have constructed to replace what the engine would normally send to the MOD.
+
+Forget the BotMixer stuff and look though the HPB bot source code at how I handle the FakeClientCommand() function.  The best way I can explain it is that I allocate a global memory buffer, stuff commands into that buffer, then when the MOD DLL code calls the engine Cmd_Argv() functions, I redirect those requests to my own code and supply the parameters that I want.  I can't explain this any more clearly than that.  Either you understand what I'm doing or you don't.  :)
+
+botman
+
+--------------------------------------------------
+07/01/02 at 04:32:19  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+Nick, you can download my RACC source code. I changed the FakeClientCommand() stuff the way you want, and there are many comments in the code for you to understand well enough what's going on I think.
+
+

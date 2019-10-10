@@ -1,0 +1,44 @@
+--------------------------------------------------
+Subject: Inquiry about capturing say and say_team messages
+--------------------------------------------------
+07/22/01 at 20:14:05  Posted by: ProgramMan (thevbfreak.pa@netzero.net)
+--------------------------------------------------
+Where would you capture say/say_team messages?  I want to make my bots respond to chat messages (like commands).
+
+BTW, I noticed that there is a BotFollowUser() in bot_navigation.cpp, but it doesn't seem to have any use (especially considering that pBotUser doesn't seem to be set anywhere in the code).
+
+[modified on 07/22/01 at 20:14:05]
+--------------------------------------------------
+07/23/01 at 04:37:57  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+There is already code in bot_client.cpp for FLF that intercepts text messages.  See the BotClient_FLF_TextMsg() function for this.  This is used to determine if the bot is on the attacking or defending team.  You could modify it to look for a particular name and respond based on that.
+
+The BotFollowUser() stuff came out of my Bot Number 10 code for Half-Life deathmatch.  For that bot you can use a teammate and it will follow you around providing cover fire.  I decided not to use this for TFC and other MODs since you can't normally USE people on your team and force them to follow you around.
+
+botman
+
+--------------------------------------------------
+07/25/01 at 21:14:46  Reply by: ProgramMan (thevbfreak.pa@netzero.net)
+--------------------------------------------------
+OK, the TextMsg message has these components:
+pfnWriteByte MessageType
+pfnWriteString Message
+
+I want to know what MessageType would correspond to chat (if it is the same as HUD_PRINTTALK or what not).
+
+--------------------------------------------------
+07/26/01 at 03:39:54  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+type debug_engine in the console while using the bot, then say a few messages and quit, then open "bot.txt" in the half-life folder.
+
+--------------------------------------------------
+07/26/01 at 04:44:15  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+The FLF stuff was just an example.  It catches the "TextMsg" network messages that allow you to print text to the center of the screen.
+
+The "say" or "say_team" commands use "SayText" network message.
+
+You would hook the "SayText" network packets in the same fashion that the "TextMsg" message network messages are hooked.  Look in engine.cpp at pfnRegUserMsg(), pfnMessageBegin(), and pfnWriteString() to see how these network messages are passed to the BotClient_XXXXX() functions in the bot_client.cpp file.
+
+botman
+

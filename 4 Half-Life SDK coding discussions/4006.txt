@@ -1,0 +1,108 @@
+--------------------------------------------------
+Subject: Player health timer
+--------------------------------------------------
+01/08/03 at 19:59:16  Posted by: trendkiller (corbin_mike@hotmail.com)
+--------------------------------------------------
+here is a piece of my code:
+
+// MIDAIR (BONUS) ALL deathmatch == 4 has been changed to == 1 (mac)
+// Pickup backpack
+BOOL CItemBackpack::MyTouch( CBasePlayer *pPlayer )
+{
+      if (pPlayer->pev->health <= 0)
+            return FALSE;
+      if (gpGlobals->deathmatch == 1 && pPlayer->m_flInvincibleFinished > 0)
+            return FALSE;
+
+
+ 
+      if (gpGlobals->deathmatch == 1)
+      {       
+            pPlayer->pev->health += 25;
+            ClientPrint( pPlayer->pev, HUD_PRINTNOTIFY, "#Additional_Health" );
+            if ((pPlayer->pev->health > 200) && (pPlayer->pev->health < 250))
+                  EMIT_SOUND( ENT(pPlayer->pev), CHAN_ITEM, "items/protect3.wav", 1, ATTN_NORM );
+            else
+                  EMIT_SOUND( ENT(pPlayer->pev), CHAN_ITEM, "weapons/lock4.wav", 1, ATTN_NORM );
+            
+            // Become invulnerable if the player's reached 250 health
+            if (pPlayer->pev->health > 249)
+            {               
+                  if (pPlayer->m_flSuperDamageFinished == 0)
+                  {                       
+                        // Give player quad
+                        //pPlayer->m_flInvincibleFinished = gpGlobals->time + 30;
+                        pPlayer->m_flSuperDamageFinished = gpGlobals->time + 30;
+                        pPlayer->m_iQuakeItems = (IT_QUAD);
+                        pPlayer->m_iAmmoCells = 0;
+                        
+                        // Make player glow red
+                        pPlayer->pev->renderfx = kRenderFxGlowShell;
+                        pPlayer->pev->rendercolor = Vector( 255, 128, 0 );      // RGB
+                        pPlayer->pev->renderamt = 100;      // Shell size
+
+                        EMIT_SOUND( ENT(pPlayer->pev), CHAN_VOICE, "items/pop2.wav", 1, ATTN_NORM );
+                        UTIL_ClientPrintAll( HUD_PRINTNOTIFY, "#Bonus_Power", STRING(pPlayer->pev->netname) );
+                  }
+            }
+
+This is the bonus that is attained in DMM4 in DMC, most of this code was already in the SDK from Quake. I have changed it a little, no invincibility the main thing, and since I cant get health to display above 255 I am locking it at 250. Here is my problem :
+I have also made rocket speed twice as fast in quake_rocket.cpp. To do this I made it so that rocket speed bonus kicks in when player health hits 250 (when the bonus is attained). I only want rocket haste to last as long as the quad damage, I thought the easiest thing to do would just make a timer that would drop player health back to 200 after quad is finished. Can anyone help me make a timer ? 
+
+ex.
+if (pPlayer->pev->health > 249)
+(pPlayer->pev->health = 200  gpGlobals->time + 30)
+
+??? you get the idea ?
+
+I have tried something like this :
+if (pPlayer->m_flSuperDamageFinished > 0)
+pPlayer->pev->health = 250
+else
+(pPlayer->pev->health = pPlayer->pev->health)
+
+It didnt work..This may not be the exact way I typed it, but you get the idea.
+
+NOTE - I dont know C++, I am learning as I go, so go easy on me ;)
+
+Thanks
+  
+
+
+[modified on 01/08/03 at 19:59:16]
+--------------------------------------------------
+01/08/03 at 20:13:29  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+I see you don't know C++, sure, anyway you're right it's a good way to learn and you seem to know at least a little what you are doing.
+
+In order to have a timer affected to a player, you have to declare a variable in the player's structure. Declare it as "float" since gpGlobals->time is float.
+
+Then, once your player becomes invincible, set this variable to gpGlobals->time + 30. Be certain to do it only once, of course.
+
+Then do a check each frame, in order to know if the gpGlobals->time has raised above the value you stored in this variable. If it has, then you know your timer has elapsed.
+
+Hope you understand :)
+
+There are many timers in botman's bots source code, such as in the HPB_bot. You might want to have a look at how botman did them. But you might not too, since I know for a person who is just learning C, it's not recommended to switch to another project just like that, it fuzzes your mind ;D
+
+
+--------------------------------------------------
+01/09/03 at 05:37:21  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+What PM is saying is that basically, you create a float variable to store the current time when something happens, then keep comparing that variable to the current game time.  When X number of seconds has elapsed (i.e. stored_time + X < current game time), then you trigger whatever you want to happen.
+
+If you are programming in the SDK, you can also do this with a Think() function (there are examples of this in the SDK).  You use SetThink() to setup a Think() function and you set pev->nextthink to the time when you want the engine to call your Think() function.  For example, if I had a function called Timeout(), I could set it up like this...
+code:
+void CMyClass::Timeout(void)
+{
+   // do stuff that happens after timer expires here
+}
+
+{
+   // other code somewhere else...
+   SetThink(Timeout);  // set up a function to get called after timeout
+   pev->nextthink = gpGlobals->time + 10.0f;  // call the function 10.0 seconds from now
+}
+
+botman
+

@@ -1,0 +1,65 @@
+--------------------------------------------------
+Subject: Too new libraries
+--------------------------------------------------
+07/09/03 at 18:33:08  Posted by: desNotes (desTubes@tampabay.rr.com)
+--------------------------------------------------
+After compiling my ricochet dll and putting it on my server to try out...I was feeling pretty good and decided to put it on a friend's hosted server. Imagine my surprise when he received the following error upon startup:
+
+L 07/07/2003 - 09:05:37: [META] ERROR: dll: Couldn't load game DLL
+/home/hlserv2/hlds_l/ricochet/dlls/ricochet_i386.so: /lib/libc.so.6:
+version
+`GLIBC_2.3' not found (required by
+/home/hlserv2/hlds_l/ricochet/dlls/ricochet_i386.so)
+L 07/07/2003 - 09:05:37: [META] ERROR: Failure to load game DLL; exiting...
+
+Apparently the hosting server is running on a machine with SuSE 7.3 LINUX and those C libraries that the DLL wants are from the latest version (8.2).
+
+Obviously Valve is not using the latest libraries. Should I have used an older compiler and library to compile the source code to ensure any version of Linux would work?
+
+I compiled using gcc 2.95.2 with glibc-2.2 patch.
+
+Continuing thanks,
+desNotes
+
+
+[modified on 07/09/03 at 18:33:08]
+--------------------------------------------------
+07/09/03 at 19:10:38  Reply by: Blood_Dust (di@html.com)
+--------------------------------------------------
+i hade the same error one of your files are coruped<SPelling ;{} your fucked sorry to say unless botman knows how to find it
+
+--------------------------------------------------
+07/10/03 at 05:35:45  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Don't include the "-static" argument when linking the shared library.  Linking things with -static causes the libraries on the build machine to be embedded into the shared library.
+
+By default, the linker will link against the dynamic shared libraries (*.so instead of *.a) and this will allow it to run on other Linux distributions better.
+
+botman
+
+--------------------------------------------------
+07/10/03 at 09:14:46  Reply by: desNotes (desTubes@tampabay.rr.com)
+--------------------------------------------------
+Here is the section of the Makefile where the libraries are being linked, "-shared" is being used and 
+not "-static"...should it specify a particular library (i.e. -shared-libgcc)?
+
+
+
+LDFLAGS=
+
+SHLIBEXT=so
+SHLIBCFLAGS=-fPIC
+SHLIBLDFLAGS=-shared
+
+DO_CC=$(CC) $(CFLAGS) $(SHLIBCFLAGS) $(INCLUDEDIRS) -o $@ -c $<
+
+[modified on 07/10/03 at 09:14:46]
+--------------------------------------------------
+07/10/03 at 09:56:54  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+As long as you don't have "-static" in there it shouldn't be including your version of the standard C library (libc).
+
+I'm not sure what else you can try.  Maybe send him/her the .o files and the makefile and let them link it on their machine?
+
+botman
+

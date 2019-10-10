@@ -1,0 +1,125 @@
+--------------------------------------------------
+Subject: This is probably trivial, but...
+--------------------------------------------------
+03/27/03 at 17:59:08  Posted by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Hello,
+
+Does anyone have a clue about how I could declare the following structures without for the compiler to complain ?
+code:
+
+typedef struct
+{
+   dummy2_t *dummy2;
+   other_stuff_t other_stuff;
+} dummy1_t;
+
+
+typedef struct
+{
+   dummy1_t *dummy1;
+   other_stuff_t other_stuff;
+} dummy2_t;
+
+
+Cause here, when it goes reading dummy1_t it complains that dummy2_t is undeclared, and if I put the dummy2_t declaration before it obviously complains that dummy1_t is undeclared too.
+
+After making fun of me, can someone tell me how can I do ?
+
+
+--------------------------------------------------
+03/28/03 at 00:47:42  Reply by: BrianL (halfkiller@hotmail.com)
+--------------------------------------------------
+Ever try using struct's instead of using typedef versions of it...
+
+code:
+struct pother_s
+{
+  char *other;
+};
+
+struct pinfo_1
+{
+  struct pinfo_2 *pInfo;
+  pother_s other_info;
+};
+
+struct pinfo_2
+{
+  struct pinfo_1 *pInfo;
+  pother_s other_info;
+};
+
+
+That code above compiles fine :-P
+
+[modified on 03/28/03 at 00:47:42]
+--------------------------------------------------
+03/28/03 at 06:46:54  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Thanks a lot Brian, it works.
+Someone already explained me this by email, but thanks anyway :)
+
+I wish I had reference books for C programming that explain these subtleties...
+
+
+--------------------------------------------------
+04/02/03 at 12:03:07  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+PM, try this
+
+code:
+
+typedef struct dummy2_t;
+
+typedef struct
+{
+  dummy2_t *dummy2;
+  other_stuff_t other_stuff;
+} dummy1_t;
+
+
+typedef struct
+{
+  dummy1_t *dummy1;
+  other_stuff_t other_stuff;
+} dummy2_t;
+
+
+
+You should be able to declare an empty type, and redeclare it, overwriting its namespace. That is why we define all functions with function code inside header files, because most of the time something like that will happen. 
+
+[modified on 04/02/03 at 12:03:07]
+--------------------------------------------------
+04/02/03 at 16:44:35  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+This does not work, Cheesy.
+Nevermind anyway, I'll stick to Brian's method.
+
+
+--------------------------------------------------
+04/02/03 at 16:59:22  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+interesting...
+
+it works okay with class, thats were i got the idea from...
+
+code:
+
+class dummy2_t;
+typedef int other_stuff_t; //anything
+
+class dummy1_t
+{
+  dummy2_t *dummy2;
+  other_stuff_t other_stuff;
+};
+
+
+class dummy2_t
+{
+  dummy1_t *dummy1;
+  other_stuff_t other_stuff;
+};
+
+

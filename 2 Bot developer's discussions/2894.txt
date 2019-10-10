@@ -1,0 +1,57 @@
+--------------------------------------------------
+Subject: ummm botman?
+--------------------------------------------------
+03/25/02 at 10:00:15  Posted by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+I noticed you got single player working with Hpb_bot? How did you manage it? :)
+
+--------------------------------------------------
+03/25/02 at 11:23:33  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+I had forgot that when the Save/Restore stuff calls the engine to save the Think(), Touch(), and Use() function pointers, that the engine uses the DLL that it loaded (from the liblist.gam file) to translate the function pointer (the address) into a name (the C++ name of the function).
+
+The engine was getting a request from the game DLL to save a function pointer, but the engine couldn't find that function in the DLL that it loaded (the HPB bot DLL), so the engine was returning NULL instead of the correct name (like MonsterThink@CBaseMonster, etc.).
+
+I intercept the pfnFunctionFromName() and pfnNameForFunction() engine calls and redirect them to my own code (from namefunc.cpp) that finds the game DLL function pointer address and returns the game DLL C++ name for that function.
+
+The C++ name mangled names, like ?AccelerateThink@CApacheHVR@@AAEXXZ, get truncated the same way the Half-Life engine truncates them and turned into a shorter form (AccelerateThink@CApacheHVR in this case).  This makes them backward compatible with any previously saved games before installing the HPB bot.
+
+After figuring this out I realized that single player NEVER could have worked properly with the HPB bot installed.  I'm not sure why I thought that it was working properly at one point, but I must not have tested things well enough at that time.  I probably just started the train ride and made sure that it went through a couple of level changes without crashing and assumed that everything was okay.
+
+botman
+
+--------------------------------------------------
+03/25/02 at 11:54:53  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+I had a look for namefunc.cpp on my whole hard drive and couldn't find it? Where is it?
+
+Btw I have SDK 2.2 and lots of bot source codes too!
+
+[modified on 03/25/02 at 11:54:53]
+--------------------------------------------------
+03/25/02 at 12:37:54  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+actually I'm getting rather confused... how can I "redirect them to my own code" ? That's what I don't get :( 
+
+--------------------------------------------------
+03/25/02 at 12:47:40  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+WELL DONE BOTMAN! YOU DID IT! I was close to success but you found it before me!
+
+Do you mind if I have a look in your source code? :D
+
+
+[modified on 03/25/02 at 12:47:40]
+--------------------------------------------------
+03/25/02 at 13:32:39  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+"actually I'm getting rather confused"
+
+The namefunc.cpp file isn't in the SDK.  I created it for the bot code.  Download the HPB bot 1.9 source code and look at the enginecallback.h file (look for NAME_FOR_FUNCTION), look in the h_export.cpp file (look for LoadSymbols), and look in the namefunc.cpp file.
+
+"Do you mind if I have a look in your source code?"
+
+Nope, that's why I make it available for download.
+
+botman
+

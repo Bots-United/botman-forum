@@ -1,0 +1,165 @@
+--------------------------------------------------
+Subject: SG's
+--------------------------------------------------
+11/05/00 at 11:44:53  Posted by: ARES (j.sdubbelboer@freeler.nl)
+--------------------------------------------------
+How can you see what team a sg is from.
+
+--------------------------------------------------
+11/05/00 at 14:10:24  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+I believe that the sentry gun will have an owner (who gets credit for the kills).  Look at the pent->v.owner field of the sentry gun to determine which player created the sentry gun.  From that you know which team the player is on and thus which team the sentry gun belongs to.
+
+botman
+
+--------------------------------------------------
+11/07/00 at 12:23:05  Reply by: ARES (j.sdubbelboer@freeler.nl)
+--------------------------------------------------
+I have alredey traid that. I have also traid pent->v.team and it also didn't work. ???
+
+--------------------------------------------------
+11/22/00 at 15:21:05  Reply by: Spyro (b2.mccarthy@student.qut.edu.au)
+--------------------------------------------------
+Hi,
+
+Has anyone else got this to work yet??
+
+simply anyway. I managed to set it's team by mucking around with the messages that are sent, but it would probably be error prone if there are demomen chucking gs around at the same time :~(
+
+you can't do it with owner, model, skin, team or any other standard vars in the entvars_t
+
+How did you do it, botman?
+
+--------------------------------------------------
+11/23/00 at 04:56:57  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+The only thing that seemed to be distinct in the sentry gun entity was the colormap.  If you view the sentry gun model with a model viewer you will notice that the model doesn't have skins like the flag.  You will also notice that the places on the model that is normally BLUE, RED, GREEN, etc. is a dull shade of white.  It appears that the TFC code is setting the colormap values when sentry gun is created.
+
+The owner field is NULL.  The team field is NULL.  The skin field is NULL.  The only thing that seemed to change is the colormap field.
+
+botman
+
+--------------------------------------------------
+11/23/00 at 14:11:02  Reply by: Spyro (b2.mccarthy@student.qut.edu.au)
+--------------------------------------------------
+Hi botman,
+
+Thanks for the help. I was tracking the last entity created and the waiting for a  BuildSt message and set the team of the gun to the target of the message. The only thing was, they don't always happen straight after each other, and there could be problems if some other messages get mixed up in there.
+
+Colormap seems to be a much better idea. Now i have to figure out how to let the eng know it's his.
+
+Thanks,
+
+--------------------------------------------------
+11/23/00 at 15:11:14  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+Here's what I've got...
+
+   while ((pent = UTIL_FindEntityByClassname( pent, "building_sentrygun" )) != NULL)
+   {
+      int sentry_team = -1;
+      int bot_team = UTIL_GetTeam(pEdict);
+ 
+      if (pent->v.colormap == 0xA096)
+         sentry_team = 0;  // blue team's sentry
+      else if (pent->v.colormap == 0x04FA)
+         sentry_team = 1;  // red team's sentry
+      else if (pent->v.colormap == 0x372D)
+         sentry_team = 2;  // yellow team's sentry
+      else if (pent->v.colormap == 0x6E64)
+         sentry_team = 3;  // green team's sentry
+ 
+      // don't target your own team's sentry guns...
+      if (bot_team == sentry_team)
+         continue;
+
+      // set the pBotEnemy to sentry gun here...
+   }
+
+botman
+
+--------------------------------------------------
+11/23/00 at 15:24:21  Reply by: CountFloyd (countfloyd_1999@yahoo.com)
+--------------------------------------------------
+I know this is offtopic, just got the idea when I looked at the colormap stuff. Is there a way to tell the lightlevel at a Players/Bots Position by getting lightlevels/colormaps from textures ?
+
+--------------------------------------------------
+11/24/00 at 00:43:58  Reply by: William (william@botepidemic.com)
+--------------------------------------------------
+Hi,
+
+so light levels... :)
+
+If you'd have access to the texture's 'emitted light' value (as specified in Worldcraft) (not sure if that's the case), you'd still need to do lots of ray traces in all directions to make sure you detect the small overhead lamp texture that is the primary source of light in the area.
+
+(Again, the remainder of the info is primarily based on Q2, but it might help, since HL tends to be similar).
+
+In Q2, you receive the player's lightlevel (from the engine, and most likely the renderer) in the same struct where you have the "msec" ping time value. In Q2, the value is returned in the PMove physics player movement call.
+You might wanna search in similar places in the HL sources.
+Note that at most, you get the player's lightlevel, never the lightlevels of other (fake) clients). The value is different, depending on your renderer (software, OpenGL, etc.).
+
+I happen to know that MrElusive (Gladiator bot for Q2, and id's Quake3Arena bots) "simply" retrieved the lightlevel from reading and interpreting the levels' .bsp file. 
+
+William
+
+
+--------------------------------------------------
+11/24/00 at 04:47:32  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+See this thread...
+
+http://dynamic.gamespy.com/~botman/yabb/YaBB.pl?board=3&action=display&num=534
+
+botman
+
+--------------------------------------------------
+11/24/00 at 06:24:29  Reply by: William (william@botepidemic.com)
+--------------------------------------------------
+Two things:
+- I remembered and looked up the thread, but wasn't sure obtaining light levels was completely impossible
+
+In that case, Count Floyd's idea would work if applied only during the creation of way points (when typically, you don't have bots running around, and you have plenty of CPU available to look for the nearby brightest texture).
+Not sure whether it is actually feasible.
+
+I'll have a look in the HL SDK later today.
+
+William
+
+--------------------------------------------------
+11/24/00 at 08:10:15  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+Is there any site that tells you all the commands for a bot??? like all of this HL stuff like:
+pent->
+and
+pBotEnemy
+etc.. 
+??
+
+--------------------------------------------------
+11/24/00 at 08:44:12  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+No there isn't any specific commands for a bot.  The commands depends on what the developer want to use.  As far as whats available from the Half-Life engine, there are several sites that have tutorials on Half-Life coding and they describe how to create or modify things in Half-Life (mostly geared toward creating MODs).
+
+If you download the Valve Half-Life SDK you get a list of all the functions that are available through the engine (in the .h engine header files).  You also get source code showing how to use many of these functions.  The Full SDK (with the monster AI) has the most complete examples of this, but not all engine functions are used in the single player or multiplayer game.  Many of the engine functions don't do anything.  This is the case with the pfnGetEntityIllum() function which was supposed to return the illumination level of a particular entity (player, weapon, monster, healthkit, etc.).  Yahn (from Valve) stated that the code for this function was never completed.  It was going to be used for the cockroach in single player to have them run from the light when you turned on a light switch, but currently it does nothing.
+
+If you want to determine light levels at a location in a map the "best" way is to cycle through all the light entities in a map and select the ones that are visible from that location.  The distance from the light source can be used to calculate the relative light levels at that location.  I'm not sure how you can tell the difference between areas that are outdoors (and lit up) verses areas that are indoors (unless you trace straight up to see if there is ceiling or sky above you).  Even if there is sky above you, can you tell whether the sky is a daytime sky or a night time sky?
+
+I'm sure somebody that is more familiar with making maps for Half-Life code give some good feedback on how light levels work when making a map.  I'm not a mapper, so I don't know the answer to some of these questions.
+
+botman
+
+--------------------------------------------------
+11/24/00 at 15:53:16  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+I've been a long term mapper, ever since I got worldcraft 1.15 for quake 1 :o)
+
+you can tell if there is a nighttime sky if the cl_skyname is a particular name (of the tga files that make the sky background) but..
+
+the light_environment lights only emit light from the sky textures, so hopefully that can solve a few problems :o)
+
+--------------------------------------------------
+01/02/01 at 23:10:51  Reply by: BiGjesus (holybigjesus@hotmail.com)
+--------------------------------------------------
+ahh I have an idea on how they could do this light thing you have 2 different light entities one for outside and one for inside the one for outside is called light_environment and the one for inside is light they have one called light_spot but i havent seen this used but in one map which is rock2 any how the controlls on these babies are purdy simple Im just learning to use c++ thanx to bot man I even know what it is. lol any how basicly the idea is to have a perimiter around the bot which is called vision and the vision can be effected by light etnities that away the bot can still see real far away to get to point to point but hell be what ever when he gets around non lighted areas or low lighted areas any how just adding to a great idea I hope it helps sorry my grammer is bad lol..:P   
+8::::D~~~~~~~~~GRAMMAR SCHOOL!
+

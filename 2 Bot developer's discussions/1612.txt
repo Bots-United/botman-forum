@@ -1,0 +1,86 @@
+--------------------------------------------------
+Subject: sniper waypoint problem
+--------------------------------------------------
+04/30/01 at 03:10:30  Posted by: Pembunuh (yip_omar@hotmail.com)
+--------------------------------------------------
+hi
+
+I need some help on the sniper waypoint handling code in BotThink().
+
+I just dont get it. Why does the time
+"pBot->f_sniper_aim_time" always keep updated even though at first is 0.0 in BotSpawnInit(). That's why the rest of the code after the checking
+
+"if (pBot->f_sniper_aim_time <= gpGlobals->time)"
+is not executed because the "pBot->f_sniper_aim_time " is always updated and this cause the condition checking above to be false.
+
+Help!
+
+
+
+--------------------------------------------------
+04/30/01 at 05:16:14  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+If you look at the original HPB bot template code, f_sniper_aim time is set to 0.0 in BotSpawnInit() and then (if the MOD is TFC), the f_sniper_aim time is updated to a new time (current time + RANDOM(3.0, 5.0)).
+
+This means that every 3 to 5 seconds the f_sniper_aim time will be reset to a time in the future (but only if the MOD is TFC).
+
+This is used to keep the camping sniper bot from constantly aiming on one direction (looking like the player is frozen in place).  The aim will be adjusted randomly +/- 15 degress everytime f_sniper_aim time becomes less than the current time.
+
+botman
+
+--------------------------------------------------
+04/30/01 at 09:15:55  Reply by: Pembunuh (yip_omar@hotmail.com)
+--------------------------------------------------
+        // check if the waypoint is a sniper waypoint AND
+      // bot isn't currently aiming at an ememy...
+      
+        if ((waypoints[pBot->curr_waypoint_index].flags & W_FR_CAMP) &&
+          (pBot->pBotEnemy == NULL))
+      {
+          ALERT( at_console, "Camp 1\n");
+            // check if it's time to adjust aim yet...
+            char msg[80];
+          sprintf(msg,"sniper time= %f\n",pBot->f_sniper_aim_time);
+          ALERT( at_console, msg);
+          sprintf(msg,"global time= %f\n",gpGlobals->time);
+          ALERT( at_console, msg);
+
+          if (pBot->f_sniper_aim_time <= gpGlobals->time)
+            {
+               int aim_index;
+                        ALERT( at_console, "Camp 2\n");
+               aim_index = WaypointFindNearestAiming(waypoints[pBot->curr_waypoint_index].origin);
+
+               if (aim_index != -1)
+               {
+                  ALERT( at_console, "Camp 3\n");
+                           Vector v_aim = waypoints[aim_index].origin - waypoints[pBot->curr_waypoint_index].origin;
+
+                  Vector aim_angles = UTIL_VecToAngles( v_aim );
+
+                  aim_angles.y += RANDOM_LONG(0, 30) - 15;
+
+
+              pEdict->v.ideal_yaw = aim_angles.y;
+
+                  BotFixIdealYaw(pEdict);
+               }
+
+               // don't adjust aim again until after a few seconds...
+               pBot->f_sniper_aim_time = gpGlobals->time + RANDOM_FLOAT(3.0, 5.0);
+
+            }
+         
+      }
+
+I understand what u mean by the updating...but it seems that pBot->f_sniper_aim_time is updated
+somewhere else coz i check it using some debug messages up there.
+
+The code didn't go through printing "camp2" and "camp3" but when I checked the time "pBot->f_sniper_aim_time"
+it's always updated.??? But the only place to update that is to go through debug message "camp2".
+I am baffled.
+
+And one more thing I checked that globals time is less than sniper time by 2 or 3 secs. Why?
+
+
+

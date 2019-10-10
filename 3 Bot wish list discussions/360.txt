@@ -1,0 +1,62 @@
+--------------------------------------------------
+Subject: MODs...
+--------------------------------------------------
+10/20/00 at 14:36:59  Posted by: mr_slick (mr_slickness@yahoo.com)
+--------------------------------------------------
+Could you make HPB Bot use generic objects that could work with any mod (even just barely) and a either separate dll that I could compile to fully support that mods ents and actions or a text file with the ents and actions? (I don't have my network up, so I play against bots in CS, HLDM, and TFC. I would like to play against most mods..)
+
+--------------------------------------------------
+10/21/00 at 05:00:44  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+You would have to have the list of map entities that are created in that MOD.  If the MOD only used entities from standard Half-Life then the HPB bot ALREADY works with it!  However most MODs add their own entities (like new weapons, new ammo, etc.) and the bots won't work correctly with them.  Even MODs that the bots do work with have problems when new things are added.  Remember when CS added vehicles and the CS bots had to be updated in order for vehicles to show up in the maps?  They didn't cause the game to crash, there just weren't any vehicles in the maps that were supposed to have them.  Unfortunetly you can't just create a universal generic bot unless you've got the list of entities used in each MOD the bot will play in.
+
+botman
+
+--------------------------------------------------
+10/21/00 at 16:26:26  Reply by: mr_slick (mr_slickness@yahoo.com)
+--------------------------------------------------
+could you have certain things, like goals (the bots try to get there after acheiving something), which would have actions (the bots would do an action, like "fire [weapon]", so the bot would do that), so entities wouldn't matter, really. You could have a list of weapon and ammo ents that the bos could use. If you want real detail, email me.
+
+--------------------------------------------------
+10/22/00 at 05:12:07  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+No, by entities I mean the entities that are contained within a BSP map file.  Download a FGD file for Half-Life or TFC or CS and look through it.  See all the objects described in there?  Those are the entities I'm talking about.  When Half-Life loads a map, the engine scans through this .bsp file and tells the MOD DLL to create each one of these entities (like func_water, weapon_shotgun, ammo_357, item_battery, etc.).
+
+These are created by using the entity name func_water is called "func_water" (as an ASCII text string).  Since the HPB bot sits between the engine and the MOD DLL, it has to have function names that match these text descriptions EXACTLY and these functions have to be exported by the HPB bot dll.  So to allow the engine to create func_water, you have to have a function called func_water() and you have to export the name "func_water" so that the engine can call it.
+
+Now let's say Bubba comes out with the new Redneck Rampage MOD for Half-Life.  Bubba adds a new weapon (let's say it's a chicken gun).  The maps for Redneck Rampage contain a weapon_chickengun that never existed in any other MOD before.  When the engine starts up the MOD and sees a weapon_chickengun in the map, it will call the DLL to try to create a chicken gun.  But, the MOD DLL (the HPB bot) doesn't have a "weapon_chickengun" function.  So the engine skips it and goes on.  This means that no one in the MOD ever sees a weapon_chickengun.  They can't use it because they can't pick it up, because it doesn't exist.
+
+In order for the HPB bot (or any bot) to support a MOD, it MUST have the complete list of all entities that are used by that MOD.  If they don't those objects won't be created.  If they don't get created and other functions in the MOD expects them to be there it can cause the game to crash.
+
+botman
+
+--------------------------------------------------
+10/23/00 at 15:35:00  Reply by: mr_slick (mr_slickness@yahoo.com)
+--------------------------------------------------
+I know some C++, isn't there a way to handle all functions that are not included in you dll? I'm sure there is a way. I could look for it, if you want.
+
+--------------------------------------------------
+10/24/00 at 05:37:14  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+No, there isn't a "default function", besides they have to be unique and distinct.  You HAVE to have a 1-to-1 relationship between what the engine is trying to create and what exists in the MOD DLL.
+
+botman
+
+--------------------------------------------------
+10/24/00 at 07:26:20  Reply by: Jakal (Jons@gmx.li)
+--------------------------------------------------
+Hey AgentHH i think your ideas are good. Why don`t you download the HPB_source and try to make your own Bot?
+
+--------------------------------------------------
+11/01/00 at 11:08:07  Reply by: mr_slick (mr_slickness@yahoo.com)
+--------------------------------------------------
+new idea:
+could you have the hpb_bot dll load a separate dll ("mod.dll") which would be compiled by the mod team with all of the ent calls in it? this would probably work...
+
+--------------------------------------------------
+11/01/00 at 11:21:28  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+Ummmm, that's actually what the HPB bot already does.  It loads the MOD DLL file.  The MOD DLL file has all of these entity function names exported so that the engine can call them.  By putting the HPB bot code in between the two you have to also export the same functions names and redirect them to the MOD because the engine only knows about 1 DLL (the HPB bot dll).  The engine can't load 2 or more DLLs, just 1.
+
+botman
+

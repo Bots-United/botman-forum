@@ -1,0 +1,178 @@
+--------------------------------------------------
+Subject: BM5k
+--------------------------------------------------
+11/03/03 at 10:45:33  Posted by: BAStumm (bs@bs-linux.com)
+--------------------------------------------------
+Having some issues here with BotMixer5000.
+
+First was minor, got error about the botmixer .so file. It was looking for i386 but the bm download contains i486.so no biggy, renamed the .so file. 
+
+Ok so get past that error not I get:
+
+BotMixer5000 - Error determining MOD directory name!
+
+I am running dod with modified hpb_bot and sturmbot. Things look to be setup correctly from what I can tell, really isn't that much to setup. install bots, install bm edit config file for bm. Any ideas? 
+
+--------------------------------------------------
+11/03/03 at 11:28:03  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+This is probably due to Valve changing the full MOD path name (C:\Sierra\Half-Life\tfc) to a relative pathname.  This was done in the x.1.1.1 dedicated server release release (the one where the HPB bot broke and caused crashing).
+
+If I get a chance next weekend, I'll apply the same changed in the BotMixer5000 code that I did to the HPB bot...
+
+http://dynamic.gamespy.com/~botman/yabb/YaBB.pl?board=1&action=display&num=4379
+
+If you are impatient, you can make the same fix yourself by downloading the BotMixer5000 source code and implementing the same change as shown in the above link (it will be in the same h_export.cpp file as the HPB bot was, what gets replaced is exactly the same).
+
+botman
+
+--------------------------------------------------
+11/03/03 at 13:27:09  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Some time ago already I've written a metamod plugin that fixes the GetGameDir() function behaviour that is the cause of your problem here.
+
+http://www.racc-ai.com/getgamedirfix_plugin.exe
+
+
+--------------------------------------------------
+11/03/03 at 13:56:46  Reply by: BAStumm (bs@bs-linux.com)
+--------------------------------------------------
+fakedll suffers the same problem. 
+
+--------------------------------------------------
+11/03/03 at 14:02:59  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+...yep, same code in the fakedll h_export.cpp file, it too needs to be changed.  Thanks.
+
+botman
+
+--------------------------------------------------
+11/03/03 at 15:26:47  Reply by: BAStumm (bs@bs-linux.com)
+--------------------------------------------------
+well I'm having a hell of a time with this. I got the code to recompile fine but I'm getting seg faults. I see in your code your referring to i486 for the botmixer library but I was forced to change it to i386 or hlds wont start. Perhaps thats part of it. Anyway I am getting seg faults... I get farther in if I dont list any bots to load in the botmixer config but still segs... 
+
+With no bots to load i get:
+
+code:
+
+./hlds_run: line 49: 24880 Segmentation fault      (core dumped) $HL_CMD
+
+warning: Unable to set global thread event mask: generic error
+Error while reading shared library symbols:
+Cannot enable thread event reporting for Thread 1024 (LWP 24880): generic error
+debug.cmds:1: Error in sourced command file:
+Error accessing memory address 0xbfffddb0: No such process.
+email debug.log to linux@valvesoftware.com
+
+
+
+
+and with sturmbot and hpb loading I get:
+code:
+
+./hlds_run: line 49: 24910 Segmentation fault      (core dumped) $HL_CMD
+
+warning: Unable to set global thread event mask: generic error
+Error while reading shared library symbols:
+Cannot enable thread event reporting for Thread 1024 (LWP 24910): generic error
+Error accessing memory address 0xbfffda90: No such process.
+36      eval.c: No such file or directory.
+Error accessing memory address 0xbfffda90: No such process.
+debug.cmds:1: Error in sourced command file:
+Error accessing memory address 0xbfffda6c: No such process.
+email debug.log to linux@valvesoftware.com
+
+
+
+I get another seg fault if trying to run in secure mode:
+
+code:
+
+Error while mapping shared library sections:
+/hlds_l/./dod//ModuleS_i386.so: No such file or directory.
+
+
+--------------------------------------------------
+11/03/03 at 17:14:11  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+"/hlds_l/./dod//ModuleS_i386.so"
+
+DoD (Day of Defeat?)  The HPB bot won't support Day of Defeat (unless you've made lots of modifications to it so it will do so).
+
+I'm not sure what the crashing problem is unless Valve has added more engine functions between the MOD DLL code and the engine.  The BotMixer5000 completely replaces the normal Game DLL code (i.e. tfc.dll), that's what the fakedll thing is for.  The fakedll is a replacement for the normal Game DLL code (it doesn't do anything, it just allows the engine to call dummy functions).
+
+The BotMixer5000 code loads the REAL Game DLL (which has been renamed so that metamod won't load it, but will load the fake one instead).  Make sure you've renamed the original game DLL and then renamed the fakedll to whatever the original was.  For example, for TFC...
+
+1) Rename "tfc_i386.so" to "tfc_botmixer_i386.so"
+2) Rename "fakedll_i386.so" to "tfc_i386.so"
+
+...and for Dod...
+
+1) Rename "dod_i386.so" to "dod_botmixer_i386.so"
+2) Rename "fakedll_i386.so" to "dod_i386.so"
+
+Then make sure the liblist.gam "gamedll_linux" entry is pointing to "BotMixer5000_i386.so"
+
+But again, the HPB bot DOESN'T support DoD.
+
+I can't guarantee any of this will work at all with the new Steam enabled dedicated server.
+
+botman
+
+--------------------------------------------------
+11/03/03 at 18:28:27  Reply by: BAStumm (bs@bs-linux.com)
+--------------------------------------------------
+hmmm liblist is pointing to botmixer 486 not 386... I used the installer AFTER putting my compiled versions of fakedll and botmixer libraries. I'll check with a 386 botmixer file in the liblist later (dod is running now so I can't test). 
+
+as for hpb and dod, I'm not actually spawning any bots, just loading the library. But like I said before it seg faults even with no bot libraries loading and I also tried loading JUST the sturmbot library too. 
+
+--------------------------------------------------
+11/04/03 at 05:54:19  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+The only place the "i386" vs. "i486" matters is in h_export.cpp of the fakedll...
+
+code:
+#ifndef __linux__
+   strcat(mixer_dllfile, "/dlls/BotMixer5000.dll");
+#else
+   strcat(mixer_dllfile, "/dlls/BotMixer5000_i486.so");
+#endif
+
+...so it will look for "dlls/BotMixer5000.dll" on Win32 machines and "dlls/BotMixer5000_i486.so" on Linux machines.
+
+You can recompile without the "-m486" option in the Makefile if you want to build the 386 code instead of the 486 (Pentium) code.  It shouldn't matter which one you use and you can name the files anything you want to (as long as you change that line in h_export.cpp to load the matching file).  The -m486 option was just to build slightly more efficient code on Pentium machines.
+
+Also, ignore my comment about metamod ("which has been renamed so that metamod won't load it"), I meant the engine, not metamod.  For some reason I was thinking that metamod was used to load the BoxMixer5000 DLL, but I never tested the BotMixer5000 with metamod, so I'm not sure if they will work together or not.  You should probably try things without metamod until you at least get that part working, then try getting metamod to load the BotMixer5000 DLL using the "+localinfo" command line option.
+
+If things are working properly, you should be able to start up BotMixer5000 (using the liblist.gam "gamedll" or "gamedll_linux" entry) and the BotMixer5000 DLL should load the fakedll and load the Game DLL (from the BotMixer5000.cfg file).  If you have all the bot lines in the BotMixer5000.cfg file commented out, then things should run normally.  If you aren't getting this far, then the engine interface between the Game DLL code and the engine has probably changed and it will require more extensive changes (which would be easier if Valve would release another SDK to match the x.1.1.1 engine changes).
+
+If I get time this weekend, I'll take a look, but there's probably not much more I can do to help you get things going (and there's a possibility that it won't ever work again if I can't figure out why it's crashing).
+
+botman
+
+--------------------------------------------------
+11/17/03 at 10:39:42  Reply by: BAStumm (bs@bs-linux.com)
+--------------------------------------------------
+Have you had a chance to look into this?
+
+--------------------------------------------------
+11/17/03 at 10:59:50  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+No, I haven't.  I'm in the middle of working on some Gearbox stuff and won't have a free weekend until after the first weekend in December (i.e. 2nd weekend of December), so it definitely won't get fixed by me before then.
+
+botman
+
+[modified on 11/17/03 at 10:59:50]
+--------------------------------------------------
+11/18/03 at 14:18:52  Reply by: Jeffrccar (Jeffrccar@yahoo.com)
+--------------------------------------------------
+wow! finally found the problem.
+how do i get the BotMixer5000 source code when the link is broken?
+http://www.fileplanet.com/dl/dl.asp?planethalflife/botman/BotMixer5000_5_src.zip
+
+--------------------------------------------------
+11/18/03 at 15:02:15  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Continue hitting the download link at fileplanet. Fileplanet is a large community of servers, and some of which are not always working as well as they should. Eventually you'll land on a server which has the file available for downloading. That's usually the way it goes.
+
+

@@ -1,0 +1,134 @@
+--------------------------------------------------
+Subject: set_model command not working for me.
+--------------------------------------------------
+07/30/03 at 07:34:19  Posted by: Lazer (lazer@devin-afshin.com)
+--------------------------------------------------
+I'm having trouble with the set_model command. For some reason, when I do it it it doesn't change the player's model.
+
+code:
+      player_t* pPlayer;
+      for (int i = 1; i <= gpGlobals->maxClients; ++i) {
+            pPlayer = INDEXPLAYER(i); //ENTINDEX(i);
+            if (pPlayer->ingame && CallsMe(pPlayer,arg ,parm) ){
+                  SET_MODEL(pPlayer->pEdict, "models/chick.mdl");
+            }
+      }
+
+I'm thinking it might have to do with the model not being precached, but I'm pretty sure I did precache it. 
+
+--------------------------------------------------
+07/30/03 at 09:20:19  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Try sending the command to the client instead...
+code:
+CLIENT_COMMAND("model models/chick.mdl\n");
+
+botman
+
+--------------------------------------------------
+07/30/03 at 09:45:06  Reply by: Lazer (lazer@devin-afshin.com)
+--------------------------------------------------
+No that didn't work. It was done in chickenmod using the set_model command like that. I can't do a client model command because the mod is natural-selection and they don't allow model switches through the console. I think the reason why it isn't working is that in chickenmod it creates a new entity that the player controls. That way seems to cause a lot of lag though, so I'm trying to switch the model of the actual player. So far the most I've been able to do with the model is make it glow or make it transparent. I can't seem to get the model to change though.
+
+--------------------------------------------------
+07/30/03 at 19:14:59  Reply by: Lazer (lazer@devin-afshin.com)
+--------------------------------------------------
+I talked to voogru and he mentioned to me something about checking in SetClientKeyValue. What does this mean :\
+
+--------------------------------------------------
+07/31/03 at 05:14:13  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+This is what the HPB bot uses to set the model for a player...
+code:
+inline char *GET_INFOBUFFER( edict_t *e )
+{
+   return (*g_engfuncs.pfnGetInfoKeyBuffer)( e );
+}
+
+inline void SET_CLIENT_KEY_VALUE( int clientIndex, char *infobuffer,
+                                  char *key, char *value )
+{
+   (*g_engfuncs.pfnSetClientKeyValue)( clientIndex, infobuffer, key, value );
+}
+
+
+SomeFunction(edict_t *pEdict)
+{
+   char *infobuffer = GET_INFOBUFFER( pEdict );
+   int clientIndex = ENTINDEX( pEdict );
+
+   SET_CLIENT_KEY_VALUE( clientIndex, infobuffer, "model", "gina" );
+}
+
+botman
+
+--------------------------------------------------
+07/31/03 at 11:01:04  Reply by: Lazer (lazer@devin-afshin.com)
+--------------------------------------------------
+Nice its working... almost. When I run the command the model quickly changes back. It seems as if the model gets set every player think, or something that gets called ever few tics. Any idea what I would do to keep the model set. I tried adding the command to the player think, and if the player returned true for being supposed to have the alternate model it would run the command every time to keep the model correct. Didn't quite seem to work though. Here's what I tried, maybe I didn't do it right:
+code:
+void PlayerPreThink( edict_t *pEntity ) {
+      player_t *pPlayer = ENTPLAYER(pEntity);
+            if (pPlayer->female){
+                  char *infobuffer = GET_INFOBUFFER( pPlayer->pEdict );
+                  int clientIndex = ENTINDEX( pPlayer->pEdict );
+                  SET_CLIENT_KEY_VALUE( clientIndex, infobuffer, "model", "gordon" );
+            }
+      RETURN_META(MRES_IGNORED);
+}
+
+--------------------------------------------------
+07/31/03 at 11:39:45  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+The function ClientUserInfoChanged() is called by the engine in the MOD DLL code.  It tells the MOD that the player changed one of their values (like model or name, etc.).  The MOD DLL code can then make changes to the player based on this.
+
+Counter-Strike, for example, uses this function to keep players from changing their model.  If you try to change your model on the client, the server gets notified and changes it back to keep you from looking like a model that's not on your team.  If are probably running into the same issue.
+
+You might try intercepting the ClientUserInfoChanged() function and prevent it from calling the MOD DLL version for a player that you want to control.
+
+If the MOD has code that occasionally scans the infobuffer for each player (say for example in the StartFrame function), there's not much you can do to prevent it from checking the model of that player.  It's doubtful that a MOD would do this since it's fairly inefficient to keep checking the player's models over and over, but there's nothing to prevent a MOD coder from doing this if they want to.
+
+You'll just have to experiment and try different things out until you get the effect you want (or until you are satisfied that the effect you want can't be achieved, and give up).
+
+botman
+
+--------------------------------------------------
+07/31/03 at 12:43:46  Reply by: Lazer (lazer@devin-afshin.com)
+--------------------------------------------------
+Ok, I think it is the MOD dll giving me the problem. To try and get by it I did this, which didn't give me great results:
+code:
+void ClientUserInfoChanged( edict_t *pEntity, char *infobuffer )
+{
+      player_t *pPlayer = ENTPLAYER(pEntity);
+      if (pPlayer->female){
+            SERVER_PRINT("Info changed.");
+                  char *infobuffer = GET_INFOBUFFER( pPlayer->pEdict );
+                  int clientIndex = ENTINDEX( pPlayer->pEdict );
+                  SET_CLIENT_KEY_VALUE( clientIndex, infobuffer, "model", "gordon" );
+            RETURN_META(MRES_SUPERCEDE);
+      }
+}
+
+
+This kept the model the same. But was getting the console spammed with "Info changed." which showed me that the it went into an endless loop of changing the player model to gordon. I also tried taking the command out of the ClientUserInfoChanged (its callled once before which triggers this loop), and the gamedll seems to take over and switch it back. Even with the superced sitting there. Did I call the supercede wrong? I can't seem to figure out how to cancel the MOD dll. Sorry for asking so many questions, its just kinda hard when I've only been messing around with metamod for a few days.
+
+[modified on 07/31/03 at 12:43:46]
+--------------------------------------------------
+07/31/03 at 14:40:31  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Everytime YOU call the SET_CLIENT_KEY_VALUE() function, the engine will again try to tell the MOD DLL code that something changed.
+
+Call this function ONLY once from somewhere else like in ClientCommand, etc. (i.e. don't call it inside the ClientUserInfoChanged function).
+
+botman
+
+--------------------------------------------------
+07/31/03 at 18:24:07  Reply by: Lazer (lazer@devin-afshin.com)
+--------------------------------------------------
+Alright, I kinda figured that one out myself. I'm just not sure how to stop the MOD DLL...
+
+--------------------------------------------------
+08/02/03 at 17:48:47  Reply by: Lazer (lazer@devin-afshin.com)
+--------------------------------------------------
+C'mon someone must know how to stop the mod dll from being called...
+

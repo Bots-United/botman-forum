@@ -1,0 +1,219 @@
+--------------------------------------------------
+Subject: [unwaypointed bot] door detection
+--------------------------------------------------
+03/06/02 at 09:45:21  Posted by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+Hello
+
+I am fiddling with my bot door detection stuff and I would like your advices.
+
+I noticed that the doors origins were moving during the gameplay when a door would get triggered. For sliding doors, the origin would slide too, and for rotating doors, the origin would jump from the center of the door to about 30 units ahead on the left from the door and stay here forever at last in whatever position the door would turn to next.
+This being rather annoying for my bots to know where to head up to, here's what I did at each start of a map:
+
+code:
+
+void UTIL_SaveDoorsOrigins (void)
+{
+   edict_t *pDoor = NULL;
+   edict_t *pDoorOrigin = NULL;
+
+   // loop through all slide doors
+   while (((pDoor = UTIL_FindEntityByClassname (pDoor, "func_door")) != NULL) && (!FNullEnt (pDoor))) 
+   {
+      pDoorOrigin = CREATE_NAMED_ENTITY (MAKE_STRING ("info_target")); // create door origin entity
+      DispatchSpawn (pDoorOrigin); // spawn it
+      pDoorOrigin->v.origin = VecBModelOrigin (pDoor); // same origin as door, obviously
+      pDoorOrigin->v.takedamage = DAMAGE_NO; // doesn't allow it to take damage
+      pDoorOrigin->v.solid = SOLID_NOT; // make it invisible
+      pDoorOrigin->v.movetype = MOVETYPE_NOCLIP; // no clip
+      pDoorOrigin->v.classname = MAKE_STRING ("door_origin"); // sets a name for it
+      pDoorOrigin->v.rendermode = kRenderNormal; // normal rendering mode
+      pDoorOrigin->v.renderfx = kRenderFxNone; // no special FX
+      pDoorOrigin->v.renderamt = 0; // ???
+      SET_MODEL (pDoorOrigin, "models/mechgibs.mdl"); // sets it a model
+   }
+
+   // loop through all rotating doors
+   while (((pDoor = UTIL_FindEntityByClassname (pDoor, "func_door_rotating")) != NULL) && (!FNullEnt (pDoor))) 
+   {
+      pDoorOrigin = CREATE_NAMED_ENTITY (MAKE_STRING ("info_target")); // create door origin entity
+      DispatchSpawn (pDoorOrigin); // spawn it
+      pDoorOrigin->v.origin = VecBModelOrigin (pDoor); // same origin as door, obviously
+      pDoorOrigin->v.takedamage = DAMAGE_NO; // doesn't allow it to take damage
+      pDoorOrigin->v.solid = SOLID_NOT; // make it invisible
+      pDoorOrigin->v.movetype = MOVETYPE_NOCLIP; // no clip
+      pDoorOrigin->v.classname = MAKE_STRING ("door_origin"); // sets a name for it
+      pDoorOrigin->v.rendermode = kRenderNormal; // normal rendering mode
+      pDoorOrigin->v.renderfx = kRenderFxNone; // no special FX
+      pDoorOrigin->v.renderamt = 0; // ???
+      SET_MODEL (pDoorOrigin, "models/mechgibs.mdl"); // sets it a model
+   }
+
+   return;
+}
+
+
+
+Then in BotFindItem (btw I renamed the function to BotCheckForItems)
+
+code:
+
+void BotCheckForItems (bot_t *pBot)
+{
+   edict_t *pent = NULL;
+   edict_t *pPickupEntity = NULL;
+   Vector pickup_origin;
+   Vector entity_origin;
+   float min_distance = 501;
+   bool can_pickup;
+   TraceResult tr;
+   Vector vecStart;
+   Vector vecEnd;
+   int angle_to_entity;
+
+   pBot->b_is_picking_item = FALSE;
+
+   while ((pent = UTIL_FindEntityInSphere (pent, pBot->pEdict->v.origin, 500)) != NULL)
+   {
+      can_pickup = FALSE; // assume can't use it until known otherwise
+
+      // check if entity is a door (they are special case)...
+      if (strcmp ("door_origin", STRING (pent->v.classname)) == 0)
+      {
+         // trace a line from bot's waist to door origin entity...
+         UTIL_TraceLine (pBot->pEdict->v.origin, pent->v.origin, ignore_monsters, pBot->pEdict->v.pContainingEntity, &tr);
+
+         // check if traced all the way up to the door, either it is closed OR open
+         if ((strcmp ("func_door", STRING (tr.pHit->v.classname)) == 0)
+             || (strcmp ("func_door_rotating", STRING (tr.pHit->v.classname)) == 0)
+             || (tr.flFraction == 1.0))
+         {
+            // always use door if haven't used door in the last second and needs to be opened...
+            if ((pBot->f_use_door_time + 1 < gpGlobals->time)
+                && !pBot->b_use_door && (tr.flFraction < 1.0))
+            {
+               // if close to door, square up to the wall
+               if ((pent->v.origin - pBot->pEdict->v.origin).Length () < 40)
+               {
+                  BotSetViewAngles (pBot, UTIL_VecToAngles (-tr.vecPlaneNormal));
+                  pBot->b_use_door = TRUE;
+                  pBot->f_use_door_time = gpGlobals->time;
+               }
+
+               can_pickup = TRUE;
+            }
+         }
+      }
+
+      // see if this is a "func_" type of entity (func_button, etc.)...
+////////// Rest of BotCheckForItems() follows //////////
+
+
+
+and, later in BotWander() a check for b_use_door leads up to:
+
+code:
+
+void BotOpenDoorAndWait (bot_t *pBot)
+{
+   // just need to press the button once, when the flag gets set...
+   if (pBot->f_use_door_time == gpGlobals->time)
+   {
+      pBot->pEdict->v.button = IN_USE;
+      pBot->f_forward_time = gpGlobals->time + 1.0; // move to door
+   }
+
+   // make a step to the door then step back
+   else if ((pBot->f_use_door_time + 0.15 < gpGlobals->time) && (pBot->f_use_door_time + 0.3 > gpGlobals->time))
+   {
+      pBot->f_backwards_time = gpGlobals->time + 0.25; // step back
+      pBot->f_forward_time = 0; // then don't move
+   }
+
+   // check if the bot has waited too long for the door to open...
+   if (pBot->f_use_door_time + 0.8 < gpGlobals->time)
+   {
+      // clear use door flag
+      pBot->b_use_door = FALSE;
+
+      // bot doesn't have to set f_find_item since the bot should
+      // already have passed the doorway in the next second
+
+      pBot->f_forward_time = gpGlobals->time + 60.0; // run forward
+      pBot->b_is_walking = FALSE;
+   }
+}
+
+
+
+Here it is for the stuff.
+
+Well, it works not too bad with sliding doors, but I have lots of trouble to make bots open rotating doors and I can't figure out what's happening. Seems like they head up to the door, but most of the time they don't face it directly, and as a result they hurt the wall corner instead of hurting the door and getting it triggered.
+
+What do you think of it?
+Have you got better ideas?
+
+I'll take all advices (except: "bullshit why the hell don't you use waypoints?" ;-))
+
+
+--------------------------------------------------
+03/08/02 at 09:06:04  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+gasp... seems like my thread is completely uninteresting, or what ?
+
+Please, coders, I need your advices...
+
+
+--------------------------------------------------
+03/08/02 at 10:52:40  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+I don't think there are very many people trying to do waypoint-less navigation.  It just sucks up too much CPU time trying to constantly scan the environment for places where the bots can go.
+
+botman
+
+--------------------------------------------------
+03/08/02 at 12:11:47  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+Hmm... On a PIII 500MHz machine with 64MBytes SDRAM, my bots run around quite fluently...
+
+And I don't think my BotSampleFOV() function sucks so much ; It is not called every frame but just the time for the bot to determine a 'reach point', kind of volatile waypoint which is deleted from memory once the bot has reached it.
+
+I <b>DO BELIEVE</b> efficient unwaypointless navigation is a winnable challenge nowadays. I am quite proud of how my bots spread on the maps now and I am currently working on giving them a 'sense of orientation' to fullfill map goals.
+
+My goal is to make a bot AI whose behaviour, computed from its sensors' retrieved informations, follows as close as possible a human behaviour, <b>from the way the bot senses its environment</b> up to its final navigation and combat behaviour. The means are rationality, autonomy (no resource file such as waypoints), and forbidding of non human-like ways of information retrieval about its environment.
+
+But I'm completely off-topic, please forgive me...
+
+
+--------------------------------------------------
+03/09/02 at 04:04:14  Reply by: theimann (killaruna@botepidemic.com)
+--------------------------------------------------
+QUOTE:
+My goal is to make a bot AI whose behaviour, computed from its sensors' retrieved informations, follows as close as possible a human behaviour, <b>from the way the bot senses its environment</b> up to its final navigation and combat behaviour.
+
+
+
+Don't forget that human decisions are not only based on the current perception of the environment but also on plans which require a knowledge base of some kind. Human players, once they have played a map, know how to orientate themselves, i.e. know where the items they want are located and how to get there. This knowledge can be represented by waypoints, wayzones or whatever, but it has to be represented somehow. This is how - after half a year of developing waypointless navigation - I came to auto-waypointing when I realized that the current perceptions are not enough to base decisions upon.
+
+Tobias
+
+--------------------------------------------------
+03/09/02 at 13:57:47  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+Of course, you're right. That's the purpose of the 'sense of orientation' I am working on. When my bots first see a map goal, they will store its location and some other info that still needs to be pointed out in some kind of database and notify their team of that. Then, using the well-known arbitrary decision situation: 'I can go left, I can go right, I can go forward, where will I go?', bots will be able to pick up the direction that looks the most like the direction of their destination. At each corner or sudden change in the layout of the bot's way, a check is made for the bot to know which are the possible directions that can be taken. My 'sense of orientation' has to be implemented right there.
+
+The problem of dead-ends still remain ; to solve it I think I will have to store more locations in the database than just the map goals. I am thinking of a 'negative flag' associated with some stored locations for the bots to know that they have nothing interesting to do in the direction pointed by that flag (only in the case they want to reach their goal). This 'negative flag' would be turned on after some bots unsuccessfully try to reach a goal following that path ; the flag would then be dropped at the location where they made the last choice about the direction to follow ; direction that proved later to be false. I think that's just like how humans think, rather than autowaypointing.
+
+[modified on 03/09/02 at 13:57:47]
+--------------------------------------------------
+03/09/02 at 15:58:44  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+Unfortunately I don't think Half-life engine has allows the most efficient methods of non-waypointed navigation. Sure, tracelines is practically all you can use and doors etc. But Half-life was designed to use waypointed AI (As monsters use the nodes to navigate)
+
+I certainly don't think you are wasting your time though, you'll probably end up creating the best non-waypointed bot for half-life (if there are any at the moment) But the best results may still be unsatisfying.
+
+--------------------------------------------------
+03/10/02 at 10:48:35  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+I'm very close to success. Is waypointless navigation fatally worse than a waypointed one? We'll see it soon...
+

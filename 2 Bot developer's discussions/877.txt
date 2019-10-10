@@ -1,0 +1,232 @@
+--------------------------------------------------
+Subject: A couple bot questions
+--------------------------------------------------
+12/15/00 at 10:36:53  Posted by: dannywent (dannywent@hotmail.com)
+--------------------------------------------------
+Ok, i've got a couple of non-related bot questions, any help would be appreciated.
+
+-something is still wrong with my reload code.  if i put this:
+if(pBot->current_weapon.iClip == 0)
+      {
+            pBot->pEdict->v.button = IN_RELOAD;
+      }
+into botfireweapon() they reload after every shot.  i added the old bug fix to bot_client.cpp and it still doesn't work.  note this is for FLF so i don't need to worry about checking if the bot is carrying enough ammo to reload.
+
+-also, every once and a while my bots veiw angles get messed up, and they can only look up, or only look down.  I think i still have all the code from the template to reset the angles, but what could i do to periodically reset to they look level to the ground?
+
+- sometimes the bots (especially when they are shot at by their own team) will just flip up and go "swimming" through the air.  their legs still move, and they still get around, but they are not connected to the ground
+
+- a non bot question, but my models for commandos and rebels are still messed up, even though i installed the update.  i've tried the downloaded fix and that didn't work either.  both sides are still green :(
+
+-finally, how would i creat a stuct which all bots can access in any function?  Kind of like the gpGlobals struct, but with my own information.  Would i have to declare it in dll.cpp, and then make a *.cpp and *.h file, and then include the *.h file in whichever files i will need to access the struct in?
+
+-And in a shameless action of self-promotion:
+my bot, hot_bot, just had a new release, and will be up for another one within a week.  the next release will do capture points :)
+
+thanks to anyone who helps,
+
+Dan
+
+--------------------------------------------------
+12/15/00 at 14:22:48  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+1. For the reloading, I check in BotFindEnemy() if the bot hasn't seen an enemy in 5 seconds it presses the reload key (keeps it from reloading while engaged in combat)...
+code:
+   if (pNewEnemy)
+   {
+      // face the enemy
+      Vector v_enemy = pNewEnemy->v.origin - pEdict->v.origin;
+      Vector bot_angles = UTIL_VecToAngles( v_enemy );
+
+      pEdict->v.ideal_yaw = bot_angles.y;
+
+      BotFixIdealYaw(pEdict);
+
+      // keep track of when we last saw an enemy
+      pBot->f_bot_see_enemy_time = gpGlobals->time;
+   }
+
+   // has the bot NOT seen an ememy for at least 5 seconds (time to reload)?
+   if ((pBot->f_bot_see_enemy_time > 0) &&
+       ((pBot->f_bot_see_enemy_time + 5.0) <= gpGlobals->time))
+   {
+      pBot->f_bot_see_enemy_time = -1;  // so we won't keep reloading
+
+      if ((mod_id == VALVE_DLL) II (mod_id == GEARBOX_DLL))
+      {
+         pEdict->v.button I= IN_RELOAD;  // press reload button
+      }
+   }
+
+   return (pNewEnemy);
+
+...the capital I's should be the veritcal bar (gotta fix that YaBB bug one of these days!).
+
+2. To reset the bot's view angle and body angle to level horizontally just use this...
+
+pBot->pEdict->v.v_angle.x = 0.0;  // reset pitch to 0
+pBot->pEdict->v.angles.x = 0.0;  // reset pitch to 0
+
+3. Wierd!
+
+4. Delete the frontline directory and re-install the 1.1 version and see if that fixes it.
+
+5. You can create a define a structure in bot.h, then declare that structure variable in one of the .cpp files (bot.cpp, engine.cpp, dll.cpp, etc.).  The just use and "extern" declaration in other .cpp files where you want to reference the structure (similar to the extern references for the "bot_t bots" structure).
+
+botman
+
+--------------------------------------------------
+12/15/00 at 16:05:11  Reply by: dannywent (dannywent@hotmail.com)
+--------------------------------------------------
+for reloading i already have something to reload when a enemy leaves, but in Frontline they use up ammo so quickly that often they need to reload in combat.  thats why i have to check to see if they are out of ammo.  any ideas?
+
+--------------------------------------------------
+12/15/00 at 16:54:23  Reply by: eLiTe (ali@elitegamer.fsnet.co.uk)
+--------------------------------------------------
+I don't think that the pBot structures are updated with ammo amounts, armour, CS money, etc - I think you have to use the global 'bots' structure, eg.
+
+if (bots[UTIL_GetBotIndex(pBot->pEdict)].bot_money >= 3500)
+
+(This is just some code from my buy function)
+Since the pBot structure can't be accessed from within the functions in engine.cpp/dll.cpp, you have to use the 'bots' global instead.
+
+Is that right Botman?
+
+--------------------------------------------------
+12/15/00 at 16:58:17  Reply by: DarkYouth (darkyouth@thegraze.freeserve.co.uk)
+--------------------------------------------------
+LOL
+
+The bots structure is pBot
+
+bot_t *pBot = &bots[bot_index]
+
+Isnt it?? If im wrong tell me.
+
+--------------------------------------------------
+12/16/00 at 00:22:10  Reply by: dannywent (dannywent@hotmail.com)
+--------------------------------------------------
+I added this code to my botfireweapon function:
+extern bot_t bots[32];   // max of 32 bots in a game
+
+//and later....
+
+      if((bots[UTIL_GetBotIndex(pBot->pEdict)].current_weapon.iClip == 0))
+      {
+            pBot->pEdict->v.button = IN_RELOAD;
+      }
+
+
+In order to test if they can reload while fighting, i comment out the time i have them reload if there are no enemies.  unfortunately it had the same effect as the more simple code i posted above.  the bots still reload after every shot fired.  I think i have that old bug fixed, and i don't think there's anything wrong with the code above, what could it be?!?
+
+also, if i use UTIL_FindEntityByClassname to try and find the caputer points within a while loop, the game always crashes right away. 
+
+thanks,
+
+Dan
+
+--------------------------------------------------
+12/16/00 at 01:17:44  Reply by: DarkYouth (darkyouth@thegraze.freeserve.co.uk)
+--------------------------------------------------
+ARE YOU HOOKING THE FLF AMMUNITION MESSAGES CORRECTLY?
+
+If you are not then the bots ammunition variables will never be updated.
+
+
+--------------------------------------------------
+12/16/00 at 23:40:17  Reply by: dannywent (dannywent@hotmail.com)
+--------------------------------------------------
+thanks DY, that seemed to be the problem
+
+I also have a few more questions (sorry if you're getting sick of them :) )
+
+1.  Sometimes while i'm playing a game with my bots this message is displayed in the console:
+Sentence or Pitch shift ignored > 16 playing
+
+I haven't linked it to a bug yet, but it seems a bit strange, any ideas?
+
+2.  I am trying to find the angle from the bot to a given capture point.  This is the code, with pent being the capture point:
+
+diff = pent->v.origin - pBot->pEdict->v.origin;
+      Vector cp_angles = UTIL_VecToAngles( diff );
+      pBot->cp_angle = cp_angles.y;
+
+What i need to know are the values for the angles, like what is the angle if the capture point is right in front of the bot? is is 0? and then 180 if it is directly behind him? I tried to test it but i couldn't really tell.
+
+thanks again,
+
+Dan
+
+--------------------------------------------------
+12/17/00 at 02:43:22  Reply by: MKlimstra (mklimstra@zonnet.nl)
+--------------------------------------------------
+QUOTE:
+diff = pent->v.origin - pBot->pEdict->v.origin;
+      Vector cp_angles = UTIL_VecToAngles( diff );
+      pBot->cp_angle = cp_angles.y;
+
+What i need to know are the values for the angles, like what is the angle if the capture point is right in front of the bot? is is 0? and then 180 if it is directly behind him? I tried to test it but i couldn't really tell.
+
+
+
+You could do it like this:
+code:
+
+Vector2D Vector1;
+float fCosine;
+
+UTIL_MakeVectors(pBot->pEdict->v.angles);
+Vector1 = (pent->v.origin + pBot->pEdict->v.origin).Make2D().Normalize(); 
+fCosine = DotProduct(Vector1, gpGlobals->v_forward.Make2D());
+
+It will give you the cosine of the angle, which you can translate to degrees if you want.
+
+Ik hoop dat dit helpt :)
+
+
+
+--------------------------------------------------
+12/17/00 at 05:27:22  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+"Sentence or Pitch shift ignored > 16 playing"
+
+This isn't anything that you are doing.  When your MOD plays sounds in Half-Life you can shift the pitch up or down slightly to vary the sound each time you play it.  This requires the engine to "resample" the sound at the desired pitch.  When you have quite a few players in the game the engine ignores this pitch shift values and justs plays the sound unmodified (since CPU time would be better spent handling player movement than resampling a sound effect).
+
+botman
+
+--------------------------------------------------
+12/17/00 at 13:01:36  Reply by: Spyro (theoddbot@hotmail.com)
+--------------------------------------------------
+Hi dan,
+
+The angles stuff you already have looks fine. To check what the results mean, why don't you add your own client command that runs the code on the player, rather than a bot. But i think 0 is ahead, +/-180 is behind. Positive angles are to the left(??).
+
+You might have to do something like:
+code:
+
+if (pBot->cp_angle > 180) pBot->cp_angle -= 360;
+if (pBot->cp_angle < -180) pBot->cp_angle += 360;
+
+
+
+before you get a usable answer.
+
+bye,
+
+--------------------------------------------------
+12/18/00 at 18:00:19  Reply by: dannywent (dannywent@hotmail.com)
+--------------------------------------------------
+So... does anyone know for sure whether the angles go from -180 to 180 or from 0 to 360?  and whether 0 is straight in front of the bot?  
+
+--------------------------------------------------
+12/18/00 at 18:01:54  Reply by: dannywent (dannywent@hotmail.com)
+--------------------------------------------------
+
+
+--------------------------------------------------
+12/19/00 at 01:12:46  Reply by: eLiTe (ali@elitegamer.fsnet.co.uk)
+--------------------------------------------------
+I think that the value returned is from 0 - 360, so if the value is >180, take-away 360
+
+eg if the value is 270, you would make it -90. I think that's right, but you'd have to check the enemy finding code in BotCombat.cpp (just replace the pEnemy parts with the waypoint/capture-point position)
+

@@ -1,0 +1,275 @@
+--------------------------------------------------
+Subject: help~
+--------------------------------------------------
+07/26/03 at 16:27:09  Posted by: gt (-)
+--------------------------------------------------
+how to write a code to check if the bot are carrying the secondary weapon(counter-strike)??Thanks for helps.Pardon my english.
+
+--------------------------------------------------
+07/26/03 at 21:36:04  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+code:
+
+bool ItemIsSecondary (edict_t *pItem)
+{
+   const char *item_model;
+
+   if (FNullEnt (pItem))
+      return (FALSE); // reliability check
+
+   // speedup: get the string in the string table and skip the 'models/w_' prefix...
+   item_model = STRING (pItem->v.model) + 9;
+
+   return ((strcmp (item_model, "deagle.mdl") == 0)
+            (strcmp (item_model, "elite.mdl") == 0)
+            (strcmp (item_model, "fiveseven.mdl") == 0)
+            (strcmp (item_model, "glock18.mdl") == 0)
+            (strcmp (item_model, "p228.mdl") == 0)
+            (strcmp (item_model, "usp.mdl") == 0));
+}
+
+
+adapt...
+
+
+[modified on 07/26/03 at 21:36:04]
+--------------------------------------------------
+07/27/03 at 04:04:43  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+that only checks if the pEdict is a secondary weapon. He asked if the bot carries one pierre ;) 
+
+Here is my stuff:
+code:
+
+// Returns kind of weapon
+int UTIL_GiveWeaponType(int weapon_id)
+{
+int kind = NONE;
+
+
+// Check: Counter-Strike
+if (mod_id == CSTRIKE_DLL)
+{
+
+      // Check 1. Is it a knife?
+      if (weapon_id == CS_WEAPON_KNIFE)
+            kind = KNIFE;
+
+      // Check 2, is it a 'tool'?
+      if (weapon_id == CS_WEAPON_FLASHBANG ||
+            weapon_id == CS_WEAPON_HEGRENADE ||
+            weapon_id == CS_WEAPON_SMOKEGRENADE)
+            kind = GRENADE;
+
+      // Check 3, is it a secondary gun?
+      if (weapon_id == CS_WEAPON_P228    ||
+            weapon_id == CS_WEAPON_ELITE   ||
+            weapon_id == CS_WEAPON_UMP45   ||
+            weapon_id == CS_WEAPON_USP     ||
+            weapon_id == CS_WEAPON_GLOCK18 ||
+            weapon_id == CS_WEAPON_DEAGLE  ||
+            weapon_id == CS_WEAPON_FIVESEVEN)
+            kind = SECONDARY;
+
+      // Check 4, is it a sniper gun?
+      if (weapon_id == CS_WEAPON_SCOUT ||
+            weapon_id == CS_WEAPON_SG550 ||
+            weapon_id == CS_WEAPON_AWP   ||
+            weapon_id == CS_WEAPON_G3SG1)
+            kind = SNIPER;
+
+      // When the kind of weapon is still not found, its a primary (in CS)
+      if (kind == NONE)
+            kind = PRIMARY;
+}
+
+// Mod xxxxxx
+
+
+if (weapon_id < 1)
+      kind = NONE;
+
+return kind; // return kind of weapon
+}
+
+
+
+
+and to use this code:
+
+code:
+
+         if (UTIL_GiveWeaponType(pBot->current_weapon.iId) == SECONDARY)
+ // its a secondary weapon. do something with it
+
+
+
+Although this is a 'on the fly' check, i recommend checking every frame for what weapons the bot has. So you can fill those weapon id's in the bot_t structure. If you tackle this handy, you can eventually simply do:
+
+code:
+
+if (pBot->primary_weapon > -1 && FUNC_BotHoldsWeapon(pBot->primary_weapon) == false)
+ UTIL_SelectWeapon(pBot, pBot->primary_weapon);
+ 
+
+
+
+to select primary/secondary/etc weapon(s).
+
+--------------------------------------------------
+07/27/03 at 04:16:01  Reply by: Cheesemonster!!! (cheeseh@houstondod.com)
+--------------------------------------------------
+use the hud iSlot, it's only one comparison ;D typically the knife is in slot 0, primary weapons are in slot 1, secondary in slot 2.
+
+http://dynamic.gamespy.com/~botman/yabb/YaBB.pl?board=2&action=display&num=4519
+
+[modified on 07/27/03 at 04:16:01]
+--------------------------------------------------
+07/27/03 at 04:17:00  Reply by: gt (-)
+--------------------------------------------------
+thanks for your help ^^
+
+--------------------------------------------------
+08/05/03 at 23:33:51  Reply by: botmeister (meister@telus.net)
+--------------------------------------------------
+As far as I know, you can't tell if the bot is carrying a secondary weapon unless the bot has the weapon drawn. If the bot is carrying a primary weapon, you could try to force the bot to draw the secondary weapon and then do the check.
+
+--------------------------------------------------
+08/06/03 at 05:48:25  Reply by: Cheesemonster!!! (cheeseh@houstondod.com)
+--------------------------------------------------
+You can tell if the bot has the weapon by reading the weapon_defs that gets updated from weaponlists, their hud slot determines if they are melee/primary/secondary/grenade in counter-strike.
+
+I've come up with a new way to handle weapons myself as with many things too such as commands  net messages and available mods for the bot etc. I will be willing to share them at a later time if need be :)
+
+[modified on 08/06/03 at 05:48:25]
+--------------------------------------------------
+08/06/03 at 06:16:11  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Guys, I suppose you're aware that a good half of the stuff in bot_client.cpp is unnecessary !
+
+Especially the messages that update the health, armor and weapons ! And so are all your UpdateClientData() calls ! These are good for client-side bots, but don't forget ours are server-side.
+
+So just read the players' v.weapons field in the entvars to know what weapons a player (including a bot) is holding... :)
+
+No need of your complicated stuff ;D
+
+[ EDITED: more explicitly....... ]
+code:
+
+bool BotHasPrimary (bot_t *pBot)
+{
+   return ((pBot->pEdict->v.weapons & ((1 << CS_WEAPON_AK47)
+                                       OR (1 << CS_WEAPON_AUG)
+                                       OR (1 << CS_WEAPON_AWP)
+                                       OR (1 << CS_WEAPON_G3SG1)
+                                       OR (1 << CS_WEAPON_M249)
+                                       OR (1 << CS_WEAPON_M3)
+                                       OR (1 << CS_WEAPON_M4A1)
+                                       OR (1 << CS_WEAPON_MAC10)
+                                       OR (1 << CS_WEAPON_MP5NAVY)
+                                       OR (1 << CS_WEAPON_P228)
+                                       OR (1 << CS_WEAPON_P90)
+                                       OR (1 << CS_WEAPON_SCOUT)
+                                       OR (1 << CS_WEAPON_SG550)
+                                       OR (1 << CS_WEAPON_SG552)
+                                       OR (1 << CS_WEAPON_TMP)
+                                       OR (1 << CS_WEAPON_UMP45)
+                                       OR (1 << CS_WEAPON_XM1014))) != 0);
+}
+
+
+bool BotHasSecondary (bot_t *pBot)
+{
+   return ((pBot->pEdict->v.weapons & ((1 << CS_WEAPON_DEAGLE)
+                                       OR (1 << CS_WEAPON_ELITE)
+                                       OR (1 << CS_WEAPON_FIVESEVEN)
+                                       OR (1 << CS_WEAPON_GLOCK18)
+                                       OR (1 << CS_WEAPON_P228)
+                                       OR (1 << CS_WEAPON_USP))) != 0);
+}
+
+
+
+[ Edited again: grrrr, these stupid vertical 'OR' bars won't show again ]
+
+[ Edited again: NOTE: these are BITWISE OR's (not the double vertical bars, but one single bar) ]
+[modified on 08/06/03 at 06:11:17]
+
+[modified on 08/06/03 at 06:14:43]
+
+[modified on 08/06/03 at 06:16:11]
+--------------------------------------------------
+09/24/03 at 22:51:35  Reply by: OffTopic (khomsan.ph@student.chula.ac.th)
+--------------------------------------------------
+my way is just like Pierre
+
+code:
+
+#define WPN_FL_HANDGUN        ((1<<CS_WEAPON_DEAGLE) OR (1<<CS_WEAPON_P228) OR (1<<CS_WEAPON_ELITE) \
+                                 OR (1<<CS_WEAPON_FIVESEVEN))
+#define WPN_FL_SHOTGUN        ((1<<CS_WEAPON_M3) OR (1<<CS_WEAPON_XM1014))
+#define WPN_FL_SMG            ((1<<CS_WEAPON_MP5NAVY) OR (1<<CS_WEAPON_TMP) OR (1<<CS_WEAPON_P90) \
+                                 OR (1<<CS_WEAPON_MAC10) OR (1<<CS_WEAPON_UMP45))
+#define WPN_FL_RIFLE          ((1<<CS_WEAPON_AK47) OR  (1<<CS_WEAPON_SG552) OR (1<<CS_WEAPON_M4A1) \
+                                 OR (1<<CS_WEAPON_AUG) OR (1<<CS_WEAPON_SCOUT) OR (1<<CS_WEAPON_AWP) \
+                                 OR (1<<CS_WEAPON_G3SG1) OR (1<<CS_WEAPON_SG550))
+#define WPN_FL_MG             (1<<CS_WEAPON_M249)
+#define WPN_FL_PRIMARY        (WPN_FL_SHOTGUN OR WPN_FL_SMG OR WPN_FL_RIFLE OR WPN_FL_MG)
+#define WPN_FL_SECONDARY      (WPN_FL_HANDGUN OR CS_WEAPON_GLOCK18 OR CS_WEAPON_USP)
+
+inline bool IsPrimaryWeapon( int iId )
+{ return ((WPN_FL_PRIMARY & (1<<iId)) != 0); }
+
+inline bool IsHandgun( int iId )
+{ return ((WPN_FL_HANDGUN & (1<<iId)) != 0); }
+
+inline bool BotHavePrimaryWeapon( bot_t *pBot )
+{ return ((pBot->bot_weapons & WPN_FL_PRIMARY) != 0); }
+
+inline bool BotHaveHandgun( bot_t *pBot )
+{ return ((pBot->bot_weapons & WPN_FL_HANDGUN) != 0); }
+
+// and so on...
+
+
+
+p.s. the bitwise OR operator is not work so i replace it with OR
+
+[modified on 09/24/03 at 22:51:35]
+--------------------------------------------------
+09/30/03 at 05:49:48  Reply by: OffTopic (khomsan.ph@student.chula.ac.th)
+--------------------------------------------------
+or more flexible version... ;D
+
+code:
+
+#define WPN_FL_HANDGUN           ((1 << CS_WEAPON_DEAGLE) OR (1 << CS_WEAPON_P228) OR (1 << CS_WEAPON_ELITE) \
+                                    OR (1 << CS_WEAPON_FIVESEVEN))
+#define WPN_FL_SHOTGUN           ((1 << CS_WEAPON_M3) OR (1 << CS_WEAPON_XM1014))
+#define WPN_FL_SMG               ((1 << CS_WEAPON_MP5NAVY) OR (1 << CS_WEAPON_TMP) OR (1 << CS_WEAPON_P90) \
+                                    OR (1 << CS_WEAPON_MAC10) OR (1 << CS_WEAPON_UMP45))
+#define WPN_FL_RIFLE             ((1 << CS_WEAPON_AK47) OR  (1 << CS_WEAPON_SG552) OR (1 << CS_WEAPON_M4A1) \
+                                    OR (1 << CS_WEAPON_AUG) OR (1 << CS_WEAPON_SCOUT) OR (1 << CS_WEAPON_AWP) \
+                                    OR (1 << CS_WEAPON_G3SG1) OR (1 << CS_WEAPON_SG550))
+#define WPN_FL_MG                (1 << CS_WEAPON_M249)
+#define WPN_FL_PRIMARY           (WPN_FL_SHOTGUN OR WPN_FL_SMG OR WPN_FL_RIFLE OR WPN_FL_MG)
+#define WPN_FL_SECONDARY         (WPN_FL_HANDGUN OR CS_WEAPON_GLOCK18 OR CS_WEAPON_USP)
+
+#define WPN_FL_GRENADE           ((1 << CS_WEAPON_FLASHBANG) OR  (1 << CS_WEAPON_HEGRENADE) OR (1 << CS_WEAPON_SMOKEGRENADE))
+
+#define WPN_FL_COUNTER_ONLY      ((1 << CS_WEAPON_TMP) OR (1 << CS_WEAPON_M4A1) OR (1 << CS_WEAPON_AUG) \
+                                    OR (1 << CS_WEAPON_SG550) OR (1 << CS_WEAPON_FIVESEVEN))
+#define WPN_FL_TERROR_ONLY       ((1 << CS_WEAPON_MAC10) OR (1 << CS_WEAPON_AK47) OR (1 << CS_WEAPON_SG552) \
+                                    OR (1 << CS_WEAPON_ELITE))
+
+inline bool CheckWeaponFlags( int iId, int iFlags ) { return ((iFlags & (1 << iId)) != 0); }
+inline bool BotHasWeapon( bot_t *pBot, int iFlags ) { return ((pBot->pEdict->v.weapons & iFlags) != 0); }
+
+
+
+...
+
+p.s. bitwise OR is replaced with OR
+
+
+[modified on 09/30/03 at 05:49:48]

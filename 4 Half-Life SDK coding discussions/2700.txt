@@ -1,0 +1,269 @@
+--------------------------------------------------
+Subject: How to get number of players on server?
+--------------------------------------------------
+02/06/02 at 07:50:00  Posted by: hullu (hullu@jussikivilinna.cjb.net)
+--------------------------------------------------
+need fast reply
+
+--------------------------------------------------
+02/06/02 at 07:55:14  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+you can find the amount of players by searching every player on the server to see if a player slot is taken.
+
+code:
+
+
+int players = 0;
+int i = 0;
+
+edict_t *pPlayer;
+
+for( i = 1; i < gpGlobals->maxClients; i++ )
+{
+  pPlayer = INDEXENT(i);
+
+  if( pPlayer != NULL )
+  {
+    if( !pPlayer->free )
+    {
+      players++;
+    }
+  }
+}
+
+
+
+I'm sure theres another way to do it. Thats the hard way. Of course, I'm basing this on botmans HPBBot template, so for the HL SDK you'll need to use the playerbyindex, instead of INDEXENT. (if that doesnt work that is)
+
+[modified on 02/06/02 at 07:55:14]
+--------------------------------------------------
+02/07/02 at 03:10:56  Reply by: ReDucTor[FGW] (sjdtmv@tpg.com.au)
+--------------------------------------------------
+code:
+
+int GetNumPlayers(void)
+{
+for(int count=1, edict_t *pPlayer=INDEXENT(count);!FNullEnt(pPlayer)&&!strncmp(STRING(pPlayer->v.classname),"player",6))&&i<gpGlobals->maxClients;count++,pPlayer=INDEXENT(count));
+return count;
+}
+
+
+
+Hehe :-)
+
+[modified on 02/07/02 at 03:10:56]
+--------------------------------------------------
+02/24/02 at 07:00:16  Reply by: @$3.1415rin (joebot@botepidemic.com)
+--------------------------------------------------
+well i had this problem some time ago too, but i didn't know how to fix it. all the approaches above doesn't seem to work after a bot has been kicked. Then you'll get the number of ever used slots with these approachs but not the current number of players on the server. Or is this just a problem somewhere deep in my bot code ? on the scoreboard there is no bot anymore after kicking all of them, but the functions above return the maximum old number of bots before being kicked ... well and checking if they are alive is a bad idea, too ... is there a little nice flag for this e.g. ?
+
+[modified on 02/24/02 at 07:00:16]
+--------------------------------------------------
+02/24/02 at 07:14:54  Reply by: RedFox (redfox@nildram.co.uk)
+--------------------------------------------------
+Ah yes, min/max bots
+I had problems with this recently
+The best meathod I found was this
+
+         for (i = 1; i <= 32; i++) //<32
+         {
+                   if(INDEXENT(i)!=NULL)
+                   {
+                          char *infobuffer;
+                          char cl_name[128];
+                          cl_name[0]=NULL;
+                          infobuffer = (*g_engfuncs.pfnGetInfoKeyBuffer)(INDEXENT(i));
+                          strcpy(cl_name,g_engfuncs.pfnInfoKeyValue(infobuffer, "name"));
+                          if(cl_name[0]!=NULL)
+                          {
+                                count++;
+                          }
+                   }
+         }
+
+
+[modified on 02/24/02 at 07:14:14]
+
+[modified on 02/24/02 at 07:14:54]
+--------------------------------------------------
+02/24/02 at 11:01:24  Reply by: @$3.1415rin (joebot@botepidemic.com)
+--------------------------------------------------
+cool, thx, i'll try it :-)
+
+--------------------------------------------------
+02/27/02 at 03:39:17  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+btw...
+
+there must be a way to solve that problem cleanly, right ? The fact now is that when we kick a bot, the player slot seems not to be freed. So wouldn't we be better figuring out how to cleanly free it instead of letting it as it is and putting additional checks to make sure the slot we bind is not the one of a kicked bot ? I guess many MOD authors that would need to check the number of players (e.g. for team mods) would not be aware of those checks. If we can avoid them fiddling with our own bugs....
+
+Or maybe there's already an answer I don't know about yet...
+
+--------------------------------------------------
+02/27/02 at 06:15:04  Reply by: RedFox (redfox@nildram.co.uk)
+--------------------------------------------------
+I've tried cleaning them out with no luck so far.
+However, from my testing on our public servers I've found the edict is reused for new players
+
+so it may still be their (even though the bot left) but when a human joins, they get the bots old edict. 
+If the human leaves and the bot rejoins a little later, it'll get the same edict as the human... so it is being reused, its just not entirely disabled when a bot leaves.
+Perhaps all you have todo is check to see if its a NullEnt or not...hmm
+
+--------------------------------------------------
+02/27/02 at 07:34:05  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+I thought that's what the "edict->free" was to tell that the edict was being used... obviosuly not??? :)
+
+--------------------------------------------------
+02/27/02 at 07:35:30  Reply by: CountFloyd (countfloyd@botepidemic.com)
+--------------------------------------------------
+Edicts are really reused by clients, that's what makes Bots crashing more likely on very busy servers because their structure is different (leading to memory corruption).
+Leon Hartwig from Valve once posted this great fix/explanation at Topica:
+http://www.topica.com/lists/hlcoders/read/message.html?mid=800987340
+--------------------------------------------------
+02/27/02 at 14:44:56  Reply by: RedFox (redfox@nildram.co.uk)
+--------------------------------------------------
+Kewl, thats really useful
+I'm always after more stability :D
+
+--------------------------------------------------
+02/28/02 at 04:37:59  Reply by: @$3.1415rin (joebot@botepidemic.com)
+--------------------------------------------------
+
+QUOTE:
+Edicts are really reused by clients, that's what makes Bots crashing more likely on very busy servers because their structure is different (leading to memory corruption).
+Leon Hartwig from Valve once posted this great fix/explanation at Topica:
+http://www.topica.com/lists/hlcoders/read/message.html?mid=800987340
+
+
+
+
+but this additional check from tom simpson is then still required :)
+
+--------------------------------------------------
+02/28/02 at 10:49:55  Reply by: Jedi_Master (jimhunterjr@bellsouth.net)
+--------------------------------------------------
+Correct me if I'm wrong, but I think you can get the number of active players from the CountPlayers() function which is in multiplay_gamerules.cpp, though I'm not sure how that would work with bots, since I haven't tried any bot programming. :)
+
+/*
+==============
+CountPlayers
+
+Determine the current # of active players on the server for map cycling logic
+==============
+*/
+int CountPlayers( void )
+{
+      int      num = 0;
+
+      for ( int i = 1; i <= gpGlobals->maxClients; i++ )
+      {
+            CBaseEntity *pEnt = UTIL_PlayerByIndex( i );
+
+            if ( pEnt )
+            {
+                  num = num + 1;
+            }
+      }
+
+      return num;
+}
+
+Jim
+
+--------------------------------------------------
+02/28/02 at 12:13:12  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+That doesn't always give accurate results when players are connecting and disconnecting from the server you occasionally get a player that got somewhat connected and then lost the connection, so you'll have an edict allocated when there really isn't a player using that edict.
+
+botman
+
+--------------------------------------------------
+02/28/02 at 12:40:44  Reply by: hullu (hullu@jussikivilinna.cjb.net)
+--------------------------------------------------
+I totally forgot this post :D
+Anyway I made this macro:
+code:
+
+#define GETPLAYERCOUNT(output); \
+      { output=0; for (int _index123 = 1; _index123 <= gpGlobals->maxClients; _index123++) \
+      {       edict_t *pPlayer123 = INDEXENT(_index123); \
+            if ((pPlayer123) && (!pPlayer123->free)) \
+                  if (pPlayer123->v.netname) output++;}}
+
+
+
+--------------------------------------------------
+02/28/02 at 13:39:49  Reply by: @$3.1415rin (joebot@botepidemic.com)
+--------------------------------------------------
+quite a good method to hide errors in code, these macros ... i rather stick to normal functions, they are not much slower than the macros :)
+
+--------------------------------------------------
+03/01/02 at 04:17:33  Reply by: hullu (hullu@jussikivilinna.cjb.net)
+--------------------------------------------------
+hm.. this forum has some errors:
+
+In normal view end of that macro doesn't show right way.
+
+But in reply view it does.
+
+--------------------------------------------------
+03/18/02 at 23:14:03  Reply by: hullu (hullu@jussikivilinna.cjb.net)
+--------------------------------------------------
+Does tracking ClientPutInServer and ClientDisconnect work?
+
+playercount++; in ClientPutInServer
+playercount--; in ClientDisconnect
+
+--------------------------------------------------
+03/19/02 at 01:15:55  Reply by: CountFloyd (countfloyd@botepidemic.com)
+--------------------------------------------------
+This is what Leon Hartwig once posted to the HLCoders List:
+code:
+
+If you are dealing with bots, there are some special considerations
+(you'll probably want to do some stuff in the disconnect callback), but
+for reasons other than what this thread is concerned with.  For your
+problem, you shouldn't need to touch any of that.  Here is an example
+function that I use in Phineas Bot that counts all the valid, connected
+clients:
+
+
+int UTIL_ClientsInGame( void )
+{
+    int iCount = 0;
+
+
+    for ( int iIndex = 1; iIndex <= gpGlobals->maxClients; iIndex++ )
+        {
+        CBaseEntity * pPlayer = UTIL_PlayerByIndex( iIndex );
+
+
+        if ( pPlayer == NULL )
+            continue;
+
+
+        if ( FNullEnt( pPlayer->pev ) )
+            continue;
+
+
+        if ( FStrEq( STRING( pPlayer->pev->netname ), "" ) )
+            continue;
+
+
+        iCount++;
+    }
+
+
+    return iCount;
+}
+
+
+
+
+[modified on 03/19/02 at 01:15:55]
+--------------------------------------------------
+03/19/02 at 22:34:07  Reply by: hullu (hullu@jussikivilinna.cjb.net)
+--------------------------------------------------
+I have tested all .. and ClientPutInServer/ClientDisconnect works best (with real clients(but that's all I needed))
+

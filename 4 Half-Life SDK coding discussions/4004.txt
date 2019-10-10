@@ -1,0 +1,152 @@
+--------------------------------------------------
+Subject: HUD Text
+--------------------------------------------------
+01/08/03 at 05:52:43  Posted by: Phreak (dead_sexy_simon@hotmail.com)
+--------------------------------------------------
+Just a quick thing, i cant figure out how to print a message to the HUD, using hudtextparms_t but writing it to all clients. I also wish for it to accept all arguments to the printmsg command :S
+
+Iv'e tried, but failed, here is something ive tried.
+
+
+
+        else if (FStrEq(pcmd, "printmsg"))
+        {
+
+            //Declaration of string to be printed
+            char message[100];
+
+              hudtextparms_t message_params;
+                                     message_params.x = -1;
+                  message_params.y = 0.4;
+                  message_params.effect = 3;
+                  message_params.r1 = 0;
+                  message_params.g1 = 255;
+                  message_params.b1 = 0;
+                  message_params.a1 = 1;
+                  message_params.r2 = RANDOM_LONG(0,255);
+                  message_params.g2 = RANDOM_LONG(0,255);
+                  message_params.b2 = RANDOM_LONG(0,255);
+                  message_params.a2 = 1;
+                  message_params.fadeinTime = 1.0;
+                  message_params.fadeoutTime = 1.0;
+                  message_params.holdTime = 10;
+                  message_params.fxTime = 20;
+                  message_params.channel = 1;
+                  
+                                    strcpy( message, arg1 );
+                                    strcat( message, arg2 );
+                  
+                  strcat( message, arg3 );
+                                    strcat( message, arg4 );
+                                    UTIL_HudMessage( pPlayer, message_params, message );              
+
+                  return;
+        }
+
+
+And, could someone please explain how Half-Life reads the WRITE_BYTE() and WRITE_SHORT(), because I do not fully understand it
+
+Thanks in advance
+
+
+Simon
+
+[modified on 01/08/03 at 05:52:43]
+--------------------------------------------------
+01/08/03 at 06:07:16  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+MessageBegin(), WriteByte(), WriteShort(), and all the rest of the WriteStuff() until MessageEnd() are meant to tell the engine (either the server engine or any local client engine) to build a network packet to send to the server (or back to a client), containing the specified data.
+
+Once the network subsystem layer of the engine receives a MessageBegin(), it is somewhat "triggered" into a "message reception state", and should only be (and is) taken out when MessageEnd() is received (unless for MSG_ONE_UNRELIABLE type packets the engine is allowed to discard). Meanwhile, the engine catches every WriteStuff() it receives and build the packet inside a buffer. When MessageEnd() is received, this buffer is validated, its content is interpreted and the resulting action can be taken (display stuff, update entity position or whatever).
+
+That's why in your code, you mustn't do anything special with the engine or the game DLL that would cause either of them to send a new packet while a packet is being received. One common example is when botman intercepts bot message in the bot_client.cpp file of his HPB_bot. Functions in this file are called everytime a WriteSomething() is called so that they build the message content back. If in any of these functions, for whatever reason, you'd like to print a message on the screen, let's say "debug mode: caught packet NNN", the function call you will be issuing by the engine side MUST NOT make it send a packet (and it will, if you intend to display this text on the HUD). If you do that, the game will crash with a "MSG_something: New message started when MESSAGE_END not sent yet" error message.
+
+Great care has to be taken, when catching messages, to do strict minimal stuff in between. In your case, it shouldn't be a problem, since UTIL_HudMessage() drops all its stuff at once on the network. If ever you get trouble with this function, here's mine you can alter that does basically the same thing:
+code:
+
+         // send the welcome message to this client
+         // do not use the engine macros here (such as MESSAGE_BEGIN, WRITE_BYTE etc.) since we
+         // have to hook these messages too as if they were coming from outside the bot DLL...
+         pfnMessageBegin (MSG_ONE_UNRELIABLE, SVC_TEMPENTITY, NULL, pClient);
+         pfnWriteByte (TE_TEXTMESSAGE);
+         pfnWriteByte (1); // channel
+         pfnWriteShort (-8192); // x coordinates * 8192
+         pfnWriteShort (-8192); // y coordinates * 8192
+         pfnWriteByte (0); // effect (fade in/out)
+         pfnWriteByte (255); // initial RED
+         pfnWriteByte (255); // initial GREEN
+         pfnWriteByte (255); // initial BLUE
+         pfnWriteByte (1); // initial ALPHA
+         pfnWriteByte (255); // effect RED
+         pfnWriteByte (255); // effect GREEN
+         pfnWriteByte (255); // effect BLUE
+         pfnWriteByte (1); // effect ALPHA
+         pfnWriteShort (256); // fade-in time in seconds * 256
+         pfnWriteShort (512); // fade-out time in seconds * 256
+         pfnWriteShort (256); // hold time in seconds * 256
+         pfnWriteString (RACC_WELCOMETEXT); // send welcome message
+         pfnMessageEnd (); // end
+
+
+
+
+--------------------------------------------------
+01/08/03 at 19:36:16  Reply by: Phreak (dead_sexy_simon@hotmail.com)
+--------------------------------------------------
+Thanks once again Pierre, but a few things just quickly
+
+
+I'm using Visual Studio.NET so I cant copy and paste the errors (that I know of :S).
+
+pClient isn't declared, although I think it should be entvars_t
+
+pfnWriteByte and all the rest of the pfn don't work :S
+
+
+What should I declare these as?
+
+
+Thanks in advance
+
+
+Simon
+
+
+--------------------------------------------------
+01/08/03 at 19:41:14  Reply by: Phreak (dead_sexy_simon@hotmail.com)
+--------------------------------------------------
+Ok, I have fixed everything but pClient.
+
+I do not wish to try declaring this as i dont want to do something wrong :S.
+
+g_engfuncs is where pfnWriteByte WriteShort etc are :)
+
+What should I declare pClient as?
+
+Thanks in advance
+
+Simon
+
+--------------------------------------------------
+01/08/03 at 20:04:17  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Of course, what I posted needs some tweaking.
+
+Right, pfnMessageBegin() and the others come from the g_engfuncs enginefuncs_t structure. Commonly used macros you can use as shortcuts are MESSAGE_BEGIN(), WRITE_BYTE(), and so on.
+
+Then if you look at the pfnMessageBegin prototype, you will figure out that pClient is a player entity, i.e an edict_t pointer. Just replace my pClient with your pPlayer and you should be done with it.
+
+
+--------------------------------------------------
+01/08/03 at 20:18:34  Reply by: Phreak (dead_sexy_simon@hotmail.com)
+--------------------------------------------------
+Pierre, I don't know how to thank you. It works great !!
+
+Thanks a heap, this is very helpful to me. As you are aswell...
+
+
+Thanks again
+
+
+Simon
+

@@ -1,0 +1,20 @@
+--------------------------------------------------
+Subject: @#$%& Model File
+--------------------------------------------------
+03/01/02 at 23:03:21  Posted by: Zipster (skyork99@juno.com)
+--------------------------------------------------
+During the process of writing my model decompiler, I came across several large problems, both involving extraction/regeneration of the SMD files.
+
+I will first start with the reference files.  The function consists of several nested loops - one for sequence groups, then one for the models.  I then write the initial SMD tags and bone information for the model.  I then initiate my mesh loop, which in turn initiates nested triangle and vertex loops.  The approach works great, but finding the data to write to the SMD is harder than it seems.
+From what I've learned, the following operation should return the first vec3_t in an array of vertex data for a model:
+code:
+vec3_t *pvert = (vec3_t*)(pStart + pmodel[m].vertindex);
+
+Where pStart is a pointer to the beginning of the model data.  However, when I debug the program and compare pvert[0] with the vertex data outputed by a MilkShape decompile, not only due the values sometimes vary by +/- .0010, but they are reversed in the vec3_t!  [0] = Z, [1] = Y, [2] = X, according to the relationship with the MilkShape-decompiled reference file.
+That's not the worst of it.  The worst is that that's as far as I can get without getting completely lost as to where the data is.  Once I begin my mesh loop, except for the texture name, I have no idea how or where to extract the data in terms of mesh, triangle and vertex (0-2).  The studiomdl code that compiles the code should have given me a big clue as to what to do, but all my attempts to parse and extract this data have resulted in zero values and, every once in a while, something that <i>looks</i> like it coud be a coordinate value.  Not only that, but a %.4f format code for a float variable gives me something in the millions, even though the debugger shows the variable to only have a value of 76.0000.  The parameters and format specifiers match perfectly, too.  Basically, I'm at a loss as how to locate the information beyond the mesh, and then make sure it's corrent (i.e not reversed).
+
+The <b>next</b> issue I have is that of sequence SMDs.  I can get a little closer on this one, all the way down to the mstudioanimvalue_t.  However, after examining studiomdl code, I realized that the data for this was compressed using some quirky scheme I have no knowledge of.  The hint is the aforementioned structure, which definitly does NOT look like it holds X,Y,Z,XR,YR,ZR values :(
+
+It all comes down to this -> I need to know where to locate and how to get the reference values, and how to decompress the sequence SMD values!  Everything else works but the SMD extraction.  I was hoping that someone might have a clue, because I've reached the end of my rope figuring out this one :)
+
+[modified on 03/01/02 at 23:03:21]

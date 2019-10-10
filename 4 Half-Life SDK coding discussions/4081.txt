@@ -1,0 +1,127 @@
+--------------------------------------------------
+Subject: Fog and error
+--------------------------------------------------
+01/27/03 at 10:27:51  Posted by: mefi_hl (ravaging@go2.pl)
+--------------------------------------------------
+This is my fog.cpp in Client project :
+
+#include <windows.h>
+#include <gl\gl.h> 
+#include <gl\glu.h> 
+#include "r_studioint.h"
+
+
+#include "hud.h"
+#include "cl_util.h"
+#include "parsemsg.h"
+#include <string.h>
+#include <stdio.h>
+
+
+#include "triangleapi.h"
+
+extern engine_studio_api_t IEngineStudio;
+
+
+DECLARE_MESSAGE(m_Fog, Fog)
+
+int CHudFog::Init(void)
+{
+      HOOK_MESSAGE(Fog);
+        m_iFlags &= ~HUD_ACTIVE;
+      gHUD.AddHudElem(this);
+      return 1;
+};
+
+int CHudFog::VidInit(void)
+{
+      Fog=false;      
+      return 1;  
+};
+
+int CHudFog:: MsgFunc_Fog(const char *pszName,  int iSize, void *pbuf )
+{
+   int flag;
+   BEGIN_READ( pbuf, iSize );
+   flag = READ_BYTE();
+   if (flag == 0)
+   m_iFlags &= ~HUD_ACTIVE;  
+   else
+   m_iFlags |= HUD_ACTIVE;  
+   return 1;
+}
+
+int CHudFog::Draw(float flTime)
+{
+      float fogStart = 200;
+      float fogEnd = 1000;
+      float fogColor[3] = {80,80,80}; 
+
+      GLfloat fogColorogl[4] = {0.5f,0.2f,0.2f,1.0f}; 
+      if(i_Fog)
+      {
+            if( IEngineStudio.IsHardware() == 2 ) 
+            {
+                  if(Fog)
+                        gEngfuncs.pTriAPI->Fog( fogColor, fogStart, fogEnd, 1 );
+            }
+            else if( IEngineStudio.IsHardware() == 1 ) 
+            {
+                  glFogi(GL_FOG_MODE, GL_LINEAR); 
+                  glFogfv(GL_FOG_COLOR, fogColorogl);
+                  glFogf(GL_FOG_DENSITY, (GLfloat)0.55f);
+                  glHint(GL_FOG_HINT, GL_NICEST); 
+                  glFogf( GL_FOG_START, (GLfloat)fogStart ); 
+                  glFogf( GL_FOG_END, (GLfloat)fogEnd ); 
+                  glEnable(GL_FOG); 
+            }
+      }
+
+      else
+            glDisable(GL_FOG); 
+      return 1;
+}
+
+After compilation show me this error :
+
+c:\sdk\common\r_studioint.h(136) : error C2629: unexpected 'void ('
+c:\sdk\common\r_studioint.h(136) : error C2238: unexpected token(s) preceding ';'
+
+I have SDK 2.3
+
+--------------------------------------------------
+01/27/03 at 17:47:00  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+you forgot to include com_model.h
+
+arrange them like this
+
+code:
+
+#include <windows.h> 
+
+#include <string.h> 
+#include <stdio.h> 
+
+#include <gl\gl.h> 
+#include <gl\glu.h> 
+
+#include "hud.h" 
+#include "cl_util.h" 
+#include "parsemsg.h" 
+#include "com_model.h"
+#include "r_studioint.h" 
+
+#include "triangleapi.h" 
+
+
+--------------------------------------------------
+01/28/03 at 05:07:59  Reply by: DarkNight (the_dark_wonderer@hotmail.com)
+--------------------------------------------------
+I don't have that included and mine works fine.
+
+--------------------------------------------------
+01/28/03 at 10:38:31  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+try removing the com_model.h again then and just move the include of rstudioint.h further down the list of includes, because of the dependencies it might need, its bringing up errors
+

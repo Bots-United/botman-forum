@@ -1,0 +1,40 @@
+--------------------------------------------------
+Subject: finding a point 50 units infront of the bot??
+--------------------------------------------------
+11/03/00 at 17:52:25  Posted by: dannywent (dannywent@hotmail.com)
+--------------------------------------------------
+Is there some easy way to find the vector value thats a certain distance in a direction from a bot?  
+if not, i have another question:
+if the bot has a yaw of 0 (or 180 for that matter) and moves forward is it the x coordinate or the y that changes? Is my question clear?  Or am i totally off base? please help.  
+
+--------------------------------------------------
+11/04/00 at 04:04:57  Reply by: Auxois (auxois@nuclearbox.com)
+--------------------------------------------------
+Is the bot moving directly on one of the x or y axis of the map? Think of a 3 dimensional grid(the map). If a bot is moving perfectly aligned with one of the grids, then one of those values, x, y or z, will change by exactly the distance moved. If the bot is moving at an obscure angle in relation to the grid, then 2 or more of those vars would change, and they would be less than the distance travelled. Kinda hard to explain. Botman, can you explain this better?
+
+--------------------------------------------------
+11/04/00 at 05:20:57  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+If you want a vector that's 50 units in front of the bot you can use something like this...
+
+   UTIL_MakeVectors( pBot->pEdict->v.v_angle );
+ 
+   Vector v_direction = gpGlobals->v_forward * 50;
+
+...The UTIL_MakeVectors() function converts the current view angles (the direction the bot is facing) into 3 Normalized vectors (normalized means the length of the vectors is 1 unit).  These 3 vectors are global values (in the structure pointed to by gpGlobals).  They are "v_forward", "v_right" and "v_up".  They are what they sound like, vectors pointing straight forward, directly to the right and straight up.  If you want vectors pointing behind, to the left, or down, just use the negative of v_forward, v_right, or v_up (respectively).
+
+Like Auxois said, if you happen to be facing in EXACTLY the same direction as the world X, Y or Z axis, then these values will have 1 for the X, Y , or Z component and 0 for the others.  However most of the time you are NOT facing exactly the same direction as a world axis.  You are facing slightly in the X direction, a little bit in the Y direction and somewhat in the Z direction.  So the components of these vectors may be more like (0.23454, 0.68345, 0.001823) as an example.
+
+Don't get too hung up on worrying about which way is left and right and up and down, just deal with the angles that you are facing (0 to 359 degrees) and converting these to vectors, then using Vector arithmetic to do what you want.
+
+If you have a normalized vector (of length 1), you can multiply it by a number to scale the vector (all 3 components) up that many times.  For example in my code above, I take the normalized vector and magnify it 50 times to make it 50 units long.  This is NOT 50 units long in the X direction and 50 units long in Y direction and 50 units long in the Z direction.  It is 50 units long in 3 dimensional space.
+
+botman
+
+--------------------------------------------------
+11/04/00 at 06:27:13  Reply by: dannywent (dannywent@hotmail.com)
+--------------------------------------------------
+Ah thanks a lot.  I understand that a bot will almost never be facing exactly so that it only one cooridinate woudl change, but i thought of a way i could use trig functions to do it if i knew which variable change.
+But of course your way is much better.  thanks again botman, although you did sound a bit like my calculus teacher when you where talking about normal vectors and scalars.  whats next, the dot product? i hope not :)  thanks again
+
+

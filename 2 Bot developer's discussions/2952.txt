@@ -1,0 +1,198 @@
+--------------------------------------------------
+Subject: still can't get bots throwing grenades :(
+--------------------------------------------------
+04/06/02 at 06:22:00  Posted by: Integrator (integrator@triasoft.com)
+--------------------------------------------------
+Whell, I was trying to get bots throwing grenades, but it lookes like I forget to do something... I add this in
+BotGrenadeArm(bot_t*pBot) :
+code:
+
+if (mod_id == TFC_DLL)
+{
+   // ...
+   return TRUE;
+}
+// my code:
+else if (mod_id == CSTRIKE_DLL)
+{
+   pBot->b_grenade_primed = TRUE;
+   pBot->f_gren_throw_time = gpGlobals->time + 1.0 + RANDOM_FLOAT(0.5, 1.0);
+   UTIL_SelectItem(pBot->pEdict, "weapon_hegrenade");
+   return TRUE;
+}
+
+
+and this in BotGrenadeThrow( bot_t *pBot ):
+code:
+
+if (mod_id == TFC_DLL)
+{
+   // ...   
+}
+// my code:
+else if (mod_id == CSTRIKE_DLL)
+{
+  // make sure it's time to throw grenade...
+  if (pBot->f_gren_throw_time > gpGlobals->time)
+          return;
+
+  pBot->b_grenade_primed = FALSE;
+  pBot->pEdict->v.button = IN_ATTACK;
+  pfnRunPlayerMove(pBot->pEdict, pBot->pEdict->v.v_angle,0, 0,0, pBot->pEdict->v.button, 0, 1.0);
+}
+
+
+All I want is just bot throwing HE grenade (it doesn't matter where!)
+Thanks to everyone who'll help me ! 
+
+[modified on 04/06/02 at 06:22:00]
+--------------------------------------------------
+04/06/02 at 06:31:03  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+why don't you just handle grenades like the other weapons ?
+
+code:
+
+// set grenades at the top of the array so they are the first weapon used
+bot_weapon_select_t cs_weapon_select[] = {
+   {CS_WEAPON_HEGRENADE, "weapon_hegrenade", 3, 300, 800, FALSE, 1, FALSE, FALSE, 0.0},
+   {CS_WEAPON_FLASHBANG, "weapon_flashbang", 3, 200, 850, FALSE, 1, FALSE, FALSE, 0.0},
+   {CS_WEAPON_SMOKEGRENADE, "weapon_smokegrenade", 3, 500, 1050, FALSE, 1, FALSE, FALSE, 0.0},
+   {CS_WEAPON_M249, "weapon_m249", 1, 5.0, 9999.0, TRUE, 1, TRUE, FALSE, 0.0},
+   {CS_WEAPON_MP5NAVY, "weapon_mp5navy", 1, 5.0, 9999.0, TRUE, 1, TRUE, FALSE, 0.0},
+   {CS_WEAPON_TMP, "weapon_tmp", 1, 5.0, 9999.0, TRUE, 1, TRUE, FALSE, 0.0},
+   {CS_WEAPON_P90, "weapon_p90", 1, 5.0, 9999.0, TRUE, 1, TRUE, FALSE, 0.0},
+   {CS_WEAPON_MAC10, "weapon_mac10", 1, 5.0, 9999.0, TRUE, 1, TRUE, FALSE, 0.0},
+   {CS_WEAPON_UMP45, "weapon_ump45", 1, 5.0, 9999.0, TRUE, 1, TRUE, FALSE, 0.0},
+   {CS_WEAPON_SCOUT, "weapon_scout", 1, 5.0, 9999.0, TRUE, 1, FALSE, FALSE, 0.0},
+   {CS_WEAPON_AWP, "weapon_awp", 1, 5.0, 9999.0, TRUE, 1, FALSE, FALSE, 0.0},
+   {CS_WEAPON_G3SG1, "weapon_g3sg1", 1, 5.0, 9999.0, TRUE, 1, FALSE, FALSE, 0.0},
+   {CS_WEAPON_SG550, "weapon_sg550", 1, 5.0, 9999.0, TRUE, 1, FALSE, FALSE, 0.0},
+   {CS_WEAPON_AK47, "weapon_ak47", 1, 5.0, 9999.0, TRUE, 1, TRUE, FALSE, 0.0},
+   {CS_WEAPON_SG552, "weapon_sg552", 1, 5.0, 9999.0, TRUE, 1, TRUE, FALSE, 0.0},
+   {CS_WEAPON_M4A1, "weapon_m4a1", 1, 5.0, 9999.0, TRUE, 1, TRUE, FALSE, 0.0},
+   {CS_WEAPON_AUG, "weapon_aug", 1, 5.0, 9999.0, TRUE, 1, TRUE, FALSE, 0.0},
+   {CS_WEAPON_M3, "weapon_m3", 1, 5.0, 9999.0, TRUE, 1, FALSE, FALSE, 0.0},
+   {CS_WEAPON_XM1014, "weapon_xm1014", 1, 5.0, 9999.0, TRUE, 1, FALSE, FALSE, 0.0},
+   {CS_WEAPON_KNIFE, "weapon_knife", 1, 0.0, 50.0, TRUE, 0, TRUE, FALSE, 0.0},
+   {CS_WEAPON_USP, "weapon_usp", 1, 0.0, 9999.0, TRUE, 1, FALSE, FALSE, 0.0},
+   {CS_WEAPON_GLOCK18, "weapon_glock18", 1, 0.0, 9999.0, TRUE, 1, FALSE, FALSE, 0.0}, 
+   {CS_WEAPON_DEAGLE, "weapon_deagle", 1, 0.0, 9999.0, TRUE, 1, FALSE, FALSE, 0.0},
+   {CS_WEAPON_P228, "weapon_p228", 1, 0.0, 9999.0, TRUE, 1, FALSE, FALSE, 0.0},
+   {CS_WEAPON_ELITE, "weapon_elite", 1, 0.0, 9999.0, TRUE, 1, FALSE, FALSE, 0.0},
+   {CS_WEAPON_FIVESEVEN, "weapon_fiveseven", 1, 0.0, 9999.0, TRUE, 1, FALSE, FALSE, 0.0},
+   /* terminator */
+   {0, "", 0, 0.0, 0.0, TRUE, 1, FALSE, FALSE, 0.0}
+};
+
+
+// weapon firing delay based on skill (min and max delay for each weapon)
+// THESE MUST MATCH THE SAME ORDER AS THE WEAPON SELECT ARRAY!!!
+bot_fire_delay_t cs_fire_delay[] = {
+   {CS_WEAPON_HEGRENADE, 0.3, {0.4, 0.3, 0.2, 0.1, 0.0}, {0.5, 0.4, 0.3, 0.2, 0.1}},
+   {CS_WEAPON_FLASHBANG, 0.3, {0.4, 0.3, 0.2, 0.1, 0.0}, {0.5, 0.4, 0.3, 0.2, 0.1}},
+   {CS_WEAPON_SMOKEGRENADE, 0.3, {0.4, 0.3, 0.2, 0.1, 0.0}, {0.5, 0.4, 0.3, 0.2, 0.1}},
+   {CS_WEAPON_M249, 0.3, {0.4, 0.3, 0.2, 0.1, 0.0}, {0.5, 0.4, 0.3, 0.2, 0.1}},
+   {CS_WEAPON_MP5NAVY, 0.3, {0.4, 0.3, 0.2, 0.1, 0.0}, {0.5, 0.4, 0.3, 0.2, 0.1}},
+   {CS_WEAPON_TMP, 0.3, {0.4, 0.3, 0.2, 0.1, 0.0}, {0.5, 0.4, 0.3, 0.2, 0.1}},
+   {CS_WEAPON_P90, 0.3, {0.4, 0.3, 0.2, 0.1, 0.0}, {0.5, 0.4, 0.3, 0.2, 0.1}},
+   {CS_WEAPON_MAC10, 0.3, {0.4, 0.3, 0.2, 0.1, 0.0}, {0.5, 0.4, 0.3, 0.2, 0.1}},
+   {CS_WEAPON_UMP45, 0.3, {0.4, 0.3, 0.2, 0.1, 0.0}, {0.5, 0.4, 0.3, 0.2, 0.1}},
+   {CS_WEAPON_SCOUT, 0.9, {0.4, 0.3, 0.2, 0.1, 0.0}, {0.5, 0.4, 0.3, 0.2, 0.1}},
+   {CS_WEAPON_AWP, 0.9, {0.4, 0.3, 0.2, 0.1, 0.0}, {0.5, 0.4, 0.3, 0.2, 0.1}},
+   {CS_WEAPON_G3SG1, 0.9, {0.4, 0.3, 0.2, 0.1, 0.0}, {0.5, 0.4, 0.3, 0.2, 0.1}},
+   {CS_WEAPON_SG550, 0.9, {0.4, 0.3, 0.2, 0.1, 0.0}, {0.5, 0.4, 0.3, 0.2, 0.1}},
+   {CS_WEAPON_AK47, 0.3, {0.4, 0.3, 0.2, 0.1, 0.0}, {0.5, 0.4, 0.3, 0.2, 0.1}},
+   {CS_WEAPON_SG552, 0.3, {0.4, 0.3, 0.2, 0.1, 0.0}, {0.5, 0.4, 0.3, 0.2, 0.1}},
+   {CS_WEAPON_M4A1, 0.3, {0.4, 0.3, 0.2, 0.1, 0.0}, {0.5, 0.4, 0.3, 0.2, 0.1}},
+   {CS_WEAPON_AUG, 0.3, {0.4, 0.3, 0.2, 0.1, 0.0}, {0.5, 0.4, 0.3, 0.2, 0.1}},
+   {CS_WEAPON_M3, 0.3, {0.4, 0.3, 0.2, 0.1, 0.0}, {0.5, 0.4, 0.3, 0.2, 0.1}},
+   {CS_WEAPON_XM1014, 0.3, {0.4, 0.3, 0.2, 0.1, 0.0}, {0.5, 0.4, 0.3, 0.2, 0.1}},
+   {CS_WEAPON_KNIFE, 0.1, {0.4, 0.3, 0.2, 0.1, 0.0}, {0.5, 0.4, 0.3, 0.2, 0.1}},
+   {CS_WEAPON_USP, 0.2, {0.4, 0.3, 0.2, 0.1, 0.0}, {0.5, 0.4, 0.3, 0.2, 0.1}},
+   {CS_WEAPON_GLOCK18, 0.2, {0.4, 0.3, 0.2, 0.1, 0.0}, {0.5, 0.4, 0.3, 0.2, 0.1}},
+   {CS_WEAPON_DEAGLE, 0.3, {0.4, 0.3, 0.2, 0.1, 0.0}, {0.5, 0.4, 0.3, 0.2, 0.1}},
+   {CS_WEAPON_P228, 0.3, {0.4, 0.3, 0.2, 0.1, 0.0}, {0.5, 0.4, 0.3, 0.2, 0.1}},
+   {CS_WEAPON_ELITE, 0.3, {0.4, 0.3, 0.2, 0.1, 0.0}, {0.5, 0.4, 0.3, 0.2, 0.1}},
+   {CS_WEAPON_FIVESEVEN, 0.3, {0.4, 0.3, 0.2, 0.1, 0.0}, {0.5, 0.4, 0.3, 0.2, 0.1}},
+   /* terminator */
+   {0, 0.0, {0.0, 0.0, 0.0, 0.0, 0.0}, {0.0, 0.0, 0.0, 0.0, 0.0}}
+};
+
+
+
+That's what I am doing and it works very well...
+
+--------------------------------------------------
+04/10/02 at 11:35:23  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+he probably uses an own combat system (as i do aswell). FOr grenades, you should check your timer holding the grenade. You should also be sure the bot selects the grenade when it is not selected yet. I am not going into code details here, but you can figure all these things out easily. Simply said you do:
+
+if (bot has not a grenade)
+{
+  select a grenade
+  set timer
+}
+else
+{
+ aim.
+ 
+ if (grenade timer > game time)
+  {
+    press attack button to 'hold grenade'
+  }
+}
+
+
+
+--------------------------------------------------
+04/11/02 at 19:43:38  Reply by: CountFloyd (countfloyd@botepidemic.com)
+--------------------------------------------------
+QUOTE:
+why don't you just handle grenades like the other weapons ?
+
+
+
+IMHO it's a mistake to use grenades like standard weapons.
+
+--------------------------------------------------
+04/12/02 at 02:14:43  Reply by: @$3.1415rin (joebot@botepidemic.com)
+--------------------------------------------------
+
+QUOTE:
+why don't you just handle grenades like the other weapons ?
+
+IMHO it's a mistake to use grenades like standard weapons.
+
+
+
+
+CheckVecToss is quite a lot better, isn't it CF ?
+
+--------------------------------------------------
+04/12/02 at 02:16:46  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+Of course if you plan a more 'tactical' ;) use of these grenades, sure it's not the best idea... Anyway playing online I noticed that 95% the time the grenade is the first weapon used by players (either preventively, or when engaging a combat)
+
+
+[modified on 04/12/02 at 02:16:46]
+--------------------------------------------------
+04/13/02 at 07:32:21  Reply by: CountFloyd (countfloyd@botepidemic.com)
+--------------------------------------------------
+QUOTE:
+
+CheckVecToss is quite a lot better, isn't it CF ?
+
+
+
+
+Yep. VecCheckThrow is also nice ;)
+
+QUOTE:
+
+either preventively, or when engaging a combat
+
+
+
+Mostly when there's no Line of Fire to the target I guess so direct Tracelines would fail anyway.
+

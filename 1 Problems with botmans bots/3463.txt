@@ -1,0 +1,217 @@
+--------------------------------------------------
+Subject: Is anyone running HPB bots with listenserver?
+--------------------------------------------------
+07/21/02 at 21:38:20  Posted by: Jellric (jellric@yahoo.com)
+--------------------------------------------------
+I have HPB bots on my dedicated HL server. I added the "+localinfo mm_gamedll dlls/HPB_bot.dll" line to the HLDS shortcut like you're supposed to. But when I try adding it to the HL.exe shortcut, I get an invalid path error. The default path that is there is enclosed in quotation marks unlike HLDS.
+
+Is anyone reading this running them on a listenserver, and if so how did you do it? 
+Thanks in advance.
+
+--------------------------------------------------
+07/22/02 at 06:37:10  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+You're only supposed to use "+localinfo" if you are running metamod.  Are you running metamod or AdminMOD?
+
+botman
+
+--------------------------------------------------
+07/22/02 at 06:56:52  Reply by: Jellric (jellric@yahoo.com)
+--------------------------------------------------
+I'm running both.
+
+--------------------------------------------------
+07/22/02 at 19:33:59  Reply by: Jellric (jellric@yahoo.com)
+--------------------------------------------------
+Come on, there must be some of you guys running it on a listenserver!
+
+Assuming it's possible.
+
+--------------------------------------------------
+07/23/02 at 02:38:42  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Of course I am.
+I usually debug my bot on a listenserver running Metamod and adminmod.
+You just have to modify botman's GiveFnptrsToDll() this way:
+code:
+
+void DLLEXPORT GiveFnptrsToDll (enginefuncs_t* pengfuncsFromEngine, globalvars_t *pGlobals)
+{
+   FILE *fp;
+
+   // test if Metamod DLL exists, attempt to open the file
+   if ((fp = fopen ("valve/dlls/metamod.dll", "rb")) != NULL)
+   {
+      fclose (fp); // DLL exists, close it
+      h_Library = LoadLibrary ("valve/dlls/metamod.dll");// load Metamod METAMOD.DLL
+   }
+   else
+      h_Library = LoadLibrary ("valve/dlls/hl.dll");// load Half-Life HL.DLL
+
+
+and recompile the HPB bot.
+
+Note that botman does a check to know which MOD DLL to load while here I'm just loading the Valve DLL. That's because his HPB bot supports several MODs with the same DLL, whereas I have one DLL for each mod (I thought it would cleanup the code). Anyway the modifications to commit should be straightforward.
+
+
+
+--------------------------------------------------
+07/23/02 at 03:12:56  Reply by: Jellric (jellric@yahoo.com)
+--------------------------------------------------
+This may be beyond my abilities, heh! 
+
+I have never compiled anything in my life, but I'm willing to give it a try. What sort of program will I need to do the compiling, and where should this "GiveFnptrsToDll" be located?
+
+--------------------------------------------------
+07/23/02 at 05:42:06  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+As you're beginning, I would suggest you get a copy of Microsoft Visual C++ 6. Then download the HPB bot source code, and open the project file "HPB_bot.dsw". Click on the "FileView" tab, and browse to the file named "h_export.cpp". Then do a search in the file for GiveFnptrsToDll.
+
+Look how I'm in a good mood today, I'm giving you all you need to know. Just change
+code:
+
+   if (game_dll_filename[0])
+   {
+#ifndef __linux__
+      h_Library = LoadLibrary(game_dll_filename);
+#else
+      h_Library = dlopen(game_dll_filename, RTLD_NOW);
+#endif
+   }
+   else
+   {
+      // Directory error or Unsupported MOD!
+
+            ALERT( at_error, "HPB_bot - MOD dll not found (or unsupported MOD)!" );
+
+      return;
+   }
+
+
+to
+code:
+
+   if (game_dll_filename[0])
+   {
+      FILE *fp;
+      char metamod_dll_filename[256];
+
+      strcpy (metamod_dll_filename, "%s/dlls/metamod.dll", mod_name);
+
+      // test if Metamod DLL exists, attempt to open the file
+      if ((fp = fopen (metamod_dll_filename, "rb")) != NULL)
+      {
+         fclose (fp); // DLL exists, close it
+#ifndef __linux__
+         h_Library = LoadLibrary (metamod_dll_filename);
+#else
+         h_Library = dlopen (metamod_dll_filename, RTLD_NOW);
+#endif
+      }
+      else
+#ifndef __linux__
+         h_Library = LoadLibrary(game_dll_filename);
+#else
+         h_Library = dlopen(game_dll_filename, RTLD_NOW);
+#endif
+   }
+   else
+   {
+      // Directory error or Unsupported MOD!
+
+            ALERT( at_error, "HPB_bot - MOD dll not found (or unsupported MOD)!" );
+
+      return;
+   }
+
+
+Once you get this modified right, click on the "build" button and you should get yourself a brand new HPB bot DLL in the "debug" folder of the source code. Replace botman's DLL with this new one, install Metamod, install AdminMod, install HPB bot and here you are.
+
+
+--------------------------------------------------
+07/23/02 at 06:40:25  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+You shouldn't need to modify any code to run the HPB bot and metamod/AdminMOD on a listenserver.  I've used the HPB bot and metamod with the Stripper2 and Monster metamod plugins without having to modify anything.
+
+Just make sure you add the "+localinfo" stuff (without the quotes) when running hl.exe.
+
+botman
+
+--------------------------------------------------
+07/23/02 at 10:37:54  Reply by: Jellric (jellric@yahoo.com)
+--------------------------------------------------
+Botman, that's what I was trying to explain. When I add the +localinfo line to the hl.exe shortcut like I have it in my HLDS shortcut, I get the following error msg:
+
+"Problem with shortcut. The name 'C\Sierra\Half-Life\hl' specified in the target box is not valid. Make sure the path and filename are correct." This is definately the correct path for hl.exe cause I use it all the time.
+
+Is there other place I'm supposed to add the +localinfo line?
+
+--------------------------------------------------
+07/23/02 at 11:38:11  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Change...
+
+C\Sierra\Half-Life\hl
+
+...to...
+
+C\Sierra\Half-Life\hl.exe
+
+...and add...
+
++localinfo mm_gamedll dlls/HPB_bot.dll
+
+...to the end of the "Target:" line.
+
+botman
+
+--------------------------------------------------
+07/23/02 at 11:47:57  Reply by: Jellric (jellric@yahoo.com)
+--------------------------------------------------
+Change... 
+C\Sierra\Half-Life\hl 
+...to... 
+C\Sierra\Half-Life\hl.exe 
+------------
+Actually it is that way now. The error msg reports it as 'C:\Sierra\Half-Life\hl' for some reason. (It leaves off the ".exe"). But trust me, it's there. And I did remove the quotes.
+
+
+--------------------------------------------------
+07/23/02 at 11:50:40  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+That's strange.
+
+I'm not sure why Windows doesn't think that target doesn't exist (unless there's no space after the .exe part).
+
+Try just dragging hl.exe to the desktop and editing that shortcut "Target:" line to see what happens.
+
+botman
+
+--------------------------------------------------
+07/24/02 at 08:06:31  Reply by: Jellric (jellric@yahoo.com)
+--------------------------------------------------
+I finally got the +localinfo line in there.
+Evidently it wanted me to add it after the quotes for some reason. I don't know what the quotes are all about. I don't know about you, but when I'm altering something computer-related and it's enclosed in quotes, I'm adding my stuff in those quotes also. The HLDS target line isn't fonky like that.
+
+Anyway, sorry to trouble you over something so small. But remember, "it's the little things that kill!"..(thank you Bush).
+
+And Pierre thank you for giving that code even though I have it working now. Is there any advantage to doing it that way or is that how you have to do it because of your setup?
+
+
+
+--------------------------------------------------
+07/24/02 at 08:23:19  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+The only advantage I see in my method is the simplicity ; the end user just installs his bot as if there were no Metamod at all. It's just the "auto-detect" thing that I find an advantage.
+
+There is a slight difference, though, in the order the DLLs are chained. With my method, you have :
+
+Engine <-> Bot DLL <-> Metamod DLL <-> Game DLL
+
+whereas with the +localinfo stuff you have :
+
+Engine <-> Metamod DLL <-> Bot DLL <-> Game DLL
+
+As a bot developer, for debugging purposes I prefer it my way.
+
+

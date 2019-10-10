@@ -1,0 +1,110 @@
+--------------------------------------------------
+Subject: To someone who knows dijkstra's algo
+--------------------------------------------------
+11/15/01 at 08:51:12  Posted by: Onslaught (None)
+--------------------------------------------------
+code:
+
+      (3)               (4)
+1----------------2-----------------3
+                                 
+(1)             (1)              (2)
+      (1)             (2)        
+4----------------5-----------------6
+                 (1)
+                 7
+
+
+suppose that I am to calculate the shortest path from node 1 to any other nodes:
+1) Get all paths from one
+   - path from 1 to 4 is shorter (1) than path from 1 to 2 (3)
+2) Get all paths from four
+   - path from 4 to 5 (1+1=2)
+3) Get all paths from 5
+   - path from 5 to 7 is shorter (2+1=3)
+4) Get all paths from 7......... (?)
+
+what will I do now? how do I find the next node to check if 5 is already marked "permanent" or "shortest"?
+
+
+[modified on 11/15/01 at 08:50:27]
+
+[modified on 11/15/01 at 08:51:12]
+--------------------------------------------------
+11/15/01 at 09:11:27  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Here's a link to Dijkstra's algorithm (with source code)...
+
+http://softlab.od.ua/algo/other/alg/node89.html
+
+...you will need to store the nodes you have visited on each path from starting point to goal so that you don't visit them again while searching for a path (otherwise you'd have infinite loops).
+
+botman
+
+--------------------------------------------------
+11/15/01 at 10:32:03  Reply by: jldailey (jldailey@uchicago.edu)
+--------------------------------------------------
+well, i dont know the technical differences really between djikstra's algo and A*, but in A* the solution goes like this:
+1) Get all paths from one
+  - path from 1 to 4 has lowest cost (1 + distance(4,6) = 3)
+2) Get all paths from 4
+  - 5 has lowest score (cost(1,4) + cast(4,5) + distance(5,6))
+3) Get all paths from 5
+  - 6 has lowest score
+  We'll do this next step most carefully since this is where your question is:
+  ok, so the cost of a path is the sum of the cost of each step so far, _plus the ESTIMATED cost to the goal_, this is the most important part.
+  so in comparing the step from 5 to 6 and the step from 5 to 7, consider the two paths that would be created.
+code:
+
+cost( path(1,4,5,6) ) = cost(1,4) + cost(4,5) + cost(5,6) + estimate(6,6)
+                      = 1 + 1 + 2 + 0 = 4
+cost( path(1,4,5,7,6) ) = cost(1,4) + cost(4,5) + cost(5,7) + estimate(7,6)
+                        = 1 + 1 + 1 + estimate(7,6)
+                        = 3 + sqrt(1 + 2^2) (from pythagorus)
+                        = 3 + sqrt(5) > 4
+
+
+so you pick the step to 6 since it results in an overall lower cost path (!!__including the estimates__!!)...
+
+                
+
+
+--------------------------------------------------
+11/15/01 at 10:37:57  Reply by: William (william@cgf-ai.com)
+--------------------------------------------------
+if you use an estimated cost to the goal that is 0, you transform A* into Dijkstra. (In other words, Dijkstra expands the current shortest path, whereas A* expands the current most promising path, given path length and estimated remaining length).
+
+William
+
+--------------------------------------------------
+11/15/01 at 20:06:23  Reply by: Onslaught (None)
+--------------------------------------------------
+thanks for the replies, I finally got it working.
+
+--------------------------------------------------
+11/15/01 at 20:12:17  Reply by: Onslaught (None)
+--------------------------------------------------
+
+QUOTE:
+if you use an estimated cost to the goal that is 0, you transform A* into Dijkstra. (In other words, Dijkstra expands the current shortest path, whereas A* expands the current most promising path, given path length and estimated remaining length).
+
+William
+
+
+
+
+So the dijkstra algo is just A* without a heuristic?
+
+--------------------------------------------------
+11/16/01 at 14:19:59  Reply by: William (william@cgf-ai.com)
+--------------------------------------------------
+In hindsight it is. However, Dijkstra's algorithm is pretty famous because it was (AFAIK) the first published algorithm for this problem. 
+
+The guy (Edsger W. Dijkstra) also invented semaphores (used to synchronize parallel tasks), and introduced a pretty formal way to derive algorithms from mathematically defined problems.
+At his former university (TU Eindhoven, the Netherlands) he is also famous for his preference for handwriting over machine output (his students wrote Master's Thesis by hand). Dijkstra developed such a regular and consistent handwriting that is has been digitized as a LateX font. And for lectures, he requests an old-fashioned chalkboard and chalk.
+AFAIK, Dijkstra still has a position at Texas A&M, Austin TX.
+
+But I digress :)
+
+William
+

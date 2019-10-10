@@ -1,0 +1,550 @@
+--------------------------------------------------
+Subject: timeleft
+--------------------------------------------------
+12/30/02 at 19:05:55  Posted by: Psycho_MantisX2 (Psycho_MantisX2@hotmail.com)
+--------------------------------------------------
+i have been trying to get this to work but it wont seem to. i thought this would be the right code but can someone help me?
+
+if (FStrEq(pcmd, "timeleft"))       
+{             
+      CBasePlayer *pPlayer = GetClassPtr((CBasePlayer *)pev);                    
+
+      char szText[201];
+      char map_msg[800];
+      char temp[50];
+      int timeleft, length;
+      hudtextparms_t    hText;              
+      timeleft = timelimit.value * 60 - (int)gpGlobals->time;
+
+      memset(&hText, 0, sizeof(hText));             
+      hText.channel = CHAN_WEAPON;             
+      // These X and Y coordinates are just above             
+      //  the health meter.             
+      hText.x = 0.30;             
+      hText.y = 0.25;                        
+
+      hText.effect = 0;    // Fade in/out
+                                            
+      hText.r1 = hText.g1 = hText.b1 = 255;             
+      hText.a1 = 25;
+                          
+      hText.r2 = hText.g2 = hText.b2 = 45;             
+      hText.a2 = 255;
+                          
+      hText.fadeinTime = 1;             
+      hText.fadeoutTime = 5;             
+      hText.holdTime = 5;             
+      hText.fxTime = 0.5;
+      if (timeleft < 1)
+            strcpy(temp, "game over");
+      else if (timeleft < 120)
+            sprintf(temp, "%d seconds left", timeleft);
+      else
+            sprintf(temp, "%d minutes left", (timeleft+30)/60); 
+            sprintf(map_msg,  "Map '%s' for %d minutes (%s) or %d frags.", STRING(gpGlobals->mapname), (int)timelimit.value, temp, (int)fraglimit.value);
+      
+      if (pPlayer)
+      {
+            UTIL_HudMessage(pPlayer, hText, map_msg);
+      } else {
+            for ( int i = 1; i <= gpGlobals->maxClients; i++ )
+            {
+                  if ( (pPlayer = (CBasePlayer *)UTIL_PlayerByIndex( i )) != NULL )
+                        UTIL_HudMessage(pPlayer, htext, map_msg);
+            }
+      }
+                          
+      UTIL_HudMessage(pPlayer, hText, szText);       
+}
+
+Compiling...
+client.cpp
+D:\Sdk2.3\Multiplayer Source\dlls\client.cpp(480) : error C2065: 'htext' : undeclared identifier
+Error executing cl.exe.
+
+mp.dll - 1 error(s), 0 warning(s)
+
+trying to get it so that people can type timeleft in the console and it will display the timeleft.
+
+--------------------------------------------------
+12/30/02 at 19:28:50  Reply by: Snake (Liquid_snakeX2@hotmail.com)
+--------------------------------------------------
+UTIL_HudMessage(pPlayer, htext, map_msg);
+
+needs to be
+
+UTIL_HudMessage(pPlayer, hText, map_msg);
+
+--------------------------------------------------
+12/30/02 at 19:33:15  Reply by: Psycho_MantisX2 (Psycho_MantisX2@hotmail.com)
+--------------------------------------------------
+still doesnt display the timeleft something is wrong with the code it says "Lb@" in the game?
+
+--------------------------------------------------
+12/31/02 at 05:21:16  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+memset(&hText, 0, sizeof(hText));   <-- dont need this          
+
+hText.channel = CHAN_WEAPON; <--- text channels aren't sound channels! Instead use 1
+i.e.
+
+hText.channel = 1;
+
+
+Also....
+code:
+
+else {
+           for ( int i = 1; i <= gpGlobals->maxClients; i++ )
+           {
+                 if ( (pPlayer = (CBasePlayer *)UTIL_PlayerByIndex( i )) != NULL )
+                       UTIL_HudMessage(pPlayer, htext, map_msg);
+           }
+     }
+
+
+
+Has no effect, you already set the pPlayer to something which obviosuly can't be null.
+
+...
+
+again
+
+code:
+
+UTIL_HudMessage(pPlayer, hText, szText);  
+
+
+
+the first HudMessage has no effect because you are sending two hud messages in one frame, which can't be done, you'll either see one or the other messages or none.
+
+--------------------------------------------------
+12/31/02 at 05:25:49  Reply by: Snake (Liquid_snakeX2@hotmail.com)
+--------------------------------------------------
+SO WITCH SHOULD HE TAKE OUT?
+
+--------------------------------------------------
+12/31/02 at 05:28:11  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+use the brain, its obvious ;)
+
+--------------------------------------------------
+12/31/02 at 05:29:08  Reply by: Snake (Liquid_snakeX2@hotmail.com)
+--------------------------------------------------
+pPlayer, hText
+
+--------------------------------------------------
+12/31/02 at 05:36:32  Reply by: Snake (Liquid_snakeX2@hotmail.com)
+--------------------------------------------------
+the 2 ?
+
+UTIL_HudMessage(pPlayer, htext, map_msg);
+
+--------------------------------------------------
+12/31/02 at 05:48:56  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+I highlighted 
+
+code:
+
+UTIL_HudMessage(pPlayer, hText, szText);   
+
+
+
+So set a timer somewhere to set this off in the next XX seconds or whatever to the reieved players.
+
+--------------------------------------------------
+12/31/02 at 06:05:19  Reply by: Snake (Liquid_snakeX2@hotmail.com)
+--------------------------------------------------
+it is already setup for if you time timeleft right?
+
+--------------------------------------------------
+12/31/02 at 06:54:20  Reply by: Snake (Liquid_snakeX2@hotmail.com)
+--------------------------------------------------
+There Mantis ez cut and past
+
+code:
+
+if (FStrEq(pcmd, "timeleft"))       
+{             
+     CBasePlayer *pPlayer = GetClassPtr((CBasePlayer *)pev);                     
+
+     char szText[201]; 
+     char map_msg[800]; 
+     char temp[50]; 
+     int timeleft; 
+     hudtextparms_t    hText;               
+     timeleft = timelimit.value * 60 - (int)gpGlobals->time; 
+
+     memset(&hText, 0, sizeof(hText));             
+     hText.channel = 1;             
+     // These X and Y coordinates are just above             
+     //  the health meter.             
+     hText.x = 0.30;             
+     hText.y = 0.25;                         
+
+     hText.effect = 0;    // Fade in/out 
+                                            
+     hText.r1 = hText.g1 = hText.b1 = 255;             
+     hText.a1 = 25; 
+                          
+     hText.r2 = hText.g2 = hText.b2 = 45;             
+     hText.a2 = 255; 
+                          
+     hText.fadeinTime = 1;             
+     hText.fadeoutTime = 5;             
+     hText.holdTime = 5;             
+     hText.fxTime = 0.5; 
+     if (timeleft < 1) 
+           strcpy(temp, "game over"); 
+     else if (timeleft < 120) 
+           sprintf(temp, "%d seconds left", timeleft); 
+     else 
+           sprintf(temp, "%d minutes left", (timeleft+30)/60); 
+           sprintf(map_msg,  "Map '%s' for %d minutes (%s) or %d frags.", STRING(gpGlobals->mapname), (int)timelimit.value, temp, (int)fraglimit.value); 
+      
+     if (pPlayer) 
+     {  
+           for ( int i = 1; i <= gpGlobals->maxClients; i++ ) 
+           { 
+                 if ( (pPlayer = (CBasePlayer *)UTIL_PlayerByIndex( i )) != NULL ) 
+                       UTIL_HudMessage(pPlayer, hText, map_msg); 
+           } 
+     } 
+                          
+     UTIL_HudMessage(pPlayer, hText, szText);       
+} 
+
+
+}
+
+
+--------------------------------------------------
+12/31/02 at 08:06:50  Reply by: Snake (Liquid_snakeX2@hotmail.com)
+--------------------------------------------------
+ok this work but i would like it to be like if i type say timeleft in console can you help cause with this command you have to have the admin power of the server
+
+--------------------------------------------------
+12/31/02 at 08:14:01  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+code:
+
+if ( (FStrEq(pcmd, "timeleft")) && PlayerIsAdmin(pev) )
+{  
+
+
+
+code:
+
+bool PlayerIsAdmin ( entvars_t *pev )
+{
+/* PUT CODE IN HERE TO DETERMINE IF A PLAYER IS AN ADMIN, RETURN TRUE IF YES, FALSE IF NOT */
+  return FALSE;
+}
+
+
+
+
+--------------------------------------------------
+12/31/02 at 08:35:53  Reply by: Snake (Liquid_snakeX2@hotmail.com)
+--------------------------------------------------
+k i like that but i want it to be type in the text like
+
+Snake: timeleft
+timelft 30 min......
+
+console ~
+snake say "timeleft"
+
+--------------------------------------------------
+12/31/02 at 08:51:15  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+if (FStrEq(pcmd, "say"))        
+{
+  if ( arg1 && (FStrEq(arg1, "timeleft") )
+  {
+    // all code here
+  }
+}
+
+
+--------------------------------------------------
+12/31/02 at 08:51:44  Reply by: Snake (Liquid_snakeX2@hotmail.com)
+--------------------------------------------------
+ty
+
+--------------------------------------------------
+12/31/02 at 08:57:37  Reply by: Snake (Liquid_snakeX2@hotmail.com)
+--------------------------------------------------
+code:
+
+if (FStrEq(pcmd, "say"))         
+{
+            Host_Say( pEntity, 0 );
+      }
+{ 
+ if ( arg1 && (FStrEq(arg1, "timeleft") ) )
+
+   CBasePlayer *pPlayer = GetClassPtr((CBasePlayer *)pev);                     
+
+     char szText[201]; 
+     char map_msg[800]; 
+     char temp[50]; 
+     int timeleft; 
+     hudtextparms_t    hText;               
+     timeleft = timelimit.value * 60 - (int)gpGlobals->time; 
+
+     memset(&hText, 0, sizeof(hText));             
+     hText.channel = 1;             
+     // These X and Y coordinates are just above             
+     //  the health meter.             
+     hText.x = 0.25;             
+     hText.y = 0.25;                         
+
+     hText.effect = 0;    // Fade in/out 
+                                            
+     hText.r1 = hText.g1 = hText.b1 = 255;             
+     hText.a1 = 25; 
+                          
+     hText.r2 = hText.g2 = hText.b2 = 45;             
+     hText.a2 = 255; 
+                          
+     hText.fadeinTime = 1;             
+     hText.fadeoutTime = 5;             
+     hText.holdTime = 5;             
+     hText.fxTime = 0.5; 
+     if (timeleft < 1) 
+           strcpy(temp, "game over"); 
+     else if (timeleft < 120) 
+           sprintf(temp, "%d seconds left", timeleft); 
+     else 
+           sprintf(temp, "%d minutes left", (timeleft+30)/60); 
+           sprintf(map_msg,  "Map '%s' for %d minutes (%s) or %d frags.", STRING(gpGlobals->mapname), (int)timelimit.value, temp, (int)fraglimit.value); 
+      
+     if (pPlayer) 
+     {  
+           for ( int i = 1; i <= gpGlobals->maxClients; i++ ) 
+           { 
+                 if ( (pPlayer = (CBasePlayer *)UTIL_PlayerByIndex( i )) != NULL ) 
+                       UTIL_HudMessage(pPlayer, hText, map_msg); 
+           } 
+     } 
+                          
+     UTIL_HudMessage(pPlayer, hText, szText);       
+
+ 
+} 
+
+
+
+:\Sdk2.3\Multiplayer Source\dlls\client.cpp(392) : error C2065: 'arg1' : undeclared identifier
+C:\Sdk2.3\Multiplayer Source\dlls\client.cpp(430) : error C2065: 'pPlayer' : undeclared identifier
+C:\Sdk2.3\Multiplayer Source\dlls\client.cpp(434) : error C2440: '=' : cannot convert from 'class CBasePlayer *' to 'int'
+        This conversion requires a reinterpret_cast, a C-style cast or function-style cast
+C:\Sdk2.3\Multiplayer Source\dlls\client.cpp(444) : error C2181: illegal else without matching if
+Error executing cl.exe.
+
+client.obj - 4 error(s), 0 warning
+
+--------------------------------------------------
+12/31/02 at 09:08:33  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+where did
+
+            Host_Say( pEntity, 0 );       } {  
+
+come from?
+
+Remove it, it will muck up the scope of the variables and functions.
+
+just keep it like...
+
+code:
+
+if (FStrEq(pcmd, "say"))         
+{
+
+   if ( arg1 && (FStrEq(arg1, "timeleft") ) )
+
+
+
+get rid of host say, it isn't needed as long as you call the client command engine function.
+
+--------------------------------------------------
+12/31/02 at 09:09:48  Reply by: Snake (Liquid_snakeX2@hotmail.com)
+--------------------------------------------------
+C:\Sdk2.3\Multiplayer Source\dlls\client.cpp(389) : error C2065: 'arg1' : undeclared identifier
+C:\Sdk2.3\Multiplayer Source\dlls\client.cpp(427) : error C2065: 'pPlayer' : undeclared identifier
+C:\Sdk2.3\Multiplayer Source\dlls\client.cpp(431) : error C2440: '=' : cannot convert from 'class CBasePlayer *' to 'int'
+        This conversion requires a reinterpret_cast, a C-style cast or function-style cast
+
+--------------------------------------------------
+12/31/02 at 09:16:38  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+the scope is still messed up, just copy and past this.
+
+if (FStrEq(pcmd, "say")) 
+{ 
+      if ( arg1 && FStrEq(arg1, "timeleft") ) 
+      {      
+            CBasePlayer *pPlayer = GetClassPtr((CBasePlayer *)pev); 
+            
+            char szText[201]; 
+            char map_msg[800]; 
+            char temp[50]; 
+            int timeleft; 
+            hudtextparms_t hText; 
+            timeleft = timelimit.value * 60 - (int)gpGlobals->time; 
+            
+            memset(&hText, 0, sizeof(hText)); 
+            hText.channel = 1; 
+            // These X and Y coordinates are just above 
+            // the health meter. 
+            hText.x = 0.25; 
+            hText.y = 0.25; 
+            
+            hText.effect = 0; // Fade in/out 
+            
+            hText.r1 = hText.g1 = hText.b1 = 255; 
+            hText.a1 = 25; 
+            
+            hText.r2 = hText.g2 = hText.b2 = 45; 
+            hText.a2 = 255; 
+            
+            hText.fadeinTime = 1; 
+            hText.fadeoutTime = 5; 
+            hText.holdTime = 5; 
+            hText.fxTime = 0.5; 
+            if (timeleft < 1) 
+                  strcpy(temp, "game over"); 
+            else if (timeleft < 120) 
+                  sprintf(temp, "%d seconds left", timeleft); 
+            else 
+                  sprintf(temp, "%d minutes left", (timeleft+30)/60); 
+            sprintf(map_msg, "Map '%s' for %d minutes (%s) or %d frags.", STRING(gpGlobals->mapname), (int)timelimit.value, temp, (int)fraglimit.value); 
+            
+            if (pPlayer) 
+            { 
+                  for ( int i = 1; i <= gpGlobals->maxClients; i++ ) 
+                  { 
+                        if ( (pPlayer = (CBasePlayer *)UTIL_PlayerByIndex( i )) != NULL ) 
+                              UTIL_HudMessage(pPlayer, hText, map_msg); 
+                  } 
+            } 
+            
+            UTIL_HudMessage(pPlayer, hText, szText);             
+      }
+}
+
+
+--------------------------------------------------
+12/31/02 at 09:18:41  Reply by: Snake (Liquid_snakeX2@hotmail.com)
+--------------------------------------------------
+lol 1 error
+
+c:\sdk2.3\multiplayer source\dlls\client.cpp(389) : error C2065: 'arg1' : undeclared identifier
+
+
+--------------------------------------------------
+12/31/02 at 09:27:19  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+const char *arg1 = CMD_ARGV(1);
+
+--------------------------------------------------
+01/14/03 at 17:49:35  Reply by: the-griff (short_craig@hotmail.com)
+--------------------------------------------------
+ok yah well i put this in and compiled it and moved the code a little around btu im gettign a negitive value
+
+heres what  i got (a little shorter for testign purposes)
+:
+
+
+else if (FStrEq(pcmd, "timeleft")) 
+{     
+           CBasePlayer *pPlayer = GetClassPtr((CBasePlayer *)pev); 
+            
+           char szText[201]; 
+           int timeleft; 
+           hudtextparms_t hText; 
+           timeleft = timelimit.value * 60 - (int)gpGlobals->time; 
+            
+           memset(&hText, 0, sizeof(hText)); 
+           hText.channel = 1; 
+           hText.x = 0.25; 
+           hText.y = 0.25; 
+           hText.effect = 0; // Fade in/out 
+            
+           hText.r1 = hText.g1 = hText.b1 = 255; 
+           hText.a1 = 25; 
+            
+           hText.r2 = hText.g2 = hText.b2 = 45; 
+           hText.a2 = 255; 
+            
+           hText.fadeinTime = 1; 
+           hText.fadeoutTime = 5; 
+           hText.holdTime = 5; 
+           hText.fxTime = 0.5; 
+     
+          sprintf(szText, "%d seconds left", timeleft);
+  UTIL_HudMessage(pPlayer, hText, szText);             
+     } 
+
+
+--------------------------------------------------
+01/14/03 at 17:53:57  Reply by: the-griff (short_craig@hotmail.com)
+--------------------------------------------------
+sorry my bad i got it figured out
+
+--------------------------------------------------
+01/14/03 at 22:42:06  Reply by: the-griff (short_craig@hotmail.com)
+--------------------------------------------------
+i made this and found it to work pretty good :
+(include math.h)
+      
+//timeleft code
+      else if (FStrEq(pcmd, "timeleft")) 
+      {     
+           CBasePlayer *pPlayer = GetClassPtr((CBasePlayer *)pev); 
+           
+                char seconds[255];
+                  char szText[800]; 
+                  int timeleft; 
+                  int secondsleft;
+                   
+                  timeleft = timelimit.value * 60 - (int)gpGlobals->time; 
+                  
+                  secondsleft = timeleft/60;
+                  floor (secondsleft);
+                  secondsleft = timeleft - (secondsleft * 60) ;
+                           
+
+               sprintf(seconds, "%d", secondsleft);
+               if (secondsleft < 10)
+               {
+               sprintf(seconds, "0%d", secondsleft);
+               }
+               if (timeleft < 1) 
+                 strcpy(szText, "Changing Maps...");
+          else if (timeleft > 59) {
+                  sprintf(szText, "*Map '%s' with %d:%s left*", STRING(gpGlobals->mapname), timeleft/60, seconds); 
+                  }
+                   else if (timeleft < 60) {
+                  sprintf(szText, "*Map '%s' with 0:%s left*", STRING(gpGlobals->mapname), seconds); 
+                  }
+              else {
+                        sprintf(szText, "*No Timelimit"); 
+                  }   
+                  ClientPrint( &pEntity->v, HUD_PRINTTALK,szText );
+                  
+      }
+
+--------------------------------------------------
+01/15/03 at 14:01:47  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+you shouldnt need to include math.h for division/multiplication/basic arithmetic operations do you? ;)
+
+--------------------------------------------------
+01/18/03 at 21:39:19  Reply by: RobGP (rob@planetfortress.com)
+--------------------------------------------------
+cannot believe you guys post ready made code and he still gets it wrong.. what a llama
+

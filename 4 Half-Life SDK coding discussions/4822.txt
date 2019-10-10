@@ -1,0 +1,301 @@
+--------------------------------------------------
+Subject: Problems with FNullEnt
+--------------------------------------------------
+09/15/03 at 14:23:38  Posted by: Dummy (BigDummy@myrealbox.com)
+--------------------------------------------------
+I am having problems with the FNullEnt function.  It always returns true, even when I know it should be false.  For instance, the code below gets into the 'Do Stuff' block 32 times even if I only have 2 clients connected (or 0 or 20, it does not matter).  I have tried it at different times like Round_End, ClientConnect, ClientPutInServer etc with the same results no matter what.  Am I using the function wrong?  Does it not work for CS?  What's up?
+
+
+for(int i=1;i<33;i++){
+   pEnt =INDEXENT(i);
+   if(pEnt && !FNullEnt(pEnt) && !pEnt->free){
+      ... Do Stuff
+   }
+}
+
+--------------------------------------------------
+09/15/03 at 14:30:47  Reply by: Cheesemonster!!! (cheeseh(at)rcbot(dot)net)
+--------------------------------------------------
+lol... I don't think it's not a problem with FNullEnt, it's more of a problem with your for loop.
+
+it should be
+
+for(int i=1;i<=gpGlobals->maxClients;i++)
+{
+  pEnt =INDEXENT(i);
+  if(pEnt && !FNullEnt(pEnt) && !pEnt->free){
+     ... Do Stuff
+  }
+}
+
+hence the gpGlobals->maxClients instead of 33, because maxClients differs when max_players is changed, entities above that range are probably monsters/doors etc.
+
+--------------------------------------------------
+09/15/03 at 15:33:38  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+...also realize that once a player entity is allocated, that slot is never "free" again.  FNullEnt() will always tell you that slot is used even if no players are connected to the server at that time.
+
+The only fool proof way to tell if a player slot is still in use is to check if the edict_t netname field is NULL or not.  All valid players will have a non-NULL netname field in the edict_s structure.
+
+botman
+
+--------------------------------------------------
+09/15/03 at 15:38:52  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Ah ?
+
+I always thought it was ONLY the players' private data that was never freed...
+I was wrong ?
+
+
+--------------------------------------------------
+09/15/03 at 15:52:23  Reply by: Dummy (kevinkori@sbcglobal.net)
+--------------------------------------------------
+True, but I still have the problem with those entities under maxClients.  With a maxclients of 16, when running the above loop during the ClientPutInServer function I replaced the 'do stuff' block with a statement that prints out info about each entity.  Here is the printout.  
+
+ Index 1,  pEnt: 92039180  FNullEnt(pEnt):0   pEnt->free: 0, pEnt->pvPrivateData: 0
+ Index 2,  pEnt: 92039984  FNullEnt(pEnt):0   pEnt->free: 0, pEnt->pvPrivateData: 0
+ Index 3,  pEnt: 92040788  FNullEnt(pEnt):0   pEnt->free: 0, pEnt->pvPrivateData: 0
+ Index 4,  pEnt: 92041592  FNullEnt(pEnt):0   pEnt->free: 0, pEnt->pvPrivateData: 0
+ Index 5,  pEnt: 92042396  FNullEnt(pEnt):0   pEnt->free: 0, pEnt->pvPrivateData: 0
+ Index 6,  pEnt: 92043200  FNullEnt(pEnt):0   pEnt->free: 0, pEnt->pvPrivateData: 0
+ Index 7,  pEnt: 92044004  FNullEnt(pEnt):0   pEnt->free: 0, pEnt->pvPrivateData: 0
+ Index 8,  pEnt: 92044808  FNullEnt(pEnt):0   pEnt->free: 0, pEnt->pvPrivateData: 0
+ Index 9,  pEnt: 92045612  FNullEnt(pEnt):0   pEnt->free: 0, pEnt->pvPrivateData: 0
+ Index 10, pEnt: 92046416  FNullEnt(pEnt):0   pEnt->free: 0, pEnt->pvPrivateData: 0
+ Index 11, pEnt: 92047220  FNullEnt(pEnt):0   pEnt->free: 0, pEnt->pvPrivateData: 0
+ Index 12, pEnt: 92048024  FNullEnt(pEnt):0   pEnt->free: 0, pEnt->pvPrivateData: 0
+ Index 13, pEnt: 92048828  FNullEnt(pEnt):0   pEnt->free: 0, pEnt->pvPrivateData: 0
+ Index 14, pEnt: 92049632  FNullEnt(pEnt):0   pEnt->free: 0, pEnt->pvPrivateData: 0
+ Index 15, pEnt: 92050436  FNullEnt(pEnt):0   pEnt->free: 0, pEnt->pvPrivateData: 0
+ Index 17, pEnt: 92052044  FNullEnt(pEnt):0   pEnt->free: 0, pEnt->pvPrivateData: 158528928
+ Index 18, pEnt: 92052848  FNullEnt(pEnt):0   pEnt->free: 0, pEnt->pvPrivateData: 158531144
+ Index 19, pEnt: 92053652  FNullEnt(pEnt):0   pEnt->free: 0, pEnt->pvPrivateData: 158531296
+ Index 20, pEnt: 92054456  FNullEnt(pEnt):0   pEnt->free: 0, pEnt->pvPrivateData: 189271264
+ Index 21, pEnt: 92055260  FNullEnt(pEnt):0   pEnt->free: 0, pEnt->pvPrivateData: 189271416
+ Index 22, pEnt: 92056064  FNullEnt(pEnt):0   pEnt->free: 0, pEnt->pvPrivateData: 189271568
+ Index 23, pEnt: 92056868  FNullEnt(pEnt):0   pEnt->free: 0, pEnt->pvPrivateData: 189271720
+ Index 24, pEnt: 92057672  FNullEnt(pEnt):0   pEnt->free: 0, pEnt->pvPrivateData: 189271872
+ Index 25, pEnt: 92058476  FNullEnt(pEnt):0   pEnt->free: 0, pEnt->pvPrivateData: 158522928
+ Index 26, pEnt: 92059280  FNullEnt(pEnt):0   pEnt->free: 0, pEnt->pvPrivateData: 158523080
+ Index 27, pEnt: 92060084  FNullEnt(pEnt):0   pEnt->free: 0, pEnt->pvPrivateData: 158523232
+ Index 28, pEnt: 92060888  FNullEnt(pEnt):0   pEnt->free: 0, pEnt->pvPrivateData: 158523384
+ Index 29, pEnt: 92061692  FNullEnt(pEnt):0   pEnt->free: 0, pEnt->pvPrivateData: 158523536
+ Index 30, pEnt: 92062496  FNullEnt(pEnt):0   pEnt->free: 0, pEnt->pvPrivateData: 158343176
+ Index 31, pEnt: 92063300  FNullEnt(pEnt):0   pEnt->free: 0, pEnt->pvPrivateData: 158343328
+ Index 32, pEnt: 92064104  FNullEnt(pEnt):0   pEnt->free: 0, pEnt->pvPrivateData: 158343480
+
+Notice, the only entity that did not get into the 'if statement' was index 16 (maxClient).  Also, only index 1 was a real client, yet his info is the same as all of the others.  Also, notice that you were correct about the indexes greater than maxClients being used for something else as there pvdata is set to something.
+
+But why am I getting into the if statement for indexes 2-15?  And for that matter, why didn't I get in on index 16?
+
+Also, in response to Botman, this was run on the 1st ClientPutInServer, so indexes 2-16 should never have been allocated.  Unless in CS all entites are allocated automatically which would in essence make FNullEnt worthless.  Also, I have noticed that the netname is not set at clientConnect, but has already been set by ClientPutInServer (I am not sure when it happens), which means that if you use that as a test, you must make sure the client has already been added to the server.
+
+
+[modified on 09/15/03 at 15:52:23]
+--------------------------------------------------
+09/15/03 at 16:09:45  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+If you are printing stuff before ClientPutInServer returns from the MOD DLL code, you will see NULL for pvPrivateData on the first entity.
+
+If you put your Print statements after ClientPutInServer returns to the engine, you will see that pvPrivateData now is non-NULL (since the private data block gets allocated in the MOD DLL ClientPutInServer code).
+
+FNullEnt() returns true ONLY if the entity pointer is NULL.  In all of your output, the entity pointer (pEnt:) is non-NULL, therefore, FNullEnt will return false (0) for all of them.
+
+You should just modify your loop to look something like this...
+
+code:
+for(int i=1; i<=gpGlobals->maxClients; i++)
+{
+   pEnt =INDEXENT(i);
+   if (pEnt && !FNullEnt(pEnt) && !pEnt->free)
+   {
+      if (pEnt->v.netname == 0)
+         continue;  // skip non-used slots
+
+      ... Do Stuff
+   }
+}
+
+botman
+
+--------------------------------------------------
+09/15/03 at 16:34:45  Reply by: Dummy (kevinkori@sbcglobal.net)
+--------------------------------------------------
+Thanks Botman.  I have changed my code to use the netname.  
+
+However, I am still wondering WHY pEnt was non-null when those indexes had never been used?  I had just started the server.  I mean, if FNullEnt is ALWAYS going to return 0, why even have the 
+
+   if (pEnt && !FNullEnt(pEnt) && !pEnt->free)    
+
+line in there at all?  Why not JUST have the
+
+   if (pEnt->v.netname == 0) 
+
+check?
+
+[modified on 09/15/03 at 16:34:45]
+--------------------------------------------------
+09/15/03 at 17:07:52  Reply by: Cheesemonster!!! (cheeseh(at)rcbot(dot)net)
+--------------------------------------------------
+"pEnt->v.netname == 0 " wont exactly work either, it might not be 0 but still might point to a blank string.
+
+instead use...
+
+if ( *STRING(pEnt->v.netname) == 0 )
+
+--------------------------------------------------
+09/16/03 at 06:26:58  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+QUOTE:
+FNullEnt() returns true ONLY if the entity pointer is NULL.
+
+
+
+NO!
+I beg to differ!
+code:
+
+inline BOOL FNullEnt(EOFFSET eoffset) { return eoffset == 0; }
+inline BOOL FNullEnt(const edict_t* pent) { return pent == NULL || FNullEnt(OFFSET(pent)); }
+
+inline EOFFSET OFFSET(const edict_t *pent)
+{
+#if _DEBUG
+   if ( !pent )
+      ALERT( at_error, "Bad ent in OFFSET()\n" );
+#endif
+   return (*g_engfuncs.pfnEntOffsetOfPEntity)(pent);
+}
+
+
+
+
+--------------------------------------------------
+09/16/03 at 10:13:14  Reply by: Dummy (kevinkori@sbcglobal.net)
+--------------------------------------------------
+  I found that in the SDK as well.  However, that still does not explain to me why FNullEnt returns a false for all clients 1-maxClients regardless of whether they have ever been used.
+
+  I changed my code to print out the offset now as well.  I also moved it to be immediatly following ClientPutInServer so that the private data was evident.
+
+Again, here is the code
+
+for (int j=1;j<=Engine.globals->maxClients;j++){
+      pEnt =INDEXENT(j);            
+      if(pEnt && !FNullEnt(pEnt) && !pEnt->free){
+            LOG("INDEX: %d, pEnt: %d, FNullEnt(pEnt): %d, pEnt->free: %d, pEnt->pvPrivateData: %d, pEnt->v.netname: %s, OFFSET: %d"
+            ,j,pEnt,FNullEnt(pEnt),pEnt->free,pEnt->pvPrivateData,STRING(pEnt->v.netname),Engine.funcs->pfnEntOffsetOfPEntity(pEnt));
+      }
+}
+
+And Here is the print out.
+
+INDEX: 1,  pEnt: 92039180, FNullEnt(pEnt): 0, pEnt->free: 0, pEnt->pvPrivateData: 188862840, pEnt->v.netname: monkeyman, OFFSET: 804
+INDEX: 2,  pEnt: 92039984, FNullEnt(pEnt): 0, pEnt->free: 0, pEnt->pvPrivateData: 0, pEnt->v.netname: , OFFSET: 1608
+INDEX: 3,  pEnt: 92040788, FNullEnt(pEnt): 0, pEnt->free: 0, pEnt->pvPrivateData: 0, pEnt->v.netname: , OFFSET: 2412
+INDEX: 4,  pEnt: 92041592, FNullEnt(pEnt): 0, pEnt->free: 0, pEnt->pvPrivateData: 0, pEnt->v.netname: , OFFSET: 3216
+INDEX: 5,  pEnt: 92042396, FNullEnt(pEnt): 0, pEnt->free: 0, pEnt->pvPrivateData: 0, pEnt->v.netname: , OFFSET: 4020
+INDEX: 6,  pEnt: 92043200, FNullEnt(pEnt): 0, pEnt->free: 0, pEnt->pvPrivateData: 0, pEnt->v.netname: , OFFSET: 4824
+INDEX: 7,  pEnt: 92044004, FNullEnt(pEnt): 0, pEnt->free: 0, pEnt->pvPrivateData: 0, pEnt->v.netname: , OFFSET: 5628
+INDEX: 8,  pEnt: 92044808, FNullEnt(pEnt): 0, pEnt->free: 0, pEnt->pvPrivateData: 0, pEnt->v.netname: , OFFSET: 6432
+INDEX: 9,  pEnt: 92045612, FNullEnt(pEnt): 0, pEnt->free: 0, pEnt->pvPrivateData: 0, pEnt->v.netname: , OFFSET: 7236
+INDEX: 10, pEnt: 92046416, FNullEnt(pEnt): 0, pEnt->free: 0, pEnt->pvPrivateData: 0, pEnt->v.netname: , OFFSET: 8040
+INDEX: 11, pEnt: 92047220, FNullEnt(pEnt): 0, pEnt->free: 0, pEnt->pvPrivateData: 0, pEnt->v.netname: , OFFSET: 8844
+
+Remember, this is called immediatly after the 1st call to ClientPutInServer, so why are all of the Entities allocated and why do they all have offsets when only one player has connected?
+
+Has anyone used FNullEnt successfully in CS because the only thing I can think of is that CS automatically allocates all of its possible client entities, which makes FNullEnt worthless.
+
+--------------------------------------------------
+09/16/03 at 11:13:36  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+The engine allocates the edict_s structure space (the thing that the edict pointer points to) as soon as the engine starts up, before any MOD DLL code is loaded.
+
+When a player joins the game, ClientPutInServer() will allocate another chunk of memory for the CBasePlayer C++ class and store this in the pvPrivateData pointer.
+
+It's this pvPrivateData chunk that stays around even after a client has left the game.  The engine won't free that data for clients, since more than likely another client will join the game shortly after than and ClientPutInServer() would have allocated EXACTLY the same size memory chunk for the next player (so why do that again when you can just reuse the previously allocated chunk).
+
+You can modify the SDK source code so that ClientDisconnect() does a FREE_PRIVATE() on the edict's private data and this will free that memory back up.  You should then set the pvPrivateData pointer to NULL (if the engine doesn't already do this for you) so that ClientPutInServer() will know that it needs to allocate another CBasePlayer chunk of memory for the newly connected player (but this step should be unnecessary except in the case of bots joining a server where they might have a different CBasePlayer class size than human players would).
+
+botman
+
+--------------------------------------------------
+09/16/03 at 23:24:54  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+I find this extremely curious. I am using pfnEntOffsetOfPEntity() VERY extensively, and in fact it's fair to say it's the cause #1 for the stability in my code, and I never noticed such a problem. Neither do I need to check for the netname when I want to skip clients.
+
+I'll run some tests and post back.
+
+
+--------------------------------------------------
+09/18/03 at 02:27:52  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+It looks like you were right, Dummy, botman and all.
+
+I have the exact same symptoms, i.e. ONLY the player entity pointer whose index is maxClients is NOT initialized by the engine to some value.
+
+My guess is the following :
+
+BEFORE the server boots up, the engine must be initializing empty player structures to speed up player connection. Then once a player connects/leaves, he just inheritates of/frees this structure.
+
+I already knew that player structures weren't freed by the engine once they had been allocated, but I wasn't aware this was true from the start, i.e. the engine DOES allocate free structures, and not just "reuses" them on the fly. Why the last player entity isn't allocated like the other ones though, is open to speculation.
+
+Since you can't guess which client is connected or not just by looking at the pointer, botman's method remains the way to go.
+
+It should not impact your code as long as stability is concerned if you are carefully checking for the entity validity with FNullEnt later on, and run checks periodically. But it might eat you a bit of CPU time when you have loops that deal with entities, if they are unable to tell the difference between an unused slot and a slot that is taken by a player.
+
+Hence when you write loops that deal with entities, I suggest you use a function like this one:
+code:
+
+bool IsValidPlayer (edict_t *pPlayer)
+{
+   // this function returns TRUE if the player entity passed is taken by a player. Checking for
+   // the player's netname seems to be the only reliable method of assessing that a player slot
+   // is currently in use, since the Half-Life engine never frees the players' private data.
+
+   if (FNullEnt (pPlayer)  pPlayer->free)
+      return (FALSE); // reliability check
+
+   if (!(pPlayer->v.flags & (FL_CLIENT  FL_FAKECLIENT)))
+      return (FALSE); // if this entity is not explicitly marked as a player entity, it's invalid
+
+   if (STRING (pPlayer->v.netname)[0] == 0)
+      return (FALSE); // if this player entity records no netname, then no player is taking it
+
+   return (TRUE); // player entity has a netname, a player must be taking this slot
+}
+
+
+
+
+[modified on 09/18/03 at 02:27:52]
+--------------------------------------------------
+09/18/03 at 16:28:26  Reply by: Dummy (kevinkori@sbcglobal.net)
+--------------------------------------------------
+Two things.
+
+#1) I am not sure why you would EVER need to check FNullEnt(pEnt) or pEnt->free as long as you know that pEnt was generated by INDEXENT with an index between 1 AND maxClients.  Because it seems like they will ALWAYS return false meaning that the pEnt is not NULL and the index does not point to a free slot.  So it seems to be wasted CPU time unless you are not sure of the source of pEnt.
+
+
+#2)A caution about checking the netname as botman advises (and which is apparently the only valid method).  I mentioned this above, but netnames are not set during the ClientConnect.  I am not sure when they evenutally get set, but they are set sometime BEFORE ClientPutInServer and AFTER ClientConnect.  So your netname check may fail, even though there is a valid player in the slot.
+   For most purposes this is fine.  For instance, if you are sending a message to all player's screens, the connecting client could not see it until AFTER ClientPutInServer anyway.
+   However sometimes, as in my case (which is what prompted me to start this thread), you may have code which should run all clients whether or not they are still in the joining process.  In which case, you may need to keep track of the client slots yourself and update them during ClientConnect.
+
+The basic algorithm I use is this:
+
+bool slots[maxClients];  //default all true;
+During ClientConnect
+   int index = ENTINDEX(pEntity);
+   slots[index] = false;  //signifies that a player has joined but does not yet have a name
+
+During ClientPutInServer
+   int index = ENTINDEX(pEntity);
+   slots[index] = true;  //This client does have a name now.
+
+When checking for player validity
+   if(slots[ENTINDEX(pPlayer)] && STRING (pPlayer->v.netname)[0] == 0)
+      return false;  //not a valid player
+
+
+
+[modified on 09/18/03 at 16:28:26]

@@ -1,0 +1,358 @@
+--------------------------------------------------
+Subject: How to know a bot Score ?
+--------------------------------------------------
+06/18/03 at 07:09:24  Posted by: gorgoh (gorgoh@free.fr)
+--------------------------------------------------
+Hello botman,
+
+First, thank you very much for all your work on HL bots.
+I'm developping a bot based on HPB_bot that may learn.
+To do this I need to know my bot score (when I win or lose points) and the team score (as I use the TFC mode).
+I didn't find in your code where this can be handle.
+Can you help me ?
+
+--------------------------------------------------
+06/18/03 at 07:24:34  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+If you want to know how many kills/deaths a player has, you can intercept the DeathMsg (see BotClient_Valve_DeathMsg in bot_client.cpp).
+
+The "ScoreInfo" network message is used in Half-Life (and probably TFC) to keep track of the score for multiplayer games.  You could look at intercepting this message as well.  The HPB bot doesn't use this since I don't care what the scores are for an individual bot (or team).
+
+Other MODs may use other network message to send score information to the clients (each MOD would probably be different).
+
+botman
+
+--------------------------------------------------
+06/18/03 at 08:42:20  Reply by: gorgoh (gorgoh@free.fr)
+--------------------------------------------------
+Thank you very much for your quick answer !
+I'll try to find how to intercept the "ScoreInfo" message as I don't just need to count frag, but also to know when a bot succefully bring back a flag.
+
+--------------------------------------------------
+06/18/03 at 14:49:10  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+((int) ((edict_t *) pPlayerEntity)->v.frags)
+
+
+--------------------------------------------------
+06/18/03 at 15:24:51  Reply by: Cheesemonster!!! (cheeseh@houstondod.com)
+--------------------------------------------------
+Hey do you think its possible to reset a bots deaths using this? Instead of freeing private data?
+
+--------------------------------------------------
+06/18/03 at 15:48:21  Reply by: martin (lobo@diku.dk)
+--------------------------------------------------
+((int) ((edict_t *) pPlayerEntity)->v.frags)
+___
+
+Is the pPlayerEntity the same as pBot ?
+Is the v.frags updated automatic ?
+
+
+
+--------------------------------------------------
+06/18/03 at 16:54:16  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+pPlayerEntity in this case is a pointer to an edict_s structure.
+
+The 'frags' field in the edict structure is used by some MODs to keep track of the number of kills a players has achieved (but it's not used by all MODs).
+
+botman
+
+--------------------------------------------------
+06/19/03 at 01:00:36  Reply by: martin (lobo@diku.dk)
+--------------------------------------------------
+I don't think the 'frags' field is used in Counter-Strike, it's all empty for every bot.
+I also tried to look at the botclient_valve_Deathmsg, but it seems like that some of the info are lost, so I can't be sure that every kill a bot does will come up here. 
+Anybody who know how it's possible to intercept the message that is displayed in the console that says which bot killed which bot ?
+I have also tried to intercept the scoreinfo message , but then I a call the BotClient_CS_ScoreInfo my game crash.
+ 
+I really need some help on this. 
+
+
+
+--------------------------------------------------
+06/19/03 at 01:58:29  Reply by: @$3.1415rin (johannes@_-removeifnotavirus-_lampel.net)
+--------------------------------------------------
+cs uses it ... otherwise my endround function wouldnt work the way it's supposed to :)
+
+[modified on 06/19/03 at 01:58:29]
+--------------------------------------------------
+06/19/03 at 04:00:37  Reply by: martin (lobo@diku.dk)
+--------------------------------------------------
+But if I print the frags out in botthink , I got nothing but 0's. I think i'am doing something wrong , but i don't know what.
+
+fp=fopen("botfrags.txt","a");fprintf(fp,"frags %d\n",      ((int) ((edict_t *) pBot)->v.frags)); fclose(fp);   
+________________
+
+But I think I got the deathmsg to work instead.
+
+I put this piece of code into it
+ else if (state == 3){
+       state = 0;
+         fp=fopen("botkills.txt","a"); fprintf(fp,"weapon:%s\n\n",(char *)p); fclose(fp);
+   }
+
+And then I use this:
+        killer_edict = INDEXENT(killer_index);
+      index1 =UTIL_GetBotIndex(killer_edict); 
+        fp=fopen("botkills.txt","a"); fprintf(fp,"bot killer:%d\n",index1); fclose(fp);
+
+And now it seems to work  
+
+
+[modified on 06/19/03 at 04:00:37]
+--------------------------------------------------
+06/19/03 at 05:32:20  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+pBot is not typically a pointer to an edict_s structure.
+
+pBot->pEdict is.  I think you want...
+code:
+fp=fopen("botfrags.txt","a");
+fprintf(fp,"frags %d\n", pBot->pEdict->v.frags);
+fclose(fp);
+
+botman
+
+
+--------------------------------------------------
+06/19/03 at 09:55:03  Reply by: BAStumm (bs@bs-linux.com)
+--------------------------------------------------
+I just finished adding in some team score tracking for TFC. 
+
+In hpb_bot engine.cpp:
+
+code:
+
+      else if (msg_dest == MSG_ALL)
+      {
+         botMsgFunction = NULL;  // no msg function until known otherwise
+         botMsgIndex = -1;       // index of bot receiving message (none)
+         
+         if (mod_id == VALVE_DLL)
+         {
+            if (msg_type == message_DeathMsg)
+               botMsgFunction = BotClient_Valve_DeathMsg;
+         }
+         else if (mod_id == TFC_DLL)
+         {
+            if (msg_type == message_DeathMsg)
+               botMsgFunction = BotClient_TFC_DeathMsg;
+
+
+
+Right after this you could add some checking ie:
+
+code:
+
+        if (msg_type == 93)
+
+
+
+
+type 93 is where half life clients are updated for current team scores (ie blue and red). There is more to it than just that but its a start for ya. basically your wanting to intercept and track the following:
+
+code:
+
+pfnMessageBegin: edict=0 dest=2 type=93 //signals score update
+pfnWriteString: Blue //team
+pfnWriteShort: 0 //score
+pfnWriteShort: 0 
+pfnMessageEnd:
+pfnMessageBegin: edict=0 dest=2 type=93
+pfnWriteString: Red
+pfnWriteShort: 0
+pfnWriteShort: 0
+pfnMessageEnd:
+
+
+
+When a map first loads you need to set scores to zero then overwrite the current score based on these updates. Works well because you wont see these messages when noone is on server but score doesn't change if noone is on server... 
+
+I even went a step further so that I can query current team scores from outside of the game ie- http://spokaneteamfortress.com/stats/
+
+
+
+--------------------------------------------------
+06/19/03 at 13:28:52  Reply by: RobGP (rob@planetfortress.com)
+--------------------------------------------------
+ick! dont hardcode client message values! These tend to change with MOD updates.
+
+--------------------------------------------------
+06/19/03 at 13:32:50  Reply by: BAStumm (bs@bs-linux.com)
+--------------------------------------------------
+Yes I agree, I was just trying to give him the lowdown on how to obtain the team scores. How he implements it is up to him. I just felt that using 93 in the example would more clearly show what is being done to grab the data. 
+
+It is best to follow botmans lead on this one... 
+
+As a matter o fact, the Readme that comes with botmans bot source would tell you that scores come in from type=90 not 93 so clearly it has changed.
+
+--------------------------------------------------
+06/19/03 at 14:13:25  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+In metamod, the GET_USER_MSG_ID (PLID, "MessageName", NULL) and GET_USER_MSG_NAME (PLID, iMessageNumber, NULL) macros are your friends :)
+
+
+--------------------------------------------------
+06/19/03 at 14:18:13  Reply by: BAStumm (bs@bs-linux.com)
+--------------------------------------------------
+This isn't metamod, its botmans bots. 
+
+I don't run metamod and have no intention of running meta mod. All the linux admins that do run metamod and their 101 plugins complain about a single server using 50% of some new fangled 2+ gig cpu. 
+
+I'm much happier expanding botmans code to do what metamod + adminmod + other plugins will do. Programming is fun and plus I know my addons perform exactly how I want them too :)
+
+Plus I can run two 14 player servers on a XP2500+ using less than 3% total CPU. :D
+
+--------------------------------------------------
+06/19/03 at 14:28:25  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Good point, I have to admit metamod is not a reference in speed benchmarks. Although its reputation comes primarily, as you said, from the AdminMod server admins and their thousand plugins.
+
+So here's some code that you will probably find useful anyway, comes straight from my bot's source code:
+code:
+
+// user message record structure definition
+typedef struct
+{
+   const char *name; // name of user message as called by the MOD DLL
+   int id; // identification number the engine recorded this user message under
+   int size; // size of this message in packets
+} usermsg_t;
+
+
+int GetUserMsgId (const char *msg_name)
+{
+   // this function returns the user message id of the recorded message named msg_name. Local
+   // variables have been made static to speedup recurrent calls of this function.
+
+   static int i;
+
+   // is it a standard engine message (i.e, NOT a user message, already registered by engine) ?
+   if (strcmp ("TempEntity", msg_name) == 0)
+      return (SVC_TEMPENTITY); // return the correct message ID
+   else if (strcmp ("Intermission", msg_name) == 0)
+      return (SVC_INTERMISSION); // return the correct message ID
+   else if (strcmp ("CDTrack", msg_name) == 0)
+      return (SVC_CDTRACK); // return the correct message ID
+   else if (strcmp ("WeaponAnim", msg_name) == 0)
+      return (SVC_WEAPONANIM); // return the correct message ID
+   else if (strcmp ("RoomType", msg_name) == 0)
+      return (SVC_ROOMTYPE); // return the correct message ID
+   else if (strcmp ("Director", msg_name) == 0)
+      return (SVC_DIRECTOR); // return the correct message ID
+
+   // cycle through our known user message types array
+   for (i = 0; i < usermsgs_count; i++)
+      if (strcmp (usermsgs[i].name, msg_name) == 0)
+         return (usermsgs[i].id); // return the id of the user message named msg_name
+
+   // unregistered user message, have the engine register it
+   return (pfnRegUserMsg (msg_name, -1)); // ask the engine to register this new message
+}
+
+
+const char *GetUserMsgName (int msg_type)
+{
+   // this function returns the user message name of the recorded message index msg_type. Local
+   // variables have been made static to speedup recurrent calls of this function.
+
+   static int i;
+
+   // is it a standard engine message (i.e, NOT a user message, already registered by engine) ?
+   if (msg_type == SVC_TEMPENTITY)
+      return ("TempEntity"); // return the correct message name
+   else if (msg_type == SVC_INTERMISSION)
+      return ("Intermission"); // return the correct message name
+   else if (msg_type == SVC_CDTRACK)
+      return ("CDTrack"); // return the correct message name
+   else if (msg_type == SVC_WEAPONANIM)
+      return ("WeaponAnim"); // return the correct message name
+   else if (msg_type == SVC_ROOMTYPE)
+      return ("RoomType"); // return the correct message name
+   else if (msg_type == SVC_DIRECTOR)
+      return ("Director"); // return the correct message name
+
+   // cycle through our known user message types array
+   for (i = 0; i < usermsgs_count; i++)
+      if (usermsgs[i].id == msg_type)
+         return (usermsgs[i].name); // return the name of the user message having the msg_type id
+
+   return (NULL); // unregistered user message
+}
+
+
+int pfnRegUserMsg (const char *pszName, int iSize)
+{
+   // this function registers a "user message" by the engine side. User messages are network
+   // messages the game DLL asks the engine to send to clients. Since many MODs have completely
+   // different client features (Counter-Strike has a radar and a timer, for example), network
+   // messages just can't be the same for every MOD. Hence here the MOD DLL tells the engine,
+   // "Hey, you have to know that I use a network message whose name is pszName and it is iSize
+   // packets long". The engine books it, and returns the ID number under which he recorded that
+   // custom message. Thus every time the MOD DLL will be wanting to send a message named pszName
+   // using pfnMessageBegin(), it will know what message ID number to send, and the engine will
+   // know what to do.
+
+   // only process bots if we are in multiplayer mode
+   if (is_multiplayer_game)
+   {
+      int index = -1;
+      int msg = (*g_engfuncs.pfnRegUserMsg) (pszName, iSize); // register the message
+
+      // if developer mode is high, log message to debug file
+      if (DeveloperMode () == DEVELOPER_ON)
+         LogToFile ("Game registering user message \"%s\" to index %d\n", pszName, msg);
+
+      // is this message NOT already registered ?
+      for (index = 0; index < usermsgs_count; index++)
+         if (strcmp (usermsgs[index].name, pszName) == 0)
+            break; // cycle through usermsgs types array and break when a similar record is found
+
+      // now keep track (or update if necessary) this user message in our own array...
+      usermsgs[index].name = pszName; // record this message's name
+      usermsgs[index].id = msg; // record this message's index
+      usermsgs[index].size = iSize; // record this message's size
+
+      // are we certain this message has not been registered in the past ?
+      if (index == usermsgs_count)
+         usermsgs_count++; // we know now one user message more
+
+      return (msg); // ...and return the message ID number the engine gave us back
+   }
+
+   return ((*g_engfuncs.pfnRegUserMsg) (pszName, iSize));
+}
+
+
+// now an example of use...
+
+
+void pfnMessageBegin (int msg_dest, int msg_type, const float *pOrigin, entity_t *ed)
+{
+   // only process bots if we are in multiplayer mode
+   if (is_multiplayer_game)
+   {
+      messagestate = 0; // clear message state (message is starting)
+
+      // if this message is directed to a player in particular AND this player is a bot...
+      if (!IsNull (ed) && IsABot (ed))
+      {
+         // if developer mode is high, notify that a bot is getting a message
+         if (DeveloperMode () == DEVELOPER_VERBOSE)
+            ServerConsole_printf ("Bot \"%s\" receives message: %s\n", NetnameOf (ed), GetUserMsgName (msg_type));
+
+         botMsgFunction = NULL; // no msg function until known otherwise
+         botMsgIndex = PlayerIndexOf (ed); // index of bot receiving message
+
+         // assign the right parsing function pointer given the type of message it is
+         if (msg_type == GetUserMsgId ("AmmoPickup"))
+            botMsgFunction = BotClient_CS_AmmoPickup;
+
+   // rest of pfnMessageBegin follows.
+}
+
+
+
+

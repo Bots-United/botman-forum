@@ -1,0 +1,65 @@
+--------------------------------------------------
+Subject: question about HPB template
+--------------------------------------------------
+05/13/02 at 05:14:25  Posted by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+Hi botman,
+
+What's the use of returning an invalid number as UID in pfnGetPlayerUserId() if the edict is a bot ? Why don't you let the enginefunc be called ?
+code:
+
+/* in engine.cpp */
+
+int pfnGetPlayerUserId (edict_t *e)
+{
+   if (UTIL_GetBotIndex (e) != -1)
+      return 0; // don't return a valid index if edict is a bot (so bot won't get kicked)
+
+   return (*g_engfuncs.pfnGetPlayerUserId) (e);
+}
+
+
+I find it to be more eye-candy if bots can be logged their UIDs in HL logfiles, I tried it and it seems to work. So I would like to know if there is an issue with this I would be unaware of.
+
+
+[modified on 05/13/02 at 05:14:25]
+--------------------------------------------------
+05/13/02 at 08:28:16  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+That was put in there for Opposing Force (OpFor).  OpFor was kicking any player from the server that had a invalid user ID, so I added a fake ID of zero for bots.  I don't know if OpFor still kicks bots from the server without this, but it should be easy enough to test (just comment it out).
+
+botman
+
+--------------------------------------------------
+05/13/02 at 11:08:37  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+hmmm
+code:
+
+status
+hostname:  Half-Life
+version :  45/1.1.0.9 2006 insecure
+tcp/ip  :  192.168.15.1:27015
+map     :  op4_bootcamp at: 0 x, 0 y, 0 z
+players :  12 active (13 max)
+
+#      name <b>userid</b> uniqueid frag time ping loss adr
+# 1 "-RACC- Marechal Putain" <b>1</b> 0   0 00:32    5    0 00000000:000000000000:0
+# 2 "-RACC- general Grant" <b>2</b> 0   0 00:32    5    0 00000000:000000000000:0
+# 3 "-RACC- Joe Dalton" <b>3</b> 0   0 00:32    5    0 00000000:000000000000:0
+# 4 "-RACC- Helmoutte" <b>4</b> 0   1 00:32    5    0 00000000:000000000000:0
+# 5 "-=RACC=- Mimi Traillette" <b>5</b> 0   0 00:32    5    0 00000000:000000000000:0
+# 6 "-RACC- Inspecteur Gadget" <b>6</b> 0   0 00:32    5    0 00000000:000000000000:0
+# 7 "-racc- Babar furieux" <b>7</b> 0   0 00:32    5    0 00000000:000000000000:0
+# 8 "[RACC] Chef" <b>8</b> 0   0 00:32    5    0 00000000:000000000000:0
+# 9 "-RACC- l'homme bienvisible" <b>9</b> 0   0 00:32    5    0 00000000:000000000000:0
+#10 "-racc- mamie Gaufrette" <b>10</b> 0   1 00:32    5    0 00000000:000000000000:0
+#11 "-racc- dr Jekyll" <b>11</b> 0   0 00:32    5    0 00000000:000000000000:0
+#12 "-=RACC=- Barbie Turique" <b>12</b> 0   0 00:32    5    0 00000000:000000000000:0
+12 users
+
+Looks like it works
+
+Thank you Botman !
+
+[modified on 05/13/02 at 11:08:37]

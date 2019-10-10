@@ -1,0 +1,42 @@
+--------------------------------------------------
+Subject: clients != NULL but all their structure data is?!
+--------------------------------------------------
+03/13/03 at 15:13:06  Posted by: RX (robotix2000@hotmail.com)
+--------------------------------------------------
+Hi all,
+
+When checking to make sure that a client has a valid entity pointer using if (clients[i] != NULL) ...  then doing necessary stuff on client etc.  The problem I'm running into is that clients[i] is not NULL yet I'm crashing while trying to evaluate variables inside the player's edict.  In fact any variables inside the edict's structure come back in the debugger as "Expression can not be evaluated."
+Is there a way to find out if a structure's variables are addressable without reading it first so as to not cause a crash by coding a workaround?
+
+The only place that clients[] is being modified, is in the ClientPutInServer() and ClientDisconnect().  Is it possible for the engine to remove a client without going through the ClientDisconnect() and this is causing my addressing errors?
+Also, I removed the check for gpGlobals->deathmatch from both functions.  What was the reason for checking this global in the first place?  It does not seem to effect whether I evaluate clients leaving or joining.
+If deathmatch is not TRUE, would you not miss clients joining the game and end up with clients outside the clients[] array? (which is what initially led me to removing them to be 'safe' as it were.  TIA
+rx
+
+
+
+--------------------------------------------------
+03/14/03 at 01:40:08  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Yeah, bad edict pointers is the #1 plight in the Half-Life SDK.
+
+Have a check for their validity before going beyond the pointer level -i.e, before trying to access pEdict->v.something- like this :
+code:
+
+// is my entity pointer valid ?
+if (FNullEnt (pEdict))
+   ALERT (at_error, "BAD ENTITY POINTER in MyFunction() !\n"); // no, it's not
+
+// if we're getting there, then the pointer is safe.
+
+
+Checking for the pointer's nullity is not enough. In Half-Life, you can meet pointers that point to somewhere but somewhere where there's nothing there anymore (I hope you get it ??) ;D.
+
+
+--------------------------------------------------
+03/14/03 at 13:11:43  Reply by: RX (robotix2000@hotmail.com)
+--------------------------------------------------
+that's just what i was looking for, thanks pierre.  :)
+rx
+
+

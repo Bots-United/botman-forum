@@ -1,0 +1,118 @@
+--------------------------------------------------
+Subject: HPB moded bot problems
+--------------------------------------------------
+11/20/03 at 19:44:41  Posted by: BIGman10in (chopxsticks@globaldsl.net)
+--------------------------------------------------
+I was tring to add hpb bot to my mod. It took me 2 days but i finally got them to select a team from the vgui menu. But now i have a new problem a weird one that i have no clue why or how it would do this. The bots spawn then a few sec later the bot respawns and it keeps doing this, it doesnt leave a body or any thing. It just keeps doing that for ever and ever.
+
+But also the bot doesnt shoot or walk or any thing it just stands there then it respawns again and again. Any ideas? I would be thankful for any help i am pulling my hair out over here
+
+--------------------------------------------------
+11/22/03 at 11:54:09  Reply by: BIGman10in (chopxsticks@globaldsl.net)
+--------------------------------------------------
+Ok i got them to stay respawned, but they still just stand there and do nothing. To get them to stay spawned i just commented out the code were as it forces them to select a team. i will post my team slect code i had to comment alot of stuff out and change some things to get it not to crash.
+-----------------------------------------
+   if (mod_id == EXC_DLL)
+   {
+        /*if ((pBot->start_action == MSG_EXC_IDLE) && (pBot->f_create_time + 3.0 <= gpGlobals->time))
+      {
+         pBot->start_action = MSG_EXC_TEAM_SELECT;  // force team selection
+      }*/
+
+      // handle Team stuff here...
+
+      if (pBot->start_action == MSG_EXC_TEAM_SELECT)
+      {
+         pBot->start_action = MSG_EXC_IDLE;  // switch back to idle
+         pBot->f_create_time = gpGlobals->time;  // reset
+
+         if ((pBot->bot_team != 1) && (pBot->bot_team != 2))
+            pBot->bot_team = -1;
+
+         if (pBot->bot_team == -1)
+            pBot->bot_team = RANDOM_LONG(1, 2);
+
+         /*retry_count = 0;
+
+         while ((retry_count < 2) &&
+                (max_team_players[pBot->bot_team-1] > 0))  // not unlimited?
+         {
+            count = 0;
+
+            // count number of players on this team...
+            for (index = 1; index <= gpGlobals->maxClients; index++)
+            {
+               pPlayer = INDEXENT(index);
+
+               if (pPlayer && !pPlayer->free)
+               {
+                  if (UTIL_GetTeam(pPlayer) == (pBot->bot_team - 1))
+                     count++;
+               }
+            }
+
+            if (count < max_team_players[pBot->bot_team-1])
+               break;  // haven't reached limit yet, continue
+            else
+            {
+               pBot->bot_team++;
+
+               if (pBot->bot_team > max_teams)
+                  pBot->bot_team = 1;
+
+               retry_count++;
+            }
+         }*/
+
+         // select the team the bot wishes to join...
+         if (pBot->bot_team == 1)
+            strcpy(c_team, "1");
+         else //if (pBot->bot_team == 2)
+             {
+            strcpy(c_team, "2");
+                  pBot->bot_team = 2;
+             }
+
+
+         FakeClientCommand(pEdict, "jointeam", c_team, NULL);
+
+         return;
+      }
+   }
+
+--------------------------------------------------
+11/22/03 at 19:55:05  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Your team select code looks minimal but good. You should try to track your bots' Think() function in the debugger by placing a breakpoint just after the team select stuff.
+
+
+[modified on 11/22/03 at 19:55:05]
+--------------------------------------------------
+11/23/03 at 00:54:42  Reply by: BIGman10in (chopxsticks@globaldsl.net)
+--------------------------------------------------
+First off thank you for that help and im sorry to ask such a stupid and lame question, But i am using Visual C++ 6.0 and how do i go about using the debugger to trace the think stuff and how do i place a break point? I have plaied with it tried all of the debugger things nothing really did much.
+
+Also if it helps at all, all the other code was basicly copied from then changed to my mods name. Excpet for the medic parts and stuff like that.
+
+--------------------------------------------------
+11/23/03 at 19:08:39  Reply by: BIGman10in (chopxsticks@globaldsl.net)
+--------------------------------------------------
+Its cool i got them moving and up and about by adding 
+pBot->not_started = 0;
+to my code. But they dont want to shoot me yet, But i will take a look thru all occurances of 
+bot_team
+and maybe i can figure out whats going wrong, why its not making me its target.
+
+--------------------------------------------------
+11/24/03 at 05:14:10  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Start by looking at UTIL_GetTeam() in the util.cpp file.
+
+botman
+
+--------------------------------------------------
+11/24/03 at 18:46:53  Reply by: BIGman10in (chopxsticks@globaldsl.net)
+--------------------------------------------------
+Holy crap botman him self. Yup you were right it was right in that section, just changed it from the TFC method (the one were it just takes the team # and subtracts 1) to the counter strike method (were its saying if you have this model you must be on this team). Thank you, not just for the help with the code but for making bots posible you have no idea how many hours your bots and their offspring have enterained me and my friends. Thank you botman! you rule!
+
+[modified on 11/24/03 at 18:46:53]

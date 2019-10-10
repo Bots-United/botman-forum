@@ -1,0 +1,887 @@
+--------------------------------------------------
+Subject: Weapon selection with XML files
+--------------------------------------------------
+01/24/03 at 18:03:04  Posted by: theimann (killaruna@nuclearbox.com)
+--------------------------------------------------
+Every once in a while I'm still designing some parts for a new engine/mod independant bot, and this time the topic was weapon selection. The idea is to store the weapon specifications for every mod in an external xml-file. These specifications are loaded at game start and form the basis for a merit function which gives every weapon a score according to the current combat situation. The available weapon with the highest score is chosen for attack. 
+The advantage of using xml is compatibility: bots from different authors could use the same weapon data. Another point is that users could prepare the specs for new mods they want to have supported, the programmer just needed to implement the code to select and fire the weapons...
+I designed a first xml grammar that could hold the spec data, here is an example file:
+code:
+
+<weaponspecs>
+      
+      
+      <weapon> 
+      
+            <!-- entity name  -->
+            <entity> "weapon_9mmAR" </entity>
+            <!-- internal id -->
+            <id> 9 </id>
+            <!-- name(s) used in chat  -->
+            <name> "9mmAR" </name>
+            <name> "MP5" </name>
+            
+            <!-- Description of primary attack mode  -->
+            <attack mode="primary">
+                  <!-- damage caused by one direct hit  -->
+                  <damage> 10.0 </damage>
+                  <!-- radius for damage, default = 0 -->
+                  <radius> 100 </radius>
+                  <!-- delay between consecutive attacks in seconds  -->
+                  <delay> 0.1 </delay>
+                  <!-- zoom factor in this mode, default = 1.0 -->
+                  <zoom> 3.0 </zoom>
+                  <!-- information about trajectory path  -->
+                  <trajectory>
+                        <!-- random deviation cone angle, default = 0.0  -->
+                        <cone> 6.0 </cone>
+                        <!-- velocity in units per second, default = infinite  -->
+                        <velocity> 3000 </velocity>
+                        <!-- mass expressed by units the projectile falls in the first second, default = 0  -->
+                        <mass> 50 </mass>
+                        <!-- minimum required distance, default = 0  -->
+                        <minDist> 10 </minDist>
+                        <!-- maximim possible distance, default = infinite -->
+                        <maxDist> 1600 </maxDist>
+                        <!-- deviation angle at which projectile starts homing towards target, default = 0  -->
+                        <homingAngle> 10.0 </homingAngle>
+                  </trajectory>
+                  <!-- noise when fired, default = normal -->
+                  <volume> low </volume>
+                  <!-- optical effect when fired, default = normal  -->
+                  <visibility> high </visibility>                  
+            </attack>
+
+      </weapon>
+      
+      
+</weaponspecs>
+
+
+
+The values I put in are mostly arbitrary, it's just to get the idea. All elements that don't have a default value must be specified, the others are optional.
+Everybody is invited to discuss the system and suggest more elements that could turn out useful. What's your opinion?
+
+Tobias
+
+--------------------------------------------------
+01/24/03 at 20:44:51  Reply by: CountFloyd (countfloyd@botepidemic.com)
+--------------------------------------------------
+Nice, I also wanted to put a lot of stuff in external XML Files...anyway you're faster than me (are you using TinyXML btw. ?).
+
+On a quick glance only these came to my mind:
+
+1. Type of weapon (melee, rifle, explosive etc. perhaps even allowing weird combinations like a rifle which can also be used for a melee attack).
+If you want to include grenades as well there should be some info if they are used for defensive measures (smoke grens) or offensive.
+
+2. Conditions when this weapon can't be used (like being underwater)
+
+3. Number of Maximum Bullets in a Clip
+
+4. Can penetrate through walls and if so, is the trajectory affected
+
+5. Optional Add-Ons like supressors
+
+6. Personally I would prefer the volume tag to contain a number too
+
+7. Weapon Spread ? Like how precise this weapon can hit a target.
+
+8. Punchback/Recoil or the Time it takes to have zero recoil
+
+9. I've seen you want to differentiate between primary & secondary attack mode. Sometimes pressing secondary fire just changes between different zoom modes. How would this be taken into account ? I.e. the AWP in CS has 3 different zooms where each zoom also affects the weapon spread.
+
+--------------------------------------------------
+01/25/03 at 04:34:11  Reply by: Phreak (dead_sexy_simon@hotmail.com)
+--------------------------------------------------
+[modified]
+
+CS AWP:
+code:
+
+<!-- Secondary Attack Function -->
+<secondaryattack>
+    <!-- Weapon that is using the secondary attack -->
+    <weapon=awp>
+        <!-- Ammount of damage gun does when secondary attack is pressed (this is zoom so 0 damage) -->
+        <damage>0</damage>
+            <!-- Zoom Type, damage infliction secondary attacks could be "none" -->
+            <type>"zoom"</type>
+        <!-- Zoom level 0 (no zoom) -->
+        <zoom0>
+                <!-- This zoom levels accuracy -->
+                <accuracy>45%</accuracy>
+                    <!-- damage ammount at this zoom (not needed) -->
+                    <damage>30</damage>
+        <!-- finish this zoom levels properties -->
+        </zoom0>
+    </weapon>
+</secondaryattack>
+
+
+You may be able to implement something like this?
+[/modified]
+
+Although this is a good idea, i do think they may not be needed.
+
+If you were to implement a whole bot into an XML file (which would be very cool by the way :D) the tabulation might be confusing, as it isn't with most compilers...
+
+That is a bit of a stupid issue to bring up, but just thought i would add it (it isn't really all that important [sm]:P[/sm])
+
+Also:
+
+Things like Client Commands might be able to be programmed into XML files.
+code:
+
+<clientcommand>
+    <command>"addbot"
+        <action>"BotCreate(" & <commandarg1> & "," & <commandarg2> & "," & <commandarg3> & "," & <commandarg4>
+        </action>
+    </command>
+</clientcommand>
+
+
+
+This may seem like contradicting myself, but this would be a very good thing to achieve. Continue with your idea. If you need any help, just post :)
+
+
+Phreak
+
+[modified on 01/25/03 at 04:34:11]
+--------------------------------------------------
+01/25/03 at 05:04:42  Reply by: @$3.1415rin (johannes@_-removeifnotavirus-_lampel.net)
+--------------------------------------------------
+like with the vis tables ... a lot of people with similar ideas ...
+
+How do you read those files ? Do you use some external program there or did you write your own lexxer, parser, ... ? It's for sure a good exercise, but takes some days, right ?
+
+And about this clientcommand idea ? is that really necessary ? unless the bot is open source, the user doesnt know what functions to call !
+
+--------------------------------------------------
+01/25/03 at 05:12:13  Reply by: Phreak (dead_sexy_simon@hotmail.com)
+--------------------------------------------------
+
+hehe, that's true. I just thought i would add it...
+
+
+Theres a few different languages I could write an "syntax checker" in then copy it to the clipboard. This isn't a very good way of doing such an operation. Because i would be writing that "syntax checker" in .NET it wouldn't be able to be run without the .NET framework which is a sticky subject and I don't feel like going into it :(
+
+As for making a parser:
+
+I have NO IDEA about LEXX and YACC :D Making such things confuses the hell out of me. If anyone is willing to teach me, I'm open to it :)
+
+
+If this idea, ever does get off the ground in any way, please send me a message/email me/post again...
+
+I would love to help...
+
+
+Phreak
+
+--------------------------------------------------
+01/25/03 at 08:33:21  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+i don't have experience with XML files like this. But i do have some similiar idea with INI files. but then, its way more abstract and not as flexible as the code above. Some idea i had on weapon stuff was:
+
+code:
+
+# Counter-Strike 1.5
+
+# [weapon]
+# All properties are FALSE on default, only specify properties
+# which should be set on TRUE
+#
+# available properties:
+# Secondary= (is it a secondary weapon?)
+# Primary= (is it a primary weapon?)
+# Knife= (is it a knife?)
+# Grenade= (handle this as a grenade type?)
+# FlashBang= (is it a flashbang?)
+# Special= (handled as a special object?)
+#
+# ID=<number> (this should always be given)
+
+# Secondary weapons
+[P228]
+ID=1
+Secondary=TRUE
+
+# Primary Weapons
+[SCOUT]
+ID=3
+Primary=TRUE
+
+# Grenade types
+[HEGRENADE]
+ID=4
+Grenade=TRUE
+
+[FLASHBANG]
+ID=25
+Grenade=TRUE
+FlashBang=TRUE
+
+# Special
+[C4]
+ID=6
+Special=TRUE
+
+# Knife
+[KNIFE]
+ID=29
+
+
+
+
+do note, this is a very basic idea and does not work yet. Although i got my INI reader done already. 
+
+--------------------------------------------------
+01/25/03 at 09:10:48  Reply by: Phreak (dead_sexy_simon@hotmail.com)
+--------------------------------------------------
+
+I like that way also. There could be endless ways of doing this.
+
+If anyone wants a challenge....make a Database with the info and retrieve it through SQL in C++ :D
+
+
+Nice ideas...
+
+
+Phreak
+
+--------------------------------------------------
+01/25/03 at 10:16:40  Reply by: theimann (killaruna@nuclearbox.com)
+--------------------------------------------------
+Wow, thanks for the big feed-back! I've expanded the grammar to take up some of the suggestions, here's the new attack element:
+
+code:
+
+!-- Description of primary attack mode  -->
+            <attack mode="primary">
+                  <!-- situation(s) in which attack mode can't be used (optional) -->
+                  <dontUse> underwater </dontUse> 
+                  <dontUse> enemyAbove </dontUse>
+                  <!-- weapon type in this mode (optional)  -->
+                  <type> rifle </type>
+                  <!-- zoom factor in this mode, default = 1.0 -->
+                  <zoom> 3.0 </zoom> 
+                  <!-- damage caused by one direct hit  -->
+                  <damage> 10.0 </damage>
+                  <!-- radius for damage, default = 0 -->
+                  <radius> 100 </radius>
+                  <!-- required ammo for one attack, default = 1 -->
+                  <reqAmmo> 2 </reqAmmo>
+                  <!-- maximum number of bullets in clip, default = infinite -->
+                  <clipSize> 50 </clipSize>
+                  <!-- delay times for different actions -->
+                  <delay> 
+                        <!-- delay between consecutive attacks in seconds (using bullets from clip) -->
+                        <fire> 0.1 </fire>
+                        <!-- time in seconds needed to reload clip -->
+                        <reload> 1.5 </reload>
+                        <!-- time in seconds needed to prepare the attack, default = 0.0 -->
+                        <prepare> 2.0 </prepare>
+                  </delay>
+                  <!-- information about trajectory path  -->
+                  <trajectory>
+                        <!-- weapon spread cone angle, default = 0.0  -->
+                        <spread> 6.0 </spread>
+                        <!-- velocity in units per second, default = infinite  -->
+                        <velocity> 3000 </velocity>
+                        <!-- mass expressed by units the projectile falls in the first second, default = 0  -->
+                        <mass> 50 </mass>
+                        <!-- minimum required distance, default = 0  -->
+                        <minDist> 10 </minDist>
+                        <!-- maximim possible distance, default = infinite -->
+                        <maxDist> 1600 </maxDist>
+                        <!-- weapon has a homing (fire-and-forget) mechanism (optional)
+                               attributes:      maxAngle      maximum possible deviation from direct aim  -->
+                        <homing maxAngle="10.0"/>
+                        <!-- weapon can penetrate walls (optional)
+                               attributes:      maxTimes      maximum number of walls that can be penetrated in a row
+                                                      maxWidth      maximum width (thickness) of each wall
+                                                      maxAngle      maximum possible deviation from wall normal       -->
+                        <penetration maxTimes="2" maxWidth="32" maxAngle="45"/>
+                        <!-- weapon has recoil (optional)
+                               attributes:      angle      recoil angle
+                                                       reset      time in seconds needed to steady aim again  -->
+                        <recoil angle="5" reset="1.0"/>
+                        <!-- projectile bounces off walls (optional)
+                               attributes:      minAngle      minimum angle from wall normal needed to bounce off  -->
+                        <bounce minAngle="30.0"/>
+                  </trajectory>
+                  <!-- noise when fired, values = 0..10, default = 5 -->
+                  <volume> 3 </volume>
+                  <!-- optical effect when fired, values = 0..10, default = 5  -->
+                  <visibility> 8 </visibility>                  
+            </attack>
+
+
+
+
+Changes are:
+1. Added type as proposed by CF and used by Stefan. This could also hold the information about offensive/defensive grenades.
+2. Added reqAmmo and clipSize
+3. Reorganized delay to hold not only fire delay, but also reload and prepare times (e.g. loading the gauss)
+4. Renamed cone to spread - that's how it was intended
+5. homing now works with attribute maxAngle
+6. Added penetration as proposed by CF. What do you mean by "affecting trajectory"? Examples or suggestions for the code?
+7. Added recoil.
+8. Added bounce - should make William happy for use with his grenade handling :-)
+9. Now using numerical values for volume and visibility
+
+For parsing XML I'm currently using expat.sourceforge.net/Expat. It's a simple to use C-library with all basic operations. I'm still investigating xml.apache.org/xerces-c/index.htmlXerces which is C++ and looks more powerful (DOM support), but also more complicated.
+CF, what do you mean with add-ons like supressors? The different zoom modes for the AWP would be implemented with three attack modes, each with its own zoom value.
+Phreak, right now I'm only working on the data specifications for the different weapons, not on how to use them. You would have to code that in C anyway, since different games and mods have different mechanisms for handlin this things, and it's pretty low level. "Secondary attack mode" does not necessarily mean "press secondary attack to use that".
+I'm toying with the idea of using configuration files for behaviours and tasks as well, but my current impression is that you would have to develop a special language for these files, which is easier with LEXX/YACC than with XML. However, I still don't have any idea of how this language would look like. That's a discussion for another thread :-)
+
+Tobias
+
+
+
+--------------------------------------------------
+01/25/03 at 10:51:56  Reply by: CountFloyd (countfloyd@botepidemic.com)
+--------------------------------------------------
+QUOTE:
+6. Added penetration as proposed by CF. What do you mean by "affecting trajectory"? Examples or suggestions for the code?
+
+
+
+Perhaps trajectory is the wrong definition. Take that one weapon in HL for example (is it called Tau gun?). Usually HL let's bullets/beams go straight through a wall but not with this weapon. Sometimes the beams angle is changed according to the material (I'm not sure) and the normal. But maybe this is overkill and should be handled with code instead.
+
+So far I've used TinyXML -> http://sourceforge.net/projects/tinyxml to specify Bot Personalities and configs. It's easy to use and doesn't come with any restricting licence or big overhead.
+
+QUOTE:
+CF, what do you mean with add-ons like supressors?
+
+
+
+I meant things like silencers, scopes etc. which could be added to a weapon, in effect changing some weapon properties when used. For example the M4A in CS has this optional silencer. Using the silencer you've got a higher precision and less noise but also less damage.
+
+QUOTE:
+I'm toying with the idea of using configuration files for behaviours and tasks as well, but my current impression is that you would have to develop a special language for these files
+
+
+
+
+Oh no here it comes again ! :)
+Scripting the hell out of the Bots ? Did you read the several scripting articles in the AI Wisdom book ? It's a huge task, one I'm also currently fighting with. It's so damn hard to make the Bots behave independant and smart but also having them script driven as an option. I'm getting mad here...
+Just one example (this is offtopic I know but I just have to write about it since it's bothering me a lot):
+Usually Actions should roughly reflect the number of actions in the game and should be very much low-level like ChangeYaw, Press Fire etc. however this is 1 thing which I strongly disliked about the HL AI. HL didn't do parallel actions like moving to a position AND laying fire upon another position at the same time (it could be hacked in but it would be a hack). In HL it would be one after another and  something like MoveToPos(whatever),SetIdealYaw(whatever),ChangeIdealYaw(whatever). This is unnatural and too robotic imho. I want multiple actions running in once so I have to split up the controllers and merge the actions. The issue is then that I'm getting high-level actions which can't be reused again because they are too specialized and need more parameters than others. Bad, bad. Driving me nuts. Sorry...
+
+[modified on 01/25/03 at 10:51:56]
+--------------------------------------------------
+01/25/03 at 12:08:01  Reply by: Phreak (dead_sexy_simon@hotmail.com)
+--------------------------------------------------
+hehe, this is a tough subject, but if anyone else is up to it, i am...
+
+Simple syntax checkers i can make in Visual Basic, because it doesn't take long in VB, that would be a better language to program a Syntax Checker in.
+
+I've been up all night looking at this post (bot programming in between) and i think if alot of other people see this post, they will be quite interested and willing to help...
+
+Tobias: LEXX and YACC i would think are out of the question. Have you seen those tutorials on them? You need a very good mathematical brain to figure it out. They are just impossible...
+
+Count Floyd: What are you doing to script the bots...? If its driving you nuts, i would love to have a look at your idea :D
+
+
+Happy Coding
+
+Phreak
+
+[modified on 01/25/03 at 12:08:01]
+--------------------------------------------------
+01/25/03 at 12:59:45  Reply by: theimann (killaruna@nuclearbox.com)
+--------------------------------------------------
+QUOTE:
+Sometimes the beams angle is changed according to the material (I'm not sure) and the normal.
+
+
+I've got the impression that the angle is changed so that the beam always points at the player behind the wall. A hack to make wall shooting more effective/spectacular :-) But I agree that it would be hard to describe it for all cases, that's why I left it out.
+
+QUOTE:
+Using the silencer you've got a higher precision and less noise but also less damage.
+
+
+In that case you could just add it as another attack mode and set all these values there...
+
+QUOTE:
+Did you read the several scripting articles in the AI Wisdom book ?
+
+
+None of them, that's why I don't have much of a clue of how to tackle things :-) The problem you mentioned about high-/low-level actions is bothering me as well, after all you want your scripting language to be very flexible but easy to use at the same time. If you just composed it of low-level commands you could as well use C directly (and get around writing your own parser).
+Basically I want the same flexibility as in my Parabot Triple-Task-Planner, but scripted. I really haven't wasted much time on that one yet, but you named it: it's damn hard.
+
+QUOTE:
+Simple syntax checkers i can make in Visual Basic
+
+
+For the weaponspecs it is sufficient to use DTD and open the xml file in a normal webbrowser: if there's an error the browser will print out the line where it ocurred.
+
+QUOTE:
+They are just impossible...
+
+
+I've already worked with LEXX and YACC and it's not as complicated as it seems once you get the idea. Although I have to admit that a formal education in compiler design helps ;-)
+
+Tobias
+
+--------------------------------------------------
+01/25/03 at 17:52:21  Reply by: CountFloyd (countfloyd@botepidemic.com)
+--------------------------------------------------
+QUOTE:
+If you just composed it of low-level commands you could as well use C directly (and get around writing your own parser).
+
+
+
+Yes, there's a fascinating article on how to abuse macros to implement a finite state machine the easy and fast way. Not what I'm prefering though.
+
+Back to the specs again:
+Should weapon buying be included as well (optional tags maybe) ? Then there would be a need to include the price and menu items as well.
+Oh and there are some weapons where you need to hold the fire button (like the forementioned Tau Gun). Perhaps a flag like bNeedsButtonHold and the minimum/maximum time to press it. Would be good for grens as well.
+
+--------------------------------------------------
+01/26/03 at 09:21:29  Reply by: theimann (killaruna@nuclearbox.com)
+--------------------------------------------------
+What about this addition right under the name elements?
+code:
+
+<!-- Information of how to buy weapon (optional) -->
+            <buy>
+                  <!-- menu items to be pressed -->
+                  <menu>1 4 2</menu>
+                  <!-- price of the weapon -->
+                  <price>4000</price>
+            </buy>      
+
+
+As mentioned above I wouldn't include information of how to use the weapons (i.e. which buttons to press for how long) because I have the feeling it might be easier to implement this just directly. You realize adding button combinations comes dangerously close to scripting, do you? ;-)
+
+Tobias
+
+P.S.: TinyXML is really nice! Much easier than Expat and even basic DOM support...
+
+[modified on 01/26/03 at 09:21:29]
+--------------------------------------------------
+01/26/03 at 10:58:58  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+QUOTE:
+
+Back to the specs again: 
+Should weapon buying be included as well (optional tags maybe) ? Then there would be a need to include the price and menu items as well. 
+Oh and there are some weapons where you need to hold the fire button (like the forementioned Tau Gun). Perhaps a flag like bNeedsButtonHold and the minimum/maximum time to press it. Would be good for grens as well. 
+
+
+
+Like Tobias suggested it would be one of the ways to do it. 
+
+For holding the button. You could put in things like 'how long' you need to press it. Like a timer. So a bot will press it x.x amount of seconds, release button , wait (pause for x.x seconds) and do again. You can do this for 1st and 2nd attack mode. I think its a doable way to achieve weapon handling.
+
+--------------------------------------------------
+01/27/03 at 00:54:13  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+I don't participate to this thread but be certain that both my eyes are wide open. (PM, PM, stop flooding !!!)
+
+
+--------------------------------------------------
+01/29/03 at 14:53:46  Reply by: CountFloyd (countfloyd@botepidemic.com)
+--------------------------------------------------
+While trying to implement the weaponspecs I found some more to discuss:
+<!--  name(s) used in chat  
+  --> 
+  <name>"Knife"</name>
+
+I'm voting to have this optional since I wouldn't use weapon names in the chat.
+
+The buy menu should have an optional property or team tag marking some of them only available to a certain team. Perhaps there should be a general Team tag wrapping this because menu numbers can be different for each team as well.
+What about this ?
+<buy team="terrorist">
+
+
+weapon type:
+Shouldn't we agree on the different types of weapons ? I don't want to specify differences like if it's a pistol or a rifle, this doesn't matter imho since both are firing bullets. Instead I would like to have their general difference like melee weapon, firearm or explosives (for assigning them situation scores). English isn't my native language so it's kind of hard to come up with all these different weapon types. A first proposal:
+melee - Every Weapon not working on distance
+firearm - Every Weapon which uses some sort of projectile
+explosive - grenades and other explosives
+explosive launcher - anything which launches explosives, can be a rocket launcher as well
+
+Now there are still some 'exotic' weapons which don't fit in any of these categories like a flamethrower. Any suggestions ?
+
+Another question: what's the value of infinite in some of the tags ? Just the word ?
+
+EDIT:
+Would a best distance assigned to each attack mode be too much in the direction of scripting ?
+
+[modified on 01/29/03 at 14:53:46]
+--------------------------------------------------
+01/29/03 at 15:34:58  Reply by: theimann (killaruna@nuclearbox.com)
+--------------------------------------------------
+QUOTE:
+I'm voting to have this optional since I wouldn't use weapon names in the chat.
+
+
+You're right, let's make this optional. Another tag I would make optional is id, because weapons won't necessarily have ids in all engines and in some implementations it's sufficient to know just the entity/classname. Any objections?
+
+The team attribute in the buy tag seems very reasonable, especially because you are able to define several buy structures for different teams that way (the different buy menu items are a good point).
+
+We should definitely agree on the values for weapon type. I wouldn't differ between grenades thrown by hand or by a launcher, in the end it's just the maximal distance which makes the difference. Is this distinction important for you? If not I would suggest to divide explosives in offensive and defensive ones (like smoke grens)as proposed earlier. Maybe "explosive" and "defensive"? For exotic weapons we could just add a category "other"...
+
+QUOTE:
+what's the value of infinite in some of the tags ? Just the word ?
+
+
+I thought the default value might be handled internally, i.e. all tags with a default value are optional and if they are not specified your bot should interpret them as filled with the default value. Example: If maxDist isn't specified, the bot will assume the weapon works up to an indefinite range. I'd say everyone can handle this at gusto.
+
+QUOTE:
+Would a best distance assigned to each attack mode be too much in the direction of scripting ?
+
+
+I'd say it's not necessary because the best distance could be computed using the minDist, maxDist and spread values in comparison with the enemy's weapon... But if it's useful we could add an optional bestDist tag between minDist and maxDist. What do you think?
+
+Tobias
+
+--------------------------------------------------
+01/30/03 at 14:01:30  Reply by: theimann (killaruna@nuclearbox.com)
+--------------------------------------------------
+Here's the DTD for the weaponspec format as it is in its current state:
+code:
+
+<!ELEMENT weaponspecs (weapon)+>
+
+<!ELEMENT weapon (entity, id?, name*, buy*, attack+)>
+<!ELEMENT entity (#PCDATA)>
+<!ELEMENT id (#PCDATA)>
+<!ELEMENT name (#PCDATA)>
+<!ELEMENT buy (menu?, price?)>
+<!ATTLIST buy team CDATA #IMPLIED>
+<!ELEMENT attack (dontUse*, type?, zoom?, damage, radius?, reqAmmo?, clipSize?, delay, trajectory?, volume?, visibility?)>
+<!ATTLIST attack mode CDATA #IMPLIED>
+
+<!ELEMENT menu (#PCDATA)>
+<!ELEMENT price (#PCDATA)>
+
+<!ELEMENT dontUse (#PCDATA)>
+<!ELEMENT type (#PCDATA)>
+<!ELEMENT zoom (#PCDATA)>
+<!ELEMENT damage (#PCDATA)>
+<!ELEMENT radius (#PCDATA)>
+<!ELEMENT reqAmmo (#PCDATA)>
+<!ELEMENT clipSize (#PCDATA)>
+<!ELEMENT delay (fire, reload, prepare?)>
+<!ELEMENT trajectory (spread?, velocity?, mass?, minDist?, bestDist?, maxDist?, homing?, penetration?, recoil?, bounce?)>
+<!ELEMENT volume (#PCDATA)>
+<!ELEMENT visibility (#PCDATA)>
+
+<!ELEMENT fire (#PCDATA)>
+<!ELEMENT reload (#PCDATA)>
+<!ELEMENT prepare (#PCDATA)>
+
+<!ELEMENT spread (#PCDATA)>
+<!ELEMENT velocity (#PCDATA)>
+<!ELEMENT mass (#PCDATA)>
+<!ELEMENT minDist (#PCDATA)>
+<!ELEMENT bestDist (#PCDATA)>
+<!ELEMENT maxDist (#PCDATA)>
+<!ELEMENT homing EMPTY>
+<!ATTLIST homing maxAngle CDATA #IMPLIED>
+<!ELEMENT penetration EMPTY>
+<!ATTLIST penetration maxTimes CDATA #IMPLIED>
+<!ATTLIST penetration maxWidth CDATA #IMPLIED>
+<!ATTLIST penetration maxAngle CDATA #IMPLIED>
+<!ELEMENT recoil EMPTY>
+<!ATTLIST recoil angle CDATA #IMPLIED>
+<!ATTLIST recoil reset CDATA #IMPLIED>
+<!ELEMENT bounce EMPTY>
+<!ATTLIST bounce minAngle CDATA #IMPLIED>
+
+
+You could use it to verify your specs... Any suggestions for changes?
+
+Tobias
+
+--------------------------------------------------
+01/30/03 at 17:55:35  Reply by: CountFloyd (countfloyd@botepidemic.com)
+--------------------------------------------------
+QUOTE:
+Another tag I would make optional is id, because weapons won't necessarily have ids in all engines and in some implementations it's sufficient to know just the entity/classname. Any objections?
+
+
+
+Nope. Let's just hope that they will always use the same model name as the entity name (for picking up stuff).
+
+QUOTE:
+
+I wouldn't differ between grenades thrown by hand or by a launcher, in the end it's just the maximal distance which makes the difference. Is this distinction important for you?
+
+
+
+No, I oversaw that we already have the trajectory tag so that could be used to make a difference.
+I'm still unsure about the weapon types in my opinion there would be a need to have a strong difference between explosives and the rest of the available weapons. Perhaps not for Deathmatch games but for a team game ?
+
+QUOTE:
+
+I'd say it's not necessary because the best distance could be computed using the minDist, maxDist and spread values in comparison with the enemy's weapon... But if it's useful we could add an optional bestDist tag between minDist and maxDist. What do you think?
+
+
+
+I'm thinking it depends on how you're using the minDist value. If this is 0.0 for a firearm AND a melee weapon the Bots would probably hardly use a melee weapon ever since the score would be bad (switching time etc.). However assigning a minimum distance of i.e. 50.0 to everything not melee could lead to really stupid weapon switching (weapon switching is one of the weaker points in your old bot imho). I'm against making these weapon specs overly blown up so I'd think let's leave it out.
+
+The format is fine with me now.
+
+
+--------------------------------------------------
+02/01/03 at 14:21:03  Reply by: @$3.1415rin (johannes@_-removeifnotavirus-_lampel.net)
+--------------------------------------------------
+for weapon usage I've currently response curves with up to 4 buckets used atm, but anyway, the format looks fine. And if any extensions arise, they can be implemented in a single bot, without producing errors with other bots using that file, right ?
+
+and possible extension can still be discussed by the weapon data file xml commission(tm), so that's just fine, right ?
+
+[modified on 02/01/03 at 14:21:03]
+--------------------------------------------------
+02/02/03 at 12:30:11  Reply by: theimann (killaruna@nuclearbox.com)
+--------------------------------------------------
+QUOTE:
+for weapon usage I've currently response curves with up to 4 buckets
+
+
+Same with me, but my problem with the response curves is they are defined very much arbitrarily. I hope the new method using only the XML specifications will be more objective.
+
+QUOTE:
+And if any extensions arise, they can be implemented in a single bot, without producing errors with other bots using that file, right ?
+
+
+Right. That's why we use XML...
+
+
+--------------------------------------------------
+02/05/03 at 01:25:23  Reply by: CountFloyd (countfloyd@botepidemic.com)
+--------------------------------------------------
+Slightly offtopic but since you've mentioned it:
+Response curves ? Used for storing distance / weapon relationships ?
+
+--------------------------------------------------
+02/26/03 at 12:56:19  Reply by: @$3.1415rin (johannes@_-removeifnotavirus-_lampel.net)
+--------------------------------------------------
+just looked up what we agreed on and I overlooked CF's question ... what a shame ;)
+
+The 'usability' of a weapon is a value between 0 and 100 in my bot. Every weapon has one to determine the usability with regard to the distance. So when the bot decides which weapon to take, it loops thru its weapons and looks which weapon has the best value for this distance.
+
+</OT> ;)
+
+--------------------------------------------------
+09/21/03 at 15:31:56  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+I believe the correct syntax is *bump* :)
+
+I wanted to hear more about this topic from all of you (if you're still here). Has anyone changed the DTD ? Have you already a working implementation ?
+
+That's what I am doing right now, and I'd love to hear from those who did it already.
+
+
+--------------------------------------------------
+09/21/03 at 15:39:13  Reply by: Cheesemonster!!! (cheeseh(at)rcbot(dot)net)
+--------------------------------------------------
+Heh, well I've never seen the need to do this stuff, I've come up with a class that gives me all the info from the game, clip, ammo1,ammo2, classname, ID altogether. And then I have a seperate config file which is quite easy to edit which you can enter if it's a melee weapon, has primary attack/secondary attack, range etc.
+
+You'll see it in my new bot release in a few minutes in fact!!!
+
+--------------------------------------------------
+09/21/03 at 18:32:14  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+grrrrrrrr
+have to download 450 kilobytes of crap to see just ONE text file ;)
+hurryup modem
+
+[Edited]
+
+Ha okay, just a basic config file, that's to say... But I like .ini files better than XML actually, it's much more readable. I wonder if I won't be using an .ini file too. But anyway, you could have put much more info in it, don't you think ? think about the fire delays, the need to burst fire, the weapon sounds, etc.
+
+[modified on 09/21/03 at 18:32:14]
+--------------------------------------------------
+09/21/03 at 18:41:10  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Haha, the more I think about it the more I feel like I'll be using an .ini file. Finally any syntax that relies on key/value pairs can be used and it can be made portable between different bots. Why not an ini file ?
+code:
+
+# RACC - Bot weapons configuration file
+#
+# This file contains information needed by the knowledge system
+# about the weapons used in the game. The syntax is explicit.
+# The order at which the weapons are defined determines the bots
+# preference order for the weapons, the most likeable weapon
+# being on top of list and the less likeable at the bottom.
+#
+# Any void or sharp-prepended line will be ignored.
+
+[weapon_hegrenade]
+model="models/p_hegrenade.mdl"
+id=4
+slot=3
+position=1
+flags=24
+primary.use_percent=100
+primary.min_range=300
+primary.max_range=800
+primary.type_of_ammo=12
+primary.min_ammo=1
+primary.max_ammo=1
+primary.can_use_underwater=0
+primary.should_hold=0
+primary.should_charge=0
+primary.charge_delay=0.0
+primary.sound1="weapons/pinpull.wav"
+primary.sound2="weapons/pinpull.wav"
+primary.min_delay=0.5 0.4 0.3 0.2 0.1
+primary.max_delay=0.6 0.5 0.4 0.3 0.2
+secondary.use_percent=0
+secondary.min_range=0
+secondary.max_range=0
+secondary.type_of_ammo=-1
+secondary.min_ammo=0
+secondary.max_ammo=-1
+secondary.can_use_underwater=0
+secondary.should_hold=0
+secondary.should_charge=0
+secondary.charge_delay=0.0
+secondary.sound1=""
+secondary.sound2=""
+secondary.min_delay=0.0 0.0 0.0 0.0 0.0
+secondary.max_delay=0.0 0.0 0.0 0.0 0.0
+
+[weapon_awp]
+model="models/p_awm.mdl"
+id=18
+slot=0
+position=2
+flags=0
+primary.use_percent=100
+primary.min_range=5
+primary.max_range=9999
+primary.type_of_ammo=1
+primary.min_ammo=1
+primary.max_ammo=30
+primary.can_use_underwater=1
+primary.should_hold=0
+primary.should_charge=0
+primary.charge_delay=0.0
+primary.sound1="weapons/awp1.wav"
+primary.sound2="weapons/awp1.wav"
+primary.min_delay=0.7 0.6 0.5 0.4 0.3
+primary.max_delay=0.8 0.7 0.6 0.5 0.4
+secondary.use_percent=0
+secondary.min_range=0
+secondary.max_range=0
+secondary.type_of_ammo=-1
+secondary.min_ammo=0
+secondary.max_ammo=-1
+secondary.can_use_underwater=0
+secondary.should_hold=0
+secondary.should_charge=0
+secondary.charge_delay=0.0
+secondary.sound1=""
+secondary.sound2=""
+secondary.min_delay=0.0 0.0 0.0 0.0 0.0
+secondary.max_delay=0.0 0.0 0.0 0.0 0.0
+
+[weapon_m4a1]
+model="models/p_m4a1.mdl"
+id=22
+slot=0
+position=6
+flags=0
+primary.use_percent=100
+primary.min_range=5
+primary.max_range=9999
+primary.type_of_ammo=4
+primary.min_ammo=1
+primary.max_ammo=90
+primary.can_use_underwater=1
+primary.should_hold=1
+primary.should_charge=1
+primary.charge_delay=0.2
+primary.sound1="weapons/m4a1-1.wav"
+primary.sound2="weapons/m4a1_unsil-1.wav"
+primary.min_delay=0.5 0.4 0.3 0.2 0.1
+primary.max_delay=0.6 0.5 0.4 0.3 0.2
+secondary.use_percent=0
+secondary.min_range=0
+secondary.max_range=0
+secondary.type_of_ammo=-1
+secondary.min_ammo=0
+secondary.max_ammo=-1
+secondary.can_use_underwater=0
+secondary.should_hold=0
+secondary.should_charge=0
+secondary.charge_delay=0.0
+secondary.sound1=""
+secondary.sound2=""
+secondary.min_delay=0.0 0.0 0.0 0.0 0.0
+secondary.max_delay=0.0 0.0 0.0 0.0 0.0
+
+
+and the data structure would be
+code:
+
+// game weapons structure definition
+typedef struct
+{
+   int use_percent; // times out of 100 to use this rail
+   float min_range; // mimimal distance to target required to use this rail safely
+   float max_range; // maximum distance to target this rail can reach
+   char type_of_ammo; // type of ammo this rail uses (i.e, index to use in the ammo array)
+   short min_ammo; // minimum ammout of ammo this rail needs to fire
+   short max_ammo; // maximum amount of ammo this rail can hold
+   bool can_use_underwater; // set to TRUE if this rail can be used under water
+   bool should_hold; // set to TRUE if this rail's trigger needs to be held down to fire
+   bool should_charge; // set to TRUE if this rail needs to be charged OR should burst-fire
+   float charge_delay; // amount of time needed to charge the rail before firing
+   char sound1[64]; // relative path to sound sample for normal mode firing in this rail
+   char sound2[64]; // relative path to sound sample for alternate mode firing in this rail
+   float min_delay[5]; // array of 5 skill-dependent minimal reaction delay values for the AI
+   float max_delay[5]; // array of 5 skill-dependent maximal reaction delay values for the AI
+} weapon_rail_t;
+
+
+typedef struct
+{
+   char classname[64]; // the weapon entity classname, in all letters
+   char model[64]; // relative path to the weapon model ("models/p_" model)
+   int id; // weapon ID
+   int slot; // HUD slot (0 based)
+   int position; // slot position
+   int flags; // flags ???
+   weapon_rail_t primary; // primary weapon rail
+   weapon_rail_t secondary; // secondary weapon rail
+} weapon_t;
+
+
+hmmmmmm yeah, I believe that's not that bad for a start. Will see how good it is...
+
+
+--------------------------------------------------
+09/21/03 at 21:03:10  Reply by: botmeister (meister@telus.net)
+--------------------------------------------------
+I really like the idea of a generic and multi game compatible weapons config system, but why use the xml format? 
+
+The ini format seems to be much simpler because it is easier to read and easier to edit, but perhaps I'm unaware of the advantages of using xml in this case.
+
+The various weapon delays are tricky for games with a lot of realism, but I think several generic timings can be specified to deal with almost any weapon.
+
+There was mention of best distance to use weapon which is nice, but a lot more should be added, such as information describing burst firing patterns to deal with recoil, this depends on distance from target. If a weapon is zoomable, then knowing when to zoom or not, and how much to zoom, depends on distance from target.
+
+Also, some more information about how to handle the weapon during combat would be usefull, such as: Can weapon be fired accurately while moving? For example, a knife is accurate while moving, but most sniping weapons are not, ect
+
+Did anyone already specify what kind of player can buy and use the weapon? 
+
+Some games have weapons that overheat if fired for too long, or blow up if charged for too long.
+
+The list is getting bigger ...
+ 
+
+--------------------------------------------------
+09/22/03 at 09:23:17  Reply by: Cheesemonster!!! (cheeseh(at)rcbot(dot)net)
+--------------------------------------------------
+Crap?! ;D
+
+Anyway :P Yeah I could do with some more things in it, for example "max clip" because I don't think you can get that from the engine/net messages.
+
+You can get ammo indexes, max ammo, clip, classname etc from net message "weaponlist" so I use that and it means I don't need to make a config option for it/them.
+

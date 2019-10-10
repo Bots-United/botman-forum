@@ -1,0 +1,291 @@
+--------------------------------------------------
+Subject: FakeclientCommand (pBotEntity, "say hello");
+--------------------------------------------------
+01/12/03 at 20:52:23  Posted by: PM (pm@racc-ai.com)
+--------------------------------------------------
+You know that one ?
+It makes the bot display:
+
+[bot]: say hello
+
+on the HUD chat channel, instead of just "hello" like players would. It's a bug in the HL engine which has decided botman to write his UTIL_HostSay() function for the HPB_bot. The problem of this function is that it is very MOD-dependent.
+
+Well, since this question has already been asked several times, here's the right way of working this engine bug around and allow the bots to use the "say" and "say_team" client commands normally.
+
+Have this in engine.cpp or whatever you hook the engine's pfnCmd_Args.
+code:
+
+const char *pfnCmd_Args (void)
+{
+   // this function returns a pointer to the whole current client command string. Since bots
+   // have no client DLL and we may want a bot to execute a client command, we had to implement
+   // a g_argv string in the bot DLL for holding the bots' commands, and also keep track of the
+   // argument count. Hence this hook not to let the engine ask an unexistent client DLL for a
+   // command we are holding here. Of course, real clients commands are still retrieved the
+   // normal way, by asking the engine.
+
+   // is this a bot issuing that client command ?
+   if (isFakeClientCommand)
+   {
+      // is it a "say" or "say_team" client command ?
+      if (strncmp ("say ", g_argv, 4) == 0)
+         return (&g_argv[0] + 4); // skip the "say" bot client command (bug in HL engine)
+      else if (strncmp ("say_team ", g_argv, 9) == 0)
+         return (&g_argv[0] + 9); // skip the "say_team" bot client command (bug in HL engine)
+
+      return (&g_argv[0]); // else return the whole bot client command string we know
+   }
+
+   return ((*g_engfuncs.pfnCmd_Args) ()); // ask the client command string to the engine
+}
+
+
+
+Did I hear "thankyou" ? 8)
+
+
+--------------------------------------------------
+01/13/03 at 07:40:33  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+consider it copy/pasted and credited ;)
+
+--------------------------------------------------
+01/19/03 at 04:01:16  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+Hey PM I've tested the FakeClientCommand "say" with this and it works ok ONLY up to messages of length 62 characters or less (something like that) if any messages are longer than that, they will say the message plus an extra "say" at the end of the message and the message ends!
+
+e.g.
+From my whinechat.txt :)
+
+code:
+
+Hey, %n. I see that your Mom did a great job dressing you this morning.
+
+
+
+was said something like this
+
+code:
+
+Hey, [RCBOT]Edd. I see that your Mom did a great job dsay
+
+
+so I've had to check the length of it first, before using the FakeClientCommand "say" incase.. Don't know what could cause it though?
+
+
+--------------------------------------------------
+01/19/03 at 23:33:37  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+I'd bet your g_argv is incorrectly allocated. I don't see this bug with my bots.
+
+[edited]
+Nah, I know. You're using botman's FakeClientCommand(), right ?
+Botman splits each argument of a bot's ClientCommand and places them at 64 characters interval in the same string, hence why.
+
+I don't like his implementation at all, but you can use this one instead, which resembles more the normal way of doing things :
+code:
+
+// top of dll.cpp (get rid of h_global_argv's GlobalAlloc and GlobalLock)
+char *g_argv;
+bool isFakeClientCommand;
+int fake_arg_count;
+
+// in GiveFnptrsToDll()
+   g_argv = (char *) malloc (1024); // allocate space for the bots' client commands argv field
+
+// further in the function
+   pengfuncsFromEngine->pfnCmd_Args = pfnCmd_Args;
+   pengfuncsFromEngine->pfnCmd_Argv = pfnCmd_Argv;
+   pengfuncsFromEngine->pfnCmd_Argc = pfnCmd_Argc;
+
+// in engine.cpp
+int pfnCmd_Argc (void)
+{
+   // this function returns the number of arguments the current client command string has. Since
+   // bots have no client DLL and we may want a bot to execute a client command, we had to
+   // implement a g_argv string in the bot DLL for holding the bots' commands, and also keep
+   // track of the argument count. Hence this hook not to let the engine ask an unexistent client
+   // DLL for a command we are holding here. Of course, real clients commands are still retrieved
+   // the normal way, by asking the engine.
+
+   // is this a bot issuing that client command ?
+   if (isFakeClientCommand)
+      return (fake_arg_count); // if so, then return the argument count we know
+
+   return ((*g_engfuncs.pfnCmd_Argc) ()); // ask the engine how many arguments there are
+}
+
+
+const char *pfnCmd_Args (void)
+{
+   // this function returns a pointer to the whole current client command string. Since bots
+   // have no client DLL and we may want a bot to execute a client command, we had to implement
+   // a g_argv string in the bot DLL for holding the bots' commands, and also keep track of the
+   // argument count. Hence this hook not to let the engine ask an unexistent client DLL for a
+   // command we are holding here. Of course, real clients commands are still retrieved the
+   // normal way, by asking the engine.
+
+   // is this a bot issuing that client command ?
+   if (isFakeClientCommand)
+   {
+      // is it a "say" or "say_team" client command ?
+      if (strncmp ("say ", g_argv, 4) == 0)
+         return (&g_argv[0] + 4); // skip the "say" bot client command (bug in HL engine)
+      else if (strncmp ("say_team ", g_argv, 9) == 0)
+         return (&g_argv[0] + 9); // skip the "say_team" bot client command (bug in HL engine)
+
+      return (&g_argv[0]); // else return the whole bot client command string we know
+   }
+
+   return ((*g_engfuncs.pfnCmd_Args) ()); // ask the client command string to the engine
+}
+
+
+const char *pfnCmd_Argv (int argc)
+{
+   // this function returns a pointer to a certain argument of the current client command. Since
+   // bots have no client DLL and we may want a bot to execute a client command, we had to
+   // implement a g_argv string in the bot DLL for holding the bots' commands, and also keep
+   // track of the argument count. Hence this hook not to let the engine ask an unexistent client
+   // DLL for a command we are holding here. Of course, real clients commands are still retrieved
+   // the normal way, by asking the engine.
+
+   // is this a bot issuing that client command ?
+   if (isFakeClientCommand)
+      return (GetArg (g_argv, argc)); // if so, then return the wanted argument we know
+
+   return ((*g_engfuncs.pfnCmd_Argv) (argc)); // ask the argument number "argc" to the engine
+}
+
+// wherever you want
+void FakeClientCommand (entity_t *pFakeClient, const char *fmt, ...)
+{
+   // the purpose of this function is to provide fakeclients (bots) with the same client
+   // command-scripting advantages (putting multiple commands in one line between semicolons)
+   // as real players. It is an improved version of botman's FakeClientCommand, in which you
+   // supply directly the whole string as if you were typing it in the bot's "console". It
+   // is supposed to work exactly like the pfnClientCommand (server-sided client command).
+
+   va_list argptr;
+   static char command[256];
+   int length, fieldstart, fieldstop, i, index, stringindex = 0;
+
+
+   if (IsNull (pFakeClient))
+      return; // reliability check
+
+   // concatenate all the arguments in one string
+   va_start (argptr, fmt);
+   vsprintf (command, fmt, argptr);
+   va_end (argptr);
+
+   if ((command == NULL)  (*command == 0))
+      return; // if nothing in the command buffer, return
+
+   isFakeClientCommand = TRUE; // set the "fakeclient command" flag
+   length = strlen (command); // get the total length of the command string
+
+   // process all individual commands (separated by a semicolon) one each a time
+   while (stringindex < length)
+   {
+      fieldstart = stringindex; // save field start position (first character)
+      while ((stringindex < length) && (command[stringindex] != ';'))
+         stringindex++; // reach end of field
+      if (command[stringindex - 1] == '\n')
+         fieldstop = stringindex - 2; // discard any trailing '\n' if needed
+      else
+         fieldstop = stringindex - 1; // save field stop position (last character before semicolon or end)
+      for (i = fieldstart; i <= fieldstop; i++)
+         g_argv[i - fieldstart] = command[i]; // store the field value in the g_argv global string
+      g_argv[i - fieldstart] = 0; // terminate the string
+      stringindex++; // move the overall string index one step further to bypass the semicolon
+
+      index = 0;
+      fake_arg_count = 0; // let's now parse that command and count the different arguments
+
+      // count the number of arguments
+      while (index < i - fieldstart)
+      {
+         while ((index < i - fieldstart) && (g_argv[index] == ' '))
+            index++; // ignore spaces
+
+         // is this field a group of words between quotes or a single word ?
+         if (g_argv[index] == '"')
+         {
+            index++; // move one step further to bypass the quote
+            while ((index < i - fieldstart) && (g_argv[index] != '"'))
+               index++; // reach end of field
+            index++; // move one step further to bypass the quote
+         }
+         else
+            while ((index < i - fieldstart) && (g_argv[index] != ' '))
+               index++; // this is a single word, so reach the end of field
+
+         fake_arg_count++; // we have processed one argument more
+      }
+
+      ClientCommand (pFakeClient); // tell now the MOD DLL to execute this ClientCommand...
+   }
+
+   g_argv[0] = 0; // when it's done, reset the g_argv field
+   isFakeClientCommand = FALSE; // reset the "fakeclient command" flag
+   fake_arg_count = 0; // and the argument count
+}
+
+
+const char *GetArg (const char *command, int arg_number)
+{
+   // the purpose of this function is to provide fakeclients (bots) with the same Cmd_Argv
+   // convenience the engine provides to real clients. This way the handling of real client
+   // commands and bot client commands is exactly the same, just have a look in engine.cpp
+   // for the hooking of pfnCmd_Argc, pfnCmd_Args and pfnCmd_Argv, which redirects the call
+   // either to the actual engine functions (when the caller is a real client), either on
+   // our function here, which does the same thing, when the caller is a bot.
+
+   int length, i, index = 0, arg_count = 0, fieldstart, fieldstop;
+
+   arg[0] = 0; // reset arg
+   length = strlen (command); // get length of command
+
+   // while we have not reached end of line
+   while ((index < length) && (arg_count <= arg_number))
+   {
+      while ((index < length) && (command[index] == ' '))
+         index++; // ignore spaces
+
+      // is this field multi-word between quotes or single word ?
+      if (command[index] == '"')
+      {
+         index++; // move one step further to bypass the quote
+         fieldstart = index; // save field start position
+         while ((index < length) && (command[index] != '"'))
+            index++; // reach end of field
+         fieldstop = index - 1; // save field stop position
+         index++; // move one step further to bypass the quote
+      }
+      else
+      {
+         fieldstart = index; // save field start position
+         while ((index < length) && (command[index] != ' '))
+            index++; // reach end of field
+         fieldstop = index - 1; // save field stop position
+      }
+
+      // is this argument we just processed the wanted one ?
+      if (arg_count == arg_number)
+      {
+         for (i = fieldstart; i <= fieldstop; i++)
+            arg[i - fieldstart] = command[i]; // store the field value in a string
+         arg[i - fieldstart] = 0; // terminate the string
+      }
+
+      arg_count++; // we have processed one argument more
+   }
+
+   return (&arg[0]); // returns the wanted argument
+}
+
+
+I'm using this for ages and it works okay. It even enables you to script bot client commands with semicolons.
+
+[modified on 01/19/03 at 23:33:37]

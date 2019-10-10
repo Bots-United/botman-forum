@@ -1,0 +1,53 @@
+--------------------------------------------------
+Subject: Object creation/deletion
+--------------------------------------------------
+07/10/02 at 08:04:15  Posted by: msummers (msummers@scires.com)
+--------------------------------------------------
+void foo()
+{
+    Vector *pos = new Vector(1,2,3);
+    global_variable = pos;
+}
+
+Does pos get deleted once this function returns? If not, can I delete pos without killing the vector that global_variable is pointing to? I guess my real question is how can I create an object, have some other variable point to the newly created object, and then delete the original object? Sorry if my wording is confusing, I am just not sure how to phrase the question.
+
+Thanks
+
+--------------------------------------------------
+07/10/02 at 08:30:44  Reply by: @$3.1415rin (joebot@botepidemic.com)
+--------------------------------------------------
+because pos is just a pointer, the pointer is deleted when the function ends. the allocated data is not deleted, therefore you can still access the vector(1,2,3) by this global variable.
+
+but you shouldnt forget to call delete global_variable; on exiting your program or before calling the function again.
+
+[modified on 07/10/02 at 08:30:44]
+--------------------------------------------------
+07/10/02 at 10:19:00  Reply by: msummers (msummers@scires.com)
+--------------------------------------------------
+"but you shouldnt forget to call delete global_variable on exiting your program or before calling the function again." 
+
+I need to call delete because after I call foo() global_variable will be pointing to a new Vector object and the old one would still exist in memory with no one pointing to it? right?
+
+so is it valid to do this
+void foo()
+{
+   Vector *pos = new Vector(1,2,3);
+   delete global_variable;
+   global_variable = pos;
+}
+
+
+
+--------------------------------------------------
+07/10/02 at 12:54:04  Reply by: @$3.1415rin (joebot@botepidemic.com)
+--------------------------------------------------
+you have to be sure if global_variable is a valid pointer pointing to a valid vector object before calling delete. If you initialized global_variable with 0 at the beginning you could do this by just using this :
+code:
+if(global_variable){
+delete global_variable;
+}
+
+
+somewhere at least you should have a delete operator if you have a new operator, otherwise you would have a so called memory leak, i.e. you reserve memory for you application, but you don't use it, instead you allocate more.
+
+[modified on 07/10/02 at 12:54:04]

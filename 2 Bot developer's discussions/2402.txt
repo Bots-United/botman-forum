@@ -1,0 +1,101 @@
+--------------------------------------------------
+Subject: Bots switching weapons to much, how do I stop 'em?
+--------------------------------------------------
+10/28/01 at 10:33:15  Posted by: Ghoul (oneeyedghoul@aol.com)
+--------------------------------------------------
+Ok, now for another question.  When I was playing with my bots I noticed that they couldn't make up their mind on what weapon to use.  They would run at me switching between the mp5, glock, and shotgun shooting the weapon once in a while.  I looked through the code and found this little section:
+
+code:
+
+         // is the bot underwater and does this weapon NOT work under water?
+         if ((pEdict->v.waterlevel == 3) &&
+             !(pSelect[select_index].can_use_underwater))
+         {
+            select_index++;  // skip to next weapon
+            continue;
+         }
+
+         use_percent = RANDOM_LONG(1, 100);
+
+         // is use percent greater than weapon use percent?
+         if (use_percent > pSelect[select_index].use_percent)
+         {
+            select_index++;  // skip to next weapon
+            continue;
+         }
+
+             iId = pSelect[select_index].iId;
+
+
+
+Then I changed the iId = pSelect[select_index].iId; to something like this:
+
+code:
+
+if (pBot->switch_weap_time <= gpGlobals->time)
+{
+     iId = pSelect[select_index].iId;
+     pBot->switch_weap_time = gpGlobals->time + 5.0;
+}
+
+
+
+But when I run the game it crashes.  Maybe I'm doing this totally wrong...  Oh well...  Thanks, see ya people.
+
+--------------------------------------------------
+10/28/01 at 12:10:37  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+If your using any pointers that may not be initialised or null when you  try to use them then the game will crash. Make sure you do checks like...
+
+code:
+
+if(pSelect != NULL)
+{
+  //do stuff
+}
+
+
+
+or
+
+code:
+
+if(pEdict != NULL)
+{
+  //do stuff
+}
+
+
+
+etc before doing the stuff! :) Cos I think what you are doing should work.
+
+[modified on 10/28/01 at 12:10:37]
+--------------------------------------------------
+10/28/01 at 13:29:29  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+I'll bet you are using MingW32 or the Borland C++ compiler.
+
+You have added a new field to the bot_t structure (in bot.h) and haven't rebuild all of the code.  Do a "make clean" then "make" to rebuild everything then it should work.
+
+Whenever you modify the bot_t structure you should remember to rebuild everything.
+
+botman
+
+--------------------------------------------------
+10/28/01 at 15:27:53  Reply by: Ghoul (oneeyedghoul@aol.com)
+--------------------------------------------------
+Ok, I am using MSVC++, and all the code is part of the original bot template #3.  The only thing I want to do is make it so the bots can only switch weapons every, oh 5 seconds, unless they have to (no ammo).  I can get into the game, but as soon as the bots fire at me it freezes and when I debug it points to this code section:
+
+code:
+
+         if ((primary_percent <= pSelect[select_index].primary_fire_percent) &&
+             ((weapon_defs[iId].iAmmo1 == -1) ||
+              (pBot->m_rgAmmo[weapon_defs[iId].iAmmo1] >=
+               pSelect[select_index].min_primary_ammo)) &&
+             (distance >= pSelect[select_index].primary_min_distance) &&
+             (distance <= pSelect[select_index].primary_max_distance))
+         {
+            use_primary = TRUE;
+         }
+
+

@@ -1,0 +1,108 @@
+--------------------------------------------------
+Subject: Simulation of lag on bots?
+--------------------------------------------------
+12/24/01 at 10:11:32  Posted by: CTsWin (tom.d.simpson@btinternet.com)
+--------------------------------------------------
+I want to have lag on my bots, with this the fake ping will give the bot a different reaction time, best way of doing this?
+
+--------------------------------------------------
+12/24/01 at 10:58:13  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+I don't know how to put lag on bots, only reactions really. I gave my bot a slight reaction time depending on the bots skill.
+
+This is what I gave them.
+
+code:
+
+pBot->reaction_time = 0.2 + (pBot->bot_skill * 0.1);
+
+
+then at places where I'd want to apply the reaction time I';d do something like this.
+
+code:
+
+            if (pBot->pBotEnemy != NULL)  // does an enemy exist?
+            {       
+                  if(pBot->f_first_see_enemy_time == 0.0)
+                  {
+                        pBot->f_first_see_enemy_time = gpGlobals->time;
+                  }                  
+                  
+                  if( ( pBot->f_first_see_enemy_time > 0.0 ) && ( pBot->f_first_see_enemy_time + pBot->reaction_time < gpGlobals->time ))
+                  {
+                        BotShootAtEnemy( pBot );                          // shoot at the enemy
+
+
+
+Really easy to do that way :)
+
+(pBot->f_first_see_enemy_time is initialised to 0 when the enemy is NULL
+
+[modified on 12/24/01 at 10:58:13]
+--------------------------------------------------
+12/24/01 at 10:58:51  Reply by: CTsWin (tom.d.simpson@btinternet.com)
+--------------------------------------------------
+yea what i meant  instead of having 5 ping, i would have a ping for every bot, this would be in there personality file and with the skill would add to make the bots reaction times
+
+--------------------------------------------------
+12/24/01 at 13:13:41  Reply by: @$3.1415rin (joebot@botepidemic.com)
+--------------------------------------------------
+hhhmm this has been already discussed in this forum and i think the result was, that it's impossible to do so without having to hack the engine :D
+
+--------------------------------------------------
+12/24/01 at 15:32:13  Reply by: CTsWin (tom.d.simpson@btinternet.com)
+--------------------------------------------------
+im just trying to fake it, it will just be like a skill level. in the bots personality it will have somit like ping 145  and in the code it will have 145  bla bla bla reaction time 0.4 :)
+
+--------------------------------------------------
+12/24/01 at 18:26:46  Reply by: Onslaught (None)
+--------------------------------------------------
+You can fake it by not calling BotThink every frame, but the ping will still be 5.
+
+--------------------------------------------------
+12/30/01 at 17:52:55  Reply by: Extrarius (cprgmsw@rietta.com)
+--------------------------------------------------
+You could probably do it by editing the client.dll or making a wrapper that somehow knows a bot is a bot, and just make it print a different ping on the scoretable. The actual delay would have to be programmed in manually tho
+
+--------------------------------------------------
+12/31/01 at 01:03:37  Reply by: ReDucTor[FGW] (sjdtmv@tpg.com.au)
+--------------------------------------------------
+Could you in your StartFrame function, do something like this where BotThink is
+
+code:
+
+static float botthink[gpGlobals->maxClients];
+if(!gpGlobals->time < botthink[player_index]) // Saves clearing them at the start
+{
+  BotThink(pPlayer);
+  botthink[player_index] = gpGlobals->time + /* Random number */0.25/*250ms*/;
+}
+
+
+
+But thats just it thinking, not what it displays for the client....maybe you could intercept what is sent to the client, and change it
+
+--------------------------------------------------
+12/31/01 at 02:53:09  Reply by: @$3.1415rin (joebot@botepidemic.com)
+--------------------------------------------------
+wouldn't that code cause problems because you are not calling g_engfuncs.pfnRunPlayerMove ? I think it's a better way to add an extra reaction time to botfindenemy for example.
+
+--------------------------------------------------
+12/31/01 at 04:21:13  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+If you want them to be jerky (simulate high lag) you shouldn't call the RunPlayerMove() function during every frame.
+
+If you just want to slow down the reaction time, then add a delay somewhere in the BotThink() code.
+
+botman
+
+--------------------------------------------------
+01/02/02 at 03:08:55  Reply by: BiGjesus (holybigjesus@hotmail.com)
+--------------------------------------------------
+Good save Botman!
+
+--------------------------------------------------
+01/03/02 at 05:25:01  Reply by: BlackJ@CK (mypcpost@usa.net)
+--------------------------------------------------
+It's true! u should skip some updating for every frame...
+

@@ -1,0 +1,117 @@
+--------------------------------------------------
+Subject: Making Entities Spin
+--------------------------------------------------
+09/09/01 at 19:06:49  Posted by: ProgramMan (thevbfreak.pa@netzero.net)
+--------------------------------------------------
+Is there any relationship between pev->avelocity and making an entity spin?  In any case, how on earth would you do it?  Just setting avelocity obviously does not work.
+
+--------------------------------------------------
+09/10/01 at 02:08:03  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+keep changing its angle might work...
+
+--------------------------------------------------
+09/10/01 at 04:34:19  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Take a look at the Spawn() function for func_rotating in bmodels.cpp of the Standard SDK.
+
+botman
+
+--------------------------------------------------
+09/10/01 at 16:01:42  Reply by: ProgramMan (thevbfreak.pa@netzero.net)
+--------------------------------------------------
+I have tried using pev->movedir, pev->speed, and pev->avelocity like suggested in bmodels.cpp, but it still does not work.  Here is how I implemented it in the entity's Spawn function:
+
+code:
+
+// Make the entity spin
+pev->speed = 100;
+pev->movedir = Vector(0,0,1);
+pev->avelocity = pev->speed * pev->movedir;
+
+
+
+CFuncRotating obviously does not manually update the rotating object's angles, so how does it do it?
+
+--------------------------------------------------
+09/10/01 at 16:38:32  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+In CFuncRotating::Precache...
+code:
+   if (pev->avelocity != g_vecZero )
+   {
+      // if fan was spinning, and we went through transition or save/restore,
+      // make sure we restart the sound.  1.5 sec delay is magic number. KDB
+
+      SetThink ( SpinUp );
+      pev->nextthink = pev->ltime + 1.5;
+   }
+
+...if the angular velocity is NOT zero then set up a Think function.
+
+botman
+
+--------------------------------------------------
+09/11/01 at 17:33:01  Reply by: ProgramMan (thevbfreak.pa@netzero.net)
+--------------------------------------------------
+I already have a Think function set up, but it still doesn't work.  Here is my Think function:
+
+code:
+
+void CPowerup::PowerupThink(void)
+{
+      if (Spins && pev->avelocity != g_vecZero)
+      {
+            // Make the entity spin
+            pev->speed = 100;
+            pev->movedir = Vector(0,0,1);
+            pev->avelocity = pev->speed * pev->movedir;
+      }
+
+      if (gpGlobals->time >= m_flPowerupMoveTime)
+            PowerupMove(STRING(pev->classname));
+
+      pev->nextthink = pev->ltime + 0.1;
+}
+
+
+
+This controls powerups spinning (where Spins determines if the entity spins).  BTW, in my entity Spawn function, I have
+
+code:
+
+pev->movetype = MOVETYPE_TOSS;
+
+// later in Spawn()...
+pev->velocity.x = RANDOM_FLOAT(-300,300);
+pev->velocity.y = RANDOM_FLOAT(-300,300);
+pev->velocity.z = RANDOM_FLOAT(0,300);
+DROP_TO_FLOOR(ENT(pev));
+
+
+
+This randomizes the entity's spawn position by tossing it away from its origin.  Could any of these have to do with why the powerups aren't spinning?
+
+--------------------------------------------------
+09/15/01 at 07:19:59  Reply by: BillDoor (nf9576@bris.ac.uk)
+--------------------------------------------------
+
+QUOTE:
+
+code:
+
+if (Spins && pev->avelocity != g_vecZero)
+      {
+            // Make the entity spin
+            pev->speed = 100;
+            pev->movedir = Vector(0,0,1);
+            pev->avelocity = pev->speed * pev->movedir;
+      }
+
+
+
+
+
+
+Maybe I'm missing something... but don't you want to start it spinning if it ISN'T spinning already? ie. pev->avelocity == g_vecZero?
+

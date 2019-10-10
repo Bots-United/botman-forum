@@ -1,0 +1,123 @@
+--------------------------------------------------
+Subject: Can these plugins play nice with HPBot?
+--------------------------------------------------
+11/02/02 at 11:32:34  Posted by: boomer (boomer155@hotmail.com)
+--------------------------------------------------
+I'm currently using the latest Adminmod, HPB_bot, and halfd
+
+Has anyone been able to get these plugins to work:
+
+plugin_ejl_sank_dice.amx
+plugin_dio_motm.amx
+
+without the server crashing due to "FATAL ERROR(shutting down): SZ_GetSpace: Tried to write to an uninitialized sizebuf_t: ???"
+
+I went through them and fixed all the comments and they compiled fine.
+
+The conflict is definitely something to to with HPB_bot, but I don't know if it is due to the bots, or the plugin. I used these same plugins with foxbot on my win32 server and the server would NEVER crash.
+
+If I run the linux server with only the base pligins that come with adminmod it doesn't crash.
+
+Just curious if anyone uses these same plugins with the same setup successfully?
+
+Regards
+
+Boomer
+
+--------------------------------------------------
+11/02/02 at 14:26:39  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+The "SZ_Getspace: Tried to write to uninitialized sizebuf_t" error is due to plugins trying to send messages to clients over the network.
+
+When plugins try to send these messages to bots, it causes the crash.  You can either remove the plugin, remove the bots, or e-mail the plugin author and get them to modify the plugin so that it will ignore players that are bots.
+
+P.S. You can search this forum for "SZ_Getspace" to find similar threads if you want more information.
+
+botman
+
+--------------------------------------------------
+11/06/02 at 08:47:53  Reply by: boomer (boomer155@hotmail.com)
+--------------------------------------------------
+This fails to explain why plugins work fine with foxbot(win32).  Same plugin list and the server would NEVER crash.
+
+It has to do with how the bots are kicked.  So long as I had min_bots 0 and max_bots 8, the server would crash when kicking a bot.
+
+Once I made min_bots 4 max_bots 4 the server stopped crashing.
+
+This fact along with the fact that these plugins did not cause crashes with other bot types, leads me to conclude that the problem is not with the plugins, but with the way that the bots are kicked.
+
+I really like your bots, Botman.  They are the best available for linux, but I'm not convinced the problem is with the plugins or other mods.
+
+Regards,
+
+boomer
+
+--------------------------------------------------
+11/06/02 at 15:28:16  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+AFAIK, there is only one way to make a fake client, i.e. a bot, disconnect from the game. It is by issuing a "kick" command from the server. All the bot authors I know use this method. I don't believe it has something to do with your problem.
+
+
+--------------------------------------------------
+11/06/02 at 16:01:36  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+boomer, can you determine if the server ALWAYS crashes when a new map is loaded (i.e. only at map change time)?
+
+If so, I know that some plugins will send announcements to players when they join the server (i.e. after a map change).  Bots are also kicked from the server right after a map change so that they can automatically be added back in for the new map.
+
+I'm not sure what the FoxBot would be doing any differently since there's only one way to kick bots from the server (using the "kick" command).
+
+I can't remember if the FoxBot works as a metamod plugin or if it's a hook DLL type thing like the HPB bot is.  If the FoxBot is a metamod plugin, then that might explain the difference (since the order that metamod plugin code gets executed is different than the order in which hook DLL type code would be executed).  Other than that, I don't know what the problem is.  If you can use the FoxBot on a server without it crashing then you really should be using the FoxBot since it handles TFC much better than my HPB bot does.
+
+botman
+
+--------------------------------------------------
+11/06/02 at 18:32:26  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+QUOTE:
+I can't remember if the FoxBot works as a metamod plugin or if it's a hook DLL type thing like the HPB bot is (*).  If the FoxBot is a metamod plugin, then that might explain the difference (since the order that metamod plugin code gets executed is different than the order in which hook DLL type code would be executed) (**).  Other than that, I don't know what the problem is.  If you can use the FoxBot on a server without it crashing then you really should be using the FoxBot since it handles TFC much better than my HPB bot does (***).
+
+
+
+(*) Both. In one single DLL. Yeah, this one is tricky, isn't it ?
+
+(**) The recommended method for running FoxBot is as a metamod plugin. I believe it's his case too.
+
+(***) FoxBot doesn't like penguins very much. That's the main reason if I understood right.
+
+This sz_getspace thing is starting to piss me off. One of these days I'll forget my usual laziness and I'll code a metamod plugin that will intercept all client messages and return a MRES_SUPERCEDE without sending anything at all when it's for bots. This plugin would need to be the first one in the list, but it would work. Yawn - my bot doesn't have this problem - and I'm lazy.
+
+
+--------------------------------------------------
+11/08/02 at 00:57:59  Reply by: Siborg (sgb001@cwcom.net)
+--------------------------------------------------
+Pleeezzzz Pierre. I've been suffering with this for quite some time, I only have a couple of plugins cuz most of em crash the server.
+
+Go on mate don't be lazy give it a go, for the sake of my sanity anyway :-)
+
+--------------------------------------------------
+11/11/02 at 13:05:34  Reply by: boomer (boomer155@hotmail.com)
+--------------------------------------------------
+No I can't determine if it always crashes on a map chnage only.  Although it does sometimes happen that way.  The server will crash and then try to restart several times, crashing as soon as it loads.  Sometimes it does recover from this and restart successfully.
+
+But in reviewing my server logs, most often the crash occured immediately after a bot was kicked.  However, bots we often kicked successfulyy, but if anything would cause the server to crash, that would be it.
+
+Foxbot can be loaded a few ways, but with adminmod it is loaded through the metamod.ini file.
+
+As Pierre-Marie Baty pointed out, Foxbot has not yet been ported to linux, perhaps when they come out with a c# version, but I'm not holding my breath.
+
+The error is very strange and I don't know why it happens.
+
+Since I set my HPB_bot.cfg to keep 4 bots in the server all the time, the server has NOT crashed in several days, even with some 20+ plugins loading.  Everything is working fine.
+
+Would just be nice to be able to get the bots to leave as players join without crashing the server.
+
+Will, keep testing things to see if i can get to the bottom of it.  But I think you might be right, that the cause of the problem could be how the .so is loaded
+
+Regards,
+
+boomer
+
+
+
+[modified on 11/11/02 at 13:05:34]

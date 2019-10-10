@@ -1,0 +1,91 @@
+--------------------------------------------------
+Subject: Can anyone Help?
+--------------------------------------------------
+03/20/02 at 07:33:10  Posted by: legolas (simontemplar19@hotmail.com)
+--------------------------------------------------
+Hello, I was woundering if u might be able to help me. I work for the Naval Aerospace Medical Research Laboritory on NaS Pensacola Florida. I have been tasked with making a thing we have called TSAS. Basically a vest with electromagnetic "tactors" in it that allows u to find out info about any situation without having to read instruments or gauges, etc. More info can be found at www.namrl.navy.mil. I have been trying for about 2 weeks now to get the location of the player that im moving around, and the location of a bot in the game. I dont care which bot, but the source code for this bot would help, being that i need to be able to make him stand still, and move. Preferably with a push of a key on the kbd. Any help you could offer would be greatly apprteciated. We would, of course, put ur name in the dev. team list, should u want us to. 
+
+                         Thanks for any help.
+
+
+--------------------------------------------------
+03/20/02 at 12:10:01  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+Do you mean getting the co-oridnates of a player or bot? Theres a post just around this forum here that should help you.
+
+If you want something to do stuff with Half-life by typing something in (in the console I suggest),you will need to add a new command in ClientCommand. (Or you could make a cvar variable using cvar_t and mess about with it although I haven't messed about with this much mnyself)
+
+Anyway.. cor-oridnates of a player are
+
+(pev = entvars_t i think pEdict->v or m_pPlayer->pev)
+
+if ( FStrEq("get_location",pcmd) )
+{
+  edict_t *pEdict = NULL;
+
+  if(( arg1 != NULL ) && ( *arg1 != 0 ))
+  {
+     pEdict = INDEXENT(atoi(arg1));
+  }
+
+if( !pEdict )
+{
+  for( i = 0; i < gpGlobals->maxClients; i ++ )
+  {
+    pEdict = INDEXENT(i);
+
+    if(!( pEdict->v.flags & FL_CLIENT )&&
+       !( pEdict->v.flags & FL_FAKECLIENT))
+      continue;
+    else
+      break;
+  }
+}
+float x,y,z;
+
+x = pEdict->v.origin.x // X
+y = pEdict->v.origin.y // Y
+z = pEdict->v.origin.z // Z
+
+char msg[64];
+
+sprintf(msg,"X: %0.2f Y: %0.2f Z: %0.2f",x,y,z);
+
+ClientPrint(pEntity,HUD_PRINTCONSOLE,msg);
+
+}
+
+[modified on 03/20/02 at 12:10:01]
+--------------------------------------------------
+03/20/02 at 13:47:16  Reply by: legolas (simontemplar19@hotmail.com)
+--------------------------------------------------
+Thx
+
+--------------------------------------------------
+03/25/02 at 10:23:09  Reply by: legolas (simontemplar19@hotmail.com)
+--------------------------------------------------
+Where would I put this code?
+
+--------------------------------------------------
+03/25/02 at 11:40:54  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+You could put it in the StartFrame() function since that function is called during every video frame.  If you were getting 60 frames per second and only wanted to execute that code once every 1/10th of a second you could do something like this...
+code:
+
+float update_time = 0.0f;
+
+void StartFrame(void)
+{
+   // time to update yet?
+   if (update_time <= gpGlobals->time)
+   {
+      update_time = gpGlobals->time + 0.1f;
+
+      // do your stuff here
+   }
+
+   // the original StartFrame code goes here
+}
+
+botman
+

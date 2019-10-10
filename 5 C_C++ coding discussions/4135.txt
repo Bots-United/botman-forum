@@ -1,0 +1,220 @@
+--------------------------------------------------
+Subject: returning double variables (WTF!?)
+--------------------------------------------------
+02/13/03 at 13:18:29  Posted by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+I'm getting weird behaviour with using double variables.. check this out.
+
+I have this code
+
+code:
+
+
+class CFunction
+{
+  //...blah
+  double ValueAtIndex ( int index ) 
+  { 
+    double returndbl = instruction_stack[index].ValueOf();
+    return returndbl; 
+  }
+}
+
+double anotherfunction ( blah )
+{
+
+  double left;
+  left = 0.0f; // initialise
+
+  if ( ..blahblah.. )
+  {
+    left = ValueAtIndex(start); // arghhh
+  }
+}
+
+
+
+
+now the really annoying bit when assigning left a value...
+
+in debug window it says:
+
+"CFunction::ValueAtIndex returned 5.00000000..."
+
+But after that left is still 0.00000000, (wtf??!)so what the hecks wrong??
+
+[edit[ even more weirdness..
+
+I do this and now...
+
+double argh = ValueAtIndex(start);
+left = argh;
+
+
+"CFunction::ValueAtIndex returned -1.# IND000000000 ..."
+
+now left = "-1.# IND000000000"  whatever the heck that is :@ Arurghhh!!
+
+[edit again]
+
+Now I do THIS....
+
+code:
+
+double argh;      
+argh = ValueAtIndex(start);
+left = argh;
+
+
+
+and left is assigned PROPERLY!!
+
+[EDIT AGAIN...]
+
+Nope! That doesn't seem to work all of the time, especially when it returns 0.0, it goes -1.#IND0000 again agrh
+
+[modified on 02/13/03 at 13:18:29]
+--------------------------------------------------
+02/13/03 at 13:25:44  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+I wouldn't think you can return 'double' since it's bigger than 32 bits.  Why not try something like this...
+code:
+void my_func(double *pDouble)
+{
+   *pDouble = some_double_value;
+}
+
+botman
+
+--------------------------------------------------
+02/13/03 at 14:53:35  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Some of my functions return whole structures, and not just pointers to them... so I think it must be possible :)
+
+
+--------------------------------------------------
+02/14/03 at 09:15:56  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+thanks for the tip botman, I used the pointer method and it worked okay! Although even changing them from double to float, got the same results as returning doubles :(...
+
+--------------------------------------------------
+02/15/03 at 20:13:07  Reply by: AustinBotServer (AustinBotServer@MindSpring)
+--------------------------------------------------
+
+QUOTE:
+I'm getting weird behaviour with using double variables
+class CFunction
+{
+  //...blah
+  double ValueAtIndex ( int index ) 
+  { 
+    double returndbl = instruction_stack.ValueOf();
+    return returndbl; 
+  }
+}
+
+
+
+
+You are getting weird behaviour because you are returning a LOCAL variable.
+Local variables are allocated on the stack and are wiped out after the function exits. 
+
+Never return a pointer to a local variable in your functions.
+
+
+--------------------------------------------------
+02/16/03 at 04:58:16  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+im not :P, it is not a reference variable, it is a copied variable so I should see no problem returning them.
+
+--------------------------------------------------
+02/17/03 at 13:09:54  Reply by: AustinBotServer (AustinBotServer@MindSpring)
+--------------------------------------------------
+QUOTE:
+im not :P, it is not a reference variable, it is a copied variable so I should see no problem returning them.
+
+
+
+
+In this code,
+ { 
+   double returndbl = instruction_stack.ValueOf(); 
+   return returndbl; 
+ } 
+
+returndbl  is a local variable allocated on the stack. Yes it is true you are copying the value from your instruction_stack, BUT you are copying it to a LOCAL variable, then trying to return this copy that is on the stack. A pointer to this variable is what is returned, and when the function returns the value it points to is wiped out.  The reason Botman's code works is because you are returning a pointer to the actual value in your instruction_stack. 
+
+--------------------------------------------------
+02/17/03 at 13:39:20  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+"A pointer to this variable is what is returned..."
+
+No, it's not.  In the following code...
+code:
+int MyFunc(void)
+{
+   return 5;
+}
+
+...the return value is returned 'by value', not by reference.  The code that cheesemonster had does exactly the same thing, it copies a local value into a register and returns the value via that register (the stack isn't used for return values).
+
+The problem occurs because I think the compiler only allows 32 bit values to be returned in registers (usually EAX is used to return values from a function, but this is compiler specific and various compilers will use different registers for return values).
+
+There might be a compiler switch to allow 64 bit return values from functions.  You'd have to check your compiler documentation to determine if this option is available or not.
+
+botman
+
+--------------------------------------------------
+02/17/03 at 13:55:06  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+omg, I *have* to check all my prototypes then !! I more than often return whole structures by value, that certainly exceed the 32-bit size !!
+
+Still, I don't understand then, why does it seem to work ?
+
+
+--------------------------------------------------
+02/17/03 at 15:10:04  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+IF your confused about by instruction_stack, its just a class.
+:)
+code:
+
+class CInstruction
+{
+  double ValueOf ( void );
+  // bleh..
+}
+
+class CFunction
+{
+ CInstruction *instruction_stack;
+//blah..
+}
+
+
+--------------------------------------------------
+02/17/03 at 15:54:41  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+C++ should support any function return type (whether it's a native type like int, float, char *, or a user defined type like classes or structures).
+
+I've been searching for on-line references to the C++ function return type specifications from Stroustrup's ARM, but I can't seem to find anything (other than references saying that you can't overload a function by simply changing it's return type and not changing any of the calling arguments).
+
+'float' should work, 'double' should work (there's even examples in Stroustrup's ARM that use 'double'), and returning a structure or class should work (these essentially become memcpy()ed by the compiler at function return time).
+
+botman
+
+--------------------------------------------------
+02/18/03 at 01:09:21  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+QUOTE:
+'float' should work, 'double' should work [..] and returning a structure or class should work (these essentially become memcpy()ed by the compiler at function return time).
+
+botman
+
+
+
+aaaaahhhhhh
+I feel better now,
+
+Thanks,
+

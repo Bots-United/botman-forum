@@ -1,0 +1,445 @@
+--------------------------------------------------
+Subject: bsp tools and getting lighting levels
+--------------------------------------------------
+11/16/02 at 16:58:50  Posted by: RedFox (redfox@nildram.co.uk)
+--------------------------------------------------
+hey...well after coming back to my solution to getting the light level from bots, I discovered it only works if a human client is watching them...
+
+so...I decided to use the bsp tools to generate a wpt grid that stores light levels at each wpt...
+
+I understand the basics of the bsp structure and nodes and faces etc..and how lightmaps are added to textures etc
+what I can't seem to figure out (only been messing for a little while) is how to link a face (texture and light map) to a spatial coordinates!
+or at the very least...get the face the trace line colided with, so I can do it that way....
+
+if someone could give me a nudge in the right direction it would be useful :)
+
+or if someone has already done this, a link would be nice :D
+
+thx
+
+--------------------------------------------------
+11/17/02 at 04:04:21  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+Hey Tom/Red, I tried your method of checking light and it worked great, I didn't notice any flaws, from bot looking at bot / human client at bot / bot at human client light values :P I'm sure they worked great.
+
+If I did it a different way from you, you could try it this way :
+
+Storing an edict for each client holding the info_target you create.
+
+When a client joins, create the light value info_target and add it to the client.
+
+code:
+
+ClientPutInServer()
+...
+// I think this is slightly different ?
+            pPoint = CREATE_NAMED_ENTITY(MAKE_STRING("info_target")); 
+            DispatchSpawn(pPoint); 
+            pPoint->v.origin = pEntity->v.origin; 
+            pPoint->v.takedamage = DAMAGE_NO; 
+            pPoint->v.solid = SOLID_NOT; 
+            pPoint->v.owner = pEntity; 
+            pPoint->v.movetype = MOVETYPE_FLY; //noclip 
+            pPoint->v.classname = MAKE_STRING("entity_botlightvalue"); 
+            pPoint->v.nextthink = gpGlobals->time; 
+            pPoint->v.rendermode = kRenderNormal; 
+            pPoint->v.renderfx = kRenderFxNone; 
+            pPoint->v.renderamt = 0.0; 
+            SET_MODEL(pPoint, "models/mechgibs.mdl"); 
+            pPoint->v.flags = FL_ALWAYSTHINK;
+
+...
+
+                clients[i].pLight = pPoint;
+
+
+
+Update the light edict every frame, change the info_targets origin and make the light think again.
+
+code:
+
+            for( i = 0; i < 32; i ++ )
+            {
+                  if(( clients[i].client ) && ( clients[i].pLight ))
+                  {
+                        DispatchThink(clients[i].pLight);
+                        clients[i].lightvalue                  = GETENTITYILLUM(clients[i].pLight);
+                        clients[i].pLight->v.flags            &= ~FL_ONGROUND;
+                        clients[i].pLight->v.origin            = clients[i].client->v.origin + clients[i].client->v.view_ofs + Vector(0,0,4);
+                  }
+            }
+
+
+
+edit, oh btw notice up there the origin of the light, I think I had problems where the light wouldnt update when inside a player...
+
+code:
+
+ClientDisconnect()...
+
+      if(clients[i].pLight)
+            clients[i].pLight->v.flags = FL_KILLME;
+
+
+
+If you can see what I done, I'm sure it definately works okay. Although I dunno what you mean if a human client is watching them, perhaps the engine is ignoring updates to things a player cant see (If that was the case I would think that would only happen if one player is connected)? Anyway I'm sure this works :D
+
+[modified on 11/17/02 at 04:02:03]
+
+[modified on 11/17/02 at 04:04:21]
+--------------------------------------------------
+11/17/02 at 14:46:25  Reply by: RedFox (redfox@nildram.co.uk)
+--------------------------------------------------
+Well, what I found was, on a hlds without any humans connected (only bots) that the ent doesn't get its light value set...it stays at 128
+
+It needs to have been viewed by a human client to have it set....atleast thats what I think is happening...hehe
+
+Cheese, can you test this on a hlds and see if it happens to you aswell? get the bots to report their own light level from the ent...every few seconds usually does the trick
+
+thx
+
+--------------------------------------------------
+11/18/02 at 13:57:43  Reply by: RedFox (redfox@nildram.co.uk)
+--------------------------------------------------
+(after some more testing) seems to be that it won't work unless you go into spec mode and follow the bot around....
+or are looking at the bot (in spec mode)...or after being in spec mode
+
+which is why the hlds is a good test
+
+wonder if its client side info feeding back to the server?! if it isn't perhaps its somthing that can be facked....hmm
+ClientInPVS anyone?! :p wonder if thats the puppy
+
+gotta be a solution...
+wonder if valve fixed it for the bots in CS:CZ?
+wonder if they use light levels atall
+hehe
+
+--------------------------------------------------
+11/18/02 at 15:38:54  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+lol, haven't tried that test yet, will do when I can be bothered :p I would think that the engine may do something like that to reduce lag (very slightly of course :)) instead of sending light data or whatever all the time to clients who dont need it I guess. If that's definately a problem then ClientInPVS sounds like a good solution. :P
+
+--------------------------------------------------
+11/21/02 at 16:08:56  Reply by: RedFox (redfox@nildram.co.uk)
+--------------------------------------------------
+:)
+Well, I now know alot more about how the BSP format works
+
+I've built a modified trace line that returns the RGB lighting value from a face (only really works on floors/ceilings you can stand on, but could be modified to work on walls)
+So going to use that to produce loads of wpts with lighting values :)
+finally, I proper working system 
+hehe
+
+Anyone want the source?!
+
+Hmm, better recheck that GNU again, but if I use it for compiling info for the bot, does it have to be open source? obviously credit goes to botman as usual :)
+
+--------------------------------------------------
+11/21/02 at 17:03:51  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+OMG!!!!
+Yes !
+I want!
+please !
+/me falling on knees, joining hands...
+
+
+--------------------------------------------------
+11/21/02 at 17:31:25  Reply by: BrianL (halfkiller@hotmail.com)
+--------------------------------------------------
+Me as-well I'd like to learn of what you've done, email it to: bjl667@sbcglobal.net  Ofcourse its your work so I give full credit to everything in there I never steal code.
+
+--------------------------------------------------
+11/22/02 at 05:06:02  Reply by: RedFox (redfox@nildram.co.uk)
+--------------------------------------------------
+Anyone know howto upload to fileplanet?! cus I'll post the whole project their...
+
+anyways..you know the 'T' for trace texture name in BSP view, well I edited that, so you can see the light val by pointing at something and pressing T
+the trace functions a lill weird if you face directly down though...that needs fixing (trace a wpt thingy and see what I mean)
+
+Before you get too excited, this only works in the BSP viewer, and not in halflife...you'll either have to precompute stuff or load the BSP into your halflife DLL aswell
+
+The results are effected by the brightness value from the config :)
+
+code:
+
+    if (keys['T'])  // print the texture name
+    {
+        VectorCopy(m_camera.eye(), vec_start);
+
+        m_camera.fwd_vec(vec_end);
+        VectorNormalize(vec_end);
+
+        VectorScale(vec_end, -4096.0, vec_end);
+        VectorAdd(vec_start, vec_end, vec_end);
+
+        TraceLine (vec_start, vec_end, &trace);
+
+        if (trace.fraction < 1.0)
+        {
+            dface_t *face = TraceLineFindFace(vec_start, &trace);
+
+            if (face != NULL)
+            {
+                texinfo_t *ti = texinfo + face->texinfo;
+
+                dmiptexlump_t *pMipTexLump = (dmiptexlump_t *)dtexdata;
+
+                if (pMipTexLump->dataofs[ti->miptex] != -1)  // not unused mip lump
+                {
+                    int x, y, len;
+
+                    miptex_t *pMipTex = (miptex_t*)(dtexdata + pMipTexLump->dataofs[ti->miptex]);
+
+
+
+                              char msg[255];
+                              int c;
+                              int width, height;
+                              int size[2];
+                              float mins[2], maxs[2];
+
+                              // compute s and t extents
+                              CalcSurfaceExtents(face, mins, maxs);
+                              for (c = 0; c < 2; c++)
+                              {
+                                    float tmin = (float) floor(mins[c]/16.0f);
+                                    float tmax = (float) ceil(maxs[c]/16.0f);
+
+                                    size[c] = (int) (tmax-tmin);
+                              }
+
+                              width = size[0]+1;
+                              height = size[1]+1;
+                              int lsz = width * height * 3;  // RGB buffer size
+
+                              //get the light data!!
+                              if (face->styles[0] != -1)
+                              {
+                                    unsigned char *data;
+
+                                    data = (unsigned char *)malloc(lsz);
+
+                                    memcpy(data, dlightdata + face->lightofs + (lsz * 0), lsz);
+
+                                    float f, light_adjust;
+                                    int inf;
+
+                                    light_adjust = 1.0f - config.brightness;
+
+                                    // scale lightmap value...
+                                    int i;
+                                    for (i = 0; i < lsz; i++)
+                                    {
+                                          f = (float)pow((data[i]+1)/256.0, light_adjust);
+                                          inf = f * 255.0f + 0.5f;
+                                          if (inf < 0)
+                                             inf = 0;
+                                          if (inf > 255)
+                                             inf = 255;
+                                          data[i] = (int)inf;
+                                    }
+
+                                    //now get the light val from inside the face...need the co-ords
+                                    //get the face
+                                    face_t *fface = TraceLineFindFFace(vec_start, &trace);
+
+                                          vec3_t temp1;
+                                       mins[0] = mins[1] =  999999;
+                                       maxs[0] = maxs[1] = -999999;
+                                          for (i = 0; i < fface->count; i++)
+                                          {
+                                                //get the proper min/max..for working out the co-ords
+                                                int c = fface->first + i;
+                                                VectorCopy(vt_array[c], temp1);
+                                                if(temp1[0]<mins[0])
+                                                      mins[0]=temp1[0];
+                                                if(temp1[1]<mins[1])
+                                                      mins[1]=temp1[1];
+                                                if(temp1[0]>maxs[0])
+                                                      maxs[0]=temp1[0];
+                                                if(temp1[1]>maxs[1])
+                                                      maxs[1]=temp1[1];
+                                          }
+                                            double tv[3];
+                                            tv[0]=floor(trace.endpos[0]);
+                                            tv[1]=floor(trace.endpos[1]);
+                                            //tv[2]=(float)trace.endpos[2];
+                                            //trace x - face (min) x....scaled by (actual x size) / width (width being the x 'scale')
+                                            tv[0]=(tv[0]-mins[0])/((maxs[0]-mins[0])/(width-1));
+                                            tv[1]=(tv[1]-mins[1])/((maxs[1]-mins[1])/(height-1));
+                                            //tv[2]=mins[2]-tv[2];
+                                          
+                                          //sprintf(msg,"%d %d",data[0],data[1]);
+                                            //sprintf(msg,"%f %f",temp1[0],temp1[1]);
+                                            //sprintf(msg,"%f %f",mins[0],mins[1]);
+                                                //sprintf(msg,"%d",c);
+                                            //sprintf(msg,"%f %f %d %d",tv[0],tv[1],width,height);
+
+                                            int myoff,a,b;
+                                            a=(int)tv[0];
+                                            b=(int)tv[1];
+                                            //invert the height
+                                            b=(height-1)-b;
+                                            //multiply height by width, to create a data offset
+                                            b=b*width;
+                                            myoff=(a+b)*3;
+                                            //sprintf(msg,"%d %d %d %d",a,b,width,height);
+                                            sprintf(msg,"%d %d %d",data[myoff],data[myoff+1],data[myoff+2]);
+                                      free(data);
+                              }        
+                    //len = strlen(pMipTex->name);
+                              len = strlen(msg);
+
+                    x = config.width / 2;
+                    y = config.height / 2;
+
+                    // rescale X and Y to keep text center regardless of screen size...
+                    if (config.width < 800)
+                        x = x * (800.0f / (float)config.width);
+                    if (config.height < 600)
+                        y = y * (600.0f / (float)config.height);
+
+                    // center text on screen (down slightly from center)
+                    x = x - len * 8;  // each char is 16 units wide
+                    y = y - 32;
+                    //print_text(x, y, pMipTex->name);
+                              print_text(x, y, msg);
+                }
+            }
+        }
+    }
+
+
+
+and add this to the end of render.cpp
+
+code:
+
+#define TWO_PI 6.2831853f
+#define DELTA 0.001f
+
+face_t *TraceLineFindFFace(vec3_t start, trace_t *tr)
+{
+   vec3_t v_intersect, v_normalized, v_temp;
+   //dface_t *return_face = NULL;
+   int return_face=-1;
+   float min_diff = 9999.9f;
+
+   VectorSubtract(tr->endpos, start, v_normalized);
+   VectorNormalize(v_normalized);
+
+   dleaf_t *endleaf = TracePointInLeaf(tr->endpos);
+
+   unsigned short *p = dmarksurfaces + endleaf->firstmarksurface;
+
+   // find a plane with endpos on one side and hitpos on the other side...
+   for (int i = 0; i < endleaf->nummarksurfaces; i++)
+   {
+      int face_idx = *p++;
+
+      dface_t *face = &dfaces[face_idx];
+
+      dplane_t *plane = &dplanes[face->planenum];
+
+      float d1 = DotProduct(tr->endpos, plane->normal) - plane->dist;
+      float d2 = DotProduct(tr->hitpos, plane->normal) - plane->dist;
+
+      if ((d1 > 0 && d2 <= 0)(d1 <= 0 && d2 > 0))
+      {
+         // found a plane, find the intersection point in the plane...
+
+         vec3_t plane_origin, v_angle1, v_angle2;
+
+         VectorScale(plane->normal, plane->dist, plane_origin);
+
+         float dist = DistanceToIntersection(start, v_normalized, plane_origin, plane->normal);
+
+         if (dist < 0)
+            return NULL;  // can't find intersection
+
+         VectorScale(v_normalized, dist, v_temp);
+         VectorAdd(start, v_temp, v_intersect);
+
+         // loop through all of the vertexes of all the edges of this face and
+         // find the angle between vertex-n, v_intersect and vertex-n+1, then add
+         // all these angles together.  if the sum of these angles is 360 degrees
+         // (or 2 PI radians), then the intersect point lies within that polygon.
+
+         float angle_sum = 0.0f;
+
+         // loop though all of the edges, getting the vertexes...
+         for (int edge_index = 0; edge_index < face->numedges; edge_index++)
+         {
+             vec3_t vertex1, vertex2;
+
+            // get the coordinates of the vertex of this edge...
+            int edge = dsurfedges[face->firstedge + edge_index];
+
+            if (edge < 0)
+            {
+               edge = -edge;
+               dedge_t* e = &dedges[edge];
+               VectorCopy(dvertexes[e->v[1}}.point, vertex1);
+               VectorCopy(dvertexes[e->v[0}}.point, vertex2);
+            }
+            else
+            {
+               dedge_t* e = &dedges[edge];
+               VectorCopy(dvertexes[e->v[0}}.point, vertex1);
+               VectorCopy(dvertexes[e->v[1}}.point, vertex2);
+            }
+
+            // now create vectors from the vertexes to the plane intersect point...
+            VectorSubtract(vertex1, v_intersect, v_angle1);
+            VectorSubtract(vertex2, v_intersect, v_angle2);
+
+            VectorNormalize(v_angle1);
+            VectorNormalize(v_angle2);
+
+            // find the angle between these vectors...
+            float angle = DotProduct(v_angle1, v_angle2);
+
+            angle = (float)acos(angle);
+
+            angle_sum += angle;
+
+            edge++;
+         }
+
+         // is the sum of the angles 360 degrees (2 PI)?...
+         if ((angle_sum >= (TWO_PI - DELTA)) && (angle_sum <= (TWO_PI + DELTA)))
+         {
+            // find the difference between the sum and 2 PI...
+            float diff = (float)fabs(angle_sum - TWO_PI);
+
+            if (diff < min_diff)  // is this the BEST so far?...
+            {
+               min_diff = diff;
+               return_face = face_idx;
+            }
+         }
+      }
+   }
+
+   return faces[return_face];
+}
+
+
+
+[modified on 11/22/02 at 05:06:02]
+--------------------------------------------------
+11/22/02 at 05:15:39  Reply by: RedFox (redfox@nildram.co.uk)
+--------------------------------------------------
+One more thing...if you notice the results are a little stark..thats because the gradient you see is done by the GL rendering process...this trace gets the data this was based on...which is not smoothed out :p
+
+It ONLY works on floors (and ceilings).....so if you do a trace on a wall and wonder why its not returning the right value...thats why :p
+But could be modified todo so....not by me though
+
+It could also be modified to read texture RGB values (if you wanted to be really clever) and combine them with the light value 
+hehe
+Someone wanted this if I remeber
+
+Doesn't get light values from the surface of the water or func_walls etc yet, thats the next bit todo
+Should just need a modified trace line function :)
+

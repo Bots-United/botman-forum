@@ -1,0 +1,95 @@
+--------------------------------------------------
+Subject: Counter-Strike teams
+--------------------------------------------------
+12/16/03 at 13:15:22  Posted by: LeonThePro (sirgalahad@ozgn.com)
+--------------------------------------------------
+Hi, I've hit a little snag. Im wondering if any of you guys have a solution for me (other wise I may have to post on the hlcoding list). I need to get a player's current team in counter-strike without using their model to get the team. Mods like TFC has pev->team as their team, counter-strike does not seem to have the same, any ideas?
+
+--------------------------------------------------
+12/16/03 at 13:28:58  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+The team is stored somewhere in the pvPrivateData block (search this forum for "pvPrivateData").  You'll have to identify which byte (or int) is used to store the team value yourself (unless someone else volunteers this information).  You can probably do this fairly easily by dumping the block, changing teams, then dumping the block again to see what changed.
+
+Why can't you use the player's model?
+
+botman
+
+
+--------------------------------------------------
+12/16/03 at 13:33:04  Reply by: LeonThePro (sirgalahad@ozgn.com)
+--------------------------------------------------
+My server supports custom player models, so I cant tell which team a person is on when they change their model (I'm trying to set up color maps like TFC).
+
+--------------------------------------------------
+12/16/03 at 13:59:19  Reply by: LeonThePro (sirgalahad@ozgn.com)
+--------------------------------------------------
+Ok, I figured out how to get it to work. I caught the client index in the ScoreInfo message and the team number and stored it in pev->team variable.
+
+--------------------------------------------------
+12/16/03 at 17:26:44  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Now this is a good idea ! Can I borrow it for my bots ?
+
+
+--------------------------------------------------
+12/16/03 at 19:29:30  Reply by: LeonThePro (sirgalahad@ozgn.com)
+--------------------------------------------------
+Sure, you want me to post the code for getting the team from client messages?
+
+--------------------------------------------------
+12/16/03 at 19:54:01  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Well if you insist... :)
+
+
+--------------------------------------------------
+12/17/03 at 04:08:39  Reply by: LeonThePro (sirgalahad@ozgn.com)
+--------------------------------------------------
+well if you can figure it then i dont have too =P
+
+--------------------------------------------------
+12/17/03 at 04:29:49  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+LOL... this is just taunting people ;D
+OK, will do it myself then.
+
+
+--------------------------------------------------
+12/17/03 at 09:17:06  Reply by: (3)COLORS (shc5085@tm.net.my)
+--------------------------------------------------
+Yeah, I agree with Pierre.
+
+--------------------------------------------------
+12/19/03 at 17:52:33  Reply by: FierceRecon (infected2506@hotmail.com)
+--------------------------------------------------
+if you're intersted to do it without messages, you might wonna try to play around with pvPrivateData...
+
+code:
+
+(in ClientCommand)
+int srch = atoi(CMD_ARGV(1));
+            float fsrch = atof(CMD_ARGV(2));
+            CLIENT_PRINTF(pEntity, print_console, UTIL_VarArgs("Looking for (int) %d in your player private data...\n", srch));
+            CLIENT_PRINTF(pEntity, print_console, UTIL_VarArgs("Looking for (float) %f in your player private data...\n", fsrch));
+            CLIENT_PRINTF(pEntity, print_console, UTIL_VarArgs("Looking for (string) %s in your player private data...\n", CMD_ARGV(3)));
+            unsigned char *p;   
+            p = (unsigned char *)GET_PRIVATE(pEntity); 
+            for (int index = 0; p && index < 1000; index++)
+            {
+                  if (*(int*)p == srch)
+                        CLIENT_PRINTF(pEntity, print_console, UTIL_VarArgs("The value of (int) %d was found at address %p, which is offset %d\n", srch, p, index));
+                  else if (fsrch && *(float*)p == fsrch)
+                        CLIENT_PRINTF(pEntity, print_console, UTIL_VarArgs("The value of (float) %f was found at address %p, which is offset %d\n", fsrch, p, index));
+                  else if (CMD_ARGV(3) && *(char *)p && FStrEq((char *)p, CMD_ARGV(3)))
+                        CLIENT_PRINTF(pEntity, print_console, UTIL_VarArgs("The value of (char) %s was found at address %p, which is offset %d\n", CMD_ARGV(3), p, index));
+                  p++;
+            }
+            CLIENT_PRINTF(pEntity, print_console, UTIL_VarArgs("Done!\n"));
+
+
+
+Feel free to change it...
+(the string only uses the 3rd value... no spaces)
+trace <int> <float> <string>
+
+[modified on 12/19/03 at 17:52:33]

@@ -1,0 +1,43 @@
+--------------------------------------------------
+Subject: pfnClientCommand in engine.cpp
+--------------------------------------------------
+07/31/01 at 08:02:56  Posted by: ProgramMan (thevbfreak.pa@netzero.net)
+--------------------------------------------------
+I have noticed that pfnClientCommand in engine.cpp does not call its engine counterpart; the code for pfnClientCommand is like this:
+
+void pfnClientCommand(edict_t* pEdict, char* szFmt, ...)
+{
+   if (debug_engine) { fp=fopen("bot.txt","a"); fprintf(fp,"pfnClientCommand=%s\n",szFmt); fclose(fp); }
+   return;
+}
+
+Why is the engine counterpart of ClientCommand not called, and would it be safe to do so?  I ask this because sounds do not get played on radio commands (I am working with Open-Source JailBreak).  I get this in the bot.txt file:
+
+ClientCommand: radio1
+pfnServerPrint: (TEAM)ProgramMan (radio): We need guards at the jail!
+
+pfnClientCommand=play %s /* <--this is the line */
+
+pfnMessageBegin: edict=1df2550 dest=1 type=74
+pfnWriteByte: 1
+pfnWriteString: (TEAM)ProgramMan (radio): We need guards at the jail!
+
+Obviously, the play command never gets called because pfnClientCommand "return"s before it can.
+
+[modified on 07/31/01 at 08:02:56]
+--------------------------------------------------
+08/01/01 at 21:41:32  Reply by: ProgramMan (thevbfreak.pa@netzero.net)
+--------------------------------------------------
+I fixed my problem by adding a check for 'play':
+code:
+
+if ((strncmp(szFmt,"play",4) == 0) && !(pEdict->v.flags & FL_FAKECLIENT))
+   (*g_engfuncs.pfnClientCommand)(pEdict, szFmt);
+else
+   return;
+
+
+
+(Edit) Added check for bots (/Edit)
+
+[modified on 08/01/01 at 21:41:32]

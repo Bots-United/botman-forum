@@ -1,0 +1,82 @@
+--------------------------------------------------
+Subject: hud text
+--------------------------------------------------
+12/12/03 at 18:06:10  Posted by: Blood_Dust (di@html.com)
+--------------------------------------------------
+ok i would like to ask for a moment of your time in helping me. Well i have been messing around with the hl sdk again and would like to know how to get my text to show for the whole time in the mod. no errors, but when you join you can see it but after you die it is no longer there?
+
+Multiplayer_gamerules.cpp
+code:
+
+void CHalfLifeMultiplay :: ShowGameInfo( CBasePlayer *pPlayer, bool)
+{
+      char szText[201];
+      hudtextparms_t     hText;
+
+      sprintf(szText, "Dark-Side Mod by ......");
+            
+      memset(&hText, 0, sizeof(hText));
+      hText.channel = 1265;
+      // These X and Y coordinates are just above
+      //  the health meter.
+      hText.x = 0.09;
+      hText.y = 0.85;
+    
+      hText.effect = 0;    // Fade in/out
+                  
+      hText.r1 = 50; 
+      hText.g1 = 255;
+      hText.b1 = 130;
+      hText.a1 = 255;
+      
+      hText.r2 = 50;
+      hText.g2 = 255;
+      hText.b2 = 130;
+      hText.a2 = 255;
+      
+      hText.fadeinTime = 5;
+      hText.fadeoutTime = 50;
+      hText.holdTime = 500;
+      hText.fxTime = 50;
+      
+      UTIL_HudMessage(pPlayer ,hText, szText);
+
+}
+
+code:
+void CHalfLifeMultiplay :: InitHUD( CBasePlayer *pl )
+{
+      ShowGameInfo ( pl, false);
+      
+      // notify other clients of player joining the game
+      UTIL_ClientPrintAll( HUD_PRINTNOTIFY, UTIL_VarArgs( "%s has joined the game\n", 
+            ( pl->pev->netname && STRING(pl->pev->netname)[0] != 0 ) ? STRING(pl->pev->netname) : "unconnected" ) );
+
+      // team match?
+      if ( g_teamplay )
+      {
+            UTIL_LogPrintf( "\"%s<%i><%s><%s>\" entered the game\n",  
+                  STRING( pl->pev->netname ), 
+                  GETPLAYERUSERID( pl->edict() ),
+            
+
+--------------------------------------------------
+12/12/03 at 20:04:06  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+You can't. Not with any method that I know.
+
+All you can do, to my knowledge, is to force the display of a particular message every time a client resets its health.
+
+There may be better methods, but I'm not aware of them...
+
+
+--------------------------------------------------
+12/12/03 at 20:17:26  Reply by: LazyOne (the_lazy_one_09@hotmail.com)
+--------------------------------------------------
+If it isn't a server-side mod just add the text in the client in the function CHud::Redraw.
+
+Use CHud::DrawHudString to add the text to the screen.
+
+If not, just try sending it every 0.25 - 1 seconds.
+
+

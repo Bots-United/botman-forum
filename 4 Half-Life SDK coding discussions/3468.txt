@@ -1,0 +1,149 @@
+--------------------------------------------------
+Subject: [metamod] ClientCommand()
+--------------------------------------------------
+07/23/02 at 06:47:00  Posted by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Hello all,
+
+This question is for those of you who are experienced in coding Metamod plugins (yeah botman, don't flee away I saw you ;D)
+
+I'm coding a Metamod plugin in which I want to force one of the clients to issue a ClientCommand. I know ClientCommand has 2 implementations, one client-side (1 arg: the edict_t) and one server-side (2 args: the edict_t and the command string). So I have to use that one, right ?
+Anyway seems like I can't get my client to issue that command ! :(
+code:
+
+    Serv_ClientCommand (pPlayer, "say BLAHBLAHBLAH\n"); // let this player say something
+
+[...]
+void Serv_ClientCommand (edict_t *pEdict, char *szFmt, ...)
+{
+   va_list ap;
+   char buf[1024];
+
+   va_start (ap, szFmt);
+   vsnprintf (buf, sizeof (buf), szFmt, ap);
+   va_end (ap);
+
+   RETURN_META (MRES_IGNORED);
+}
+
+
+...and, well, I think I likned the function correctly, right ?
+code:
+
+enginefuncs_t meta_engfuncs = {
+   NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
+   NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
+   NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, Serv_ClientCommand, NULL,
+   NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
+   NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
+   NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
+   NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
+   NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
+   NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
+   NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
+};
+
+
+C_DLLEXPORT int GetEngineFunctions (enginefuncs_t *pengfuncsFromEngine, int *interfaceVersion)
+{
+   memcpy (pengfuncsFromEngine, &meta_engfuncs, sizeof (enginefuncs_t));
+   return TRUE;
+}
+
+
+
+Please tell me where I am wrong ??? ???
+Thanks in advance
+
+[P.S. if you want the whole plugin source code, just ask me, it's very short. PLEASE PLEASE I need your help !!]
+
+[modified on 07/23/02 at 06:47:00]
+--------------------------------------------------
+07/23/02 at 06:51:55  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Your Serv_ClientCommand() doesn't do anything except format a string in the "buf" buffer.
+
+Did you mean to call the engine pfnClientCommand() after formatting the string?
+code:
+void Serv_ClientCommand (edict_t *pEdict, char *szFmt, ...)
+{
+  va_list ap;
+  char buf[1024];
+
+  va_start (ap, szFmt);
+  vsnprintf (buf, sizeof (buf), szFmt, ap);
+  va_end (ap);
+
+  (*g_engfuncs.pfnClientCommand)(pEdict, buf);
+
+  RETURN_META (MRES_IGNORED);
+}
+
+
+botman
+
+--------------------------------------------------
+07/23/02 at 06:56:27  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Ahhhh this clarifies many things. I thought the macro RETURN_META() was doing the function calls for me, so that's not the way it is ?
+
+Thank you botman, 'm trying that right now. Back in five minutes.
+
+
+
+--------------------------------------------------
+07/23/02 at 07:03:26  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+OK, it works.
+Thanks !
+/me starting to understand the Metamod thingy a lil better
+
+
+--------------------------------------------------
+07/23/02 at 11:43:14  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+The RETURN_META() function just returns back to the metamod DLL code.  You can tell metamod to continue going down the chain of plugin DLL by returning a normal status (MRES_IGNORED, which means this plugin has ignored the function call and wants to allow other plugins and the MOD DLL code to get called with this function).  You can tell metamod to not continue down the chain of plugins by returning the MRES_SUPERCEDE status (which tells metamod to not call any other plugin DLLs including the game DLL).
+
+The META_RETURN() function is simply a return from the HOOK, nothing else.
+
+botman
+
+--------------------------------------------------
+07/23/02 at 20:04:11  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+So in your opinion, I should better feed it with a MRES_HANDLED instead of a MRES_IGNORED since in this example I've actually called the function from the engine in my plugin ?
+
+
+
+--------------------------------------------------
+07/24/02 at 06:03:25  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+I don't think there's any significant difference between...
+
+MRES_IGNORED (plugin didn't take any action)
+
+...and...
+
+MRES_HANDLED (plugin did something but real function should still be called)
+
+...to me, these are the same thing since the Game DLL function being called doesn't get to see the metamod return status.
+
+The only ones I use are...
+
+MRES_IGNORED (plugin didn't take any action)
+
+...which allows you to process data in a hooked function and continue to call the Game DLL (or other plugin) function.
+
+MRES_SUPERCEDE (skip real function, use my return value)
+
+...which allows you to process data and prevent the Game DLL (or other plugins) from getting called with that function.
+
+botman
+
+--------------------------------------------------
+07/24/02 at 08:18:02  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Yeah, it's hard for me too to tell the difference between these two, since they apparently have the same results. I will go on this way then.
+Thanks for your explanations, botman :)
+
+

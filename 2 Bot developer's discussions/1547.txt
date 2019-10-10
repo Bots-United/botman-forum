@@ -1,0 +1,214 @@
+--------------------------------------------------
+Subject: compiling Teambot for Linux?
+--------------------------------------------------
+04/17/01 at 17:39:51  Posted by: spalVl (mtreichler@0nebox.com)
+--------------------------------------------------
+I have been looking @ Teambot and it looks promising, the trouble is I run a Linux server and there is no linux port for it to date.  I know linux pretty well, but next to nada about compling and since elite is releasing the source.  Can someone point me in the right direction to figure out how to do this I skimmed over Botman's guide and I didn't see many specific things on Linux. 
+
+--------------------------------------------------
+04/18/01 at 03:17:35  Reply by: eLiTe (ali@elitegamer.fsnet.co.uk)
+--------------------------------------------------
+I don't know much about it either, so I can't help, sorry
+
+--------------------------------------------------
+04/18/01 at 05:40:18  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+The HPB bot template source code will build for Linux with no modifications.  If the Linux code hasn't been stripped out of the TEAM bot source then you should be able to use the Linux makefile that comes with the HPB bot template source code to build the TEAM bot for Linux.  If the Linux code has been stripped out you may be able to compare the few files that have Linux specific stuff and add those lines back in.  Just grep for "linux" in the HPB bot template code and you'll find the places where things are different for Linux versions.
+
+botman
+
+--------------------------------------------------
+04/18/01 at 12:13:26  Reply by: eLiTe (ali@elitegamer.fsnet.co.uk)
+--------------------------------------------------
+Okay I HAVE left all the linux stuff in!
+
+If you manage to get it working for Linux then post a message in the TEAMbot forum - someone asked about a Linux build of TEAMbot
+
+--------------------------------------------------
+04/18/01 at 21:34:01  Reply by: spalVl (mtreichler@0nebox.com)
+--------------------------------------------------
+I will document it when I get it figured out.  I have almost got it, it starts to compile but I get the following error.
+"h_export.cpp:77: ISO C++ forbids declaration of `GiveFnptrsToDll' with
+no type"
+I don't think I transfered the files to the Linux box using ASCII.  I had to use the IE ftp service.  My WinME box took a dump and I had WS_FTP on it which can choose transfer method.
+
+--------------------------------------------------
+04/18/01 at 22:58:32  Reply by: spalVl (mtreichler@0nebox.com)
+--------------------------------------------------
+Ok I put the files back using ASCII and if I modify the h_export.cpp to as follows it works for that file
+
+#ifndef __linux__
+#ifdef __BORLANDC__
+void DLLEXPORT void EXPORT GiveFnptrsToDll(enginefuncs_t* pengfuncsFromEngine, globalvars_t *pGlobals)
+#else
+void DLLEXPORT GiveFnptrsToDll( enginefuncs_t* pengfuncsFromEngine, globalvars_t *pGlobals )
+#endif
+#else
+void DLLEXPORT GiveFnptrsToDll( enginefuncs_t* pengfuncsFromEngine, globalvars_t *pGlobals )
+#endif
+
+But I am now getting the following error when compling waypoint.cpp
+
+cc -Dstricmp=strcasecmp -Dstrcmpi=strcasecmp -m486 -O2 -w -I../engine -I../comm
+on -I../pm_shared -c waypoint.cpp -o waypoint.o
+waypoint.cpp: In function `void WaypointRouteInit ()':
+waypoint.cpp:1691: `access' undeclared (first use this function)
+waypoint.cpp:1691: (Each undeclared identifier is reported only once 
+for each function it appears in.)
+waypoint.cpp:1699: `close' undeclared (first use this function)
+waypoint.cpp:1861: `unlink' undeclared (first use this function)
+make: *** [waypoint.o] Error 1
+
+Any help would be great am a green at C++, I am running RH 7.0 and gcc 2.96.  
+
+--------------------------------------------------
+04/19/01 at 00:31:37  Reply by: pikachu (emperorstuart@hotmail.com)
+--------------------------------------------------
+You could try and making a "virtual machine" between the linux HL server and the windows dll.
+The Virtual Machine (in this case the mod according to the server) could load the dll using its own custom functions.
+
+Linux_Server--->"Virtual Machine in a dll"--->Windows_Dll_of_mod
+
+--------------------------------------------------
+04/19/01 at 05:09:10  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+Make sure you still have this at the top of the waypoint.cpp file...
+code:
+#ifndef __linux__
+#include <io.h>
+#endif
+#include <fcntl.h>
+#ifndef __linux__
+#include <sys\stat.h>
+#else
+#include <sys/stat.h>
+#endif
+
+...or if you want to make it Linux specific...
+code:
+#include <fcntl.h>
+#include <sys/stat.h>
+
+
+botman
+
+--------------------------------------------------
+04/19/01 at 16:50:54  Reply by: eLiTe (ali@elitegamer.fsnet.co.uk)
+--------------------------------------------------
+Also note that I DON'T use WaypointRouteInit, I just do my own 'MakePaths' command. Look in WaypointLoad to see what I mean. Don't know if it will make much of a difference, but I probably only use less than half the functions in Waypoint.cpp
+
+--------------------------------------------------
+04/19/01 at 18:34:55  Reply by: spalVl (mtreichler@0nebox.com)
+--------------------------------------------------
+Fixed the problem with the waypoint.cpp file, I had to add the line 
+#include <unistd.h> 
+to the waypoint.cpp file under the linux section. From what I found on RedHat's site the access, close, and unlink functions are in the <unistd.h> library.  
+
+So the only other change to your source is the "void DLLEXPORT" I mentioned earlier to h_export.cpp.  Do you think that will be a problem?
+
+After the waypoint.cpp it compiled fine and I have my first test. I will let you know how I fare.    
+
+--------------------------------------------------
+04/19/01 at 19:49:58  Reply by: spalVl (mtreichler@0nebox.com)
+--------------------------------------------------
+I got it compiled to TEAMbot.so and my structure is as follows
+
+./hlds_l
+./hlds_l/TEAMbot
+./hlds_l/cstrike
+
+I placed the liblist.gam file inside /hlds_l/cstrike
+I placed the compiled TEAMbot.so inside /hldsl/TEAMbot
+I run my scripts to start the server from /hlds_l
+
+The server starts, I see no refrence to what .so it is using, but none of the bot.cfg scripts get executed nor can I add bots using the addbot,  bot addbot, sv_addbot commands.  Any ideas?
+
+--------------------------------------------------
+04/20/01 at 05:09:42  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+You should have this...
+
+gamedll_linux "../TEAMbot/TEAMbot.so"
+
+...in your cstrike/liblist.gam file.  Is this what you have?  The default directory for the MOD will be "cstrike" so make sure the bot.cfg and other bot related files are in the cstrike directory unless the explicitly get loaded from the "../TEAMbot/" directory.
+
+botman
+
+--------------------------------------------------
+04/20/01 at 06:08:00  Reply by: eLiTe (ali@elitegamer.fsnet.co.uk)
+--------------------------------------------------
+Yes, bot.cfg gets loaded from the TEAMbot directory, so that you don't have to copy files about (only thing you have to change is the liblist.gam)
+
+--------------------------------------------------
+04/20/01 at 15:33:50  Reply by: spalVl (mtreichler@0nebox.com)
+--------------------------------------------------
+da, I didn't know liblist.gam was just a text file. I am now getting an error when starting the server about an undefined sysmbol for NewRound and 2 DLL API call failures.  I think this may have something to do with the GiveFnptrsToDLL  lines I messed with in h_export.cpp, I am going to research that function, it looks like it is defined in HL SDK
+
+--------------------------------------------------
+04/21/01 at 15:43:23  Reply by: eLiTe (ali@elitegamer.fsnet.co.uk)
+--------------------------------------------------
+Well I use the 'NewRound' function which is in teambot_utils to check for new rounds
+
+It is called in BotThink near the top, and also in FindEntityByString (in engine.cpp) which looks for the 'info_player_start' entity which is only there when a new round starts.
+
+So check teambot_utils.h, teambot_utils.cpp and all the places where NewRound is called for any errors.
+
+--------------------------------------------------
+04/22/01 at 05:02:18  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+Also make sure that you're added teambot_utils.o to the makefile.
+
+botman
+
+--------------------------------------------------
+04/22/01 at 05:19:29  Reply by: spalVl (mtreichler@0nebox.com)
+--------------------------------------------------
+oops, I used Botmans makefile_linux and it doesn't include teambot_util.cpp in the compile.  I am gonna get Elite's new v5 source code today and try again from scratch.  BTW, botman or DarkYouth, what distrubtions of Linux do you use?  This is my first time compiling and reviewing code without a README, so excuse the "beginner errors" 
+
+--------------------------------------------------
+04/22/01 at 08:44:50  Reply by: eLiTe (ali@elitegamer.fsnet.co.uk)
+--------------------------------------------------
+Also you should check the buying code in teambot_combat  - in the BuyItem function you should put a counter to make sure the while loop doesn't run more than 50 times otherwise there may be an infinite loop (that is what I changed from 5 to 5.1)
+
+--------------------------------------------------
+04/22/01 at 13:52:25  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+I use RedHat 6.2 (with egcs-1.1.2 release).
+
+botman
+
+--------------------------------------------------
+04/29/01 at 01:30:30  Reply by: dtmullic (dtmullican@hotmail.com)
+--------------------------------------------------
+Well, I've gotten TEAMbot to compile on my Linux box(RedHat 7.1). There are several places where BuildFileName needs to be modified since the hardcoded paths are in a windows format(c:\blah\blah). However, for some reason bot.cfg is not being executed(but no warning messages on console :( ). Also, whenever I spawn a bot(bot addbot) I get a seg fault which seems to originate in waypoint.cpp in function WaypointFindPath(). Anyone have any ideas?
+
+--------------------------------------------------
+04/29/01 at 01:31:34  Reply by: dtmullic (dtmullican@hotmail.com)
+--------------------------------------------------
+Oh, one more thing. It only segfaults if the map has an existing waypoint file that was loaded.
+
+--------------------------------------------------
+04/29/01 at 01:37:56  Reply by: dtmullic (dtmullican@hotmail.com)
+--------------------------------------------------
+Argh, meant to include this code snippet. I had to modify this line in h_export.cpp to get it to work right.
+
+#ifndef __linux__
+#ifdef __BORLANDC__
+extern "C" DLLEXPORT void EXPORT GiveFnptrsToDll(enginefuncs_t* pengfuncsFromEngine, globalvars_t *pGlobals)
+#else
+void DLLEXPORT GiveFnptrsToDll( enginefuncs_t* pengfuncsFromEngine, globalvars_t *pGlobals )
+#endif
+#else
+extern "C" DLLEXPORT void EXPORT GiveFnptrsToDll( enginefuncs_t* pengfuncsFromEngine, globalvars_t *pGlobals )
+#endif
+
+--------------------------------------------------
+05/07/01 at 15:02:28  Reply by: spalVl (mtreichler@0nebox.com)
+--------------------------------------------------
+Yep, I am pretty much at the same spot you are at.  I got the TEAMbot.so compiled and fixed all the paths but it crashes.  What I did notice is that when I compiled incorrectly so that it would not load the waypoints file it would run (the bots would spin in circles), and I could add bots with botman's commands but when I fixed the paths to reflect Linux paths and tried to add bots it crashed.  I think the problem is that Elite doesn't have his commands (addcamper, addvetran, etc...) in the correct Linux format.    Also I think the command that Elite added are for the client side I read another post about Teambot not working on a Dedicated server.  I will post some more of my notes when I get home.
+
+--------------------------------------------------
+05/07/01 at 15:04:55  Reply by: spalVl (mtreichler@0nebox.com)
+--------------------------------------------------
+Compare botman's dll.cpp with Elites dll.cpp  (I think)  if you grep for addbot and addcamper.  You will find that botman has like 3 areas this is used and Elite only has 1.  
+

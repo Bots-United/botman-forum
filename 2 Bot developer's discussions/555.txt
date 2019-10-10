@@ -1,0 +1,100 @@
+--------------------------------------------------
+Subject: Mp.dll
+--------------------------------------------------
+11/07/00 at 21:15:47  Posted by: BloodGore (lastride87@hotmail.com)
+--------------------------------------------------
+I have encontered problems while make the mp.dll file. When i type cd C:\HalfLifeSDK\SourceCode\ dlls they say "gcc -march=pentium -O2 -w -I../engine -I../common -I../pm_shared -c airtank.cpp -o airtank.o
+In file included from airtank.cpp:15:
+extdll.h:46: STDLIB.: No such file or directory
+C:\MINGW32\BIN\MAKE.EXE: *** [airtank.o] Error 1"
+What should i do?
+
+
+--------------------------------------------------
+11/08/00 at 05:10:25  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+It sounds like you made some typos when you modified the extdll.h file.  Go back and check the changes.txt file in the section where you change the extdll.h file.  You should have this in your extdll.h file...
+
+#include <windows.h>
+ 
+// Misc C-runtime library headers
+#include <stdio.h>
+#include <stdlib.h>
+#include <math.h>
+
+botman
+
+
+--------------------------------------------------
+11/08/00 at 19:51:08  Reply by: BloodGore (lastride87@hotmail.com)
+--------------------------------------------------
+OK. But heres another one when i type "make". gcc -march=pentium -O2 -w -I../engine -I../common -I../pm_shared -c cbase.cpp -o cbase.o
+cbase.cpp: In method `void CBaseEntity::SUB_CallUseToggle()':
+cbase.cpp:767: `USE_Toggle' undeclared (first use this function)
+cbase.cpp:767: (Each undeclared identifier is reported only once
+cbase.cpp:767: for each function it appears in.)
+C:\MINGW32\BIN\MAKE.EXE: *** [cbase.o] Error 1
+
+
+--------------------------------------------------
+11/09/00 at 05:20:12  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+Again, you didn't follow the directions in the changes.txt file closely enough.  Go back and re-read the section about changing the SUB_CallUseToggle().  You need to remove the code for that function (not the prototype, just the code) from the cbase.h file and add the function with the code to the bottom of the cbase.cpp file.
+
+botman
+
+--------------------------------------------------
+11/09/00 at 19:06:23  Reply by: BloodGore (lastride87@hotmail.com)
+--------------------------------------------------
+Sorrie....but could u put it in a simpler way so that i can understand?
+
+--------------------------------------------------
+11/10/00 at 04:27:29  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+You should have this at line 240 of the cbase.h file...
+
+   void EXPORT SUB_CallUseToggle( void );
+
+...then you should add this at the bottom of the cbase.cpp file...
+
+void EXPORT CBaseEntity::SUB_CallUseToggle( void )
+{
+   this->Use( this, this, USE_TOGGLE, 0 );
+}
+
+botman
+
+
+--------------------------------------------------
+11/11/00 at 03:16:07  Reply by: BloodGore (lastride87@hotmail.com)
+--------------------------------------------------
+yes...i have that.
+
+--------------------------------------------------
+11/11/00 at 05:42:15  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+From the error message you posted...
+
+QUOTE:
+cbase.cpp:767: `USE_Toggle' undeclared (first use this function)
+
+
+...you probably have this...
+
+   this->Use( this, this, USE_Toggle, 0 );
+
+...instead of this...
+
+   this->Use( this, this, USE_TOGGLE, 0 );
+
+...Variables, constants, and reserved words in C and C++ are CASE SENSITIVE.  You have to have exactly the same upper and lower case for these to be the same thing.  Change your "USE_Toggle" to "USE_TOGGLE" and that part should compile.
+
+botman
+
+
+
+--------------------------------------------------
+11/11/00 at 19:10:35  Reply by: BloodGore (lastride87@hotmail.com)
+--------------------------------------------------
+You're really cool botman!! Thanz for all the help!
+

@@ -1,0 +1,122 @@
+--------------------------------------------------
+Subject: [DAMN]"UserMsg: Not present on Client 100"
+--------------------------------------------------
+08/30/02 at 17:29:15  Posted by: mrsuicide (mrsuicide@cs-bot.tk)
+--------------------------------------------------
+---
+
+int gmsgTeams = 0;
+
+[...]
+
+void LinkUserMessages( void )
+{
+
+[...]
+
+gmsgTeams = REG_USER_MSG("TeamNames", -1); 
+
+[...]
+
+}
+
+[...]
+
+void ShowVGUI( CBasePlayer *pPlayer, int iMenu )
+{
+MESSAGE_BEGIN(MSG_ONE, gmsgTeams, NULL, pPlayer->edict()); -> ///CRASH\\\ "UserMsg: Not present on Client 100"
+WRITE_BYTE(2);
+WRITE_STRING(TEAM1_NAME); 
+WRITE_STRING(TEAM2_NAME);
+MESSAGE_END();
+
+MESSAGE_BEGIN( MSG_ONE, gmsgVGUIMenu, NULL, pPlayer->pev );
+WRITE_BYTE( iMenu );
+MESSAGE_END();
+}
+
+---
+
+Where's the Problem?!?!?
+Need help plz. :)
+
+
+[modified on 08/30/02 at 17:29:00]
+
+[modified on 08/30/02 at 17:29:15]
+--------------------------------------------------
+08/31/02 at 04:53:07  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+Ho hum
+
+read the Common issues in the tutorial.... jeesz
+
+QUOTE:
+
+Common Problems....
+....
+Another common issue is getting client 100 error no client present, i havnt seen what's causing this error but i belive that its caused by a similar error by people misplacing the code into a different file than supposed to, if anyone finds out what mistake they made to get this error, please notify me and tell me what you did wrong and how you fixed it.....
+
+
+
+--------------------------------------------------
+08/31/02 at 07:28:00  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Usually when you get the "Not present on client" error you have used a different case (or slightly different name) for the name of the network message.  For example using...
+
+REG_USER_MSG("TeamNames", -1);
+
+...on the server and using...
+
+HOOK_MESSAGE(Teamnames);
+
+...on the client (notice the 'n' isn't uppercase).
+
+Check your message names on the server and client and make sure they match EXACTLY.
+
+botman
+
+--------------------------------------------------
+10/10/02 at 09:38:01  Reply by: _drporka (drporka@zeelandnet.nl)
+--------------------------------------------------
+in player.cpp
+
+line 234 
+
+you see
+
+gmsgTeamNames = REG_USER_MSG( "TeamNames", -1 );
+
+just mark it as comment //
+
+like this
+//gmsgTeamNames = REG_USER_MSG( "TeamNames", -1 );
+
+now it should work and work with your teamnames.
+
+it has something to do i think with sending the TeamNames message to the clients. cuz this there are 2 gmsg's that got sended to a client and the client doesn't know how to handle, so it better to disable the first one. so it uses your code!
+
+Also see this website that finalizes the tuturial:
+http://elife.5u.com/teamstutorialsdk22.html
+
+hope this will help you
+
+[modified on 10/10/02 at 09:38:01]
+--------------------------------------------------
+10/21/02 at 19:30:23  Reply by: alakriti (erik@lyricists.net)
+--------------------------------------------------
+aah some people know of this tutorial. i just followed this tutorial to the T. and i have a weird problem when i join TEAM1 i am fine i spawn and i can play. but when i join TEAM2 i am stuck in one spot as an observer. it shows me on the team but i am unable to move. or be seen etc. as if i was an observer. any ideas?
+
+--------------------------------------------------
+10/21/02 at 19:44:57  Reply by: alakriti (erik@lyricists.net)
+--------------------------------------------------
+well ignore this. i found out the problem. dont make your team names to long :) team 2's name was to long so it caused it to not match up in PlayerSpawn(). so to all of u that might fall into the same problem later checkout the length of the names. i think it cant be more then like 15 chars.
+
+
+--------------------------------------------------
+10/22/02 at 06:44:16  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Network message names (like the "TeamNames" shown in the above example) can be no longer than 12 characters.  Anything over that will cause the engine to return 0 for the network message ID value (from REG_USER_MSG).  0 is an invalid network message ID.
+
+botman
+

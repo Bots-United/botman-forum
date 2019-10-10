@@ -1,0 +1,191 @@
+--------------------------------------------------
+Subject: Mod The Opera
+--------------------------------------------------
+07/10/01 at 03:19:12  Posted by: tred (djeod@aol.com)
+--------------------------------------------------
+Botman
+do you support these mod to your bot ?
+
+--------------------------------------------------
+07/11/01 at 13:27:15  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+I don't know yet.  I just downloaded it 12 hours ago.
+
+I'll post some news about it if I decide to add support for The Opera to the HPB bot.
+
+(Just testing the modify stuff)
+
+(Modified the modify)
+
+botman
+
+[modified on 07/11/01 at 13:25:49]
+
+[modified on 07/11/01 at 13:27:15]
+--------------------------------------------------
+07/10/01 at 06:48:27  Reply by: bluesy (bluesy@bezeqint.net)
+--------------------------------------------------
+I think i`ll support this mod, when i finish d/l the file (in a month or so...)
+
+ps
+botman, i`m curious, how can i scan a directory and retrieve files / directories in it? (it is for scaning models dir, like in your hpb_bot) 
+I know how to do this in java, but thats of no use...
+
+--------------------------------------------------
+07/10/01 at 08:30:32  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+Here's the directory search code I used for Win32...
+code:
+HANDLE FindDirectory(HANDLE hFile, char *dirname, char *dirspec)
+{
+   WIN32_FIND_DATA pFindFileData;
+
+   dirname[0] = 0;
+
+   if (hFile == NULL)
+   {
+      hFile = FindFirstFile(dirspec, &pFindFileData);
+
+      if (hFile == INVALID_HANDLE_VALUE)
+         hFile = NULL;
+
+      while (pFindFileData.dwFileAttributes != FILE_ATTRIBUTE_DIRECTORY)
+      {
+         if (FindNextFile(hFile, &pFindFileData) == 0)
+         {
+            FindClose(hFile);
+            hFile = NULL;
+            return hFile;
+         }
+      }
+
+      strcpy(dirname, pFindFileData.cFileName);
+
+      return hFile;
+   }
+   else
+   {
+      if (FindNextFile(hFile, &pFindFileData) == 0)
+      {
+         FindClose(hFile);
+         hFile = NULL;
+         return hFile;
+      }
+
+      while (pFindFileData.dwFileAttributes != FILE_ATTRIBUTE_DIRECTORY)
+      {
+         if (FindNextFile(hFile, &pFindFileData) == 0)
+         {
+            FindClose(hFile);
+            hFile = NULL;
+            return hFile;
+         }
+      }
+
+      strcpy(dirname, pFindFileData.cFileName);
+
+      return hFile;
+   }
+}
+
+You just pass in the wildcard spec of the directory you want (like "valve/models/player/*").  It will return the the directory names one after another.  Like so...
+code:
+   HANDLE directory = NULL;
+   char dirname[256];
+   char search_path[256];
+
+   strcpy(search_path, "valve\\models\\player\\*");
+
+   while ((directory = FindDirectory(directory, dirname, search_path)) != NULL)
+   {
+      if ((strcmp(dirname, ".") == 0)  (strcmp(dirname, "..") == 0))
+         continue;  // skip "." and ".." directory entries
+
+      // do stuff with dirname here...
+   }
+
+botman
+
+
+--------------------------------------------------
+07/10/01 at 11:05:46  Reply by: @$3.1415rin (as3.1415rin@gmx.de)
+--------------------------------------------------
+isn't there such a possibility without using this W32 stuff ? The best would be something compatble , so that we won't get problems compiling it with linux ! 
+
+--------------------------------------------------
+07/10/01 at 11:53:08  Reply by: bluesy (bluesy@bezeqint.net)
+--------------------------------------------------
+thanks botman!
+
+
+--------------------------------------------------
+07/10/01 at 12:08:48  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+Ummm, I ran it through my Linux translator and got this...
+code:
+DIR *FindDirectory(DIR *directory, char *dirname, char *dirspec)
+{
+   char pathname[256];
+   struct dirent *dirent;
+   struct stat stat_str;
+
+   if (directory == NULL)
+   {
+      if ((directory = opendir(dirspec)) == NULL)
+         return NULL;
+   }
+
+   while (1)
+   {
+      dirent = readdir(directory);
+
+      if (dirent == NULL)  /* at end of directory? */
+      {
+         closedir(directory);
+         return NULL;
+      }
+
+      strcpy(pathname, dirspec);
+      strcat(pathname, "/");
+      strcat(pathname, dirent->d_name);
+
+      if (stat(pathname, &stat_str) == 0)
+      {
+         if (stat_str.st_mode & S_IFDIR)
+         {
+            strcpy(dirname, dirent->d_name);
+            return directory;
+         }
+      }
+   }
+}
+
+You'd use it like so...
+code:
+DIR *directory = NULL;
+char dirname[256];
+char search_path[256];
+
+strcpy(search_path, "valve/models/player");
+
+while ((directory = FindDirectory(directory, dirname, search_path)) != NULL)
+{
+   if ((strcmp(dirname, ".") == 0) (strcmp(dirname, "..") == 0))
+      continue;  // skip "." and ".." directory entries
+
+   // do stuff with dirname here...
+}
+
+Notice that you don't want the wildcard '*' at the end, but everything else about using the function is the same.
+
+Since Win32 and Linux have different file systems (and different structures used to represent those directory entries) you can't really use the same code on both.  Just one of the things you have to deal with when supporting both Win32 and Linux.
+
+botman
+
+--------------------------------------------------
+07/10/01 at 12:52:07  Reply by: @$3.1415rin (as3.1415rin@gmx.de)
+--------------------------------------------------
+thx .... 
+
+a win32 to linux converter ... cool ... is that converter a program or a human called 'botman' ?
+

@@ -1,0 +1,38 @@
+--------------------------------------------------
+Subject: Ok I'm stumped :/
+--------------------------------------------------
+03/31/03 at 09:41:32  Posted by: Baal0r (charlie@xceptional.org)
+--------------------------------------------------
+When trying to set the players box size I have big problems. I've used the UTIL_Setsize function on the player on respawn and, depending on the team, set the size differently.
+
+The problem is when I come into the game the model is floating above the floor and still seems to have the original dimensions.
+
+I can set the view height and that works fine (until you duck, which is fixable)
+
+Is there some kind of limitation on setting the size of the players bounding box?
+
+[modified on 03/31/03 at 09:41:32]
+--------------------------------------------------
+03/31/03 at 12:54:00  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Changing the size of a player's BOUNDING BOX will not change the size of his MODEL. These are two different things.
+The model is what you see. It is a skeleton of bones around which textured triangles are wrapped together. Given the bone these triangles belong to, the arm, leg, wrist, head, etc. are defined. Once these zones are defined, each bone gets an associated bounding box, which is ALIGNED TO THE BONE, but which is NOT THE SAME as the player bounding box, which one is ALIGNED TO THE WORLD.
+The bounding box is a big virtual box around your player that is used to tell the engine "how much space" your player occupies on the map. The engine then computes whether your player will be allowed to jump through this narrow hole or duck under that low ceiling, or not, using that bounding box. Such a box is always AXIAL, meaning that it is always parallel to the world axises (x, y, z), no matter the direction your player is facing. The center of the bounding box should in any way be the center of the model, that's why when you raise the bounding box, the player model seems to "levitate" up in the sky.
+
+Setting the player's bounding box size will just make your players unable to reach certain zones, but your models will still look the same.
+
+
+[modified on 03/31/03 at 12:54:00]
+--------------------------------------------------
+03/31/03 at 16:14:52  Reply by: Baal0r (charlie@xceptional.org)
+--------------------------------------------------
+I know this, what I mean is that no matter what I set the hull size to the player is always the same size in the game, not his model size, his bounding box size.
+
+Even changing the definitions of VEC_HULL_MAX and VEC_HULL_MIN seem to keep the player 32,32,64 units in size. Also no matter how low I set the view offset it always seems to stop at a certain level.
+
+For instance, if I change the players model to baby_headcrab.mdl, the model is fine, and even retains the walk and die animations but even though I have set the players size to 4,4,2 (UTIL_SetSize(pev, Vector(2, 2, 0), Vector(2, 2, 2));) and the view ofs to pev->view_ofs = Vector(0, 0, 1); the headcrab floats above the floor, clearly at the center origin of the full size player hull and the player view height is around 16-20 units above the floor level. Is this hard coded somewhere in the engine? I can't seem to make the players in game different BBOX sizes as they all revert to 32,32,64.
+
+I just want one team of very small players, and one team of normal players so that the small players can fit into areas of the map the big players can't.
+
+I've noticed that the engine makes calls to GetHullBounds but the comments say this is only for prediction..
+

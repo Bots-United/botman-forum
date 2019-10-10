@@ -1,0 +1,106 @@
+--------------------------------------------------
+Subject: DispatchUse
+--------------------------------------------------
+08/08/02 at 06:05:24  Posted by: zenureo (startux@hotmail.com)
+--------------------------------------------------
+I'm suffering from a really weird problem. Both the DispatchUse and DispatchUse_Post do not seemed to be called at all in my plugin. All the other methods works fine. I'm using the original metamod.dll without any changes at all...
+
+What could be the problem??
+
+Edit: I had a func_button, i press 'E' to use it. I did a LOG_CONSOLE(...) at DispatchUse in my plugin, but nothing happen. Its not called at all...
+
+[modified on 08/08/02 at 06:05:24]
+--------------------------------------------------
+08/08/02 at 06:15:04  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+If you look at the SDK source code, you'll see that using a button doesn't go through DispatchUse().  The button Use() function gets called directly in the game DLL code.
+
+botman
+
+--------------------------------------------------
+08/08/02 at 07:32:51  Reply by: zenureo (startux@hotmail.com)
+--------------------------------------------------
+!!!!
+Then whats the purpose of DispatchUse and DispatchUse_Post in metamod???
+
+Are there other ways of capturing the event when a player "USE" something or someone (e.g hostage).
+
+Edit: Buttons... No, the functions also does not get called when i "USE" a spy tv or a hostage. So its not just button...
+
+[modified on 08/08/02 at 07:32:51]
+--------------------------------------------------
+08/08/02 at 10:06:08  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Correct, it's not just a button that doesn't use DispatchUse().  All player "USE" will occur internally in the MOD code (doesn't go through the engine).  The DispatchUse() is called by the engine when something external wants to use an entity (perhaps one map entity using another map entity?).
+
+What you would need to do is check the all players v.button field during every frame.  If a player has the IN_USE bit set then they are trying to USE something.  You can check what they are trying to use by looking at the PlayerUse() function in player.cpp of the SDK source code.  Just use the same types of checks (not the exact same code obviously because you don't have access to the MOD's internal CBaseEntity class) to see if there is a usable item with the PLAYER_SEARCH_RADIUS.  If so, then that player is trying to USE that object.
+
+P.S. There is already a thread in this forum about doing this.  Try searching for "USE".
+
+botman
+
+[modified on 08/08/02 at 10:06:08]
+--------------------------------------------------
+08/08/02 at 16:46:22  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Damn, I didn't knew that botman !
+That explains many things !!
+Is it the same with Touch() and such ?
+That would explain why I can't force my players to trigger a player_weaponstrip if they aren't actually touching its trigger_multiple. No wonder then !!!
+
+
+--------------------------------------------------
+08/08/02 at 17:10:27  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+DispatchTouch Seems to Work with me :) I managed to make objects pass through teleports by checking DispatchTouch :p
+
+--------------------------------------------------
+08/08/02 at 17:19:27  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+objects yes, but players ?
+
+
+--------------------------------------------------
+08/08/02 at 17:35:35  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+Hmm I never attempted that with players because teleports already worked with players ;D
+
+But anyway I've tried DispatchTouch with many things, and should work because DispatchTouch should always be called when something is touched. 
+
+The thing is, the entity you want to trigger may have a certain solid flag set... If you look in const.h
+
+code:
+
+#define      SOLID_NOT                        0            // no interaction with other objects
+#define      SOLID_TRIGGER                  1            // touch on edge, but not blocking
+#define      SOLID_BBOX                        2            // touch on edge, block
+#define      SOLID_SLIDEBOX                  3            // touch on edge, but not an onground
+#define      SOLID_BSP                        4            // bsp clip, touch on edge, block
+
+
+
+you want to set your entity solid to SOLID_TRIGGER (touch on edge, but not blocking) but if your using a trigger_multiple it should be already set. Unless you make your OWN "trigger" entity up and cact hit in DispatchTouch() :D
+
+--------------------------------------------------
+08/09/02 at 07:04:27  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Yes, it is, I always use trigger_multiples. The bit is set, else how could players pass through ?
+
+Try to "force" a DispatchTouch() call, for example, to make a player activate the bunker in crossfire in HLDM at distance (by pressing a button or such). I can't make such a thing work.
+
+
+--------------------------------------------------
+08/11/02 at 18:30:28  Reply by: zenureo (startux@hotmail.com)
+--------------------------------------------------
+Thanks botman.
+
+I use DispatchTouch to check players stepping on triggers as well. As for the remote activation of the bunker in crossfire... I guess u would probably need to send ur own messages or maybe set the button entity to a certain state... just an idea. If u know what was sat when u physically pressed the button at the bunker, maybe u could set it directly thru its entity ptr?
+
+
+--------------------------------------------------
+08/11/02 at 22:47:00  Reply by: zenureo (startux@hotmail.com)
+--------------------------------------------------
+just to report, entity using entity also does not goes thru DispatchUse. I tested it with a simple map where i toggle a button and it "use" or "activate" a second func_train which will then "use" another entity. None of these "Use" passed thru DispatchUse...
+
+So what is it really for....?
+

@@ -1,0 +1,128 @@
+--------------------------------------------------
+Subject: Need help with Combat code...
+--------------------------------------------------
+01/16/02 at 04:39:04  Posted by: jerry_stoel (jerry_stoel@hotmail.com)
+--------------------------------------------------
+I started over again a few days ago with a fresh Template code and added the support for the mods. But now when I play with my bots they can't hit me. They shoot, but when they shoot they point in the air and at places where nothing is. I tried it with 3 kind of mods and they still do it, so it must be my code. I just can't seem to pick it out. I haven't changed any code in the combat section. I only inserted my waypoint code. Also it looks like when they see me the bots turn around and look up and turn and turn and turn.... (you know what I mean :P). Very weird.
+
+I hope someone can help me with this problem.
+
+--------------------------------------------------
+01/16/02 at 04:47:42  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+perhaps you are tying to get them to shoot something at position (0,0,0) i.e. They are trying to shoot a func_breakable or something?
+
+Instead use 
+
+code:
+
+Vector enemy_origin = VecBModelOrigin(pBot->pBotEnemy);
+
+
+
+If that doesn't work, the bot X (pitch) angles may have been tweaked somewhere.
+
+--------------------------------------------------
+01/16/02 at 09:31:41  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+Paulo-La-Frite helped fixing an odd aim bug a long time ago. The model's body angle must be set and when this is done, the view angles' x is inverted.
+
+Here's his fix.
+code:
+
+      // set the body angles to point the gun correctly
+      pBot->pEdict->v.angles.x = pBot->pEdict->v.v_angle.x / 3;
+      pBot->pEdict->v.angles.y = pBot->pEdict->v.v_angle.y;
+      pBot->pEdict->v.angles.z = 0;
+
+      // adjust the view angles to aim correctly (MUST be after body v.angles stuff)
+      pBot->pEdict->v.v_angle.x = -pBot->pEdict->v.v_angle.x;
+      BotSetIdealYaw (pBot, pBot->pEdict->v.v_angle.y); // make body face eye's direction
+
+
+--------------------------------------------------
+01/16/02 at 23:56:19  Reply by: jerry_stoel (jerry_stoel@hotmail.com)
+--------------------------------------------------
+QUOTE:
+perhaps you are tying to get them to shoot something at position (0,0,0) i.e. They are trying to shoot a func_breakable or something?
+
+
+
+
+I commented out all my search for breakable objects code.
+
+QUOTE:
+
+Instead use 
+
+Vector enemy_origin = VecBModelOrigin(pBot->pBotEnemy);
+
+
+
+
+I will check if that works.
+
+And to Pierre: I didn't change that piece of code. 
+
+--------------------------------------------------
+01/17/02 at 00:13:51  Reply by: jerry_stoel (jerry_stoel@hotmail.com)
+--------------------------------------------------
+Well I tried your solution Cheesemonster, but it didn't work. I did find out something. When my bot shoots me he tries to run another way and constantly turn when firing, so maybe he tries to follow his original path and also wants to fire, maybe I made a mistake in botthink. I will check if it is.
+
+--------------------------------------------------
+01/17/02 at 01:20:08  Reply by: Onslaught (None)
+--------------------------------------------------
+Make sure that the bot ignores waypoints first before attacking the enemy
+
+--------------------------------------------------
+01/25/02 at 10:44:35  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+why? with waypoints you can make a bot's combat a lot more smarter... moving back, taking cover, etc. 
+
+
+
+--------------------------------------------------
+01/25/02 at 11:47:53  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+although it will require heavy amount of coding. You'' need to tell the bots to keep looking at the enemy whilst tracking the waypoints (either by sidestepping and moving back and froward) which I think will be a bit tricky!
+
+--------------------------------------------------
+01/25/02 at 11:49:46  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+You may have something in BotThink() That is continously changing the bots current angle... i.e you might have something like
+
+pEdict->v.v_angle += 10;
+
+somewhere...?
+
+--------------------------------------------------
+01/25/02 at 14:12:28  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+coding look code aint tricky at all. You just need to make sure you change the right angle. If i am not mistaken, v_angle is the 'look' vector and angles is the body..
+
+me checks code to make sure he said that right
+
+ok, so its the other way around! 
+
+pEdict->v.angles = body angles
+pEdict->v.v_angle = head angles
+
+so, just make sure the BODY angles point to the waypoint and the HEAD angles to the enemy, the model will correct itself automaticly. (make the bot walk forward, even if you say it has a movespeed > 0).
+
+I recommend a function to make the bot 'move' to any look vector and such, else you get very botish behaviour with looking around.
+
+
+--------------------------------------------------
+01/25/02 at 17:54:26  Reply by: Onslaught (None)
+--------------------------------------------------
+
+QUOTE:
+why? with waypoints you can make a bot's combat a lot more smarter... moving back, taking cover, etc. 
+
+
+
+
+
+
+I know, but many bots still use the v.angles.y = v.v_angle.y thing. (or was it the other way around... can't remember) It's the code that comes with the template.
+

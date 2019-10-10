@@ -1,0 +1,99 @@
+--------------------------------------------------
+Subject: newbie find waypoint code ! errors....
+--------------------------------------------------
+03/12/01 at 13:53:46  Posted by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+I'm working on the BotHeadTowardWaypoint function and im trying something really simple like this below.. (im at newbie mode!)
+
+[newbie code]
+
+i somehow need to find the position (origin) of the bot, where i write pBot[COORDS]
+
+code:
+
+if( ((pBot->(pBot[COORDS],waypoints[index].origin).Length())<24.00)
+ BotHeadTowardWaypoint(pBot);
+else 
+ return FALSE;
+
+
+
+[/newbie code]
+
+;)
+
+I dont know if i should have the pointer in or not either. I think i know that pBot is basically the current bot, but is don't know where in what situations I write "pBot->" or a pointer ("*pBot")
+doh!
+
+
+
+
+--------------------------------------------------
+03/12/01 at 14:11:40  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+In C and C++, "*p" and "p->" are the same thing (i.e. they both indicate what's pointed to by p).
+
+Each pBot points to a bot_t structure (defined in bot.h).  One of the fields in this structure is a pointer to the bot's edict (called pEdict).  The edict is the space allocated by the Half-Life engine for that entity.  The edict is an "entvars_t" structure (defined in engine\progdefs.h).  The origin of the entity is one of the fields in this entvars_t structure.  Therefore, you can get at a bot's origin using...
+
+pBot->pEdict->v.origin
+
+The edict is used so often that most of the functions included with the HPB bot have a local variable called pEdict that gets a copy of the bot's pEdict field (to make it a little easier on the compiler accessing these fields), like this...
+
+edict_t *pEdict = pBot->pEdict;
+
+Then you can just use this to get the origin...
+
+pEdict->v.origin
+
+botman
+
+
+--------------------------------------------------
+03/12/01 at 15:18:35  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+ah ok thx, I've changed the code a bit, but now i have more probs becuase it is stuck in a loop, so things gets laggy and things like waypoint menu or waypoint delete wont work because of it!
+
+I need to find a way to call BotFindWaypoint to find the next waypoint, as you commented, and also return a true statement!.
+
+atm the code is now (still at newbie stage!)...
+
+code:
+
+
+bool BotHeadTowardWaypoint( bot_t *pBot )
+{  
+   
+...
+...
+
+//if distance between a bot and a waypoint is less than wpt_dist constant
+
+ if ((waypoints[pBot->curr_waypoint_index].origin - pEdict->v.origin).Length()<WPT_DIST)
+ {
+  BotFindWaypoint(pBot);
+  return TRUE;
+ }
+ else
+  return FALSE;
+}
+
+
+
+
+im not sure how the "current waypoint" works, I believe it is the "curr_waypoint_index" variable but I'm not sure... another prob arises with this, it is completely undefined and i get lots of errors!
+
+Thirdly I called the findwaypoint function by: BotFindWaypoint(pBot); and i don't think that is correct but when i try anything else it doesnt compile....! Maybe you can help.
+
+
+--------------------------------------------------
+03/14/01 at 14:07:00  Reply by: eLiTe (ali@elitegamer.fsnet.co.uk)
+--------------------------------------------------
+Well you will have to have some code in BotFindWaypoint of course...? Maybe you have a large loop in BotFindWaypoitn which is slowing the bots down. Also it might be better to call BotFindWaypoint from BotThink, but it doesn't matter.
+
+If you want to see how I did it you can get my source from www.teambot.net    The navigation stuff is in teambot_navigat.cpp and it's pretty simple to follow
+
+--------------------------------------------------
+03/15/01 at 09:54:54  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+yeah ive got code from redfox (cooldude!) but whenever I call the botfindwaypoint function ANYWHERE.... HL crashes!!! DOH
+

@@ -1,0 +1,226 @@
+--------------------------------------------------
+Subject: I'm still a little confused on how to make a dll.
+--------------------------------------------------
+07/28/03 at 17:05:34  Posted by: Lazer (lazer@devin-afshin.com)
+--------------------------------------------------
+Alright, I have everything setup. The dll file compiles and everything. I got that MM_Base dll to start me off. Now what do I do? I'm trying to make a dll for Natural-Selection where you can set a setinfo line in your config file to let you use a female model instead of the male one. I'm guessing how this program would work is when the player gets spawned, metamod checks the setinfo line of the player and if the line reads "setinfo female_model 1" then it switches their model to the female one. It sounds so simple to me but I have no clue where to even begin.
+
+--------------------------------------------------
+07/28/03 at 17:31:56  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+The "easiest" thing to do would be to look at the source code of other metamod plugins that do something similar to what you want and then modify things from there.
+
+Just starting from blank with no knowledge of the Half-Life SDK won't get you very far.  You'll at least need some examples to follow and learn from.
+
+botman
+
+--------------------------------------------------
+07/28/03 at 18:12:37  Reply by: Lazer (lazer@devin-afshin.com)
+--------------------------------------------------
+I've played around with the sdk before. I just wasn't sure how a metamod dll would work. After looking at the source of the chicken dll I'm starting to get an idea of what to do. Just to test changing a player model to a different one, I'm using the following code. I'm missing a variable. Can you help me fill in the blank?
+
+void c_female_marine( void ) {
+      const char* arg = "";
+      const char* arg1 = CMD_ARGV(1);
+      const char* arg2 = CMD_ARGV(2);
+      int argc = CMD_ARGC();
+      int      parm = 0;
+      if (argc == 3 && arg1[0] == '#' && !arg1[1]){ // c_f_marine # id
+            arg = arg2;
+            parm = 1;
+      }
+      else if (argc == 2){ // c_f_marine name
+            arg = arg1;
+            parm = 2;
+      }
+      player_t* pPlayer;
+      for(int i = 1; i <= gpGlobals->maxClients; ++i)      {
+            pPlayer = INDEXPLAYER(i);
+                  SET_MODEL(<BLANK>, "models/player/heavy.mdl");      
+            }
+}
+
+I'm not even all that sure if the code is all that correct. Most of it was ripped from the chicken source.
+
+[modified on 07/28/03 at 18:12:37]
+--------------------------------------------------
+07/29/03 at 05:33:02  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+The SET_MODEL() macro calls the pfnSetModel engine function.  This function takes an edict_t pointer as the first argument.
+
+The INDEXENT() macro (which calls pfnEntityOfEntIndex) takes an index and returns the edict_t pointer for that entity.
+
+So you would want this (not necessarily guaranteed to do what you want)...
+code:
+edict_t* pEdict;
+
+for (int i = 1; i <= gpGlobals->maxClients; ++i)
+{
+   pEdict = ENTINDEX(i);
+   SET_MODEL(pEdict, "models/player/heavy.mdl");
+}
+
+
+botman
+
+--------------------------------------------------
+07/29/03 at 08:53:48  Reply by: Lazer (lazer@devin-afshin.com)
+--------------------------------------------------
+I almost got it working. The only error I get is this:
+
+plugin.obj : error LNK2001: unresolved external symbol "struct player_t * players" (?players@@3PAUplayer_t@@A)
+
+I'm not sure what's causing it though. In my plugin.h I have these:
+
+code:
+struct player_t {
+      edict_t*      pEdict;
+      edict_t*      pFMarine;
+      int                  viewmodel;            //v.viewmodel
+      Vector            view_ofs;            //v.view_ofs
+      int                  index;
+      bool            ingame;
+};
+
+#define INDEXPLAYER(a) &players[a]
+#define ENTPLAYER(a) &players[ENTINDEX(a)]
+
+extern player_t players[33];
+
+
+And its giving me problems with this:
+
+code:
+player_t* pPlayer;
+      for (int i = 1; i <= gpGlobals->maxClients; ++i) {
+            pPlayer = INDEXPLAYER(i); //ENTINDEX(i);
+            if (pPlayer->ingame && CallsMe(pPlayer,arg ,parm) ){
+                  edict_t *pFMarine = CREATE_NAMED_ENTITY( MAKE_STRING("info_target") );
+                  pPlayer->pFMarine = pFMarine;
+                  SET_MODEL(pFMarine, "models/player/heavy.mdl");
+            }
+      }
+
+
+[modified on 07/29/03 at 08:53:48]
+--------------------------------------------------
+07/29/03 at 10:16:22  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+You have this...
+
+extern player_t players[33];
+
+...but have you defined the "players" array anywhere (other than the just the 'extern' definition)?
+
+I.E. do you have...
+
+player_t players[33];
+
+...anywhere in your code?
+
+botman
+
+--------------------------------------------------
+07/29/03 at 12:32:55  Reply by: Lazer (lazer@devin-afshin.com)
+--------------------------------------------------
+Ok, you've been helping a ton. I think there is only one thing left that I need to figure out. The dll was compiling, but the model wasn't changing when I did the command. So I decided to change the code around and report to the server console if it found the player specified. So, I have this:
+
+code:
+void c_f_marine( void ) {
+      const char* arg = "";
+      const char* arg1 = CMD_ARGV(1);
+      const char* arg2 = CMD_ARGV(2);
+      int argc = CMD_ARGC();
+      int      parm = 0;
+      if (argc == 3 && arg1[0] == '#' && !arg1[1]){ // c_f_marine # id
+            arg = arg2;
+            parm = 1;
+      }
+      else if (argc == 3 && arg1[0] == '@' && !arg1[1]){ // c_f_marine @ team
+            arg = arg2;
+            parm = 2;
+      }
+      else if (argc == 2){ // c_f_marine name
+            arg = arg1;
+            parm = 3;
+      }
+
+      player_t* pPlayer;
+      for (int i = 1; i <= gpGlobals->maxClients; ++i) {
+            pPlayer = INDEXPLAYER(i); //ENTINDEX(i);
+            if (pPlayer->ingame && CallsMe(pPlayer,arg ,parm) ){
+                  SERVER_PRINT ("Worked.\n");
+            }
+            else
+                  SERVER_PRINT ("Failed.\n");
+      }
+}
+
+
+Now its supposed to look through the all the players in the server, and if it finds the one I specified it will tell me "Worked." in the console somewhere among all the "Failed."s. The only problem is, when I type in console "rcon c_f_marine cX.Lazer" it returns all "Failed."s. Now I'm thinking maybe it isn't reading the cX.Lazer part of my variable, but I'm not sure how it would read it in the first place.
+
+--------------------------------------------------
+07/29/03 at 23:01:19  Reply by: Lazer (lazer@devin-afshin.com)
+--------------------------------------------------
+Ok I think I have tracked it down to this:
+
+code:
+if (pPlayer->ingame && CallsMe(pPlayer,arg ,parm) )
+
+
+I tried commenting out the callsme part and it still returned all "Failed"s. So, it must be somehow not registering the player as being ingame. I'm not sure why though. I have this:
+
+code:
+void ClientPutInServer( edict_t *pEntity ) {  
+      int index = ENTINDEX(pEntity);
+      player_t *pPlayer = INDEXPLAYER(index);
+      pPlayer->pEdict = pEntity;
+      pPlayer->index = index;
+      pPlayer->ingame = true;
+      RETURN_META(MRES_IGNORED);
+}
+
+
+and in my header file I have this: (most ripped from the chickenmod source)
+
+code:
+struct player_t {
+      edict_t*      pEdict;
+      edict_t*      pFMarine;
+      int                  viewmodel;            //v.viewmodel
+      Vector            view_ofs;            //v.view_ofs
+      float            gravity;
+      float            maxspeed;
+      int                  index;
+      int                  team;
+      bool            ingame;
+      float            attack_time;
+      bool            fake;
+      bool            dead;
+};
+
+
+So I'm not sure why it isn't registering the player as being ingame...
+
+EDIT: I discovered one more thing. I tried putting a server message in my client connect command like this:
+
+code:
+void ClientPutInServer( edict_t *pEntity ) {  
+      int index = ENTINDEX(pEntity);
+      player_t *pPlayer = INDEXPLAYER(index);
+      pPlayer->pEdict = pEntity;
+      pPlayer->index = index;
+      pPlayer->ingame = true;
+      SERVER_PRINT ("Client joined server.");
+      RETURN_META(MRES_IGNORED);
+}
+
+
+It doesn't say anything in the server's console. It seems as if this command never seems to get executed when a player joins. It seems as if this is the missing link to all of my problems.
+
+[modified on 07/29/03 at 23:01:19]
+--------------------------------------------------
+07/29/03 at 23:19:48  Reply by: Lazer (lazer@devin-afshin.com)
+--------------------------------------------------
+Alright I solved my own problem. I wasn't adding the connect function to my function table. I'll never forget this...
+

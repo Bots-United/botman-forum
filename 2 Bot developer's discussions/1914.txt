@@ -1,0 +1,136 @@
+--------------------------------------------------
+Subject: DispatchTouch().... ???????
+--------------------------------------------------
+07/05/01 at 04:03:32  Posted by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+Erm, how would one go about using DispatchTouch... since it can't return anything, what does it do!
+
+I have practically no idea what it does so I stuck it inside a UTIL_FindEntityInShpere while loop to check for each entity and when they find an entity with the name "drive_ ..." I put in DispatchTouch(pent, pEdict) , god knows what it done lol, but I just saw the bots completely STOP and just look at the "drive_" entities within the radius I gave in the FindEntityInSphere.... Anyone know how to use this thing...?
+
+--------------------------------------------------
+07/05/01 at 04:09:40  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+DispatchTouch() gets called by the Half-Life engine when one entity touches another.  The engine passes in the edict of the entity being touched and the edict of the entity doing the touching.
+
+If the entity being touched has set up a Touch() function then the DispatchTouch() function will call that entities Touch() function.  This lets the entity know that something has touched it.  There's no need to return anything back to the engine when something is touched (it doesn't care whether the entity allows the touch or not).
+
+botman
+
+--------------------------------------------------
+07/05/01 at 06:37:44  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+So how would I sorta do something like..
+
+If ( Bot has touched Monster )...
+Do something...
+
+And also I would need to get the edict properties of the monster or touched entity within the bot..
+
+Would I have to go into edit the dispatch touch function?
+
+
+--------------------------------------------------
+07/05/01 at 09:13:26  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+QUOTE:
+So how would I sorta do something like..
+
+If ( Bot has touched Monster )...
+
+
+DispatchTouch() passes in "pentTouched" and "pentOther".  pentTouched is the entity that was touched.  pentOther is the one doing the touching (in this case, the bot).
+
+Right now, all the DispatchTouch() function in the HPB bot code does is call the MOD DLL version (which in turn calls the Touch function for the pentTouched entity).  You will need to modify the HPB bot version of DispatchTouch() to scan through the bot edicts (using the "bots" array) and look for a match between pentOther and a bot edict pointer (bots[index].pEdict).  When they are equal, you know that a bot touched something.  You can then use STRING(pentTouched->v.classname) to determine what type of thing it was that the bot touched.  If the bot touched something that you care about (like "monster_scientist" or whatever) you can set a flag in the bot's bot_t structure to indicate this fact (let's make it an integer and call it "touched_thing").
+
+You could set "touched_thing" to 0 when the bot is spawned/respawned then keep examining this value in the BotThink() function.  If it ever gets set to a value other than 0 (like TOUCHED_MONSTER_SCIENTIST), you would handle that case.
+
+botman
+
+--------------------------------------------------
+07/05/01 at 09:50:44  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+okay good advice :) I've came up with this code,  I hope it works... It compiles ok...
+
+code:
+
+
+void DispatchTouch( edict_t *pentTouched, edict_t *pentOther )
+{
+ 
+   int i;
+   char TouchedEnt[80];
+   
+   for (i=0; i < gpGlobals->maxClients; i++)
+   {      
+     if (bots[i].is_used)
+     {
+       if( pentOther == bots[i].pEdict )
+       {        
+         strcpy(TouchedEnt, STRING(pentTouched->v.classname));
+        
+         if( strcmp("drive_apache", TouchedEnt)==0 )             // Apache
+          bots[i].transformation = BOT_TRANS_APACHE;
+         else if( strcmp("drive_assassin", TouchedEnt)==0 )       // Assassin
+          bots[i].transformation = BOT_TRANS_ASSASSIN;
+         else if( strcmp("drive_garg", TouchedEnt)==0 )             // Gargantua
+          bots[i].transformation = BOT_TRANS_GARG;
+         else if( strcmp("drive_houndeye", TouchedEnt)==0 )       // Houndeye
+          bots[i].transformation = BOT_TRANS_HOUNDEYE;
+         else if( strcmp("drive_icky", TouchedEnt)==0 )             // Icky (fish thing)
+          bots[i].transformation = BOT_TRANS_ICKY;
+         else if( strcmp("drive_panth", TouchedEnt)==0 )             // Panther thingy!
+          bots[i].transformation = BOT_TRANS_PANTH;
+         else if( strcmp("drive_asl", TouchedEnt)==0 )              // Alien Slave
+          bots[i].transformation = BOT_TRANS_SLAVE;
+         else if( strcmp("drive_turret", TouchedEnt)==0 )             // Turret or Sentry
+          bots[i].transformation = BOT_TRANS_TURRET;
+         else if( strcmp("monster_apache", TouchedEnt)==0 )       // Apache Monster Edict
+          bots[i].transformation = BOT_TRANS_APACHE;
+         else if( strcmp("monster_assassin", TouchedEnt)==0 )       // Assassin Monster Edict
+          bots[i].transformation = BOT_TRANS_ASSASSIN;
+         else if( strcmp("monster_garg", TouchedEnt)==0 )             // Gargantua Monster Edict
+          bots[i].transformation = BOT_TRANS_GARG;
+         else if( strcmp("monster_houndeye", TouchedEnt)==0 )       // Houndeye Monster Edict
+          bots[i].transformation = BOT_TRANS_HOUNDEYE;
+         else if( strcmp("monster_icky", TouchedEnt)==0 )             // Icky (fish thing) Monster Edict
+          bots[i].transformation = BOT_TRANS_ICKY;
+         else if( strcmp("monster_panth", TouchedEnt)==0 )             // Panther thingy! Monster Edict
+          bots[i].transformation = BOT_TRANS_PANTH;
+         else if( strcmp("monster_asl", TouchedEnt)==0 )              // Alien Slave Monster Edict
+          bots[i].transformation = BOT_TRANS_SLAVE; 
+         else if( strcmp("monster_turret", TouchedEnt)==0 )       // Turret or Sentry Monster Edict
+          bots[i].transformation = BOT_TRANS_TURRET;    
+
+         if(strncmp("drive_", TouchedEnt, 7) == 0)
+         {  
+           fp=fopen("bot_tranform.txt","a");
+           fprintf(fp, "My transform index is : %d (0: none)\n",bots[i].transformation);
+            fclose(fp);
+         }      
+       }
+     }
+   }
+
+   (*other_gFunctionTable.pfnTouch)(pentTouched, pentOther);
+}
+
+
+
+
+
+
+
+
+
+--------------------------------------------------
+07/05/01 at 09:59:58  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+damn, I used that code then played the game. A bot used a transformation so I quit and checked to see if the "bot_tranform.txt" was there, but it wasn't :-( Something must be wrong or maybe the bot isn't touching the "drive_.." entity at all! Maybe it touches the chase camera entity (If I have got the code correct)... Any idea there?!!!
+
+--------------------------------------------------
+07/06/01 at 04:10:30  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+I don't know.  E-mail the MOD author and ask how the transformation things work (or look for a .fgd file for building a map for that MOD, that will also help).
+
+botman
+

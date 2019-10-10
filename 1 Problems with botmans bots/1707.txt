@@ -1,0 +1,64 @@
+--------------------------------------------------
+Subject: Bots taunt themselves :-)
+--------------------------------------------------
+05/29/01 at 07:45:26  Posted by: Maelstrom (maelstrom@halfd.org)
+--------------------------------------------------
+Not necessarily a problem, but it's kind of funny:
+
+Creating bot...
+L 05/29/2001 - 09:44:53: "[BOT]NanoBot<512><0><Red>" triggered "info_player_teamspawn"
+L 05/29/2001 - 09:44:56: "[BOT]NanoBot<512><0><Red>" joined team "Blue"
+L 05/29/2001 - 09:44:56: "[BOT]NanoBot<512><0><Red>" committed suicide with "world"
+L 05/29/2001 - 09:44:56: "[BOT]NanoBot<512><0><Blue>" changed role to "Soldier"
+L 05/29/2001 - 09:44:56: "[BOT]NanoBot<512><0><Blue>" triggered "info_player_teamspawn"
+^B[BOT]NanoBot: Hey [BOT]NanoBot, I killed you without even trying!
+
+
+--------------------------------------------------
+05/29/01 at 10:32:42  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+What map has a trigger that causes them to change teams? (or is this some kind of team balance thing in TFC?)
+
+botman
+
+--------------------------------------------------
+05/29/01 at 11:47:52  Reply by: Maelstrom (maelstrom@halfd.org)
+--------------------------------------------------
+This happens quite often when I do something like bot "addbot 1" or bot "addbot 2" from the console.
+
+Which brings me to another issue - this happens quite a bit - I will try to add a bot, and they don't spawn all the way:
+
+bot "addbot 2 2"
+Creating bot...
+L 05/29/2001 - 13:43:49: "[BOT]Nyarlathotep<665><0><Red>" triggered "info_player_teamspawn"
+
+That's it - they don't join a team, don't pick a class, and they don't show up on the map.  But they do take a slot on the server.  It's very weird.
+
+It seems to happen if a bot is kicked for either max_bots or manually, and then I go add a bot sometime after the kick, during the same map run.  Clear as mud??
+
+
+--------------------------------------------------
+05/29/01 at 13:30:40  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+Oh okay.  It's that stupid kick a bot then add a bot bug that I could never seem to fix properly.  I never could figure out why you shouldn't be able to add a bot to team 1 immediately after kicking a bot from team 1 (but it doesn't work).  I think you can add a bot to team 2 after kicking a bot from team 1 (or vice-versa).  I don't have any code in the bot that commits suicide (kill) or any code that would cause it to change teams, so it must be something that TFC is doing to a screwed up player slot.  Very strange.
+
+botman
+
+--------------------------------------------------
+05/30/01 at 08:59:09  Reply by: Maelstrom (maelstrom@halfd.org)
+--------------------------------------------------
+> I never could figure out why you shouldn't be able to add a bot to team 1 immediately after kicking a bot from team 1 (but it doesn't work)
+
+I played around with the source template a little and it looks like the player edict gets re-used.  Something probably needs to be re-initialized in that structure.
+
+Is there a way to free the edict when the bot is kicked so that the engine is forced to create a brand-new one?  I couldn't find a way...
+
+
+
+--------------------------------------------------
+05/30/01 at 10:58:36  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+The only thing that I'm aware of that will cause the engine to delete an edict is to set the flags field to FL_KILLME.  This will cause the engine to delete that entity when it gets around to it.  This is what is used in the Standard SDK when you call the UTIL_Remove() function.  I haven't tried doing this yet.  Maybe I'll try it this weekend to see if that prevents the "kick bot then add bot" bug in TFC.
+
+botman
+

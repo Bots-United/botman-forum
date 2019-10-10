@@ -1,0 +1,158 @@
+--------------------------------------------------
+Subject: BOTMAN EMERGANCY
+--------------------------------------------------
+10/15/00 at 11:07:55  Posted by: DarkYouth (darkyouth@thegraze.freeserve.co.uk)
+--------------------------------------------------
+[Q]
+//*********************************************************************************************
+//*********************************************************************************************
+//*********************************************************************************************
+//Called after waypoint load and waypoint/path addition
+void FloydSetup(void) 
+{       
+      short int distance = 0;
+      int n1, n2, iPath;
+   PATH *p;
+      //set all entries to a large value
+      for (n1 = 0; n1 < MAX_WAYPOINTS; n1++)
+      {
+            for (n2 = 0; n2 < MAX_WAYPOINTS; n2++)
+            {
+                  dist[n1][n2] = 9999;
+            }
+      }
+
+      for (n1 = 0; n1 < MAX_WAYPOINTS; n1++)
+      {
+            if ((waypoints[0][n1].flags & W_FL_DELETED) == W_FL_DELETED)
+                  continue;
+            p = paths[0][n1];
+
+            while (p != NULL)
+            {
+                  iPath = 0;
+                  while (iPath < MAX_PATH_INDEX)
+                  {
+                        n2 = p->index[iPath];
+                        if (n2 != -1)
+                        {
+                              distance = (short int)((waypoints[0][n1].origin - waypoints[0][n2].origin).Length());
+                              dist[n1][n2] = distance;
+                        }
+                        iPath++;
+                  }
+                  p = p->next;  // go to next node in linked list
+            }
+      }
+}
+
+//*********************************************************************************************
+//*********************************************************************************************
+//*********************************************************************************************
+//Called after floyd setup
+void Floyd(void) 
+{
+      int u, v, w;
+      int changed = 1;
+
+      for (v = 0; v < MAX_WAYPOINTS; v++)
+            for (w = 0; w < MAX_WAYPOINTS; w++)
+            {
+                  shortest[ v ][ w ] = dist[ v ][ w ];
+                  to[ v ][ w ] = w;
+            }
+            while (changed = 1)
+            {
+                  changed = 0;
+                  for (u = 0; u < MAX_WAYPOINTS; u++)
+                  {
+                        for (v = 0; v < MAX_WAYPOINTS; v++)
+                        {
+                              for (w = 0; w < MAX_WAYPOINTS; w++)
+                              {
+                                    if (shortest[ v ][ u ] + shortest[ u ][ w ] < shortest[ v ][ w ])
+                                    {
+                                          shortest[ v ][ w ] = shortest[ v ][ u ] + shortest[ u ][ w ];
+                                          to[ v ][ w ] = to[ v ][ u ];
+                                          changed = 1;
+                                    }
+                              }
+                        }
+                  }
+            }
+}
+
+//*********************************************************************************************
+//*********************************************************************************************
+//*********************************************************************************************
+
+void FloydDisplay(int a, int b, edict_t *pEntity)
+{
+      char say_text[80];
+      sprintf(say_text, "the shortest path between %d and %d consists of:\n", a, b);
+      ClientPrint( VARS(pEntity), HUD_PRINTNOTIFY, say_text);
+      while (a != b)
+      {
+            sprintf(say_text, "from %d goto %d (distance %d)\n", a, to[ a ][ b ], shortest[ a ][ b ]);
+            ClientPrint( VARS(pEntity), HUD_PRINTNOTIFY, say_text);
+            a = to[ a ][ b ];
+      }
+}
+
+//*********************************************************************************************
+//*********************************************************************************************
+//*********************************************************************************************
+
+int FloydNext(int from_waypoint, int to_waypoint)
+{
+      return to[from_waypoint][to_waypoint];
+}
+[Q]
+
+The error in this code is as follows:
+
+when 
+while(changed = 0) is set the floyd matrix is incorrect.
+
+But when
+
+while(changed = 1) is set in the floyd routine the program crashes..
+      
+
+--------------------------------------------------
+10/15/00 at 11:26:38  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+I don't think you mean "crashed", I think you mean  "locked up".  They aren't the same thing.
+
+You've got a single = in your while statement.  This condition will ALWAYS be true and will loop forever.  Replace the "changed = 1" with "changed == 1" and it shouldn't lock up (at least not a that particular location anyway).
+
+botman
+
+--------------------------------------------------
+10/15/00 at 11:30:00  Reply by: DarkYouth (darkyouth@thegraze.freeserve.co.uk)
+--------------------------------------------------
+It still locks up.....
+
+
+
+--------------------------------------------------
+10/15/00 at 11:47:27  Reply by: SUCKLEAD (sucklead@btinternet.com)
+--------------------------------------------------
+LOL the dangers of cut and paste!
+
+Hope you didn't leave MAX_WAYPOINTS as 1024.
+
+You did declare to, dist and shortest as short int didn't you?
+
+
+--------------------------------------------------
+10/15/00 at 11:53:53  Reply by: DarkYouth (darkyouth@thegraze.freeserve.co.uk)
+--------------------------------------------------
+Yup
+
+That was it.... I figured it out just before you posted...
+
+I left the PC for twenty mins and it loaded the map....
+
+Theres another bug... See other topic...
+

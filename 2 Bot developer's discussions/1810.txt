@@ -1,0 +1,61 @@
+--------------------------------------------------
+Subject: Calculating whether point is within polygon
+--------------------------------------------------
+06/15/01 at 13:47:49  Posted by: Spectual (spectual@hotmail.com)
+--------------------------------------------------
+I'm currently trying to devolop a function that is going to be used to determine which area of the map the bot (or any player) is in (for instance bomb place 1). The area I would like to define as a polygon of 4 points (1 for each corner of the area). But how do I determine whether a fifth point (e.g. the position of the player) is within the area (e.g. the area) and make it return true for "yes, he is in the area" or false for "no, he is not in the area".
+
+--------------------------------------------------
+06/15/01 at 14:39:07  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+Here's some Fast Robust Geometric Predicate code.  Look for the orient3dfast() function to determine if a point lines on one side or the other of a plane in 3D space...
+
+http://www.cs.cmu.edu/afs/cs/project/quake/public/code/predicates.c
+
+botman
+
+--------------------------------------------------
+06/15/01 at 14:44:00  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+P.S. You only need 3 points to define the plane.  If you want to check if the bot is within the "box" (between all four planes) you can arrange the order of the 3 points such that the interior of the box is defined as "above" the planes.  The order of the 3 points that determines a plane is used to determine whether a point is "above" or "below" that plane.  Make the space inside the box be "above" by arranging the plane points in the correct order and make the space outside the box be "below".  If the bot is "above" all four planes then it is inside the box.
+
+botman
+
+--------------------------------------------------
+06/15/01 at 14:49:47  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+Oh, after re-reading your post you wanted a simpler solution.  You don't care about 4 planes, all you care about is 4 X,Y coordinates and want to know if the bot's origin is greater than the least value and less than the greatest value (i.e. between the two points).
+
+If you have 4 points (X1,Y1), (X2,Y2), (X3, Y3), and (X4,Y4).  You can sort them by the X coordinates to find the min and max values.  See if the bot is between the Xmin and Xmax values.  Sort them again by Y values to find the min and max values.  If the bot is also between the Ymin and Ymax values then the bot is within the bounds of the 4 points.
+
+botman
+
+--------------------------------------------------
+06/16/01 at 07:54:01  Reply by: theimann (killaruna@botepidemic.com)
+--------------------------------------------------
+The method Botman proposed is indeed the easiest one, but it will only work for rectangles, i.e. all sides of the polygon have to be parallel to x- and y-axes. If you don't want to stick to this restricition you might try this algorithm:
+
+1. Get the vectors from the bot-position to all 4 corners
+2. Transform them into angles
+3. Check if all 4 yaw-angles are between 0 and 180 degrees: If they are, the bot is inside the polygon, otherwise outside.
+
+Probably the simplest algorithm for testing if a point is inside a flat and convex polygon, works with any number of vertexes. A con is that it's probably not the fastest one...
+
+Tobias
+
+--------------------------------------------------
+06/16/01 at 23:24:28  Reply by: Spectual (spectual@hotmail.com)
+--------------------------------------------------
+Thanks a lot.
+
+Tobias' method seems to be the most suitable.
+
+--------------------------------------------------
+06/18/01 at 06:32:05  Reply by: theimann (killaruna@botepidemic.com)
+--------------------------------------------------
+> Check if all 4 yaw-angles are between 0 and 180 degrees
+
+I noticed that this description is a bit ambigous: I was talking about the relative yaw-angles between the 4 vectors, not the absolute angles that you get by converting the vectors.
+
+Cheers, Tobias
+

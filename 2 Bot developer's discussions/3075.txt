@@ -1,0 +1,69 @@
+--------------------------------------------------
+Subject: pfnGetPlayerAuthId makes my server crash
+--------------------------------------------------
+05/04/02 at 16:03:52  Posted by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+Here's the wonderful tale of the fix that breaks things.
+
+I have addedcode:
+
+   // Added for HL 1109 (no SDK update)
+   const char *(*pfnGetPlayerAuthId) (edict_t *e); 
+
+at the end of the enginefuncs_t struct in eiface.h
+
+I have addedcode:
+
+const char *pfnGetPlayerAuthId (edict_t *e)
+{
+   return (*pfnGetPlayerAuthId) (e);
+}
+
+at the end of my engine.cpp
+
+I have addedcode:
+
+   pengfuncsFromEngine->pfnGetPlayerAuthId = pfnGetPlayerAuthId;
+
+at the bottom of my GiveFnPtrsToDll().
+
+and THIS, makes my server crash.
+Unless I comment out the last line.
+I have strong suspicions it's also the cause of my problems with Metamod.
+
+Does anyone know WHY ???
+
+[modified on 05/04/02 at 16:03:52]
+--------------------------------------------------
+05/04/02 at 17:10:46  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+Well to me this looks like its going to take an endless loop here
+
+code:
+
+const char *pfnGetPlayerAuthId (edict_t *e) {    return (*pfnGetPlayerAuthId) (e); } 
+
+
+
+Its calling the funnction again (Its name and parameters are the same) So I guess that its going to take an endless loop, continously loading the function over and over again until your memory runs out or call stack overflows (If a call stack can overflow ;))
+
+edit:
+
+I think what you want to do is:
+
+code:
+
+const char *pfnGetPlayerAuthId (edict_t *e) {    return (*g_engfuncs.pfnGetPlayerAuthId) (e); } 
+
+
+
+I believe you forgot the g_enfuncs bit ;D
+
+[modified on 05/04/02 at 17:10:46]
+--------------------------------------------------
+05/04/02 at 18:03:59  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+:::: me is so ashamed that me go run and hide in a tiny tiny hole ::::
+
+thank you Cheesy (one more time ;))
+

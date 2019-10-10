@@ -1,0 +1,203 @@
+--------------------------------------------------
+Subject: Is a hostage already 'used'
+--------------------------------------------------
+12/06/00 at 03:26:39  Posted by: @$3.1415rin (as3.1415rin@gmx.de)
+--------------------------------------------------
+Hi
+
+How can I get information about if a hostage is following sb. ?
+I searched all suspicous vars in entvars_t, but found nothing.
+
+@$3.1415rin
+
+--------------------------------------------------
+12/06/00 at 05:08:49  Reply by: MKlimstra (mklimstra@zonnet.nl)
+--------------------------------------------------
+That's because hostages are unique for Counter-Strike (I mean that they aren't in half-life). 
+I haven't tried it yet, but I think that if you check the IN_USE flag of every player every frame (or maybe every 5 frames or so), and check if that player is close to a hostage, you could get track of which hostages are following which players and stuff.
+
+
+
+--------------------------------------------------
+12/06/00 at 05:15:01  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+You could check if the hostage is moving.  That would indicate that someone has used it.  When you first see the hostage store it's origin,  before using the hostage check to see if the origin is the same, if not, don't use it (unless you want to implement hostage "stealing").
+
+botman
+
+--------------------------------------------------
+12/06/00 at 13:38:11  Reply by: CountFloyd (countfloyd_1999@yahoo.com)
+--------------------------------------------------
+In addition you could store the hostages entity pointer after the Bot has used it to prevent stealing from other Bots even if it doesn't move. I think there was a thread about that on this board some time ago...
+
+--------------------------------------------------
+12/13/00 at 03:15:14  Reply by: @$3.1415rin (as3.1415rin@gmx.de)
+--------------------------------------------------
+OK that're nice solutions and I've thought about them before.
+But a variable like entvars_t::owner, or one of this suspicous variables for mods, would be much nicer, obviously there's nothing similar
+
+
+--------------------------------------------------
+12/13/00 at 04:58:10  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+Nope, Counter-Strike doesn't set the hostage edict "owner" field to the user of the hostage.  Bad Gooseman! Bad Gooseman! No bot treats for you!
+
+botman
+
+--------------------------------------------------
+12/13/00 at 11:51:47  Reply by: eLiTe (ali@elitegamer.fsnet.co.uk)
+--------------------------------------------------
+That's a good idea - send an email to Gooseman to add an 'owner' field into the hostages entity (or whatever) for the next version of CS. It's not extremely important, but if they're going to be releasing a new version soon (and I think they are because of all the complaints about v1.0 :P), then it would make OUR job simpler...
+
+--------------------------------------------------
+12/13/00 at 12:35:07  Reply by: Spyro (theoddbot@hotmail.com)
+--------------------------------------------------
+Hi,
+
+I haven't actually tried this, but i noticed this field in entvars_t:
+
+edict_t            *aiment;            // entity pointer when MOVETYPE_FOLLOW
+
+considering that hostages follow you, it might be worth looking into.
+
+thanks,
+
+
+--------------------------------------------------
+12/13/00 at 13:18:07  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+According to Gooseman there is a local variable within the CHostage class that stores whether or not someone is "using" that hostage.  Since you don't have access to the Counter-Strike source code, you don't have access to this class variable either.
+
+Also I believe Gooseman said the ONLY modifications to CS code would be for bug fixes and to prevent cheats.  This doesn't fall under either of those categories.  You just have to use another method to see if hostages are being used (or allow the bots to "steal" hostages).
+
+botman
+
+--------------------------------------------------
+12/13/00 at 14:15:11  Reply by: @$3.1415rin (as3.1415rin@gmx.de)
+--------------------------------------------------
+I checked *aiment, but it's not right - as you said.
+Ok we've to write a bit longer code, instead of testing one variable on 0.
+Now I see, that I'm not the only one not finding a simple, variable based solution and I'm was not too stupid to find it. In some time my bot'll be released. Using NNs as the NNBot, but I started to write it without knowing nnbot - OK, ya do't have to believe me, but it's true !
+
+@$3.1415rin
+
+
+--------------------------------------------------
+12/13/00 at 17:32:35  Reply by: CountFloyd (countfloyd_1999@yahoo.com)
+--------------------------------------------------
+Don't bother trying any of the entvars ptrs or fields in the hostage struct. Some time ago I dumped the whole structure before/after using a hostage and nothing gets changed. No valid ptr and no other changes - just as Botman says. You could try to get the class variable through the address space of the Cs DLL using some tricky reverse engeneering. But this would be a hell of a work and is quite crazy. Ingore this idea please :)
+
+--------------------------------------------------
+12/14/00 at 14:25:50  Reply by: Spyro (theoddbot@hotmail.com)
+--------------------------------------------------
+hi,
+
+so the only (practical) way to do it would be to check their velocity?
+
+
+
+--------------------------------------------------
+12/15/00 at 05:12:51  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+There's actually several different ways to do this...
+
+1. Check if the hostage is moving.  If so then someone is using it.  Of course if Gooseman had implemented some simple wandering AI this wouldn't work if the hostage's escort got killed and the hostage started wandering around on it's own.  But since he didn't, it should work fairly well.
+
+2. Check every frame if any players are pressing the "USE" key when close to, and facing, a hostage (thus they are USEing them).  Store this information somewhere and update as necessary when an escort of a hostage gets killed.  This doens't really work to well when the hostage falls to far behind the escort and stops following them.
+
+3. Allow the bots to steal hostages from other players (people do it on the Internet, why shouldn't bots do it?).  Just USE the darn things even if someone else has already used them.
+
+I'm sure there are a couple of other methods of detecting hostage use.  Just remember that it's not sufficient to keep track of only bots using hostages, you also need to keep track of real players using hostages too.
+
+botman
+
+--------------------------------------------------
+12/15/00 at 19:08:11  Reply by: DarkYouth (darkyouth@thegraze.freeserve.co.uk)
+--------------------------------------------------
+maybe im missing something, but if we can get at entvars_t cant we get at the hostage structs too??? 
+
+And as for the v.owner field isnt that used by some entities for special purposes only?
+
+OR replace the hostage code with bot movement so they will navigate better and be trackable.... A mod for a mod. I would love better  hostage AI
+
+
+
+--------------------------------------------------
+12/16/00 at 04:52:52  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+No, you can't get at any of the Counter-Strike class variables.  These aren't something that the engine has access to.  Only the CS source code can access these variables.  The only way to get access to them would be to disassemble the CS DLL to assembly language and modify the assembly language code.  But then you'd have to distribute your own custom version of CS along with your bot which would mean you'd have to duplicate everything in the cstrike folder into some other csbot folder (which most people wouldn't want to have to do).  Creating a work-around for the hostage using is MUCH simpler.
+
+botman
+
+--------------------------------------------------
+12/16/00 at 06:33:52  Reply by: pikachu (emperorstuart@hotmail.com)
+--------------------------------------------------
+Why don't you make the bot search for any players near the hostage, and if there is, don't make it use them?
+
+--------------------------------------------------
+02/26/01 at 14:54:39  Reply by: ExecutionStyle (c_brennan@hotmail.com)
+--------------------------------------------------
+This is a very interesting post.  It reminds me of one of the harder lessons I learned about programming and that is to never try and calculate the state of something that you are defining yourself.  
+
+What I mean is that you control when bots use hostages.  Since you are the one using the hostage, keep track of that fact in your own internal state model and refer to that instead of querying the engine.  
+
+The pitfalls here are that your hostage usage code has to do extra checking to make sure that the hostage is actually following the bot - which you should be in there anyway - and you have to explicitly track when human players use hostages (probably the hardest part)
+
+-Carl
+
+--------------------------------------------------
+02/27/01 at 04:57:04  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+This problem can be solved for bots in much the same way that humans solve this problem.  How does a human player know that someone is rescuing a hostage?
+
+I think in most cases they notice that the hostage is moving (and following another player), thus they assume that the player is rescuing the hostage.
+
+If you have a "bot problem" just try to think about how you would solve that same problem as a human player in the game, usually that's the "best" solution to the problem (but it's not always easy to implement that solution).
+
+botman
+
+
+--------------------------------------------------
+09/26/03 at 09:34:13  Reply by: AustinBotServer (AustinBotServer@MindSpring)
+--------------------------------------------------
+
+QUOTE:
+
+OR replace the hostage code with bot movement so they will navigate better and be trackable.... A mod for a mod. I would love better  hostage AI
+
+
+
+
+Is this feasible?
+Check Spawn()
+If a hostage is being spawned strip it out and spawn a "hostage" bot in place of it!
+
+Probably not, since I bet there is code in CS that depends on the hostage entity being in the map for cs maps, but MAYBE not!
+
+
+--------------------------------------------------
+09/26/03 at 10:05:53  Reply by: Cheesemonster!!! (cheeseh(at)rcbot(dot)net)
+--------------------------------------------------
+Here is another thread more or less about the same thing:
+
+http://dynamic.gamespy.com/~botman/yabb/YaBB.pl?board=2&action=display&num=3939
+
+[modified on 09/26/03 at 10:05:53]
+--------------------------------------------------
+09/30/03 at 12:07:13  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+QUOTE:
+
+Is this feasible?
+Check Spawn()
+If a hostage is being spawned strip it out and spawn a "hostage" bot in place of it!
+
+
+
+It IS feasible, but I wouldn't do it this way...
+I would just use the good 'ole proven HPB_bot method: in StartFrame_Post(), cycle through all hostage entities, and update their position, model, animation and view angle according to a thinking cycle you call, similar to a bot thinking cycle. Except that it does not deal with player entities having the fakeclient bit set, but with hostage entities. The "PodFix" method, if you want.
+
+Curious nothing like that exists already (hint hint) ;)
+
+
+[modified on 09/30/03 at 12:07:13]

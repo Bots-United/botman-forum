@@ -1,0 +1,125 @@
+--------------------------------------------------
+Subject: addbot problem: SZ_getSpace
+--------------------------------------------------
+03/21/02 at 12:26:55  Posted by: Armgas (armgas@mail.com)
+--------------------------------------------------
+I have searched the forums on this topic, but i havent found anything that answers my question.
+im trying to port the HPB_bot template to the Existence mod, when i add a bot it says
+SZ_GetSpace: tried to write to an uninitialized sizebuf_t: ???
+and shuts down HL, i have tryed to run in debug mode to see what makes this happend. The last bit of the log is:
+
+ClientCommand: addbot 2
+ClientUserInfoChanged: pEntity=22f6664 infobuffer=\name\Bot\model\gordon\topcolor\1\bottomcolor\1
+pfnMessageBegin: edict=22f6340 dest=1 type=75
+pfnWriteByte: 1
+pfnWriteString: Creating HPB bot...
+
+pfnMessageEnd:
+pfnPvAllocEntPrivateData:
+ClientConnect: pent=22f6664 name=Bot
+ClientPutInServer: 22f6664
+pfnMessageBegin: edict=22f6664 dest=1 type=103
+pfnWriteByte: 0
+pfnMessageEnd:
+pfnFindEntityInSphere:
+pfnFindEntityInSphere:
+pfnSetModel: edict=22f6664 models/player.mdl
+pfnSetSize: 22f6664
+pfnSetClientMaxspeed: edict=22f6664 speed=240.000000
+pfnFindEntityInSphere:
+pfnFindEntityInSphere:
+pfnClientCommand: edict=22f6664 cmd=enterspectatemode
+
+
+at this point it has not done more than join the game, it has not even recieved the MOTD.
+the mod has some anticheat detection, im not sure if its this that cause it, it should try to detect cheats somewhere around this point.
+
+when i join myself i get in like i should (naturally) but here is what is after the point the bot would stop:
+
+pfnFindEntityInSphere:
+pfnFindEntityInSphere:
+pfnClientCommand: edict=22f6340 cmd=enterspectatemode
+
+pfnSetSize: 23009b4
+pfnSetOrigin:
+
+
+if im not very mistaken this could be caused by the server trying to send info straight into the bot which is not a client and therefore return this bug.
+
+can any1 help me with this, if not can u give me input on how i can figure out what i return and throw that at the server whenever it reaches this point.
+
+--------------------------------------------------
+03/21/02 at 13:26:05  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+This...
+
+SZ_GetSpace: tried to write to an uninitialized sizebuf_t
+
+...is caused by MODs sending network messages to clients using pfnClientCommand() or pfnClientPrintf().  Both of these will crash the engine if the client is a bot (a fake client).
+
+You can prevent this problem by catching the pfnClientCommand() and pfnClientPrintf() functions (in engine.cpp) and preventing them from going on to the engine if the client is a bot.
+
+Download the HPB bot 1.8a source code and look at the engine.cpp file where I intercept pfnClientCommand() and pfnClientPrintf() and check to make sure that the edict does not have the FL_FAKECLIENT bit set.  You will need to do the same thing in your code.
+
+botman
+
+--------------------------------------------------
+03/22/02 at 02:01:26  Reply by: bluesy (bluesy@bezeqint.net)
+--------------------------------------------------
+Existence worked for me without any major problems, maybe the 'addbot 2' is the problem here?
+(just a wild guess)
+
+--------------------------------------------------
+03/22/02 at 04:45:47  Reply by: Armgas (armgas@mail.com)
+--------------------------------------------------
+i will try all over again then, but what version did you try with.. because 1.4 is rather new, and there has been added cheat detection to tthe mod
+
+and botman, i am using the 1.8a code. but it still does this.. i guess its something build in the mod, it might the same problem as the one with admin mod.
+
+well i will look harder into it, and pray that there is light at the end of the tunnel
+
+--------------------------------------------------
+03/22/02 at 09:28:10  Reply by: bluesy (bluesy@bezeqint.net)
+--------------------------------------------------
+My bot works with both EX1.3 and EX1.4.
+My framework is Botman`s HPB template #3.
+
+Perhaps there is something in HPB1.8a that causes the problem? try to disable bot chatting, maybe the bots try to chat before they are in the game?
+
+--------------------------------------------------
+03/23/02 at 08:35:37  Reply by: Armgas (armgas@mail.com)
+--------------------------------------------------
+i tried with template #3 and it worked, mostly
+then i tried with 1.8a again and it worked, mostly
+
+now i have this weird problem, i cant join the rebel team, i end up joined and playing with no hud, weapons, or anything and not listed as on a team in the scoreboard. and it says i tried to join rebels unsuccesfully
+if i join agents i get the same error telling me it was unsuccesfull yet i get in and play as usual
+
+so now im looking through those darn entities to see if any1 are missing.. damn it
+
+--------------------------------------------------
+03/23/02 at 11:34:27  Reply by: bluesy (bluesy@bezeqint.net)
+--------------------------------------------------
+
+QUOTE:
+i tried with template #3 and it worked, mostly
+then i tried with 1.8a again and it worked, mostly
+
+now i have this weird problem, i cant join the rebel team, i end up joined and playing with no hud, weapons, or anything and not listed as on a team in the scoreboard. and it says i tried to join rebels unsuccesfully
+if i join agents i get the same error telling me it was unsuccesfull yet i get in and play as usual
+
+so now im looking through those darn entities to see if any1 are missing.. damn it
+
+
+
+
+No need to search for entities, it seems like an Existence bug... The VGUI is actualy there only you can`t see it.
+
+Type vguiselect <number> in the console to choose your charachter (replace <number> with you char - dr. white is 2)
+
+--------------------------------------------------
+03/24/02 at 10:23:49  Reply by: Armgas (armgas@mail.com)
+--------------------------------------------------
+oh so THAT was what voigtan wanted to talk to biggs about..
+well thx, i wont bother looking then
+

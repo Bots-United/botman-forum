@@ -1,0 +1,49 @@
+--------------------------------------------------
+Subject: hpb_bot source and monster
+--------------------------------------------------
+09/22/03 at 17:51:40  Posted by: BAStumm (bs@bs-linux.com)
+--------------------------------------------------
+I have a question, not sure if this is the best place or if the metamod forum is better, its more a coding question for hpb_bot so here goes...
+
+Ok so I've built in some in game admin type commands into the hpb_bot that are auth'ed via steamids (formerly wonids). On particular command is a "slap" command which makes a player dizzy like they've been concussion grenaded (tfc conc gren). In addition to the dizzy command I thought it would be neat to spawn a few snarks around this player, so I've added some code to send via a SERVER_COMMAND something like 
+
+sprintf(msg2, "monster snark \"%s\"",
+         STRING(INDEXENT(i)->v.netname)
+        );
+
+SERVER_COMMAND(msg2);
+
+but I get this in my logs...
+
+Error, bad server command monster snark "[STF]Billy"
+
+Am I doing something wrong? Is the "monster" command not available from inside HPB_bot? I have metamod loading hpb_bot via the localinfo deal. Is there a work around?
+
+--------------------------------------------------
+09/22/03 at 18:18:27  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+SERVER_COMMAND() would only work if pfnAddServerCommand() had been used to register the "monster" command.
+
+You could theoretically move all the "monster" command stuff from ClientCommand() into a new function (let's call it MonsterCommand) and then use pfnAddServerCommand() to register the MonsterCommand() function for the "monster" server command.
+
+Inside the MonsterCommand() function, you can use ARGC and ARGV to get the command line arguments.
+
+Once you've done this, your changes to the HPB bot code should let you do what you originally wanted.
+
+EDIT: Dooooh!  Nevermind, I forgot that the Monster plugin already used the pfnAddServerCommand() to register the "monster" command line command (so that rcon stuff would work properly).  I'm not sure why SERVER_COMMAND("monster") wouldn't give you the proper results.
+
+Just a double check, did you put a '\n' at the end of your string that you pass to SERVER_COMMAND()?
+
+botman
+
+[modified on 09/22/03 at 18:18:27]
+--------------------------------------------------
+09/22/03 at 18:20:10  Reply by: BAStumm (bs@bs-linux.com)
+--------------------------------------------------
+DOH forgot \n bet that will fix it.... DERRRR!!! Im an idiot... 
+
+--------------------------------------------------
+09/22/03 at 18:31:56  Reply by: BAStumm (bs@bs-linux.com)
+--------------------------------------------------
+thanks that fixed it, I hate stupid mistakes like that :)
+

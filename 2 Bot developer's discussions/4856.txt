@@ -1,0 +1,201 @@
+--------------------------------------------------
+Subject: bots are slow and legs won't move
+--------------------------------------------------
+09/26/03 at 09:22:31  Posted by: ToySoldier (samcoulson@hotmail.com)
+--------------------------------------------------
+I've added code to the HPB template to make it compatible with The BattleGrounds mod (www.bgmod.com), but the bots move very slow, and their legs don't "walk" when they move.
+
+First I thought that the pBot->f_max_speed wasn't being set right. Currently it is set in bot.cpp like this:
+code:
+pBot->f_max_speed = CVAR_GET_FLOAT("sv_maxspeed");
+
+The BattleGrounds has gone open source, so I went over to http://www.bgmod.com/forums/index.php?showtopic=4633 and looked at the source, and I don't think that BG uses a cvar to set the max speed.  I hard coded a number in there, and they go faster, but their legs still don't move when they walk.
+
+I think that the legs might not be moving because the code to make the bots move is like this:
+code:
+g_engfuncs.pfnRunPlayerMove( pEdict, pEdict->v.v_angle, pBot->f_move_speed, 0, 0, pEdict->v.button, 0, pBot->msecval);
+
+Maybe it should use pEdict->v.button |= IN_RUN or something like that?  The funny thing is, for all the other mods that HPB is compatible with, the bots run just fine, exept for BG.  Any ideas?
+
+--------------------------------------------------
+09/26/03 at 14:43:10  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+I would suspect an obnoxious msecval problem... how's your framerate ?
+
+
+--------------------------------------------------
+09/29/03 at 08:48:06  Reply by: ToySoldier (samcoulson@hotmail.com)
+--------------------------------------------------
+My framerate sucks as of now--5 fps with about a 185 millisecond delay between frames.  The funny thing is though, like I said before, that in other mods like TFC, my framerate is about the same, but the bots still "run" fine.  I havn't made any changes concerning msecval.
+
+My friend has a better framerate so I'll have him test it a bit and see what comes up.
+
+--------------------------------------------------
+10/06/03 at 09:55:26  Reply by: ToySoldier (samcoulson@hotmail.com)
+--------------------------------------------------
+Well, I had my friend test the bots; he had about 30 fps with a 40-50 msec delay between frames, a lot better than my computer, and the bots are still slow and their legs don't move.
+
+Also, I did some more testing playing Half-Life multiplayer, and the HL bots were a lot faster than the BG bots and the HL bots' legs moved fine.  Furthermore, my fps was worse than when I play BattleGrounds, and the msec between frames was averaging over 200.
+
+So it seems this is a mod-specific problem and not a problem with the bot code.  On the BattleGrounds forums someone www.bgmod.com/forums/index.php?showtopic=4914reported a bug saying that their player became slow for an unknown reason, but that went away after a while.  They have decided to not look into it.  Looks like I'm going to have to live with the problem, convince them to fix it so bots will work better, or find and fix the problem myself.
+
+Thanks for your help Pierre-Marie, though I don't need any more help I just wanted to give you some closure on the topic.
+
+--------------------------------------------------
+10/07/03 at 03:53:42  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+If you want to try something else, check if one of your bots isn't issuing the same ClientCommand() each frame without response from the engine. Also check the other way around, check if the engine isn't continuously sending the same network message to one bot without response from it. This can cause lag too.
+
+
+--------------------------------------------------
+10/07/03 at 09:17:02  Reply by: rick (rick_helmus8@hotmail.com)
+--------------------------------------------------
+you can add this in the bottem of botthink:
+code:
+
+   if (pBot->f_move_speed > 0.0)
+         pEdict->v.button = IN_FORWARD;
+   else if (pBot->f_move_speed < 0.0)
+         pEdict->v.button = IN_BACK;
+   if (pBot->f_strafe_speed > 0.0)
+         pEdict->v.button = IN_RIGHT;
+   else if (pBot->f_strafe_speed < 0.0)
+         pEdict->v.button = IN_LEFT;
+
+
+this might let the bot move his legs :)
+
+[modified on 10/07/03 at 09:17:02]
+--------------------------------------------------
+10/11/03 at 01:59:55  Reply by: OffTopic (khomsan.ph@student.chula.ac.th)
+--------------------------------------------------
+QUOTE:
+
+   if (pBot->f_strafe_speed > 0.0)
+         pEdict->v.button = IN_RIGHT;
+   else if (pBot->f_strafe_speed < 0.0)
+         pEdict->v.button = IN_LEFT;
+
+
+
+from what i know the IN_RIGHT, IN_LEFT is set when you push the right arrow and left arrow key on your keyboard by default, i think it should be
+code:
+
+   if (pBot->f_strafe_speed > 0.0)
+         pEdict->v.button = IN_MOVERIGHT;
+   else if (pBot->f_strafe_speed < 0.0)
+         pEdict->v.button = IN_MOVELEFT;
+
+
+--------------------------------------------------
+10/11/03 at 04:23:35  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Yes.
+
+Although these input buttons are not needed to let a bot wander normally on the ground, they ARE needed to have bots to move on ladders and under water. Also if somewhere in your code you want to have a generic method to determine if a player, either real player or bot, is moving and how, it's good for the bots to have their movement flags set in v.button like normal players have.
+
+Use some function in the likes of:
+code:
+
+void BotMove (bot_t *pBot)
+{
+   // the purpose of this function is to translate the data of the BotMove structure (timings
+   // at which the bot has to perform some movement - jump in 2 seconds, move forward for 5
+   // seconds, and so on) into the right input buttons to be passed to RunPlayerMove(), which is
+   // the function that asks the engine to perform the movement of the fakeclient. It also sets
+   // the correct values for move_speed and strafe_speed which are parameters of RunPlayerMove().
+
+   TraceResult tr;
+
+   if (FNullEnt (pBot->pEdict))
+      return; // reliability check
+
+   // is the bot paused ?
+   if (pBot->f_pause_time > gpGlobals->time)
+   {
+      pBot->BotMove.f_move_speed = 0;
+      pBot->BotMove.f_strafe_speed = 0;
+
+      if (pBot->BotMove.f_duck_time > gpGlobals->time)
+         pBot->pEdict->v.button |= IN_DUCK;
+
+      return; // don't move the bot if it should be paused
+   }
+
+   // may the bot jump now ?
+   if ((pBot->BotMove.f_jump_time < gpGlobals->time) && (pBot->BotMove.f_jump_time + 0.1 > gpGlobals->time))
+      pBot->pEdict->v.button |= IN_JUMP; // jump
+
+   // has the bot just jumped AND is bot skilled enough ?
+   if ((pBot->BotMove.f_jump_time + 0.1 < gpGlobals->time) && (pBot->BotMove.f_jump_time + 0.2 > gpGlobals->time) && (pBot->bot_skill > 1))
+      pBot->BotMove.f_duck_time = gpGlobals->time + 0.2; // duck while jumping
+
+   // may the bot duck now ?
+   if (pBot->BotMove.f_duck_time > gpGlobals->time)
+      pBot->pEdict->v.button |= IN_DUCK; // duck
+
+   // may the bot safely strafe left now ?
+   if ((pBot->BotMove.f_strafeleft_time > gpGlobals->time) && !(pBot->BotBody.hit_state & OBSTACLE_LEFT_FALL))
+   {
+      pBot->pEdict->v.button |= IN_MOVELEFT;
+      pBot->BotMove.f_strafe_speed = -pBot->BotMove.f_max_speed; // strafe left
+   }
+
+   // else may the bot safely strafe right now ?
+   else if ((pBot->BotMove.f_straferight_time > gpGlobals->time) && !(pBot->BotBody.hit_state & OBSTACLE_RIGHT_FALL))
+   {
+      pBot->pEdict->v.button |= IN_MOVERIGHT;
+      pBot->BotMove.f_strafe_speed = pBot->BotMove.f_max_speed; // strafe right
+   }
+
+   // may the bot move backwards now ?
+   if ((pBot->BotMove.f_backwards_time > gpGlobals->time) || (pBot->BotMove.b_emergency_walkback))
+   {
+      pBot->pEdict->v.button |= IN_BACK;
+      pBot->BotMove.f_move_speed = -pBot->BotMove.f_max_speed; // move backwards
+   }
+
+   // else may the bot move forward now ?
+   else if (pBot->BotMove.f_forward_time > gpGlobals->time)
+   {
+      pBot->pEdict->v.button |= IN_FORWARD;
+      pBot->BotMove.f_move_speed = pBot->BotMove.f_max_speed; // run forward
+   }
+
+   // may the bot walk now ?
+   if (pBot->BotMove.f_walk_time > gpGlobals->time)
+   {
+      pBot->pEdict->v.button |= IN_RUN;
+      pBot->BotMove.f_move_speed /= 2; // forward walk
+      pBot->BotMove.f_strafe_speed /= 2; // side walk
+   }
+
+   return;
+}
+
+
+
+
+--------------------------------------------------
+10/11/03 at 14:30:41  Reply by: Cheesemonster!!! (cheeseh(at)rcbot(dot)net)
+--------------------------------------------------
+I tried this out on my bot to test it out with this mod, and I get the same results (slow bots and move animation wont budge a frame :p) I dunno whats up with it
+
+--------------------------------------------------
+10/11/03 at 20:59:59  Reply by: botmeister (meister@telus.net)
+--------------------------------------------------
+Dunno if this is related, but there's another thread about how to compute msecval. 
+
+For whatever reason, my bots in cstrike run way to fast using the normal msecval computation. I tried dividing the result by half, and the bots move way too slow. Somwhere between is the right value, but why am I getting this problem with ctsrike and no one else is? (using CS 1.6 btw)
+
+Perhaps this problem has nothing to do with the  The BattleGrounds mod?
+
+
+
+--------------------------------------------------
+10/12/03 at 02:25:06  Reply by: Cheesemonster!!! (cheeseh(at)rcbot(dot)net)
+--------------------------------------------------
+I believe that, if Msec is the problem then the running animations should continue and loop, but it keeps restarting itself and hardly moves, its weird.. (i.e. normally with a low msec you'll just get slow-mo bots, but their animations will also go in slow mo but wont be interupted...)
+
+I dunno, I could a higher Msec to see if it works anyway
+

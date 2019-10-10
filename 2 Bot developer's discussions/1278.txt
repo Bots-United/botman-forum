@@ -1,0 +1,219 @@
+--------------------------------------------------
+Subject: "On the Floyd" - A dynamic Floyds algo variant
+--------------------------------------------------
+02/28/01 at 11:29:03  Posted by: DarkYouth (darkyouth@thegraze.freeserve.co.uk)
+--------------------------------------------------
+The Dummys alternative to A*
+
+Well for some time Ive wanted dynamic pathing and I think I finally cracked it. I may be wrong, but please tell me if I am.
+
+Look at my Floyd() function first:
+
+void Floyd(void) 
+{
+      int u, v, w;
+      int changed = 1;
+      int g = num_waypoints;
+      for (v = 0; v < g; v++)
+            for (w = 0; w < g; w++)
+            {
+                        shortest[ v ][ w ] = dist[ v ][ w ];
+                        to[ v ][ w ] = w;
+            }
+            while (changed)
+            {
+                  changed = 0;
+
+                  for (u = 0; u < g; u++)
+                  {
+                        for (v = 0; v < g; v++)
+                        {
+                              for (w = 0; w < g; w++)
+                              {
+                                    if (shortest[ v ][ u ] + shortest[ u ][ w ] < shortest[ v ][ w ])
+                                    {
+                                          shortest[ v ][ w ] = shortest[ v ][ u ] + shortest[ u ][ w ];
+                                          to[ v ][ w ] = to[ v ][ u ];
+                                          changed = 1;
+                                    }
+                              }
+                        }
+                  }
+            }
+}
+
+Now this calculates the entire fromto table. This takes time.
+
+My idea is that the fromto table should be calculated on the fly, aka the pun.
+
+Say I want to work out the next waypoint. In theory If I force the V variable in the above code to be the waypoint the bot is at, then in theory it might calculate the next waypoint to go to and store it in the table and so on.
+
+Heres the code for the new function (I havent tested, but its good in theory I hope)
+
+<THEORY>
+
+void OnTheFloyd(int v) 
+{
+      UpdateDistanceTable();
+      int u, v, w;
+      int changed = 1;
+      int g = num_waypoints;
+
+            for (w = 0; w < g; w++)
+            {
+                        shortest[ v ][ w ] = dist[ v ][ w ];
+                        to[ v ][ w ] = w;
+            }
+            while (changed)
+            {
+                  changed = 0;
+
+                  for (u = 0; u < g; u++)
+                  {
+
+                              for (w = 0; w < g; w++)
+                              {
+                                    if (shortest[ v ][ u ] + shortest[ u ][ w ] < shortest[ v ][ w ])
+                                    {
+                                          shortest[ v ][ w ] = shortest[ v ][ u ] + shortest[ u ][ w ];
+                                          to[ v ][ w ] = to[ v ][ u ];
+                                          changed = 1;
+                                    }
+                              }
+                        }
+                  }
+            }
+}
+
+The old floyd code basically took n*n*n time to calculate, where the new version may take n*n time.
+
+Thats means instead of 20-40 seconds precalc time for 1024 waypoints its more like 0.3 of a second with all 20 possible bots calling the function at the same time.
+
+This saves a lot of time and needs only to be done once when a waypoint is added per waypoint on a per need basis.
+
+Its basically the same function but it only does the table for 1 waypoint instead of all of them.
+
+</THEORY>
+
+Im gonna spend some time testing, and improving. If this works it will be a dynamically calculated floyd system I think..
+
+Ideas? Flames? Criticsim? Alternatives? Errors?
+
+If anyone has anything to say then lemme know.
+
+
+
+--------------------------------------------------
+02/28/01 at 12:00:06  Reply by: William (william@botepidemic.com)
+--------------------------------------------------
+Hi,
+
+if you take the Floyd / Warshall algorithm and tune it down to find one (shortest) path from a source to a destination, you get something that is known as 'Dijkstra's shortest path' algorithm.
+(Historically, Dijkstra's algorithm was first).
+
+I didn't check your code for correctness though.
+
+You can find more info on Dijkstra and Floyd/Warshall here:
+http://www.sunmoon.pair.com/ilin/report/alg1.htm
+
+Note that a tuned A* is more than twice as fast than Dijkstra, on average, for large numbers of waypoints.
+To be specific, on a PIII/500 for some 1000 waypoints, the A* performance (for random pairs of waypoints) is in the order of 1700 path/s, thus 0.6 ms per path. Let's assume Dijkstra would take 1 ms per path.
+In that case, you don't want 20 bots to do a path search every tick (10 x second), because that in total would consume 20 x 10 x 1 ms = 200 ms. In other words, the player's ping would be like 200 ms on his own local machine.
+The direct lookup in a Floyd computed table is in the order of 3,300,000 path/s. That's some 1000 times as fast, and adds solely 0.2 ms to the player's ping.
+
+However, for smaller numbers of waypoints (say 250), the CPU load for Dijkstra would only be (1000/250)^2 x 200 = 50 ms.
+
+William
+
+--------------------------------------------------
+02/28/01 at 12:06:46  Reply by: DarkYouth (darkyouth@thegraze.freeserve.co.uk)
+--------------------------------------------------
+Jees you are fast.
+
+So, I essentially made a Dijkstras algo..
+
+Cool
+
+Until someone explains how the hell A* works in english then I cannot use it. Its very complex and Im very young. 
+
+Im not that good at learning from outlines of algos that nearly all pages give. I learned how the floyd algo worked when someone sent me a working source. I forgot who it was (I cant check, Formatted the drive months ago w/o backing up emails)
+
+I picked up all I know in C++ from botmans HPB code. I did follow some quake2 tuts but lost interest since Q3 was coming and HL was out.
+
+
+If I just call an OnTheFloyd(currwpt) and then a FloydNext(currwpt, dest) in succession I should in therory get on the fly path calculation.
+
+Im still coding this into my AI.
+
+
+--------------------------------------------------
+02/28/01 at 12:15:37  Reply by: DarkYouth (darkyouth@thegraze.freeserve.co.uk)
+--------------------------------------------------
+This is big enough to warrant a second post!
+
+Will, My plan is that each time the waypoint file is saved and loaded a complete floyd table is saved and loaded too.
+
+Dont forget I will only call this code If the fromto entry is invalid for this waypoint. :)
+
+Its only called about once per second per bot (wpt to wpt travel time) and not called if the waypoint is already reachable.
+
+But this may lead to a non optimum path, but then again the table will be optimised the next time its saved/loaded and the problem in theory is gone.
+
+My idea is to have an eraser style learning system (waypoints placed on the fly, jump detection and so on)
+
+SWAT V4 had a lot of learning code, the waypoint system was the worst part, the bots navigation was screwy until you waited the full half minute for all the wpts to calculate at the end every round a change was made. 
+
+The only problem I could see is that the a loop may be created so I'll code something along the lines of:
+
+Has the bot been here in the last 5 visited waypoints?
+
+If so then there is a loop so recalculate all of the 5 last visited waypoints fromto's to elimiate the loop.
+
+That should remove recurrsive floyd table data. 
+
+
+--------------------------------------------------
+02/28/01 at 13:16:19  Reply by: William (william@botepidemic.com)
+--------------------------------------------------
+Question: how many waypoints do you have, what CPU, and how long does Floyd actually take?
+
+I'm assuming a shorter delay (say 2 seconds) would be acceptable at the end of a round. Maybe you can modify Floyd to work faster.
+
+Note that you need to prevent inconsistent paths. By updating the table for one more waypoint, you might introduce cycles. Waypoint A says the shortest path to Z is via B, B says shortest path to Z is via C, but C say shortest path to Z is via A.
+
+I discussed something similar with Count Floyd on these boards. See:
+http://dynamic.gamespy.com/~botman/yabb/YaBB.pl?board=2&action=display&num=273
+starting with Count Floyd's second post.
+
+A* is explained quite well here:
+http://www.gamasutra.com/features/19970801/pathfinding.htm
+
+William
+
+
+--------------------------------------------------
+02/28/01 at 13:22:36  Reply by: DarkYouth (darkyouth@thegraze.freeserve.co.uk)
+--------------------------------------------------
+Well I did some tests and the autowaypointing code usually does about 650-700 waypoints to cover an entire level.
+
+This takes 20-25 seconds to compute on my pc.
+
+
+Did you write that post before you saw my previous one?
+
+BTW The gameasutra site seems to be down.
+
+Its says cannot find server.
+
+--------------------------------------------------
+02/28/01 at 22:48:05  Reply by: bigjesus (holybigjesus@hotmail.com)
+--------------------------------------------------
+However if we made a preload  it would be a ton easier to calculate the matrix during the game. Its just a thought :) who knows where these things come from.
+
+--------------------------------------------------
+02/28/01 at 23:56:27  Reply by: DarkYouth (darkyouth@thegraze.freeserve.co.uk)
+--------------------------------------------------
+Well this one I derrived from my existing floyds algo code which is somewhat different from botmans. (Its an adaption from what someone sent me before)
+
+The idea is that I thought I might be able to use floyds algo and add waypoints as I play without the massive slowdown (i.e. game freezes for 10 or so seconds)
+

@@ -1,0 +1,82 @@
+--------------------------------------------------
+Subject: entity association
+--------------------------------------------------
+03/20/02 at 16:01:26  Posted by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+Concrete example:
+How can I get a pointer to the button entity that opens the door entity my bot wants to open ?
+
+I don't know where to look for infos on entity associations...
+
+Thanks in advance.
+
+--------------------------------------------------
+03/21/02 at 03:08:53  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+something like this..
+
+code:
+
+      edict_t      *pentTarget = NULL;
+                              
+      pentTarget = FIND_ENTITY_BY_TARGETNAME( pentTarget, STRING(pentDoor->v.target) );
+                              
+      if (FNullEnt(pentTarget))
+      {
+             // no target
+            return;
+      }
+
+
+--------------------------------------------------
+03/21/02 at 03:27:56  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+Thank you Cheesy !!! ;D
+
+--------------------------------------------------
+03/21/02 at 08:52:37  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+In fact it's just the contrary...
+
+code:
+
+float min_distance = 200;
+
+// check for buttons that control this door
+while ((pButton = UTIL_FindEntityByClassname (pButton, "func_button")) != NULL)
+{
+   if ((pTargetDoor = UTIL_FindEntityByTargetname (pTargetDoor, STRING (pButton->v.target))) == pDoor)
+   {
+      float distance = (pButton->v.origin - pBot->pEdict->v.origin).Length ();
+
+      // skip this button if bot can't 'see' it
+      if (!FVisible (pButton->v.origin, pBot->pEdict))
+         continue;
+
+      // see if it's the closest button so far...
+      if (distance < min_distance)
+      {
+         min_distance = distance; // update the minimum distance
+         pTargetButton = pButton; // remember this button
+      }
+   }
+}
+
+// is there a button that controls this door nearby ?
+if (pTargetButton != NULL)
+{
+   // make bot go and use that button
+}
+
+
+
+So my bots can now use doors that need a button press to open.
+
+I bet you are coding too quickly Cheesy... ;-)
+
+[modified on 03/21/02 at 08:52:37]
+--------------------------------------------------
+03/21/02 at 08:44:21  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+it was only an example :p
+

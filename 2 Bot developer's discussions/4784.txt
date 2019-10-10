@@ -1,0 +1,175 @@
+--------------------------------------------------
+Subject: Compiling hpb_bot template: `tolower' undeclared
+--------------------------------------------------
+09/02/03 at 07:12:06  Posted by: Zero3Cool (zero3cool@bonbon.net)
+--------------------------------------------------
+Im trying to compile the hpb_bot template with MingW but i keep getting an error of this type. Here's the log:
+
+E:\HPB_bot\dlls>make
+gcc -march=pentium -O2 -w -I../engine -I../common -I../pm_shared -c bot.cpp -o b
+ot.o
+bot.cpp: In function `void BotCreate(edict_t*, const char*, const char*, const
+   char*, const char*)':
+bot.cpp:416: `tolower' undeclared (first use this function)
+bot.cpp:416: (Each undeclared identifier is reported only once for each
+   function it appears in.)
+E:\MINGW\BIN\MAKE.EXE: *** [bot.o] Error 1
+
+Line 416:
+
+c_skin[i] = tolower( c_skin[i] );  // convert to all lowercase
+
+It seems to be in the code that chooses what skin the bot should get.
+
+Nothing modified in the source so i guess its something with my MingW. I tried 3 versions (installed over eachother however) and the error message was generally the same. (more description with the latest version) If it is my MingW version can you then please give me a link to a working version? I tried to find some old versions (because many says they are the best ?!?) but without luck.
+
+--------------------------------------------------
+09/02/03 at 11:50:48  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+The gcc 2.95.1 build was what I used for the HPB bot template code.
+
+Try the 2.95.3 version on the Mingw.org Downloads page and see if that works...
+
+http://www.mingw.org/download.shtml
+
+botman
+
+--------------------------------------------------
+09/02/03 at 17:46:52  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Else make your own version of the tolower() function. But I find it extremely curious that it wouldn't be present in GNU C. Have a look in the compiler's include to see where this function's prototype is declared, and eventually include that header in your source file.
+
+
+--------------------------------------------------
+09/02/03 at 23:16:54  Reply by: KaCaT (bigkacat@yahoo.com)
+--------------------------------------------------
+include ctype.h in your bot.cpp and util.cpp (or extdll.h)
+
+[modified on 09/02/03 at 23:16:54]
+--------------------------------------------------
+09/03/03 at 02:56:48  Reply by: Zero3Cool (zero3cool@bonbon.net)
+--------------------------------------------------
+I tried 2.95.3 but no change.
+By including ctype.h i get another error message but first after all the object files:
+
+dllwrap -s --output-def HPB_bot_ming.def --driver-name gcc -o HPB_bot.dll \
+        bot.o bot_client.o bot_combat.o bot_navigate.o bot_start.o dll.o engine.
+o h_export.o linkfunc.o util.o waypoint.o
+dllwrap: no export definition file provided
+dllwrap: creating one, but that may not be what you want
+type GiveFnpt.dat >> HPB_bot_ming.def
+dllwrap -s --def HPB_bot_ming.def --driver-name gcc -o HPB_bot.dll \
+        bot.o bot_client.o bot_combat.o bot_navigate.o bot_start.o dll.o engine.
+o h_export.o linkfunc.o util.o waypoint.o
+HPB_bot.exp(.edata+0x814):fake: undefined reference to `GiveFnptrsToDll__FP13eng
+inefuncs_sP12globalvars_t@8'
+dllwrap: gcc exited with status 1
+E:\MINGW\BIN\MAKE.EXE: *** [HPB_bot.dll] Error 1
+
+[modified on 09/03/03 at 02:56:48]
+--------------------------------------------------
+09/03/03 at 05:16:37  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+This part...
+
+type GiveFnpt.dat >> HPB_bot_ming.def 
+
+...should prevent that error.
+
+It looks like you just don't have the GiveFnpt.dat file in your build directory.  Extract it from the .zip file and try "make clean", then "make" to rebuild everything again.
+
+botman
+
+--------------------------------------------------
+09/03/03 at 10:24:11  Reply by: Zero3Cool (zero3cool@bonbon.net)
+--------------------------------------------------
+Same error with make clean and then make.
+
+Yes i have the file in there and i see the line in that file as the last one in the .def file. Im more worried about this:
+
+dllwrap: no export definition file provided
+dllwrap: creating one, but that may not be what you want
+
+--------------------------------------------------
+09/03/03 at 11:51:55  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+These messages...
+
+dllwrap: no export definition file provided
+dllwrap: creating one, but that may not be what you want  
+ 
+
+...are okay.  You're supposed to get those.
+
+The C++ name mangling (the stuff that makes "GiveFnptrsToDll__FP13enginefuncs_sP12globalvars_t@8'") for gcc 2.95.3 may be different than the name mangling for gcc 2.95.1.
+
+You can use 'nm' to dump the symbol names in the h_export.o file to see what the properly mangled name generated by gcc 2.95.3 would be.  Try...
+
+nm -a h_export.o >output.txt
+
+...on the command line and then open "output.txt" in a text editor.  Search for "GiveFnptrsToDLL" and replace the mangled name in GiveFnpt.dat with the one from output.txt and see if that takes care of the problem.
+
+botman
+
+--------------------------------------------------
+09/04/03 at 11:26:02  Reply by: Zero3Cool (zero3cool@bonbon.net)
+--------------------------------------------------
+There is a diffrence. a _ . However i just get this:
+
+HPB_bot.exp(.edata+0x814):fake: undefined reference to `GiveFnptrsToDllP13engine
+funcs_sP12globalvars_t@8' which is almost the same error as before.
+
+
+--------------------------------------------------
+09/06/03 at 07:26:54  Reply by: Zero3Cool (zero3cool@bonbon.net)
+--------------------------------------------------
+What do i do?
+
+--------------------------------------------------
+09/06/03 at 08:08:41  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+"What do i do?"
+
+...Use Borland instead?...
+
+http://www.borland.com/bcppbuilder/freecompiler/
+
+You don't have to worry about version mismatches with the Borland compiler.
+
+botman
+
+--------------------------------------------------
+09/08/03 at 04:49:35  Reply by: Zero3Cool (zero3cool@bonbon.net)
+--------------------------------------------------
+Ahh it works with Borland now after a little troubleshooting. Thank you.
+
+--------------------------------------------------
+09/10/03 at 01:52:09  Reply by: Whistler (whistler_wmz@163.com)
+--------------------------------------------------
+I never had any problems in Visual Studio.NET, neither Beta2 nor formal release
+
+I think you had better use Microsoft Visual C++ 6.0 or higher......If you have money:-)
+
+--------------------------------------------------
+09/10/03 at 01:58:56  Reply by: Whistler (whistler_wmz@163.com)
+--------------------------------------------------
+Well, I never had any problems in Microsoft Visual Studio .NET, both Beta2 and RTM release.
+
+I suggest you using Visual C++ 6.0, of course, Visual Studio .NET is also OK.
+
+--------------------------------------------------
+09/27/03 at 10:14:38  Reply by: KaCaT (bigkacat@yahoo.com)
+--------------------------------------------------
+QUOTE:
+There is a diffrence. a _ . However i just get this:
+
+HPB_bot.exp(.edata+0x814):fake: undefined reference to `GiveFnptrsToDllP13engine
+funcs_sP12globalvars_t@8' which is almost the same error as before.
+
+
+
+
+
+Looks like you are using mingw with gcc3 or newer....So it should be _Z15GiveFnptrsToDllP13enginefuncs_sP12globalvars_t@8
+
+[modified on 09/27/03 at 10:14:38]

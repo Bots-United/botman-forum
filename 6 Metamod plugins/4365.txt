@@ -1,0 +1,157 @@
+--------------------------------------------------
+Subject: Metamod Bot - Coming Along Better
+--------------------------------------------------
+04/30/03 at 17:07:46  Posted by: DllMain (wrwrarwa)
+--------------------------------------------------
+Ok now before I saw anything, I would prefer not to have replies at "look at HPB bot source", its just way too complicated to look at and really learn from. Anywho, I have improved my BotCreate a bit, and now I can send a bot into the game, they are solid, and collision detection works, However, when they spawn into the game, they are about 70ish units above the ground. Also, if I use adminteleport on a bot, their model stays in the same location, but if you go to where I teleported them its like they are there but invisible.... Anywho here is my BotCreate:
+
+
+void BotCreate(void)
+{
+      edict_t *pEntity;
+      char ptr[128]; 
+      char *infobuffer;
+      int clientIndex;
+      pEntity = g_engfuncs.pfnCreateFakeClient( "Bot" );
+      CALL_GAME_ENTITY( PLID , "player" , VARS( pEntity ) );
+      infobuffer = g_engfuncs.pfnGetInfoKeyBuffer( pEntity );
+      clientIndex = ENTINDEX( pEntity );
+      g_engfuncs.pfnSetClientKeyValue( clientIndex, infobuffer, "model", "bumperbot" );
+      MDLL_ClientConnect( pEntity, "Bot", "127.0.0.1", ptr );
+      MDLL_ClientPutInServer( pEntity );
+      pEntity->v.flags = FL_FAKECLIENT;
+      g_engfuncs.pfnSetSize( pEntity, Vector( -16, -16, 0 ), Vector( 16, 16, 72 ));
+      g_engfuncs.pfnDropToFloor( pEntity );
+}
+
+I dont know what variables that I HAVE to initialize, and if anyone can point on any more mistakes on my part that would be great.
+
+
+
+
+EDIT: Oh yeah i added the line about the droptofloor crap because of the problem of the bots spawning above the floor. Now they spawn beneath the floor. I think I am setting their size wrong but cannot be sure.
+
+[modified on 04/30/03 at 17:07:46]
+--------------------------------------------------
+04/30/03 at 17:13:56  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+DropToFloor will position the origin of the entity at floor level.  This should only be used for AI monsters.  Players (and bots) have the origin at the center of the body.  AI monsters have the origin at the bottom of the feet.
+
+The engine won't move the fake clients until you call pfnRunPlayerMove().  You need to keep calling that function over and over (during each frame) to get the bots to move around (this includes the effects of gravity, like dropping to the floor).
+
+botman
+
+--------------------------------------------------
+04/30/03 at 17:54:04  Reply by: DllMain (wrwrarwa)
+--------------------------------------------------
+ah, I see. Well, I tried this:
+
+void StartFrame( void )
+{
+      edict_t *pEntity[32];
+
+      int i = 0;
+
+      while ((i < 32) && (pEntity[i] != NULL))
+      {
+            g_engfuncs.pfnRunPlayerMove( 
+            pEntity[i], 
+            pEntity[i]->v.v_angle, 
+            300,
+            200, 
+            0, 
+            0, 
+            0, 
+            50
+      );
+      i++;
+}
+
+And it gave me a server error. NUM_FOR_EDICT, bad pointer when I do this:
+
+void StartFrame( void )
+{
+      edict_t *pEntity[32];
+
+      int i = 0;
+
+      while ((i < 32) && (pEntity[i] != NULL))
+      {
+            g_engfuncs.pfnRunPlayerMove( pEntity[i],      pEntity[i]->v.v_angle,300,200,0,0,0,50);
+      i++;
+      }
+
+      RETURN_META (MRES_HANDLED);
+}
+
+I know I am doing something wrong with my looping method, but cant see what..
+
+
+EDIT: Nothing seems to be wrong with my loop, just the player movement part. I commented that out and it ran fine... nothing happened but no crash.
+
+[modified on 04/30/03 at 17:54:04]
+--------------------------------------------------
+04/30/03 at 18:23:57  Reply by: DllMain (wrwrarwa)
+--------------------------------------------------
+Ok I have changed it to this:
+
+void StartFrame( void )
+{
+      if(DoThink)
+      {
+      i=0;
+            while ((i < gpGlobals->maxClients) && (pEntity[i] != NULL))
+            {
+                  i++;
+                  g_engfuncs.pfnRunPlayerMove( pEntity[i],pEntity[i]->v.v_angle,300,200,0,0,0,50);
+            }
+      }
+      RETURN_META (MRES_HANDLED);
+}
+
+Then I just set doThink to TRUE ingame via a console command. This doesnt crash anymore, but it doesnt do anything at all.
+
+I have also tried:
+
+void StartFrame( void )
+{
+      if(DoThink)
+      {
+      i=0;
+            while ((i < 32) && (pEntity[i] != NULL))
+            {
+                  i++;
+                  g_engfuncs.pfnRunPlayerMove( pEntity[i],pEntity[i]->v.v_angle,300,200,0,0,0,50);
+            }
+      }
+      RETURN_META (MRES_HANDLED);
+}
+
+
+Same thing. No crash, but nothing happens, bot still doesnt drop, etc. etc.
+
+
+--------------------------------------------------
+05/01/03 at 05:15:45  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Where do the edicts in "pEntity[i]" come from?
+
+botman
+
+--------------------------------------------------
+05/01/03 at 14:30:52  Reply by: DllMain (wrwrarwa)
+--------------------------------------------------
+I am SyF on thewavelength forums. You have helped me out quite a lot, and it no longer crashes, but the bots move once and then stop moving and cannot be moved anymore. I believe this is osmething wrong with the loop itself, and I am looking for a solution.
+
+--------------------------------------------------
+05/01/03 at 17:36:16  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+The bots will only move forward if you give them a non-zero "forwardmove" value in the pfnRunPlayerMove() command.  Make sure you aren't passing zero for that parameter otherwise they'll just stand there.
+
+botman
+
+--------------------------------------------------
+05/01/03 at 17:41:00  Reply by: DllMain (wrwrarwa)
+--------------------------------------------------
+It is not zero. Refer to my other post for some more information, I stuck in my functions for you to look at.
+

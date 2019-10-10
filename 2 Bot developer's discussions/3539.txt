@@ -1,0 +1,52 @@
+--------------------------------------------------
+Subject: bot wonid
+--------------------------------------------------
+08/06/02 at 10:55:50  Posted by: Dan_Bradley (dmb1@blueyonder.co.uk)
+--------------------------------------------------
+iv been thinking long and hard about this, and what i want to know is, how is a bot asigned a wonid?  obviously it doesnt have its own cd key and doesnt auth through won..
+
+--------------------------------------------------
+08/06/02 at 12:15:36  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+The best you can do is intercept...
+
+unsigned int pfnGetPlayerWONId(edict_t *e)
+
+(in engine.cpp)
+
+and check if "e" is a fakeclient (a bot), and just return a random number you want, of course, every time this function is called, it will probably return a different won id for the same bot each time, so you'd want to add a won_id value in the bots structure and randomize it when you add the bot. I.e. create an unsigned int, in bot_t (using botmans template) called won_id or something, then...
+
+in pfnGetPlayerWONId(), get the bot pointer or index using 
+
+int bot_index = UTIL_GetBotIndex(e);
+
+then ...
+
+if( bot_index != -1 )
+  return bots[bot_index].won_id;
+
+of course, when you create the fake WON ID for the bot, check if its already used first by searching through each player and using getplayerwonId again.
+
+--------------------------------------------------
+08/07/02 at 08:23:44  Reply by: Dan_Bradley (dmb1@blueyonder.co.uk)
+--------------------------------------------------
+ahh i see, very cool.  now that could be interesting :-)
+
+--------------------------------------------------
+08/07/02 at 22:01:44  Reply by: Scooter (rmiskovish@yahoo.com)
+--------------------------------------------------
+Fakeclients (bots) return a won id of 0.
+
+[modified on 08/07/02 at 22:01:44]
+--------------------------------------------------
+08/08/02 at 03:18:01  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+The point in this thread is to hack it so it will return a fake won ID ;D
+
+--------------------------------------------------
+08/08/02 at 06:13:23  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+You can change what the game DLL sees as the WON ID, but you can't change what the engine sees as the WON ID (for example if you were trying to change the stats generated from the Half-Life logging files, the engine WON ID wouldn't change).
+
+botman
+

@@ -1,0 +1,107 @@
+--------------------------------------------------
+Subject: Bug Report
+--------------------------------------------------
+06/26/03 at 14:23:20  Posted by: BAStumm (bs@bs-linux.com)
+--------------------------------------------------
+in dll.cpp you have some code ie:
+
+code:
+
+      // if time to check for server commands then do so...
+      if ((check_server_cmd <= gpGlobals->time) && IsDedicatedServer)
+      {
+         check_server_cmd = gpGlobals->time + 1.0;
+
+         char *cvar_bot = (char *)CVAR_GET_STRING( "HPB_bot" );
+
+         if ( cvar_bot && cvar_bot[0] )
+         {
+            char cmd_line[80];
+            char *cmd, *arg1, *arg2, *arg3, *arg4, *arg5;
+
+            strcpy(cmd_line, cvar_bot);
+//small test added by me
+//printf("Cmd_line %s\n",cmd_line);
+            index = 0;
+            cmd = cmd_line;
+            arg1 = arg2 = arg3 = arg4 = arg5 = NULL;
+
+            // skip to blank or end of string...
+            while ((cmd_line[index] != ' ') && (cmd_line[index] != 0))
+               index++;
+
+ 8<---- SNIP -------
+
+            else if (strcmp(cmd, "addbot") == 0)   
+            {
+               BotCreate( NULL, arg1, arg2, arg3, arg4, arg5 );
+                   
+               bot_check_time = gpGlobals->time + 5.0;
+            }
+            else if (strcmp(cmd, "min_bots") == 0)
+            {
+               min_bots = atoi( arg1 );
+           
+               if ((min_bots < 0) || (min_bots > 31))
+                  min_bots = 1;
+           
+               sprintf(msg, "min_bots set to %d\n", min_bots);
+               printf(msg);
+
+ 8<----- SNIP ------
+
+
+
+I wanted to add some commands inside this area just expand on your existing HPB_bot command api. So I add a HPB_bot test command for example that does server_say "test" or something. Works fine. Now if we wanted a HPB_bot test 3 to server_say test 3 the server crashes... So I downloaded your pre-compiled 3.0 release to test and found this...
+
+code:
+
+HPB_bot min_bots 5
+./hlds.sh: line 1:  6580 Segmentation fault      ./hlds -game tfc -exec autoexec.cfg -nomaster +sv_lan 1 +maxplayers 10
+
+
+
+
+
+
+
+
+--------------------------------------------------
+06/26/03 at 14:24:57  Reply by: BAStumm (bs@bs-linux.com)
+--------------------------------------------------
+oops hit button too soon. 
+
+anyway if you look where I added a test to the code I found that all that comes through when typing HPB_bot min_bots 5 is just "min_bots" the args are lost. 
+
+--------------------------------------------------
+06/26/03 at 14:58:39  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Yes, you need...
+
+HPB_bot "min_bots 5"
+
+...or the Half-Life console won't pass the additional parameters to the DLL code.
+
+There should REALLY be a check in the section that handles "min_bots" and "max_bots" to make SURE there is an argument specified and if there is no argument, just print out what the current setting is, for example...
+
+HPB_bot min_bots
+
+...should give...
+
+min_bots = 5
+
+...or whatever the current value is.  The bug is trying to use atoi() on a null pointer.  :)
+
+botman
+
+--------------------------------------------------
+06/26/03 at 16:17:34  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+... or you can spend 5 minutes to implement an elegant way to deal with server commands with the pfnAddServerCommand() engine function. I think I did it already in the HPB_bot metamod port. Look there for the source code if you are interested, it's virtually the same.
+
+
+--------------------------------------------------
+06/26/03 at 16:50:25  Reply by: BAStumm (bs@bs-linux.com)
+--------------------------------------------------
+Thanks I'm doin fine. I could have fixed the problem myself but want to keep my code current with botmans other than the new functions/features I add to it. 
+

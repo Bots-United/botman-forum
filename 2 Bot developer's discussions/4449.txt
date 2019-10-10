@@ -1,0 +1,1197 @@
+--------------------------------------------------
+Subject: A* machine optimization
+--------------------------------------------------
+06/02/03 at 13:12:36  Posted by: PM (pm@racc-ai.com)
+--------------------------------------------------
+w00t w00t
+
+I've finally got this f%µ$@£¨ùçking priority queue to work and I have fi-na-lly got a wor-king path-fin-der !!! yeah yeah that's no lies folks, I really did it (don't laugh you overthere) and I think it's become close to optimal now.
+
+But in case I would be blind, or in case there are gurus at optimizing things wandering in here, feel free to tell me if there's something still optimizeable in all that mess.
+
+I got rid of the closed list and use a boolean flag instead.
+
+here's some structures for a start, from racc.h
+code:
+
+// walkable faces structure definition
+typedef struct
+{
+   vector *v_corners; // pointer to array of face edges vector locations (mallocated)
+   vector *v_delimiters; // pointer to array of face delimiters vector locations (mallocated)
+   int corner_count; // number of edges (and thus delimiters) this face has
+} walkface_t;
+
+( snip other structs in between... )
+
+// navigation link structure definition
+struct navlink_t
+{
+   struct navnode_t *destination_node; // pointer to the navigation node this link indicates to be reachable
+   char reachability; // type of reachability it is (normal, ladder, edge fall, elevator, etc.)
+   char index; // index number of the link in the navnode's link array
+};
+
+
+// navigation node structure definition
+struct navnode_t
+{
+   walkface_t *walkface; // the walkable face this node concerns
+   struct navlink_t *links; // array of navigation links to walkfaces reachable from this one
+   char links_count; // number of navigation links in this navigation node
+
+   // dynamic data used by the bot's pathmachine
+   struct navnode_t *parent; // pointer to this element's parent in the queue during path search
+   bool is_in_open_list; // set to TRUE if this node is in the pathmachine's OPEN list
+   bool is_in_closed_list; // set to TRUE if this node is in the pathmachine's CLOSED list
+   float travel_cost; // minimal cost of travel to this node during a path search
+   float remaining_cost; // estimated cost of travel from this node to the goal (heuristic)
+   float total_cost; // weight of this element in the priority queue (sum of the 2 above)
+};
+
+
+// pathfinding machine
+typedef struct
+{
+   bool busy; // set to TRUE if the pathfinding machine is busy computing a path
+   bool finished; // set to TRUE if the pathfinding machine has finished computing its path.
+   navnode_t **open; // pathfinding machine's OPEN list (priority queue of nodes to search)
+   int open_count; // number of elements in the OPEN list (fixed-size heap of the queue)
+   navnode_t **path; // resulting PATH list (array of pointers to navnodes, so far)
+   int path_count; // number of elements in the PATH list (i.e., number of navnodes in the path)
+} pathmachine_t;
+
+
+
+and the pathmachine itself
+code:
+
+// RACC - AI development project for first-person shooter games derivated from Valve's Half-Life
+// (http://www.racc-ai.com/)
+//
+// The game to engine interfacing code is based on the work done by Jeffrey 'Botman' Broome
+// (http://planethalflife.com/botman/)
+//
+// This project is partially based on the work done by Eric Bieschke in his BSDbot
+// (http://gamershomepage.com/csbot/)
+//
+// This project is partially based on the work done by Brendan 'Spyro' McCarthy in his ODD Bot
+// (http://oddbot.hlfusion.com/)
+//
+// This project is partially based on the work done by Alistair 'eLiTe' Stewart in his TEAMbot
+// (http://www.planethalflife.com/teambot/)
+//
+// This project is partially based on the work done by Johannes '@$3.1415rin' Lampel in his JoeBot
+// (http://www.joebot.net/)
+//
+// Rational Autonomous Cybernetic Commandos AI
+//
+// pathmachine.cpp
+//
+
+#include "racc.h"
+
+
+extern map_t map;
+extern player_t players[MAX_CLIENTS_SUPPORTED_BY_ENGINE];
+
+
+
+void InitPathMachineForPersonality (bot_personality_t *personality)
+{
+   // this function prepare a bot's pathfinding machine. It is called upon server activation,
+   // AFTER the map has been analyzed and the walkfaces have been sorted, so that we know which
+   // size will be our machine's node and path lists (arrays of pointers to navnodes).
+
+   if (personality == NULL)
+      return; // reliability check
+
+   // reliability check: have lists ALREADY been initialized ?
+   if (personality->PathMachine.open)
+      free (personality->PathMachine.open); // free the list to have it in a clean state
+   if (personality->PathMachine.path)
+      free (personality->PathMachine.path); // free the list to have it in a clean state
+
+   // now initialize them so as they can hold pointers to the max number of nodes this map has
+   personality->PathMachine.open = (navnode_t **) malloc (map.walkfaces_count * sizeof (navnode_t *));
+   personality->PathMachine.path = (navnode_t **) malloc (map.walkfaces_count * sizeof (navnode_t *));
+
+   // and clean the whole machine
+   memset (personality->PathMachine.open, 0, map.walkfaces_count * sizeof (navnode_t *));
+   personality->PathMachine.open_count = 0;
+   memset (personality->PathMachine.path, 0, map.walkfaces_count * sizeof (navnode_t *));
+   personality->PathMachine.path_count = 0;
+
+   return; // now the lists can be safely considered as valid arrays of pointers
+}
+
+
+void BotRunPathMachine (bot_t *pBot)
+{
+   // paths are computed in the reverse order, because since a pathfinding process may extend on
+   // several frames, the "start" of the path, which is where the bot is, is likely to change,
+   // because of the bot being still running, or moving elseway.
+   // In order to compute a path, one must:
+   // 1. wait for the pathmachine to finish a previous task or forcefully reset it
+   // 2. place the GOAL node (the start node for the pathfinder) on the open list
+   // These operations are done automatically upon each call of BotFindPathTo().
+   // Then the path machine looks for a path, several cycles per frame depending on the value of
+   // the cycles_per_frame variable, and if one path is available, it sets a flag to indicate
+   // it has finished, and builds the path under the form of an array of nodes (in the right
+   // order this time) in the final "path" field of the pathmachine.
+   // Local variables have been declared static to speedup recurrent calls of this function.
+
+   static int cycles_per_frame = 50;
+   static int cycle_count;
+   static pathmachine_t *pathmachine;
+   static navnode_t *pathmemory;
+   static navnode_t *examined_node, *successor_node, *node_at_feet;
+   static int node_index;
+   static char link_index;
+   static float successor_travel_cost;
+
+   if (IsNull (pBot->pEntity))
+      return; // reliability check
+
+   pathmachine = &pBot->pPersonality->PathMachine; // quick access to pathmachine
+   pathmemory = pBot->pPersonality->PathMemory; // quick access to pathmemory
+   cycle_count = 0; // reset the pathfinding machine's cycle count
+
+   // have we been asked to compute a path ?
+   if ((pathmachine->open[0] != NULL) && (pathmachine->open_count > 0))
+   {
+      pathmachine->busy = TRUE; // first mark the machine as busy
+
+      // find and get the navnode under this bot's feet (by linking a pointer to it). The node
+      // at the bot's feet is the start node of the path from the bot's point of view, but it is
+      // the GOAL node in the search routine since we look for the path in the reverse order.
+      node_index = WalkfaceIndexOf (players[PlayerIndexOf (pBot->pEntity)].pFaceAtFeet);
+      node_at_feet = &pathmemory[node_index]; // node indices are the same as walkface indices, btw
+
+      // reliablility check: is the node at feet not found ?
+      if (node_at_feet == NULL)
+         return; // if so, don't compute anything this frame (the bot doesn't know where it is)
+
+      // who said I would never use A* ? urgh...
+
+      // while there are nodes on the open list, examine them...
+      while (pathmachine->open_count > 0)
+      {
+         if (cycle_count == cycles_per_frame)
+            return; // break the loop if we've searched for too long (we'll continue next frame)
+
+         // take the most interesting node among the list of those we haven't examined yet
+         examined_node = PopFromOpenList (pathmachine);
+
+         // is this node the goal node ?
+         if (examined_node == node_at_feet)
+         {
+            pathmachine->path_count = 0; // we have found the path ! so build it...
+            node_index = pathmachine->open_count;
+
+            // while we've not built the entire path...
+            while (node_index > 0)
+            {
+               // append this node to the path array of node pointers
+               pathmachine->path[pathmachine->path_count] = pathmachine->open[node_index];
+               pathmachine->path_count++; // the path is now one node longer
+               node_index = (node_index - 1) / 2; // and look for its parent in the heap
+            }
+
+            // clean up the machine and notify the bot that we have finished computing the path
+            memset (pathmachine->open, 0, map.walkfaces_count * sizeof (navnode_t *));
+            pathmachine->open_count = 0;
+            pathmachine->finished = TRUE;
+            pathmachine->busy = FALSE;
+
+            return; // and return
+         }
+
+         // this node is not the goal node, but since it might be on the path (we don't know yet)
+         // we have to check for its successors in order to know where they lead to...
+         for (link_index = 0; link_index < examined_node->links_count; link_index++)
+         {
+            // get a successor to the node (by linking a pointer to it)
+            successor_node = examined_node->links[link_index].destination_node;
+
+            // compute its travel cost by adding this of its parent to its own
+            successor_travel_cost = examined_node->travel_cost + TravelCostForPersonality (pBot->pPersonality, examined_node, &examined_node->links[link_index]);
+
+            // check whether this node is already in the open list AND is cheaper there
+            if (successor_node->is_in_open_list && (successor_node->travel_cost <= successor_travel_cost))
+               continue; // then skip this node
+
+            // check whether this node is already in the closed list AND is cheaper there
+            if (successor_node->is_in_closed_list && (successor_node->travel_cost <= successor_travel_cost))
+               continue; // then skip this node
+
+            successor_node->parent = examined_node; // remember this node's parent
+            successor_node->travel_cost = successor_travel_cost; // remember its travel cost
+            successor_node->remaining_cost = EstimateTravelCostFromTo (successor_node, pathmachine->open[0]);
+            successor_node->total_cost = successor_travel_cost + successor_node->remaining_cost;
+
+            // was this node on the closed list again ?
+            if (successor_node->is_in_closed_list)
+               successor_node->is_in_closed_list = FALSE; // take it off the list
+
+            // is this node NOT in the OPEN list yet ?
+            if (!successor_node->is_in_open_list)
+               PushToOpenList (pathmachine, successor_node); // push it there
+         }
+
+         examined_node->is_in_closed_list = TRUE; // done examining this node and its children
+         cycle_count++; // the pathfinding machine has elapsed one cycle more
+      }
+
+      // if we get there, that's we have explored all the nodes descending from the start point,
+      // and that none of them has been able to reach the destination point. It just means that
+      // no path exists, so clean up the machine and return.
+      memset (pathmachine->open, 0, map.walkfaces_count * sizeof (navnode_t *));
+      pathmachine->open_count = 0;
+      memset (pathmachine->path, 0, map.walkfaces_count * sizeof (navnode_t *));
+      pathmachine->path_count = 0;
+
+      pathmachine->finished = TRUE;
+      pathmachine->busy = FALSE;
+      return;
+   }
+
+   // else we haven't been asked to compute anything yet, so return.
+   return;
+}
+
+
+bool BotFindPathTo (bot_t *pBot, vector v_goal, bool urgent)
+{
+   // the purpose of this function is to setup bot pBot's pathmachine so that it computes a
+   // path to the destination described by the spatial vector v_goal. If additionally the urgent
+   // flag is set, and the pathmachine is already computing another path, the function forcibly
+   // resets the pathmachine and make it compute the new path immediately instead. First the bot
+   // will try to determine if it knows a navnode that would enclose the destination location,
+   // and if one is found, it is put on the pathmachine's open list to tell it to compute a path
+   // to this location.
+
+   static pathmachine_t *pathmachine;
+   static navnode_t *pathmemory;
+
+   if (IsNull (pBot->pEntity))
+      return (FALSE); // reliability check
+
+   pathmachine = &pBot->pPersonality->PathMachine; // quick access to pathmachine
+   pathmemory = pBot->pPersonality->PathMemory; // quick access to pathmemory
+
+   // if bot is already computing another path and there's no emergency, give up
+   if (pathmachine->busy && !urgent)
+      return (FALSE);
+
+   // clean up the machine before proceeding
+   memset (pathmachine->open, 0, map.walkfaces_count * sizeof (navnode_t *));
+   pathmachine->finished = FALSE;
+
+   // find the destination node (its index is the same as the destination face index) and put
+   // it on the open list of the pathmachine, setting the open list count to 1
+   pathmachine->open[0] = &pathmemory[WalkfaceIndexOf (WalkfaceUnder (v_goal))];
+   pathmachine->open[0]->parent = NULL;
+   pathmachine->open[0]->travel_cost = 0;
+   pathmachine->open[0]->remaining_cost = (v_goal - OriginOf (pBot->pEntity)).Length ();
+   pathmachine->open[0]->total_cost = pathmachine->open[0]->remaining_cost;
+   pathmachine->open_count = 1;
+
+   return (TRUE); // and let the pathmachine do its job
+}
+
+
+float EstimateTravelCostFromTo (navnode_t *node_from, navnode_t *node_to)
+{
+   // this function estimates the travel cost between two navigation links. It's a heuristic
+   // used in the pathfinding process. Currently we assume the travel cost is roughly equal
+   // to the straight distance between both nodes (more accurately between the center of the
+   // walkfaces they represent).
+
+   static int index;
+   static walkface_t *walkface_from, *walkface_to;
+   static vector v_from, v_to;
+
+   if ((node_from == NULL)  (node_to == NULL))
+      return (0); // reliability check
+
+   // get a quick access to the involved walkfaces
+   walkface_from = node_from->walkface;
+   walkface_to = node_to->walkface;
+
+   // figure out where the center of the first walkface is
+   v_from = NULLVEC;
+   for (index = 0; index < walkface_from->corner_count; index++)
+      v_from = v_from + walkface_from->v_corners[index];
+   v_from = v_from / (float) walkface_from->corner_count;
+
+   // figure out where the center of the second walkface is
+   v_to = NULLVEC;
+   for (index = 0; index < walkface_to->corner_count; index++)
+      v_to = v_to + walkface_to->v_corners[index];
+   v_to = v_to / (float) walkface_to->corner_count;
+
+   // and return a base cost according to the distance
+   return ((v_to - v_from).Length ());
+}
+
+
+float TravelCostForPersonality (bot_personality_t *personality, navnode_t *node_from, navlink_t *link_to)
+{
+   // this function returns a weighted measurement of the travel cost between two navnodes
+   // under the estimation the specified personality makes of it (regarding its memories about
+   // either of these nodes). The basis for the estimation is the raw distance between these
+   // two nodes, weighted by the type of reachability between them. Both node_from and link_to
+   // must point to a navnode and a navlink present in personality's nav memory.
+
+   static float f_cost;
+   static int index;
+   static walkface_t *walkface_from, *walkface_to;
+   static vector v_from, v_to;
+
+   if ((personality == NULL)  (node_from == NULL)  (link_to == NULL))
+      return (0); // reliability check
+
+   // get a quick access to the involved walkfaces
+   walkface_from = node_from->walkface;
+   walkface_to = link_to->destination_node->walkface;
+
+   // figure out where the center of the first walkface is
+   v_from = NULLVEC;
+   for (index = 0; index < walkface_from->corner_count; index++)
+      v_from = v_from + walkface_from->v_corners[index];
+   v_from = v_from / (float) walkface_from->corner_count;
+
+   // figure out where the center of the second walkface is
+   v_to = NULLVEC;
+   for (index = 0; index < walkface_to->corner_count; index++)
+      v_to = v_to + walkface_to->v_corners[index];
+   v_to = v_to / (float) walkface_to->corner_count;
+
+   // compute a base cost according to the distance
+   // note that it would be best to measure distance from edge to edge and not from center
+   // to center, but this is clearly overcomplicated for my little stupid mind. I tried.
+   f_cost = (v_to - v_from).Length ();
+
+   // now given the type of reachability it is, weighten this base cost according to an
+   // overall like/dislike factor (this factor changes when the bot's happiness suddently
+   // changes at these locations, f.ex. when the bot is hurt, when it kills someone or when
+   // it is killed here)...
+   if (link_to->reachability & REACHABILITY_LADDER)
+      f_cost *= personality->likelevel_ladder;
+   if (link_to->reachability & REACHABILITY_FALLEDGE)
+      f_cost *= personality->likelevel_falledge;
+   if (link_to->reachability & REACHABILITY_ELEVATOR)
+      f_cost *= personality->likelevel_elevator;
+   if (link_to->reachability & REACHABILITY_PLATFORM)
+      f_cost *= personality->likelevel_platform;
+   if (link_to->reachability & REACHABILITY_CONVEYOR)
+      f_cost *= personality->likelevel_conveyor;
+   if (link_to->reachability & REACHABILITY_TRAIN)
+      f_cost *= personality->likelevel_train;
+
+   // *** TODO *** Make the bot question its individual memory about this link
+   // i.e: this spot is dangerous, it's a weapon spot, a cover passage, etc.
+
+   return (f_cost); // and return the weightened cost
+}
+
+
+void PushToOpenList (pathmachine_t *pathmachine, navnode_t *queue_element)
+{
+   // this function inserts an element in the OPEN priority queue of the specified pathmachine 
+   // and rearrange the heap so as to always have the item which has the lower weight at the
+   // root of the heap.
+
+   static int index;
+
+   if (pathmachine == NULL)
+      return; // reliability check
+
+   index = pathmachine->open_count; // first insert position at the trailing end of the heap
+
+   // while the item is not at the right position in the heap so as to have it sorted...
+   while ((index > 0) && (queue_element->total_cost < pathmachine->open[(index - 1) / 2]->total_cost))
+   {
+      pathmachine->open[index] = pathmachine->open[(index - 1) / 2]; // shuffle the branch down
+      index = (index - 1) / 2; // proceed to the parent element
+   }
+
+   queue_element->is_in_open_list = TRUE; // flag this element as a member of the OPEN list
+   pathmachine->open[index] = queue_element; // attach the item at this remaining location
+   pathmachine->open_count++; // there is now one element more in the heap
+
+   return; // done, heap is sorted
+}
+
+
+navnode_t *PopFromOpenList (pathmachine_t *pathmachine)
+{
+   // this function takes the element with the lower weight from the OPEN priority queue of the
+   // specified pathmachine and rearrange the heap so as to always have the item which has the
+   // lower weight at the root of the heap.
+
+   static int index, i, j;
+   static navnode_t *return_element;
+   static navnode_t temp_element;
+
+   if (pathmachine == NULL)
+      return (NULL); // reliability check
+
+   return_element = pathmachine->open[0]; // get the element with highest priority from the top
+   return_element->is_in_open_list = FALSE; // flag this element as NOT a member of the OPEN list
+   pathmachine->open_count--; // there is now one element less in the heap
+
+   // if the heap is now empty, then there's nothing left to do
+   if (pathmachine->open_count == 0)
+      return (return_element); // so just return the last remaining element in the list
+
+   // now take the element at the trailing bottom of the heap and keep it for the top
+   temp_element = *pathmachine->open[pathmachine->open_count];
+   i = 0; // initialize the children indices (child 1)
+   j = 0; //  initialize the children indices (child 2)
+
+   // shuffle the queue up until it is sorted again
+   while (i <= (pathmachine->open_count - 1) / 2)
+   {
+      j = (2 * i) + 1; // get the child of element at index i and name it j
+
+      if ((j < pathmachine->open_count - 1)
+          && (pathmachine->open[j]->total_cost > pathmachine->open[j + 1]->total_cost))
+         j++; // if its brother has a lower weight, consider its brother instead
+
+      if (pathmachine->open[j]->total_cost >= temp_element.total_cost)
+         break; // but if it's still heavier than the element we are trying to insert, stop here
+
+      pathmachine->open[i] = pathmachine->open[j]; // else shuffle this child one rank up
+      i = j; // and follow the descent
+   }
+
+   *pathmachine->open[i] = temp_element; // now here is a good place to dump that element to
+
+   return (return_element); // done, heap is sorted again.
+}
+
+
+There is ONE pathmachine PER bot, and the search is split on several frames. It allows several path searches to be run at once.
+
+Ah, also. Each bot disposes of its OWN pool of nodes. They are all based on the same template, which is the map's walkable faces array (walkfaces). What each bot knows of these walkfaces and their links together constitutes this bot's navigation nodes array (navnodes).
+
+Is there something to discuss on ? (nm: I'm sure there is ;))
+
+
+[€dited: fixed a crash bug in PopFromOpenList() function]
+
+[€dited: fixed yet another bug in PushToOpenList() function - you see, you see!]
+
+[€dited: fixed YET another bug in main routine, possible infinite loop. What's next?]
+
+[modified on 05/26/03 at 18:52:16]
+
+[modified on 06/01/03 at 15:36:26]
+
+[modified on 06/01/03 at 17:17:40]
+
+[modified on 06/02/03 at 13:12:36]
+--------------------------------------------------
+05/27/03 at 11:57:33  Reply by: rick (rick_helmus8@hotmail.com)
+--------------------------------------------------
+some day maybe i could understand this :D
+anyway god job and aren't you the first hl bot programmer with open A* source ? :)
+
+--------------------------------------------------
+05/27/03 at 13:52:27  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+There was a thread somewhere were loads of us posted some A* used in our bots... just If I could find it :D use the search luke..
+
+--------------------------------------------------
+05/27/03 at 15:58:51  Reply by: rick (rick_helmus8@hotmail.com)
+--------------------------------------------------
+yeah well i've seen some A* posts anyway i don't think i really need it and not sure if its even handy; a mod where everyone can fly in mostly open maps...
+
+--------------------------------------------------
+06/01/03 at 15:34:04  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+*bump* I found a crash bug! See, I was telling you there were some ;D
+
+...and also I've improved it a bit. I have succeeded in computing the distance between two nodes from edge to edge :D and I keep track of the list hierarchy better!
+
+These last 2 are significant changes, so tell me if you're interested in seeing them here.
+
+
+--------------------------------------------------
+06/02/03 at 06:32:48  Reply by: Scooter (rmiskovish@yahoo.com)
+--------------------------------------------------
+PMB,
+
+I am interested in seeing the updates.  Please post.
+
+Thanks,
+Scooter
+
+--------------------------------------------------
+06/02/03 at 18:26:24  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Actually the more I'm working on it the more I find bugs. I'll post the stuff when it'll correctly debugged.
+
+How come I could be so stupid to optimize something before actually debugging it ? :(
+
+[€dit: and now that stupid smiley won't show, grr, what's next ??]
+
+[modified on 06/02/03 at 18:26:24]
+--------------------------------------------------
+07/01/03 at 06:24:20  Reply by: Scooter (rmiskovish@yahoo.com)
+--------------------------------------------------
+Pierre-Marie,
+
+Just wondering, have you been able to squash the bugs yet?
+
+Thanks,
+Scott
+
+--------------------------------------------------
+07/01/03 at 10:41:33  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+perhaps i am lazy, but i made a very simple function. Probably you won't like the way i did it, but it does the trick:
+
+code:
+
+ /*
+   path_create_astar()
+  */
+int path_create_astar(bot_t *pBot)
+{
+      // Goal waypoint is stored in pBot->bot_goalwaypoint
+      BotDebug("PATH A*: Creating path\n");
+      int bot_index = pBot->bot_index;
+      int path_index = 0;
+      wpt_index wpt_goal = pBot->bot_goalwaypoint;
+  wpt_index wpt_current = path_find_waypoint(pBot, pBot->pEdict->v.origin, wpt_goal);  // hope this works, Stefan :)
+  
+      wpt_index i,j;
+      
+      
+      path_clear(bot_index); // clear path index
+
+      if (wpt_current == -1) // no start wpt found
+      return(-1);
+
+
+  BotDebug("PATH A*: Found wpt_current\n");
+
+      // First, all waypoints are closed.
+      for (i = 0; i < MAX_WAYPOINTS; i++)
+      {
+            astar_list[i].cost   = 0;
+            astar_list[i].parent = -1;
+            astar_list[i].state  = CLOSED;
+      }
+
+      // Our start waypoint is open
+      astar_list[wpt_current].state = OPEN;
+      astar_list[wpt_current].parent = wpt_current;
+      astar_list[wpt_current].cost  = func_distance(wpt.origin(wpt_current), wpt.origin(wpt_goal));
+
+  char m[80];
+  sprintf(m, "WPT CURRENT = %d\n", wpt_current);
+  BotDebug(m);
+
+  bool valid=true;                  // is it still valid to loop through the lists for pathfinding?
+      bool succes=false;                  // any succes finding the goal?
+
+      while (valid)
+      {
+            bool found_one_to_open=false;
+            // go through all open waypoints
+            for (i=0; i<MAX_WAYPOINTS;i++)
+                  if (wpt.isValid(i))
+                        if (astar_list[i].state == OPEN)
+                        {      
+                              if (i == wpt_goal)
+                              {
+                                    succes=true;
+                                    valid=false;            // not valid to check anymore
+                                    BotDebug("PATH A*: Succes!\n");
+                              }
+
+                              // open this waypoint
+                              double lowest_cost = 99999999;
+                              double cost = 99999999;
+                              int the_wpt = -1;                                                
+          
+                              // Now loop from here through all closed waypoints
+                              for (j=0;j<MAX_WAYPOINTS;j++)
+                              {
+                                    if (wpt.isValid(j))
+                                    { 
+              if (wpt.isConnected(i,j) == true)
+              {
+               
+                                          if (astar_list[j].state == CLOSED)
+                                          {                
+                //BotDebug("Calculating cost");
+                                                cost = astar_list[i].cost + (double)func_distance(wpt.origin(j), wpt.origin(wpt_goal));
+
+                                                // add more cost, the danger influences greatly, and gets even stronger when we are afraid
+                                                //cost = (waypoint_danger_cost(pBot, j, pBot->bot_team) * cost);
+                cost += (double)((wpt.danger(j, pBot->bot_team) * cost) +
+                                 (wpt.TOUCH_Float(j, pBot->bot_team) * (cost*2)));
+                
+                                                if (cost < lowest_cost)
+                                                {          
+                                                      the_wpt = j;
+                                                      lowest_cost = cost;
+                                                }
+
+                                          }
+              } // connected
+                                    }
+                              } // for j
+                              
+                              // this waypoint has the lowest cost to get to the next best waypoint
+                              if (the_wpt > -1)
+                              {
+            char msg[80];
+            sprintf(msg, "PATH A*: Opening wpt %d , distance to goal %f\n", the_wpt, func_distance(wpt.origin(the_wpt), wpt.origin(wpt_goal)));
+//            BotDebug(msg);
+                                    j=the_wpt;
+                                    astar_list[j].state = OPEN;
+                                    astar_list[j].cost = lowest_cost;
+                                    astar_list[j].parent = i;
+                                    found_one_to_open=true;
+                              }
+                        }
+      
+            // when no closed waypoints found
+            if (found_one_to_open == false)
+    {
+ //     BotDebug("PATH A*: Found none to open\n");
+                  valid=false;
+    }
+      }
+
+
+      // succes, build the path from here
+  if (succes)
+  {
+      // Build path (from goal to start, read out the best cost)
+      int temp_path[MAX_WAYPOINTS];
+      
+      for (i=0; i < MAX_WAYPOINTS; i++)
+            temp_path[i] = -1;
+
+      bool build=false;
+      
+      int wpta = wpt_goal;
+      int p=0;
+
+      while (build == false)
+      {
+            temp_path[p] = wpta;
+            if (wpta == wpt_current)
+                  build=true;
+            wpta = astar_list[wpta].parent;
+            p++;
+      }
+
+      char msg[80];
+      sprintf(msg, "I had %d waypoints in path\n", p);
+      BotDebug(msg);
+
+      for (i=MAX_WAYPOINTS; i > 0; i--)
+      {
+            if (temp_path[i] < 0)
+                  continue;
+
+            path[bot_index][path_index] = temp_path[i];
+    
+    // BUILD 1512 - increase touch value when creating this definite path
+    // reason: to make paths more diverse faster (on roundstart, etc)
+    wpt.TOUCH_Increase(temp_path[i], pBot->bot_team);
+
+
+            path_index++;
+      }
+
+  }  
+      else
+            return (-1);      // no succes
+
+  path[bot_index][path_index] = -1; // terminate path
+
+
+  pBot->bot_pathid = 0;
+  pBot->f_waypoint_timer = gpGlobals->time + 8;  
+
+
+  return(0); // path found
+}
+
+
+--------------------------------------------------
+07/01/03 at 14:41:53  Reply by: Cheesemonster!!! (cheeseh@houstondod.com)
+--------------------------------------------------
+Here's my new one.
+
+All the dataStack<> stuff etc are my own generic classes I made since the ones in the standard library never want to work with my bot. :(
+
+WAYPOINT is one waypoint
+waypoints is the waypoint array
+
+I also try to restrict the amount of loops done to MAX_WAYPOINTS just incase.
+
+code:
+
+typedef struct
+{
+      float m_fCost;
+      BOOL m_bClosed;
+      int m_iParent;
+}astar_info_t;
+
+int BotNavigate_AStarAlgo ( CBot *pBot, int iFrom, int iTo )
+{
+
+      dataStack<int> sTempList;
+      dataStack<int> sOpenList;
+
+      astar_info_t aPathsFound[MAX_WAYPOINTS];
+      astar_info_t *sCurrNodeInfo = NULL; // Info of the current node
+      astar_info_t *sSuccNodeInfo = NULL; // Info of the succesor to the current node
+
+      float fMinCost;
+      float fOldCost;
+      float fCurCost;
+
+      int iNextWaypoint = -1;
+      int iNode;
+      int iCurrentNode;
+      int iSuccNode;
+      BOOL bFoundGoal = FALSE;
+      BOOL bDeleteLoopPath = FALSE;
+      
+      WAYPOINT *pCurWpt;
+
+      // PATH INFO, For use with finding successors
+      PATH *pPath;
+      int iPathIndex;
+
+      // Initialise the paths found info
+
+       if ( (iTo == -1) || (iFrom == -1) )
+      // Can't find a path from/to invalid waypoints
+      {
+            if ( FBitSet(gBotGlobals.m_iDebugLevels,BOT_DEBUG_NAV_LEVEL) )
+                  DebugMessage(BOT_DEBUG_NAV_LEVEL,NULL,0,"AStarAlgo() %s has no goal/current waypoint",pBot->m_szBotName);
+
+            return -1;            
+      }
+
+      if ( FBitSet(gBotGlobals.m_iDebugLevels,BOT_DEBUG_NAV_LEVEL) )
+      {
+            DebugMessage(BOT_DEBUG_NAV_LEVEL,NULL,0,"AStarAlgo() %s finding path from %d to %d",pBot->m_szBotName,iFrom,iTo);
+      }
+
+      for ( iNode = 0; iNode < MAX_WAYPOINTS; iNode ++ )
+      {
+            sCurrNodeInfo = &aPathsFound[iNode];
+            sCurrNodeInfo->m_bClosed = FALSE;
+            sCurrNodeInfo->m_fCost = 0;
+            sCurrNodeInfo->m_iParent = -1;
+      }
+
+      pBot->m_vGoalOrigin = WaypointOrigin(iTo);
+
+      // Free any previous path info
+      pBot->m_stBotPaths.Destroy();
+
+      // The first node must be open
+      sOpenList.Init();
+
+      sOpenList.Push(iFrom);
+
+      aPathsFound[iFrom].m_fCost = 0;
+
+      int iLoops = 0;
+
+      // Limit iLoops just incase we run into an infinite loop, or very long loop
+      // which can sometimes happen
+      while ( (bFoundGoal == FALSE) && !sOpenList.IsEmpty() && (iLoops < MAX_WAYPOINTS) )
+      {
+            iLoops++;
+
+            sTempList = sOpenList;
+            iCurrentNode = -1;
+
+            while ( !sTempList.IsEmpty() )
+            {
+                  iNode = sTempList.ChooseFromStack();
+
+                  // Find A Good Node To Set To CurrentNode
+
+                  pCurWpt = &waypoints[iNode];
+                  sCurrNodeInfo = &aPathsFound[iNode];                  
+
+            // G is ZERO if its the first node and teleports, G will be updated for expanded nodes
+            fCurCost = sCurrNodeInfo->m_fCost + (waypoints[iTo].origin - pCurWpt->origin).Length();
+
+                  if ( (iCurrentNode == -1) || (fCurCost < fMinCost) )
+                  {
+                        iCurrentNode = iNode;
+                        fMinCost = fCurCost;
+                  }
+            }
+
+            sCurrNodeInfo = &aPathsFound[iCurrentNode];            
+
+            // Remove from open list
+            sOpenList.Remove(iCurrentNode);
+        
+        pPath = NULL;
+        iPathIndex = 0;
+
+            bDeleteLoopPath = FALSE;
+
+        while( (iSuccNode = WaypointFindPath(&pPath, &iPathIndex, iCurrentNode, pBot->m_iTeam)) != -1) 
+            // Generate each state node_successor that can come after current node
+        {
+                  if( iSuccNode == iCurrentNode )
+            {
+                        bDeleteLoopPath = TRUE;
+                continue;
+            }
+                  // See if the bot has had problems going through this path so it can ignore it
+                  // for now...
+                  
+                  // Remove returns TRUE if successfully removed (i.e. in list and was deleted)
+                  if( pBot->m_stFailedPaths.Remove(pPath) )
+                  {
+                        // Forget this successor for now
+                        continue;
+                  }
+
+            // for each node_successor of node_current                      
+            // Set the cost of node_successor to be the cost of node_current plus the cost to get to node_successor from node_current  
+                  
+            sSuccNodeInfo = &aPathsFound[iSuccNode];
+            
+            if( sOpenList.IsMember(&iSuccNode) || (sSuccNodeInfo->m_bClosed == TRUE))
+            {     
+                        if ( sSuccNodeInfo->m_iParent != -1 ) // Already has a parent path? Seems to speed up A*
+                        {
+                              fOldCost = sSuccNodeInfo->m_fCost;
+                              fCurCost = sCurrNodeInfo->m_fCost + (waypoints[iSuccNode].origin - waypoints[iCurrentNode].origin).Length();
+
+                              if ( fCurCost > fOldCost ) // Found a better path...
+                                    continue; // Ignore this route just now...
+                        }
+                        else
+                              continue;
+            }
+            
+                  sSuccNodeInfo->m_bClosed = FALSE;
+
+                  // Make the successor node open.
+                  sOpenList.Push(iSuccNode);
+
+            sSuccNodeInfo->m_iParent = iCurrentNode;         
+            sSuccNodeInfo->m_fCost = sCurrNodeInfo->m_fCost + (waypoints[iSuccNode].origin - waypoints[iCurrentNode].origin).Length();
+        } 
+        
+            sCurrNodeInfo->m_bClosed = TRUE;
+
+            // Has this waypoint got a path to itself? (delete the path)...
+        if ( bDeleteLoopPath ) 
+            WaypointDeletePath(iCurrentNode,iCurrentNode);
+            
+        // We've found a goal once the current node is the goal waypoint.
+        bFoundGoal = ( iCurrentNode == iTo );
+      }
+
+      // looped out! too many loops
+      if ( iLoops == MAX_WAYPOINTS )
+      {
+            if ( FBitSet(gBotGlobals.m_iDebugLevels,BOT_DEBUG_NAV_LEVEL) )
+                  DebugMessage(BOT_DEBUG_NAV_LEVEL,NULL,0,"AStarAlgo() %s took too long to find a path",pBot->m_szBotName);
+
+            return -1;
+      }
+
+      // free all the stuff in the openlist
+      sOpenList.Destroy();
+
+      if ( bFoundGoal )
+      {
+        iCurrentNode = iTo;
+
+            iLoops = 0;
+            
+        while ( (iCurrentNode != -1) && (iCurrentNode != iFrom) && (iLoops < MAX_WAYPOINTS) )
+        {       
+                  iLoops ++;
+            // Add to the bots waypoint visit stack (path)
+                  pBot->m_stBotPaths.Push(iCurrentNode);                  
+
+                  iNextWaypoint = iCurrentNode;
+
+                  iCurrentNode = aPathsFound[iCurrentNode].m_iParent;                 
+        }
+
+            if ( iLoops == MAX_WAYPOINTS )
+            {
+                  if ( FBitSet(gBotGlobals.m_iDebugLevels,BOT_DEBUG_NAV_LEVEL) )
+                        DebugMessage(BOT_DEBUG_NAV_LEVEL,NULL,0,"AStarAlgo() %s took too long to work out a path",pBot->m_szBotName);
+
+                  return -1;
+            }
+      }
+      // Bot could have just failed a lot of paths and ignored them
+      // Clear the failed waypoints structure
+      else
+      {
+            if ( FBitSet(gBotGlobals.m_iDebugLevels,BOT_DEBUG_NAV_LEVEL) )
+                  DebugMessage(BOT_DEBUG_NAV_LEVEL,NULL,0,"AStarAlgo() %s couldn't find a path to goal %d",pBot->m_szBotName,iTo);
+
+            pBot->m_stFailedPaths.Destroy();
+      }      
+
+      return iNextWaypoint;
+}
+
+
+--------------------------------------------------
+07/02/03 at 08:00:18  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+One question:
+
+When you limit your loops to MAX_WAYPOINTS you will restrict the pathfinder not to overdo it, okay. But, that will also result into 'not finding the path'. THerefor, the bot would probably try to recall this function over and over again.
+
+How do you solve this? as it still will take more cpu load? Perhaps you can store the results temporarily in the bot, and make it continue the next frame. 
+
+I have been thinking about this for my bot, so the bot calculates the path, only limits 100 loops a frame (for instance) and then simply continues the next frame. It should ensure the system keeps on running.
+
+While calculating the path, you can force the bot to stand still.
+
+--------------------------------------------------
+07/02/03 at 11:09:21  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+That's what I am doing in my pathfinder (...which is not yet completely fixed, btw :))
+
+
+--------------------------------------------------
+07/02/03 at 11:43:58  Reply by: @$3.1415rin (johannes@_-removeifnotavirus-_lampel.net)
+--------------------------------------------------
+I think you know my A* Task manager, pierre :D
+
+and for the sake of completeness of this list of A* code :
+
+code:
+template <class tAStarGoal>
+class AStarMachine : public AStarBase
+{
+public:
+      AStarMachine(){
+      }
+      virtual ~AStarMachine(){
+      }
+
+      virtual void setStart(int iWP){
+            m_Goal.setStart(iWP);
+      }
+      virtual void setDestination(int iWP){
+            m_Goal.setDestination(iWP);
+      }
+      virtual int getStart(void){
+            return m_Goal.getStart();
+      }
+      virtual int getDestination(void){
+            return m_Goal.getDestination();
+      }
+      
+      virtual void linkChild(AStarNode *pNode,const AStarNode *pChild){
+            // we have a new node: So we gotta check if it's on the open or on the closed list 
+            // If none of both, we gotta put it on the open list.
+            // in all cases we have to set the pointers correctly, so we'll get a nice tree here :)
+
+            int g = pNode->m_g +
+                  m_Goal.getCost(pNode->m_iWaypoint,pChild->m_iWaypoint);            // cost for this child
+            
+            int iCheck;            // if it is already in some list, the index is stored here
+            
+            assert(pChild->m_iWaypoint > -1 && pChild->m_iWaypoint < _MAX_WAYPOINTS);
+            
+            if(iCheck = m_PQOpen.getIndex(pChild->m_iWaypoint)){
+                  assert(iCheck <= m_PQOpen.m_ln && iCheck >= 0);
+                  // it's already on the open list ...
+                  AStarNode *pCheck = m_PQOpen.getItem(iCheck)->m_p;
+                  
+                  pNode->m_Children.addChild(pCheck);
+                  if(g < pCheck->m_g){
+                        pCheck->m_pParent = pNode;
+                        pCheck->m_g = g;
+                        pCheck->m_f = g + pCheck->m_h;
+                        
+                        m_PQOpen.updated(iCheck);
+                  }
+                  return;
+            }
+            else if(iCheck = m_PQClosed.getIndex(pChild->m_iWaypoint)){
+                  assert(iCheck <= m_PQClosed.m_ln && iCheck >= 0);
+                  // it's already on the closed list ...
+                  AStarNode *pCheck = m_PQClosed.getItem(iCheck)->m_p;
+                  
+                  //pNode->m_Children.addChild(pCheck);
+                  if(g < pCheck->m_g){
+                        pCheck->m_pParent = pNode;
+                        pCheck->m_g = g;
+                        pCheck->m_f = g + pCheck->m_h;
+                        
+                        //updateParents(pCheck);
+                        m_PQClosed.removeUnsorted(iCheck);
+                        //return;
+                  }
+                  else
+                        return;
+            }
+            
+            // it's neither on the open nor on the closed list ...
+            AStarNode *pNewChild;
+            pNewChild = newNode(pChild->m_iWaypoint);
+            
+            pNewChild->m_pParent = pNode;
+            pNewChild->m_g = g;
+            pNewChild->m_h = m_Goal.getHeuristic(pNewChild->m_iWaypoint);
+            pNewChild->m_f = pNewChild->m_h + g;
+            
+            AStarNodeContainer PnC;
+            PnC.m_p = pNewChild;
+            
+            pNode->m_Children.addChild(pNewChild);
+            m_PQOpen.insert(PnC);
+      }
+      
+      virtual bool runAStar(void){
+            ///PROFILE("runAStar();");
+            // main function of all this stuff :)
+            // - main loop
+            // - handle slices
+            // - getting best nodes
+            // - linking nodes
+            // - getting new open nodes
+
+            int iConnection,iConnectedWP,
+                  iCurrentWP;
+            CWaypoint *pWP;
+            AStarNode *P,*B,ASNTemp;
+            AStarNodeContainer PC;
+
+            if(!m_Goal.isValid())
+                  return false;
+            
+            if(m_bFinished){                  // if the last job was finished, this is a new job
+                  resetNodes();
+
+                  m_iCSlice = 0;
+                  
+                  m_iBreakReason = BR_NONE;                  // no break reason by default
+                  
+                  m_lRevolution = 0;
+                  m_lCSlice2 = m_lSliceSize;
+                  
+                  P = newNode(m_Goal.getStart());
+                  
+                  P->m_g = m_Goal.getCost(m_Goal.getStart(),m_Goal.getStart());
+                  P->m_h = m_Goal.getHeuristic(m_Goal.getStart());
+                  P->m_f = P->m_g + P->m_h;
+
+                  PC.m_p = P;                  // set container pointer
+                  
+                  m_PQOpen.insert(PC);
+            }
+            else{                  // job isnt finished yet, so just prepare a new slice and go on 
+                  m_iCSlice ++;
+                  m_lCSlice2 += m_lSliceSize;
+            }
+            
+            while(true){
+                  // check if this is enough
+                  if(m_lRevolution > m_lMaxRevolutions){      // is the maximum revolution count reached ?
+                        m_iBreakReason = BR_MAXREV;
+                        m_bFinished = true;
+                        logResult();
+                        return false;
+                  }
+
+                  if(m_lRevolution > m_lCSlice2){                  // a slice is full
+                        m_iBreakReason = BR_MAXSLICE;
+
+                        m_bFinished = false;
+                        return true;
+                  }
+
+                  if(m_PQOpen.empty()){            // no more open nodes - no path has been found
+                        m_bFinished = true;
+                        logResult();
+                        return false;
+                  }
+                  PC = m_PQOpen.getTop();
+                  B = PC.m_p;
+                  if(m_Goal.isDestination(B)){            // a path has been found
+                        m_pDestinationNode = B;
+                        m_bFinished = true;
+                        m_iBreakReason = BR_NONE;            // it's not a break :D
+                        logResult();
+                        return true;
+                  }
+                  iCurrentWP = B->m_iWaypoint;
+                  pWP = &(g_Map.m_Waypoints[iCurrentWP]);
+                  
+                  CPath *pPath = pWP;
+
+                  while(pPath){
+                        for(iConnection=0; iConnection < _MAX_PATHS; iConnection++){
+                              iConnectedWP = pPath->m_piPathTo[iConnection];
+
+                              if(iConnectedWP != -1){
+                                    if(m_Goal.isOpen(iCurrentWP,iConnectedWP)){
+                                          ASNTemp.m_iWaypoint = iConnectedWP;
+                                          
+                                          linkChild(B,&ASNTemp);
+                                    }
+                              }
+                        }
+                        pPath = pPath->m_pNext;
+                  }
+
+                  m_PQClosed.insertUnsorted(PC);
+
+                  m_lRevolution ++;
+            }
+      }
+      // data
+      
+      tAStarGoal m_Goal;
+};
+
+
+[modified on 07/02/03 at 11:43:58]
+--------------------------------------------------
+07/02/03 at 12:19:49  Reply by: Cheesemonster!!! (cheeseh@houstondod.com)
+--------------------------------------------------
+My A* function is only called ever so often.
+
+as it returns -1 it knows if it worked or not, from this you can change the bots waypoint goal and just make it stay put, since another recursion of the algorithm will just return the same result anyway ;)
+
+--------------------------------------------------
+07/02/03 at 14:03:06  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+QUOTE:
+While calculating the path, you can force the bot to stand still.
+
+
+That's why I seem to be the only one weirdo to have had the idea to compute the path in the reverse order.
+Normal, eh: the goal won't ever move, only the bot is running around. Starting from the goal and going to the bot ensures that when the path is found it corresponds accurately to the bot's position. And more than this, building the path is much faster this way 8)
+
+Oh yeah, Aspirin, before I forget, thanks again for the astar task manager idea matey...
+
+

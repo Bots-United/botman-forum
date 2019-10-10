@@ -1,0 +1,195 @@
+--------------------------------------------------
+Subject: VGUI menu for DoD
+--------------------------------------------------
+11/26/01 at 06:59:07  Posted by: Anchelito (Anchelito@web.de)
+--------------------------------------------------
+Hi 
+
+I want to make a bot for the hl mod DoD, but now I´ve got a problem with the VGUI menu.
+Botman wrote in his readme that you have to find out the number for the vgui_message[which is mostly different between the mods]and store this number. But I dont know where and how.
+I just know that you can find out this number with the engine_debug command.
+Please help me!!!!!!!!!!!!!!1
+
+--------------------------------------------------
+11/26/01 at 07:15:49  Reply by: jerry_stoel (jerry_stoel@hotmail.com)
+--------------------------------------------------
+First of all the command is: debug_engine. :)
+Second here are the vgui messages (I had them lying around and didn't do anything with them :P):
+
+In bot_client.cpp:
+
+code:
+
+void BotClient_DOD_VGUI(void *p, int bot_index)
+{
+      if ((*(int *)p) == 2)  // is it a team select menu?
+
+      bots[bot_index].start_action = MSG_DOD_TEAM_SELECT;
+
+   else if ((*(int *)p) == 9)  // is it a allies class selection menu?
+
+      bots[bot_index].start_action = MSG_DOD_ALLIES_CLASS_SELECT;
+
+      else if ((*(int *)p) == 10)  // is it a axis class selection menu?
+
+      bots[bot_index].start_action = MSG_DOD_AXIS_CLASS_SELECT;
+}
+
+
+
+And in bot_start.cpp:
+code:
+
+else if (mod_id == DOD_DLL)
+   {
+      // handle Day of Defeat stuff here...
+            if (pBot->start_action == MSG_DOD_IDLE)
+      {
+         pBot->start_action = MSG_DOD_TEAM_SELECT;  // force team selection
+      }
+
+      if (pBot->start_action == MSG_DOD_TEAM_SELECT)
+      {
+         pBot->start_action = MSG_DOD_IDLE;  // switch back to idle
+                  pBot->create_time = gpGlobals->time;  // reset
+
+         if ((pBot->bot_team != 1) && (pBot->bot_team != 2) &&
+             (pBot->bot_team != 5))
+            pBot->bot_team = -1;
+
+         if (pBot->bot_team == -1)
+            pBot->bot_team = RANDOM_LONG(1,2);
+
+         // select the team the bot wishes to join...
+         if (pBot->bot_team == 1)
+            strcpy(c_team, "1");
+         else
+            strcpy(c_team, "2");
+
+         FakeClientCommand(pEdict, "jointeam", c_team, NULL);
+
+         return;
+      }
+
+      if (pBot->start_action == MSG_DOD_ALLIES_CLASS_SELECT)  // allies
+      {
+         pBot->start_action = MSG_DOD_IDLE;  // switch back to idle
+                  pBot->create_time = gpGlobals->time;  // reset
+
+         if ((pBot->bot_class < 1) || (pBot->bot_class > 5))
+            pBot->bot_class = -1;  // use random if invalid
+
+         if (pBot->bot_class == -1)
+            pBot->bot_class = 5;
+
+         // select the class the bot wishes to use...
+         if (pBot->bot_class == 1)
+            strcpy(c_class, "lightinf");
+         else if (pBot->bot_class == 2)
+            strcpy(c_class, "assaultinf");
+         else if (pBot->bot_class == 3)
+            strcpy(c_class, "sniper");
+         else if (pBot->bot_class == 4)
+            strcpy(c_class, "heavyweapons");
+         else if (pBot->bot_class == 5)
+            strcpy(c_class, "randompc");
+
+         FakeClientCommand(pEdict, c_class, NULL, NULL);
+
+         // bot has now joined the game (doesn't need to be started)
+         pBot->not_started = 0;
+
+         return;
+      }
+            
+            if (pBot->start_action == MSG_DOD_AXIS_CLASS_SELECT)  // axis
+      {
+         pBot->start_action = MSG_DOD_IDLE;  // switch back to idle
+                  pBot->create_time = gpGlobals->time;  // reset
+
+         if ((pBot->bot_class < 1) || (pBot->bot_class > 5))
+            pBot->bot_class = -1;  // use random if invalid
+
+         if (pBot->bot_class == -1)
+            pBot->bot_class = 5;
+
+         // select the class the bot wishes to use...
+         if (pBot->bot_class == 1)
+            strcpy(c_class, "leightinf");
+         else if (pBot->bot_class == 2)
+            strcpy(c_class, "sturmtrup");
+         else if (pBot->bot_class == 3)
+            strcpy(c_class, "germansniper");
+         else if (pBot->bot_class == 4)
+            strcpy(c_class, "heavyweaponsger");
+         else if (pBot->bot_class == 5)
+            strcpy(c_class, "randompc");
+
+         FakeClientCommand(pEdict, c_class, NULL, NULL);
+
+         // bot has now joined the game (doesn't need to be started)
+         pBot->not_started = 0;
+
+         return;
+      }
+      }
+
+
+
+That's it. You have to declare the messages offcourse, like: MSG_DOD_IDLE.
+
+cu,
+
+--------------------------------------------------
+11/29/01 at 07:22:19  Reply by: Anchelito (Anchelito@web.de)
+--------------------------------------------------
+oh thank you for your help!!!!!!!!!!!!!
+
+--------------------------------------------------
+11/29/01 at 22:54:59  Reply by: jerry_stoel (jerry_stoel@hotmail.com)
+--------------------------------------------------
+No problem. Glad to have helped you :)
+
+--------------------------------------------------
+12/01/01 at 08:08:17  Reply by: Anchelito (Anchelito@web.de)
+--------------------------------------------------
+New problem:
+I think I must have forgotten something because when I type in addbot in the console hl crashes.
+Can somebody write me a list of thing i have to make before the bot  gets in the game??????????
+like :
+
+1. ...
+2. edit linkfunc.cpp
+3. ...
+4. edit h_export.cpp
+5. ...
+...
+
+
+Thanks!
+
+
+--------------------------------------------------
+12/01/01 at 14:58:28  Reply by: ReDucTor[FGW] (sjdtmv@tpg.com.au)
+--------------------------------------------------
+First you must define the MOD so then when you want to go if(MOD_SOMETHING) it will work..
+
+open your bot.h and just add after the other defines say
+
+#define MOD_DLL   <nextmod>
+
+then you must get the wrapper to load the mods dll, so add a if statement in the h_export with all the other dll files, and check if the gamedir is the mods one...
+
+then you must have the functions exported and forwarded to the original mods dll, to do this you must add the functions to linkfunc.cpp
+
+then you go test see if thats all working, making sure you didn't screw any thing up..
+
+then you must get the bot to join teams, etc first you put on logging, then grab the ids of the menus if they are vgui, or if they are show menus check what they use, in most cases they use #Menu_such_and_such this will be reading it from the titles.txt if so, so intersept the messages being sent, already done, and check what they are, if its a showmenu, then grab the id, then store it some where, in the latest hpb template, you store it in bot[index].start_action which you will read later to get call the commands, so in the function you send the messages to get the text, and go say bot[bot_index].start_action = MOD_SOME_MENU; now you will have to define that menu some where, where you won't use it with other menus or else when you check the menus they will just get messed up..now what if it was a vgui menu, you can put this where you sent the vgui menus to, check if its the id for the vgui menu, then if it is to the same as you would if it was the text menu needed bot[bot_index].start_action = MOD_SOME_MENU; now you must have things happen when these menus are sent, so in the bot start code, for the latest template botman has a functino there, in the bot_start.cpp that you can use to check stuff, so just to make it easier to check stuff, make another .cpp file because its just way to messy inside of there(no offence botman) now put a function inside of there for the mod starting like BotStartGame() now in this function check the current start value if its what you put the menu as, if its the menu, then you call the commands you needed, most mods have an auto assign part of the menu so just use fakeclientcommand and send the command needed for that..and there you go you have a bot in the game, you can also setup the weapons and stuff to make it easier for checking weapons and doing sniping when needed, and stuff..
+
+--------------------------------------------------
+12/04/01 at 08:30:14  Reply by: Anchelito (Anchelito@web.de)
+--------------------------------------------------
+Thank you for your help ReDucTor[FGW].
+I hope this will help me
+
+

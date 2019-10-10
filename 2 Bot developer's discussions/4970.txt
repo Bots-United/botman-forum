@@ -1,0 +1,836 @@
+--------------------------------------------------
+Subject: Creating a visibilty table with >4000 'waypoints'
+--------------------------------------------------
+11/21/03 at 07:54:12  Posted by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+So, here is the deal: i have around 4096 waypoints at max. If i want to create a vis-table i will have to fire:
+
+4096x4096 tracelines (tracehulls) -> 16.777.216 tracelines...
+
+argh. 16 MILLION tracelines. Omg. I have been thinking of slicing the process into 20 or 25 tracelines per frame. On 60fps it would take:
+
+16777216/25/60 -> 11184,8 seconds. Or in other words: Around 3 hours!
+
+Does anybody else has a different sollution? I'd like to use a visibility table for determining camp/snipe positions as i do in RBV10 (where i have 500 waypoints at max, precalculate in a vis table and stored to disk).
+
+If i can't calculate the table i need other sollutions for determining camp/snipe positions (or cover-positions).
+
+Anyone has an idea?
+
+
+
+
+
+--------------------------------------------------
+11/21/03 at 08:16:32  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Yes... Build your visibility table dynamically.
+
+Start off by assuming all the entries in the visibility table are set to FALSE (no visibility).
+
+Arrives the moment when a bot wants to camp. Make it, then, process the computations in the visibility table for the very waypoint he wants to camp around. You only need to fire 4096 TraceLines, which require only a few seconds at 25tpf and 60fps.
+
+Once the visibility for this waypoint is computed and stored in the table, your bot may pick up a camp spot in it.
+
+For combat and enemy avoidance, do the same thing ; but take care to implement a basic, non vistable-based, combat behaviour for your bots to use in fallback as long as they can't use the vistable.
+
+
+--------------------------------------------------
+11/21/03 at 08:33:26  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+the problem is, i want to let my bot decide what a good camp position is. The algorithm for that is simple:
+
+Find the waypoint with a good visibility (high amount of nodes/waypoints visible) but with a low 'danger' value.
+
+
+
+--------------------------------------------------
+11/21/03 at 10:17:07  Reply by: JZ (maizenkor@wanadoo.fr)
+--------------------------------------------------
+If you want to precompute all the visibility you can find ways to quickly compute simple cases, eliminate others etc... to avoid computing all the trace. 
+Depend on the data available you have before doing the vis check, some ideas from the top of my head:
+
+1) if 2 waypoints W1 and W2 are linked by a simple walk, assume they are visible to each other.
+
+2) if doing a vis check between W1 and W2, and this trace goes through others waypoints, assume they are visible as well.
+so in 1 trace you can have compute the vis of more than 1 waypoint.
+
+etc...
+Good luck :-)
+
+--------------------------------------------------
+11/21/03 at 10:33:04  Reply by: Cheesemonster!!! (cheeseh(at)rcbot(dot)net)
+--------------------------------------------------
+tbh 4096 waypoints is way too big. 1024 is more than enough, even the biggest maps I've had to waypoint never go near 700.
+
+I fire tracelines just before the map loads if the visibility file is out of date, and it only takes a millisecond for about 300 x 300 tracelines. I'll be damned if I see a map waypointed with 4096 waypoints...? Unless you are using the "cant go here" waypoints.. the opposite of what every one does ;)
+
+I use a bit table to store visibility, for 1024 waypoints thats about 128 KB each file, but it can be compressed into something like 1 KB because of the high amount of "0's" areas where there is no visiblity at all.
+
+You can decrease filesize based on the number of waypoints for the map and keep the table in the program of fixed size.
+
+Btw, Lars Liden in AI Game programming wisdom (and has a slide somewhere, a link to it on an old post..) always has good stuff about using visibility tables for good sniping, camping positions.
+
+[modified on 11/21/03 at 10:33:04]
+--------------------------------------------------
+11/21/03 at 11:07:58  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Ever tried ENGINE_CHECK_VISIBILITY() ?
+The PVS stuff is way faster than any traceline.
+
+
+--------------------------------------------------
+11/21/03 at 12:09:07  Reply by: Cheesemonster!!! (cheeseh(at)rcbot(dot)net)
+--------------------------------------------------
+Yes but you must use an entity in the game to use this feature, it will work for bots by using their edicts (for example from bot to something else) but not if you are just finding visibility from waypoint to waypoint.
+
+--------------------------------------------------
+11/21/03 at 13:18:45  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+FYI:
+The waypoints i use are plotted by players, they are linked to each other in a different way. I can compute a lot by direct connections. 
+
+I guess i just have to eliminate the obvious stuff first ; and then slice the process.
+
+I use 4096 nodes/waypoints just in case; my experience is i have around 1500 waypoints/nodes in de_dust. The idea is that users 'flood fill' for bots adding automaticly connections , therefor offering a dynamic set of waypoints/nodes which bots can use on demand to navigate through the level. So far it works great, i 'learn' bots a level within 5 minutes basicly, then i can just play around and the more i play, the more the bots learn.
+
+
+
+--------------------------------------------------
+11/21/03 at 13:29:50  Reply by: @$3.1415rin (johannes@_-removeifnotavirus-_lampel.net)
+--------------------------------------------------
+I also use player tracking. I create the vis table entrys just then when the waypoint is created. but I dont use a square vis table, but a triangular one, assuming that p1 is visible from p2 and vice versa. I don't slice tracelines yet, but until now I havnt any maps with more than 1500 waypoints.
+
+--------------------------------------------------
+11/21/03 at 13:49:03  Reply by: Cheesemonster!!! (cheeseh(at)rcbot(dot)net)
+--------------------------------------------------
+Yeah I am wanting to use a triangular sized vis table type thing, it just a symmetric table so nothing lost, and it will cut size in half :P But I can't be assed 8)
+
+--------------------------------------------------
+11/22/03 at 01:18:54  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+A triangual vis-table? Please explain?
+
+What i do:
+- player is at an area where there is no waypoint: it will add one. this waypoint immidiatly checks the surroundings for waypoints and it will add them to its 'neighbours' , at max 16 neighbours per waypoint. 
+
+Ok, so you can assume that every time you add a waypoint, this waypoint and all its neighbours are visible too. True. But i still don't get the triangular thingy?
+
+Afaik you store this in a 'from' 'to' table, so its 2 dimensional. If 'assuming the visibility on addnig the waypoint' means triangual you still have to cover a lot of waypoints.
+
+I am also talking about the worst-case scenario here (> 4000 wpts) because thats what COULD happen and i don't want any lag experiences... i think RB had those enough :)
+
+GOT ANOTHER IDEA:
+I have a 'non waypoint based' take cover code, using simple tracelines to determine which spot covers the bot from another specific vector. I can get waypoints out of those vectors, if i know a cover spot, this means Waypoint X cannot reach Waypoint Y. I can fill in the visibility table on the fly.
+
+Another cool side effect is, the bots 'learn' these things about visibility as they play (take cover) so they can later on use it. Although a human would be smart enough to figure this thing out for himself without even encountering an enemy, its one step forward :) 
+
+[modified on 11/22/03 at 01:18:54]
+--------------------------------------------------
+11/22/03 at 15:43:08  Reply by: Cheesemonster!!! (cheeseh(at)rcbot(dot)net)
+--------------------------------------------------
+example of a visibility table represented by bits...
+
+square/rect
+code:
+
+  1 2 3 4
+1 1 1 1 0
+2 1 0 0 1
+3 1 0 1 0
+4 0 1 0 1
+
+
+
+triangle
+code:
+
+  1 2 3 4
+1 -------
+2 1 -----
+3 1 0 ---
+4 0 1 0 -
+
+
+
+You dont need the other half as it is the same as the other, its a symmetric table, and you can cut the waypoint visibility from the same waypoint to the same waypoint too.
+
+--------------------------------------------------
+11/23/03 at 02:09:29  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+aha, in that sense. Yes, its obvious a waypoint cannot see itself, and its also obvious that when waypoint 1 can see 2, its also the opposite. 
+
+I'll play around with this, thanks! :)
+
+--------------------------------------------------
+11/23/03 at 03:53:20  Reply by: @$3.1415rin (johannes@_-removeifnotavirus-_lampel.net)
+--------------------------------------------------
+code:
+void CWaypointGraph::update(int iType,int iAdd){
+      // this is called each time something has to be updated ...
+
+      if(iType == UD_WAYPOINT_CHANGED){
+            // some waypoint stuff changed ...
+            if(!m_ppVisTable[iAdd]){            // already allocated right bitfield ?
+                  m_ppVisTable[iAdd] = new CBitField(iAdd+1);
+            }
+            vis_recalc(iAdd);
+
+
+and code:
+void CWaypointGraph::vis_recalc(int iWP){
+#ifdef __JOEBOTXPDLL
+      bool bVisib;
+      
+      int iWP2 = 0;
+      for(;iWP2 < iWP; iWP2++){      // check till iWP ... again the reason is the triangle form of the vis table
+            bVisib = FVisibleEx(m_pWaypoints[iWP].m_VOrigin,m_pWaypoints[iWP2].m_VOrigin,
+                  false,false,false,false,0);
+            
+            if(m_ppVisTable[iWP])
+                  m_ppVisTable[iWP]->setBit(iWP2,bVisib);
+            if(bVisib){
+                  m_pWaypoints[iWP2].addVisibleWP(&m_pWaypoints[iWP]);            // iWP2 is visible by iWP1
+                  m_pWaypoints[iWP].addVisibleWP(&m_pWaypoints[iWP2]);            // <->
+            }
+      }
+      for(;iWP2 < m_iNumWaypoints;iWP2++){
+            bVisib = FVisibleEx(m_pWaypoints[iWP].m_VOrigin,m_pWaypoints[iWP2].m_VOrigin,
+                  false,false,false,false,0);
+            
+            if(m_ppVisTable[iWP2])
+                  m_ppVisTable[iWP2]->setBit(iWP,bVisib);
+            if(bVisib){
+                  m_pWaypoints[iWP2].addVisibleWP(&m_pWaypoints[iWP]);            // iWP2 is visible by iWP1
+                  m_pWaypoints[iWP].addVisibleWP(&m_pWaypoints[iWP2]);            // <->
+            }
+      }
+#endif
+}
+
+
+if this helps - last part of the code could have been in a more beautiful way :)
+
+--------------------------------------------------
+11/23/03 at 03:59:03  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+you still like using those 'weird' vars do ya? ;)
+
+I also have been busy, i use triangular storage on disk as well, i don't use that in memory yet. I want to store stuff in BITS not in BYTES, when storing i have still 3MB on disk which could be way smaller (and also makes saving a lot faster because this is no fun).
+
+I have been looking through some C/C++ books here, but they all talk about bytes. I know you can set bits in a byte, but i just want ONE bit per connection:
+
+NULL - not checked
+0 - visible
+1 - not visible
+
+this should be possible right? I already have gone from a 33MB file to 3MB ,but still it could be WAY smaller.
+
+
+--------------------------------------------------
+11/23/03 at 04:11:07  Reply by: @$3.1415rin (johannes@_-removeifnotavirus-_lampel.net)
+--------------------------------------------------
+if you need 3 states, you need 2 bits per connection.
+
+
+here my bitfield code, basically for one bit entries, but one could extend it for n bit-elemnts without big problems I think ... ( sry for the big post )
+
+code:
+
+class CBitField  
+{
+public:
+      friend class CBitProxy;
+      
+      class CBitProxy
+      {
+      public:
+            CBitProxy(CBitField &array, long pos):
+              m_Array(array), m_Pos(pos){}
+              
+              CBitProxy &operator=(bool value){
+                    m_Array.setBit(m_Pos, value);
+                    return *this;
+              }
+              
+              CBitProxy &operator=(const CBitProxy &that){
+                    m_Array.setBit(m_Pos, that.m_Array.getBit(that.m_Pos));
+                    return *this;
+              }
+              
+              operator bool() const{
+                    return m_Array.getBit(m_Pos);
+              }
+      private:
+            CBitField      &m_Array;
+            long            m_Pos;
+      };
+
+      CBitField(){
+            m_plData = 0;
+            m_lBits = 0;
+      }
+      
+      CBitField(long lBits){
+            long lSize = lBits/sizeof(long)/8+1;
+            
+            m_plData = new long[lSize];
+            m_lBits = lBits;
+            memset(m_plData,0,sizeof(long)*lSize);
+      }
+
+      CBitField(const CBitField &param){
+            long lSize = param.m_lBits / sizeof(long) / 8 + 1;
+            
+            m_plData = new long[lSize];
+            m_lBits = param.m_lBits;
+
+            memcpy(m_plData,param.m_plData,sizeof(long)*lSize);
+      }
+      virtual ~CBitField();
+
+      void load(FILE *);
+      void save(FILE *);
+
+      long bits(void){
+            return m_lBits;
+      }
+
+      void setBit(long lBit,bool bSet){
+            assert(lBit < m_lBits);
+
+            long lIndex,lShift,lSet;
+
+            lIndex = lBit / (sizeof(long) * 8);
+            lShift = lBit - lIndex * (sizeof(long) * 8);
+
+            lSet = (1<<lShift);
+
+            if(bSet){
+                  m_plData[lIndex] |= lSet;
+            }
+            else{
+                  m_plData[lIndex] &=~ lSet;
+            }
+      }
+
+      void zero(void){
+            long lSize = m_lBits/sizeof(long)/8+1;
+            
+            memset(m_plData,0,sizeof(long)*lSize);
+      }
+
+      bool getBit(long lBit) const{
+            assert(lBit < m_lBits);
+            long lIndex,lShift,lSet;
+
+            lIndex = lBit / (sizeof(long) * 8);
+            lShift = lBit - lIndex * (sizeof(long) * 8);
+
+            lSet = m_plData[lIndex];
+            lSet>>=lShift;
+
+            return (lSet&1);
+      }
+
+      void negate(void){
+            long l,lMax;
+
+            lMax = m_lBits / sizeof(long) / 8 + 1;
+
+            for(l=0;l < lMax; l++){
+                  m_plData[l] = ~m_plData[l];
+            }
+      }
+
+      /*CBitField operator~(){
+            CBitField ret;
+
+            ret = *this;
+            
+            ret.negate();
+
+            return ret;
+      }*/
+
+      CBitField &operator &= (const CBitField &param){
+            long l,lMax;
+            if(m_lBits<=param.m_lBits){                              // take the smallest bitfield
+                  lMax = m_lBits / sizeof(long) / 8 + 1;
+            }
+            else{
+                  lMax = param.m_lBits / sizeof(long) / 8 + 1;
+            }
+            for(l=0;l < lMax; l++){
+                  m_plData[l] &= param.m_plData[l];
+            }
+            return ((CBitField &)(*this));
+      }
+
+      CBitField &operator |= (const CBitField &param){
+            long l,lMax;
+            if(m_lBits<=param.m_lBits){                              // take the smallest bitfield
+                  lMax = m_lBits / sizeof(long) / 8 + 1;
+            }
+            else{
+                  lMax = param.m_lBits / sizeof(long) / 8 + 1;
+            }
+            for(l=0;l < lMax; l++){
+                  m_plData[l] |= param.m_plData[l];
+            }
+            return ((CBitField &)(*this));
+      }
+
+      CBitField &operator ^= (const CBitField &param){
+            long l,lMax;
+            if(m_lBits<=param.m_lBits){                              // take the smallest bitfield
+                  lMax = m_lBits / sizeof(long) / 8 + 1;
+            }
+            else{
+                  lMax = param.m_lBits / sizeof(long) / 8 + 1;
+            }
+            for(l=0;l < lMax; l++){
+                  m_plData[l] ^= param.m_plData[l];
+            }
+            return ((CBitField &)(*this));
+      }
+
+      CBitField &operator = (const CBitField &param){
+            long lSize = param.m_lBits / sizeof(long) / 8 + 1;
+            if(param.m_lBits != m_lBits){
+                  delete m_plData;
+                  m_plData = new long[lSize];
+                  m_lBits = param.m_lBits;
+            }
+            memcpy(m_plData,param.m_plData,sizeof(long)*lSize);
+
+            return ((CBitField &)(*this));
+      }
+
+      CBitField &partialCopy(const CBitField &param){
+            long lIndex;;
+            if(param.m_lBits == m_lBits){
+                  lIndex = param.m_lBits / (sizeof(long) * 8);                  // only copy the data
+                  memcpy(m_plData,param.m_plData,sizeof(long)*lIndex);
+            }
+            else if(param.m_lBits > m_lBits){                                          // copy only the data that fits in there
+                  lIndex = m_lBits / (sizeof(long) * 8);
+                  memcpy(m_plData,param.m_plData,sizeof(long)*lIndex);
+            }
+            else{                                                                                    // copy as much as possible
+                  lIndex = param.m_lBits / (sizeof(long) * 8);
+                  memcpy(m_plData,param.m_plData,sizeof(long)*lIndex);
+                  for(long lschl = lIndex * sizeof(long) * 8; lschl < param.m_lBits; lschl ++){
+                        setBit(lschl,param.getBit(lschl));
+                  }
+            }
+            return ((CBitField &)(*this));
+      }
+
+      bool operator == (const CBitField &param){
+            // check sizes
+            if(param.m_lBits != m_lBits)
+                  return false;
+
+            // dont rely on getBit here, it's too slow
+
+            long lSizeFull = param.m_lBits / sizeof(long) / 8;
+
+            // check first bytes
+            for(long l = lSizeFull - 2; l >= 0; l--){
+                  if(m_plData[l] != param.m_plData[l])
+                        return false;
+            }
+            // and check if there are the last bits still unchecked bits at the end
+            long lUnchecked = m_lBits - lSizeFull*sizeof(long)*8;
+            if(!lUnchecked)            // no more bits to check
+                  return true;
+
+            long lMask = 0;            // first the mask is 0
+
+            for(;lUnchecked > 0;lUnchecked--){
+                  lMask <<= 1;
+                  lMask |= 1;
+            }
+
+            // lSizeFull-1 is last element of the array
+            if((m_plData[lSizeFull-1]&lMask) != (param.m_plData[lSizeFull-1]&lMask))
+                  return false;
+
+            return true;
+      }
+
+      bool operator != (const CBitField &param){
+            return !(*this == param);
+      }
+      
+      CBitProxy operator[](long pos){
+            assert(pos < m_lBits);
+            return CBitProxy(*this, pos);
+      }
+      
+      const CBitProxy operator[](long pos) const{
+            assert(pos < m_lBits);
+            return CBitProxy(const_cast<CBitField &>(*this), pos);
+      }
+
+      long getSet(void){            // just return an index to a bit which is set
+            long lSizeFull = m_lBits / sizeof(long) / 8;
+            long lStart = 0;
+            for(lStart = 0;lStart < lSizeFull; lStart ++){
+                  if(m_plData[lStart])
+                        break;
+            }
+            if(lStart != lSizeFull){
+                  lStart *= (sizeof(long)*8);
+                  for(;lStart < m_lBits; lStart ++){
+                        if(getBit(lStart))
+                              return lStart;
+                  }
+            }
+            return -1;
+      }
+
+
+private:
+      long *m_plData;
+      long m_lBits;
+};
+
+
+hm, lMask creation in == is slower than necessary ... maybe I should post more code, so I find more shit ;D
+
+[modified on 11/23/03 at 04:11:07]
+--------------------------------------------------
+11/23/03 at 04:13:36  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+Erm, do i understand correctly there is simply no 'bit' variable definition? So your class should handle this kind of things? Omg.
+
+I could probably use your code but i first need to understand it fully before i will even add one line of that in my code :)
+
+thanks for the code though; i have been looking with google but they all explain what bits are, and yes i know they are just a 0 or 1, and bytes exist out of 8 bits, etc etc. But thats now how to access them in C/C++ (or storing this).
+
+Lets think not in code; it means if i have to store something in BITS, i need one BYTE to represent 8 BITS; so if i had an X position at number 1 i should be storing/reading that from BIT 0 of BYTE 0 (counting from 0 to 7=8 bits). But that also means i have to read/write at BIT 0 of BYTE 1 when i want to read position 9 in the table.
+
+Omg.
+
+If i just knew how to access that. I will look into your code. Is there an easy way to access one specific bit? or do you need to 'set' all bits? So when BIT 0 is visible, 1 is not, 2 is , 3 is not, 4 till 7 is.. i have:
+
+BYTE 0 - > 01010000
+
+:S
+
+--------------------------------------------------
+11/23/03 at 06:50:44  Reply by: Cheesemonster!!! (cheeseh(at)rcbot(dot)net)
+--------------------------------------------------
+Here is what I use, I am just using a square table atm, I am hoping to make it trianglar ;) All I have to do is ignore same waypoints and check if X is bigger than Y, if it is then swap and check.. i think...
+
+Anyway, I hope my code here helps you get one bit from the big heap of bytes (SetVisibilityFromTo() and GetVisibilityFromTo())
+
+hopefully you can read it !
+
+code:
+
+const int g_iMaxVisibilityByte = (MAX_WAYPOINTS*MAX_WAYPOINTS)/8;
+
+class CWaypointVisibilityTable
+{
+public:
+      CWaypointVisibilityTable()
+      {
+            int iSize = g_iMaxVisibilityByte;
+            //create a heap type thing...
+            m_VisTable = (unsigned char*)malloc(iSize);
+
+            memset(m_VisTable,0,iSize);
+      }
+
+      BOOL SaveToFile ( void );
+
+      BOOL ReadFromFile ( void );
+
+      BOOL GetVisibilityFromTo ( int iFrom, int iTo )
+      {
+            // work out the position 
+            int iPosition = (iFrom*MAX_WAYPOINTS)+iTo;
+
+            int iByte = (int)(iPosition/8);
+            int iBit = iPosition%8;
+
+            if ( iByte < g_iMaxVisibilityByte )
+            {                  
+                  // Get the Byte that this is in
+                  unsigned char *ToReturn = (m_VisTable+iByte);
+                  // get the bit in the byte
+                  return ( (*ToReturn & (1<<iBit)) > 0 );
+            }
+
+            return FALSE;
+      }
+
+      void ClearVisibilityTable ( void )
+      {
+            if ( m_VisTable )
+                  memset(m_VisTable,0,g_iMaxVisibilityByte);
+      }
+
+      void FreeVisibilityTable ( void )
+      {
+            if ( m_VisTable != NULL )
+            {
+                  free(m_VisTable);
+                  m_VisTable = NULL;
+            }
+      }
+
+      void SetVisibilityFromTo ( int iFrom, int iTo, BOOL bVisible )
+      {
+            int iPosition = (iFrom*MAX_WAYPOINTS)+iTo;
+
+            int iByte = (int)(iPosition/8);
+            int iBit = iPosition%8;
+
+            if ( iByte < g_iMaxVisibilityByte )
+            {
+                  unsigned char *ToChange = (m_VisTable+iByte);
+                  
+                  if ( bVisible )
+                        *ToChange |= (1<<iBit);
+                  else
+                        *ToChange &= ~(1<<iBit);
+            }
+      }
+
+      void WorkOutVisibilityTable ( int iNumWaypoints );
+
+private:
+
+      unsigned char *m_VisTable;
+      // use a heap of 1 byte * size to keep things simple.
+};
+
+
+
+edit: actually i'll add a few more comments :p
+
+[modified on 11/23/03 at 06:50:44]
+--------------------------------------------------
+11/23/03 at 08:19:00  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+cool cheesy, i understand! You use almost the same way of writing as i do ; meaning of variable definitions/declarations and the such. 
+
+Thanks a bunch!
+
+I see btw that you use a one dimensional way of storage; ah, the good old C&C like times as i recall them ;) 
+
+[modified on 11/23/03 at 08:19:00]
+--------------------------------------------------
+11/23/03 at 08:47:57  Reply by: Cheesemonster!!! (cheeseh(at)rcbot(dot)net)
+--------------------------------------------------
+Yea, I would have liked to use a matrix type respresentation, but to make a dynamic matrix size in C/C++ it takes a lot of bother.. more trouble than its worth :p Although I did get a solution for doing dynamic matrices on C++ discussions somewhere.
+
+--------------------------------------------------
+11/23/03 at 09:48:54  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+It works now in my bot. At max i have a 2.2MB file, which never gets reached i hope ;) my De_dust file is now around 1.1MB which is quite 'learned' for a while. The results are great! As bots 'learn to view' they learn what is visibile, so no instant trace line firing.
+
+Every piece that i had from your code cheesy is well credited ;)
+
+I do dynamicly save stuff. So i calculate the size of memory before i save/read it so i only save that part which is explored of the '1 dimensional matrix' ;) all other stuff is unnescesary. This also safed some space. I'm happy with it! :D
+
+
+--------------------------------------------------
+11/26/03 at 08:00:16  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+OMG, just when i thought it all worked and all; somehow my RBX files never exceed 250K! 
+
+Could it be that malloc() does simply not allocate enough memory?
+
+I had to change some ints into doubles/longs because the sum of 4096*4096 / 8 is still 2.000.000 , so if i need that much memory, i can never ask that from malloc which uses an unsigned int (max 64.000 bytes).
+
+Edit:
+i saw also fwrite uses unsigned ints. So i cannot store the entire memory block (if i could even allocate it right) at once. 
+
+I had previously 2.2MB files because i saved per node/waypoint what is visible, ofcourse if you save everytime the same information then its logical that the size is correct, but the stored informaiton is not. 
+
+I also experienced crashes when loading an RBX file, i figured this was because some ints (not unsigned) where getting into the minus area (-3123) and thus cannot read something with fread and such.
+
+I am installing MSDN now (2CD's full) and try to figure out if malloc needs an include file or something to be able to allocate more memory.
+
+EDIT 2:
+Ok, i have found that malloc.h and an other header file should be included. If done, the fwrite and also malloc functions can take up more memory, instead of unsigned int, it has size_t *size...
+
+I left the changes with long/doubles as they where, because they are needed. Now my file does get saved well, and also loads up without crashes.
+
+I also noticed saving/loading goes way faster!
+
+[modified on 11/26/03 at 08:00:16]
+--------------------------------------------------
+11/26/03 at 12:00:54  Reply by: Cheesemonster!!! (cheeseh(at)rcbot(dot)net)
+--------------------------------------------------
+Here is how my load and save works, I believe it works... Have a look if you have any doubts.
+
+code:
+
+BOOL CWaypointVisibilityTable :: SaveToFile ( void )
+{
+   char filename[128];
+
+#ifdef __linux__
+   sprintf(filename,"rcbot/waypoints/%s/%s.rcv",gBotGlobals.m_szModFolder,STRING(gpGlobals->mapname));
+#else
+   sprintf(filename,"rcbot\\waypoints\\%s\\%s.rcv",gBotGlobals.m_szModFolder,STRING(gpGlobals->mapname));
+#endif
+
+    if (IS_DEDICATED_SERVER())
+      printf("loading waypoint file: %s\n", filename);
+
+   FILE *bfp = fopen(filename, "wb"); // binary file write
+
+   if ( bfp == NULL )
+   {
+         BotMessage(NULL,0,"Can't open Waypoint Visibility table for writing!");
+         return FALSE;
+   }
+
+   fwrite(m_VisTable,sizeof(unsigned char),g_iMaxVisibilityByte,bfp);
+
+   fclose(bfp);
+
+   return TRUE;
+}
+
+BOOL CWaypointVisibilityTable :: ReadFromFile ( void )
+{
+   char filename[128];
+
+#ifdef __linux__
+   sprintf(filename,"rcbot/waypoints/%s/%s.rcv",gBotGlobals.m_szModFolder,STRING(gpGlobals->mapname));
+#else
+   sprintf(filename,"rcbot\\waypoints\\%s\\%s.rcv",gBotGlobals.m_szModFolder,STRING(gpGlobals->mapname));
+#endif
+
+   if (IS_DEDICATED_SERVER())
+      printf("loading waypoint file: %s\n", filename);
+
+   FILE *bfp = fopen(filename, "rb"); // binary file write
+
+   if ( bfp == NULL )
+   {
+         BotMessage(NULL,0,"Can't open Waypoint Visibility table for reading!");
+         return FALSE;
+   }
+
+   fread(m_VisTable,sizeof(unsigned char),g_iMaxVisibilityByte,bfp);
+
+   fclose(bfp);
+
+   return TRUE;
+}
+
+
+--------------------------------------------------
+11/26/03 at 13:20:17  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+it should work if you have less then 800 waypoints. I believe you do .. ;)
+
+If you have more, then you should put the header files as i posted earlier on top of you cpp file.
+
+here are my save/load routines (which afaik works):
+
+code:
+
+// Save Experience
+void cNodeMachine::experience_save()
+{
+  char dirname[256];
+  char filename[256];
+  int i;
+
+  // Set Directory name
+  strcpy(dirname, "data/cstrike/exp/");
+  strcat(dirname, STRING(gpGlobals->mapname));
+  strcat(dirname, ".rbx"); // nodes file
+
+  // writes whole path into "filename", Linux compatible
+  UTIL_BuildFileNameRB(dirname, filename);
+
+  FILE *rbl;
+  // Only save if lock type is < 1
+  rbl = fopen(filename, "wb");
+
+  if (rbl != NULL)
+  {
+    int iVersion = FILE_EXP_VER1;
+    fwrite(&iVersion, sizeof(int), 1, rbl);
+        for (i=0; i < MAX_NODES; i++)
+      {      
+            fwrite(&InfoNodes[i].fDanger[0], sizeof(Vector), 1, rbl);
+        fwrite(&InfoNodes[i].fDanger[1], sizeof(Vector), 1, rbl);
+
+        fwrite(&InfoNodes[i].fContact[0], sizeof(Vector), 1, rbl);
+        fwrite(&InfoNodes[i].fContact[1], sizeof(Vector), 1, rbl);
+    }
+    
+    // Here write down the MAX amounts of nodes used from vis table!
+    unsigned long iSize = (iMaxUsedNodes*MAX_NODES)/8;
+
+    fwrite(&iMaxUsedNodes, sizeof(int), 1, rbl);
+
+    // Write down the vis-table
+    fwrite(cVisTable, iSize, 1, rbl);
+
+    // write down the checked vis
+    fwrite(iVisChecked, sizeof(iVisChecked), 1, rbl);
+    fclose(rbl);
+  }
+}
+
+// Load Danger
+void cNodeMachine::experience_load()
+{
+  char dirname[256];
+  char filename[256];
+  int i;
+
+  // Set Directory name
+  strcpy(dirname, "data/cstrike/exp/");
+  strcat(dirname, STRING(gpGlobals->mapname));
+  strcat(dirname, ".rbx"); // nodes file
+
+  // writes whole path into "filename", Linux compatible
+  UTIL_BuildFileNameRB(dirname, filename);
+
+  FILE *rbl;  
+  rbl = fopen(filename, "rb");
+
+  if (rbl != NULL)
+  {
+    int iVersion=FILE_EXP_VER1;
+    fread(&iVersion, sizeof(int), 1, rbl);
+
+    if (iVersion == FILE_EXP_VER1)
+    {
+        for (i=0; i < MAX_NODES; i++)
+        {      
+            fread(&InfoNodes[i].fDanger[0], sizeof(Vector), 1, rbl);
+            fread(&InfoNodes[i].fDanger[1], sizeof(Vector), 1, rbl);
+
+            fread(&InfoNodes[i].fContact[0], sizeof(Vector), 1, rbl);
+            fread(&InfoNodes[i].fContact[1], sizeof(Vector), 1, rbl);
+        }
+
+        fread(&iMaxUsedNodes, sizeof(int), 1, rbl);
+
+        unsigned long iSize = (iMaxUsedNodes*MAX_NODES)/8;
+
+        // Read table from what we know
+        fread(cVisTable, iSize, 1, rbl);
+        fread(iVisChecked, sizeof(iVisChecked), 1, rbl);
+    }
+
+        fclose(rbl);
+  }
+}
+
+

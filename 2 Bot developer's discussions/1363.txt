@@ -1,0 +1,109 @@
+--------------------------------------------------
+Subject: CS1.1 speed problem?
+--------------------------------------------------
+03/14/01 at 17:59:20  Posted by: ExecutionStyle (c_brennan@hotmail.com)
+--------------------------------------------------
+Hi.. just updated to CS 1.1 today and all of a sudden the bots run at light speed.  I recompiled from the original HPB template 3 code and still get the problem.  Anyone else seen this?
+
+-Carl
+
+--------------------------------------------------
+03/15/01 at 05:16:55  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+I haven't looked at it in much detail, but I have confirmed that the HPB bot runs really fast in Counter-Strike 1.1.
+
+I suspect it has something to do with the fact that I don't control the bot's speed when calling the pfnRunPlayerMove() function.  All the bots use 400 as the max speed for HL, TFC, CS, FLF, and OpFor.  I rely on the MOD code to limit the player speed to what it really should be.  This used to work fine in all the MODs.  It looks like the Counter-Strike HPB bot will have to explicitly  set the player speed based on the deployed weapon and recent damage.
+
+botman
+
+--------------------------------------------------
+03/15/01 at 14:43:22  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+I had this problem when running my "bot" :)
+
+But now it seems to run at normal speed. If it stills runs normally I could find out what i did to it, hehe...
+
+--------------------------------------------------
+03/15/01 at 19:23:51  Reply by: Spyro (theoddbot@hotmail.com)
+--------------------------------------------------
+Hi,
+
+For S&I and FLF I was able to set the correct player speed by catching the call to pfnSetPlayerMoveSpeed (not sure on the name) and setting pBot->f_max_speed to the value passed.
+
+-Spyro
+
+--------------------------------------------------
+03/15/01 at 19:44:18  Reply by: ExecutionStyle (c_brennan@hotmail.com)
+--------------------------------------------------
+In the HPB bot template code, the f_max_speed is set to a CVAR that I assume is set by the mod.  My best guess on this is that Gooseman changed the name of the CVAR to prevent hackers from changing their max speeds?  Looks like we'll need the name of the new CVAR or we'll need to calculate our own values for f_max_speed and not depend on the CVAR any more.
+
+ -Carl
+
+--------------------------------------------------
+03/16/01 at 04:34:48  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+"For S&I and FLF I was able to set the correct player speed by catching the call to pfnSetPlayerMoveSpeed"
+
+Yep, that would probably work pretty well.  I'll try using pfnSetClientMaxSpeed() and see if that fixes it.
+
+botman
+
+--------------------------------------------------
+03/16/01 at 11:32:54  Reply by: eLiTe (ali@elitegamer.fsnet.co.uk)
+--------------------------------------------------
+I don't have 1.1 but I'm pretty sure the SetClientMaxSpeed thing will work, that is what I've been using for CS since DarkYouth pointed it out to me, and it works perfectly (because it is using the same method that is used to set the speeds for normal clients). It will even automatically stop the bots moving for freezetime!!
+
+--------------------------------------------------
+03/16/01 at 18:04:53  Reply by: yotaku (acoates@uci.edu)
+--------------------------------------------------
+How do you use pfnSetClientMaxSpeed()?
+
+--------------------------------------------------
+03/17/01 at 03:25:37  Reply by: SUCKLEAD (sucklead@btinternet.com)
+--------------------------------------------------
+void pfnSetClientMaxspeed(const edict_t *pEdict, float fNewMaxspeed)
+{
+   int i;
+   for (i=0; i < 32; i++)
+   {
+      if (bots[i].pEdict == pEdict)
+        {
+         bots[i].f_max_speed = fNewMaxspeed;
+         break;
+        }
+   }
+}
+
+--------------------------------------------------
+03/17/01 at 05:10:31  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+Or...
+code:
+void pfnSetClientMaxspeed(const edict_t *pEdict, float fNewMaxspeed)
+{
+   int index = UTIL_GetBotIndex((edict_t *)pEdict);
+
+   if (index != -1)
+         bots[index].f_max_speed = fNewMaxspeed;
+
+   (*g_engfuncs.pfnSetClientMaxspeed)(pEdict, fNewMaxspeed);
+}
+
+botman
+
+--------------------------------------------------
+03/17/01 at 10:36:52  Reply by: JoniV (joni.vahamaki@kolumbus.fi)
+--------------------------------------------------
+Use this:
+
+1. Go to console
+2. Type sv_maxspeed xxx (xxx is speed)
+
+example
+sv_maxspeed 350
+
+--------------------------------------------------
+03/17/01 at 10:40:12  Reply by: eLiTe (ali@elitegamer.fsnet.co.uk)
+--------------------------------------------------
+No sv_maxspeed is not used in CS
+

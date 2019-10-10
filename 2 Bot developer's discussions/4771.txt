@@ -1,0 +1,78 @@
+--------------------------------------------------
+Subject: Override a function
+--------------------------------------------------
+08/25/03 at 15:41:56  Posted by: BAStumm (bs@bs-linux.com)
+--------------------------------------------------
+Ok so say I want to override the TFC PM_Move() function and use my own modified version modified to further reduce bunnyhopping in PM_PreventMegaBunnyJumping(). How would I go about this? Originally I thought that perhaps I could remove the link (pfnPM_Move) from botmans code and include my own pm_shared.c file but in searching here it sounds like functions not linked will still make it to the mod. So how do I tell it to use my function instead of valves?
+
+--------------------------------------------------
+08/25/03 at 15:59:59  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+The biggest problem with the pm_shared functions is that they run BOTH on the client and on the server.
+
+If you change just the server, the client will not get valid prediction results (someone will thought they had jumped high enough on the client, but the server says they didn't and jerked them back down to a lower location).  Not having matched client and server pm_shared code can cause all kinds of strange physics behavior and really mess up the game.
+
+If you want to clamp player's velocities or adjust effects of gravity, you will need to modify the player edict values directly on the server (possibly looping through all players in the StartFrame function).
+
+You can do things like increase jumping height by adding a little bit to the upwards velocity (velocity.z component) or reduce jumping ability by slightly decreasing the velocity.z component during each frame.  You also might want to try adjusting the player edict 'gravity' field slightly during each frame.  This will be used by the client and server engine to adjust how much gravity effects that player.
+
+I think you'll pretty much have to come up with the calculations on your own.  Stuff in the pm_shared physics code can be used as a guideline for how some of the physics calculations are done, but you will be effecting the player edict values in addition to the physics code that will run on the server and client and you aren't going to be able to change those (otherwise they get out of sync and you get the weird behaviors).
+
+I'm not sure if there's any metamod bunnyhopping plugins that have source code available to take a look at, but if there is, that would be a good place to start.
+
+botman
+
+--------------------------------------------------
+08/25/03 at 17:10:26  Reply by: BAStumm (bs@bs-linux.com)
+--------------------------------------------------
+I'm trying to prevent bunnyhop exploit that makes people increase speed beyond the class max speed. I've seen metamod plugins that do this and they did so by adjusting the BUNNYJUMP_MAX_SPEED_FACTOR in the PM_PreventMegaBunnyJumping() function. They reduce the BUNNYJUMP_MAX_SPEED_FACTOR to 1.2 or so from 1.7. The only players who will see messed up physics are those that try to exploit the increased speed bug allowed via bunnyhopping (jumping and strafing at same time). There are two simlar metamod plugins bunnyjump and another. Bunnyjump removes bunnyjump speed limiting all together while the other reduces speed increase further. The two sets of code are nearly identical. And I'd imagine its more of a prob for the bunnyjump plugin on the physics since it allows mach3 speed via bunnyjumping (mach3 quoted from Valve (R) SDK LOL). 
+
+Anyway, both these plugins take the pm_shared.c file in the plugin, valves code just modified some. I just need to know what to do to use my modified version inside bot code. I'm not concerned about what happens to those that continue to exploit the bhop bug because I don't want them to try doing this in the first place, least not on my server. If display looks screwy to them, too bad, they shouldn't have been using go fast scripts in the first place. Besides, I might go a step further and give speeders a free trip to respawn :)
+
+So again, how do I go about overridinig the PM_Move function with my own PM_Move (perhaps it needs named pfnPM_Move()) function.
+
+Much thanks for your help 
+
+--------------------------------------------------
+08/26/03 at 02:33:10  Reply by: Cheesemonster!!! (cheeseh(at)houstondod(dot)com)
+--------------------------------------------------
+look for the source code on hullu's bunny jump plugin, or if there isn't any look for the AXN metamod plugin's source, it basically calls its own PM_Move function when it wants to and returns MRES_SUPERCEDE so that metamod doesnt look for the function again that frame.. I think.
+
+http://hullu.xtragaming.com/
+
+--------------------------------------------------
+08/26/03 at 05:41:39  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+I would recommend making this a metamod plugin instead of using the HPB bot hook style DLL.  Metamod stuff is just a little bit cleaner and would allow you to use other plugins as well in the future.
+
+The code is pretty much the same except for you have to return the proper META_RESULT value to indicate whether you want metamod to continue to call the game DLL code or not (you wouldn't want to continue to call game DLL code if you are replacing something, but you would want to call game DLL code if you are simply intercepting something to examine it).
+
+botman
+
+--------------------------------------------------
+08/26/03 at 08:21:55  Reply by: BAStumm (bs@bs-linux.com)
+--------------------------------------------------
+Humor me here.
+
+I do not wish to run metamod on my game servers. I've heard and understand all the arguements before so please spare me. 
+
+With that in mind, could someone help me understand how the HPB hook overrides a function? Perhaps point me to an example in the HPB code? HPB Bot overrides functions already doesn't it?
+
+--------------------------------------------------
+08/26/03 at 12:07:43  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+The HPB bot code doesn't actually override the function, instead it links a function in between the engine and the game DLL code.  This happens both ways (from the engine to the game DLL and from the game DLL to the engine, they are different functions).
+
+For example, the engine usually calls the StartFrame() function in the game DLL at the start of every rendered video frame.  The HPB bot code is loaded instead of the game DLL (that's why you have to modify the liblist.gam file) and the engine calls the HPB bot code instead of the game DLL code.  The HPB bot code then loads the game DLL and it will call the matching function, i.e....
+
+Engine calls HPB_bot StartFrame().
+HPB_bot StartFrame() does some stuff and calls Game DLL StartFrame().
+Game DLL StartFrame() does some stuff and returns to HPB_bot StartFrame().
+HPB_bot StartFrame() returns back to Engine.
+
+The engine functions that are 'hookable' can be found in the engine\eiface.h file.  The functions in the 'enginefuncs_s' structure are functions that the Game DLL can call in the engine (for example pfnTraceLine).  The functions in the 'DLL_FUNCTIONS' structure are the functions that the engine will call in the Game DLL code (for example pfnClientConnect).
+
+If the function you want to intercept doesn't appear in the 'enginefunc_s' structure or the 'DLL_FUNCTIONS' structure, then it is NOT 'hookable' (for example, the SDK has a function called TakeDamage, but this function is NOT hookable by any plugin or hook type DLL and it can't be intercepted, changed or modified).
+
+botman
+

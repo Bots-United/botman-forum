@@ -1,0 +1,190 @@
+--------------------------------------------------
+Subject: Velocity Question
+--------------------------------------------------
+01/13/03 at 02:16:18  Posted by: Phreak (dead_sexy_simon@hotmail.com)
+--------------------------------------------------
+Hello,
+
+
+I am just interested in how the v.velocity works.
+
+I am actually trying to do something like the slap command in AdminMOD, because i found this useful to pull troublesome players into line. (Or people who constantly camp)
+
+I want to be able to use a console command, like this
+
+slap playername damage
+
+
+that slaps the player with that name and does that ammount of damage. Or, i would use the players "number". EG
+
+vote 213
+
+I hope anyone who reads this understands, and could give me an idea of how i could implement this..
+
+
+Thanks in advance
+
+
+Phreak
+
+--------------------------------------------------
+01/13/03 at 05:45:04  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+The velocity is the current vector speed of an entity. For example, if you want to check how fast a player is moving, you can do:
+code:
+
+//edict_t *pPlayer;
+float f_player_speed = pPlayer->v.velocity.Length();
+
+
+I don't think it can be used to inflict damage to players, except maybe for fall damage. But since I don't know how AdminMod's slap command works, I might be mistaken.
+
+
+
+--------------------------------------------------
+01/13/03 at 05:47:45  Reply by: Phreak (dead_sexy_simon@hotmail.com)
+--------------------------------------------------
+thank PM,
+
+Its ok, the Health part i could do, i just need a simple slap command, the syntax doesnt really matter. I'm not certain however to how the velocity can be changed,
+
+any info on how the velocity can be changed would be helpful.. :)
+
+IE: - + / * which directions they would make it go and how i should implement it 
+
+Sorry if this is an annoying question...
+
+
+Phreak
+
+--------------------------------------------------
+01/13/03 at 06:10:44  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+The velocity is stored as a 3D vector. Each of the x, y, z components of this vector describe the amount of deviation relative to each of the map's axises.
+
+For example, a velocity of (0, 0, 1) would make your player move right upwards by 1 unit. A velocity of (1, 1, 0) would make your player move diagonally by sqrt(2) units.
+
+
+--------------------------------------------------
+01/13/03 at 06:19:17  Reply by: Phreak (dead_sexy_simon@hotmail.com)
+--------------------------------------------------
+ah, ok...
+
+(you can probably tell ive been refreshing IE like mad to get your reply :D
+
+Could you tell me how to take an argument from the console that is the players name and use it to change that players velocity??
+
+sort of like this
+
+code:
+
+else if (FStrEq(pcmd, "slap"))
+{
+    //arg1 will be the players name i want to slap
+    //how could i write code to slap the player
+    //whos name is arg1 ??
+    //then i would change their velocity
+}
+
+
+
+Basically, i would do this in the console
+
+slap JoeJoe
+
+I want to find JoeJoe's edict and change his velocity, but im not sure how to get his edict and not everyone elses...
+
+Think you could help me??
+
+
+Thanks in advance
+
+
+Phreak
+
+--------------------------------------------------
+01/13/03 at 07:35:16  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+An example of mine, you have to modify it though. But you should understand what it does.
+code:
+
+         if (strcmp (pcmd, "botorder") == 0)
+         {
+            if ((arg1 != NULL) && (*arg1 != 0) && (arg2 != NULL) && (*arg2 != 0))
+               for (int i = 0; i < MaxClientsOnServer (); i++)
+                  if (strcmp (arg1, NetnameOf (bots[i].pEntity)) == 0)
+                  {
+                     ServerConsole_printf ("BOT %s executes command %s\n", NetnameOf (bots[i].pEntity), arg2);
+                     FakeClientCommand (bots[i].pEntity, arg2);
+                     break;
+                  }
+            return;
+         }
+
+
+Hint: for getting player entities instead, modify this using the INDEXENT() macro instead.
+
+[modified on 01/13/03 at 07:35:16]
+--------------------------------------------------
+01/13/03 at 07:34:46  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+Use this I made for my bot :)
+
+Input part of the name of the player as the parameter and you get out the edict.
+
+code:
+
+edict_t *UTIL_FindPlayerByTruncName ( const char *name )
+{
+      edict_t *pent = NULL;
+      edict_t *best_edict = NULL;
+
+      short int best_matched = 999;
+
+      short int i;
+
+      for( i = 1; i <= gpGlobals->maxClients; i ++ )
+      {
+            pent = INDEXENT(i);
+            
+            if( pent != NULL )
+            {
+                  if( pent->v.netname )
+                  {
+                        int length = strlen(name);                                     
+                        
+                        char arg_lwr[80];
+                        char pent_lwr[80];
+                        
+                        strcpy(arg_lwr,name);
+                        strcpy(pent_lwr,STRING(pent->v.netname));
+                        
+                        strlow(arg_lwr);
+                        strlow(pent_lwr);
+                        
+                        if( strncmp( arg_lwr,pent_lwr,length) == 0 )
+                        {
+                              length = strlen(pent_lwr);
+
+                              if ( length < best_matched )
+                              {
+                                    best_matched = length;
+                                    best_edict = pent;
+                              }                        
+                        }
+                  }
+            }
+      }
+
+      return best_edict;
+}
+
+
+--------------------------------------------------
+01/13/03 at 18:41:09  Reply by: Phreak (dead_sexy_simon@hotmail.com)
+--------------------------------------------------
+Thank you very much for this, it's helping me understand Half Life Coding alot better...
+
+
+Phreak
+

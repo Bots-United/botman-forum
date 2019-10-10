@@ -1,0 +1,150 @@
+--------------------------------------------------
+Subject: How BspViewer does that?!
+--------------------------------------------------
+08/13/03 at 09:49:56  Posted by: Hoaxer (slava@deep-shadows.com)
+--------------------------------------------------
+while writing my BspViewer I've faced another strange problem... I think everybody knows that Quake engine has swapped Y and Z coordinates -  if you will try to render level without swaping them, you'll guess how that will look. For my BSP viewer I swapped all vertices when loaded bsp file:
+
+code:
+
+    var
+      tmp: single;
+
+    //change Y and Z coordinates
+    for n:=0 to NumVertices-1 do
+    begin
+      tmp:=Vertices[n][1];
+      Vertices[n][1]:=Vertices[n][2];
+      Vertices[n][2]:=-tmp;
+    end;
+
+
+
+and level was rendered as it should. When I started to implement occlusion (using leafs\vis info) I've faced another problem... Leafs also have swapped axis and it becomes impossible to determine in which leaf camera is, because level has swapped coordinates, while leafs - not. I guess all data in bsp (planes, etc.) has swapped Y and Z axis.
+
+To find out how to fix that I've opened Botman's BspViewer and was surprised because there is NO CODE that swaps Y\Z... and my question is - Botman, how you solved that problem? :|
+
+2nd question is here:
+you know, I am writing viewer in Delphi and some times it becomes problem for me to convert code from C, though I know C++, but I guess not good enough to understand this (code between 2 comment blocks):
+code:
+
+      /*!!!!!*/      unsigned short* p = dmarksurfaces + leaf.firstmarksurface;     /*!!!!!*/
+
+            for(int x = 0; x < leaf.nummarksurfaces; x++)
+            {
+                // don't render those already rendered
+                int face_idx = *p++;
+
+
+dmarksurfaces is an array of "word" type (or "unsigned short" in C++) - how then I need to convert this string of code where we add leaf.firstmarksurface to array? :\ Or can someone please explain what that code does? I converted it as:
+
+code:
+
+    faceCount := Leaf.NumMarkSurfaces;
+            // Loop through and render all of the faces in this leaf
+    for j:=0 to Leaf.NumMarkSurfaces-1 do
+    begin
+      faceIndex:=DMarkSurfaces[leaf.FirstMarkSurface+j];
+      if FacesDrawn.IsOn(faceIndex)=0 then
+                  begin  (*
+
+
+
+but it doesn't work right :(
+
+Thank you very much for reply!
+
+--------------------------------------------------
+08/13/03 at 09:59:08  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+code:
+
+unsigned short* p = dmarksurfaces + leaf.firstmarksurface;
+
+
+
+Think of it as the compiler would. The compiler isn't aware it's an array (and actually it doesn't give a crap whether it's an array or not). All the compiler sees is a pointer.
+
+dmarksurfaces IS NOT an array.
+dmarksurfaces is a pointer that POINTS to an array (which is malloc()ated).
+
+And since a pointer is just a memory address, the compiler takes the address that pointer points to, adds the value of the "firstmarksurface" variable in the "leaf" structure (which is probably an offset), and it gives it another address, which it feeds into another pointer, which it calls *p.
+
+edited: hint: "dmarksurfaces" is the same thing, actually, as "&(*dmarksurfaces)[0]"
+
+[modified on 08/13/03 at 09:59:08]
+--------------------------------------------------
+08/13/03 at 11:24:34  Reply by: Hoaxer (slava@deep-shadows.com)
+--------------------------------------------------
+that doesn't make sense for me, because I still do not understand how dmarksurfaces work - why they are in bsp file...
+
+I thought that leafs just point into dmarksurfaces list - they have firstmarksurface and nummarksurface vars... So basically they are indexes into dmarksurfaces array? If so, then where points dmarksurfaces - into faces list?
+Then why it doesn't work when I use this code - 
+
+code:
+
+  for i:=0 to Vis_Leaf.NumLeafs-1 do
+  begin
+    Leaf:=Leaves[Vis_Leaf.Leafs[i}};
+    if ObjFrustum.BoxInFrustum(Leaf.mins[0], Leaf.mins[1], Leaf.mins[2], Leaf.maxs[0], Leaf.maxs[1], Leaf.maxs[2])=false
+      then Continue; // discard leafs outside frustum
+
+    faceCount := Leaf.NumMarkSurfaces;
+            // Loop through and render all of the faces in this leaf
+    for j:=0 to Leaf.NumMarkSurfaces-1 do
+    begin
+      faceIndex:=LFaces[leaf.FirstMarkSurface+j];
+      if FacesDrawn.IsOn(faceIndex)=0 then
+                  begin  
+        RenderFace(faceIndex);
+
+        FacesDrawn.SetSlot(faceIndex);
+                        Inc(rendered);
+      end;
+    end;
+  end;
+
+
+*NOTE - LFaces is a "list of faces", or basically DMarkSurfaces
+
+Also Botman, please reply on first post in this thread if you are reading this :)
+
+[modified on 08/13/03 at 11:24:34]
+--------------------------------------------------
+08/13/03 at 11:36:00  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+What is called 'Y' in Worldcraft/Hammer is called 'Z' in the engine (and vice-versa).
+
+There's no need for code to swap the 2nd and 3rd float of a 3D coordinate (what you call 'Y' and 'Z') because the BSP file has these stored in the order than the engine will use them.
+
+The swapping happens in the compile tools when it reads in the Hammer .map (or .rmf) file coordinates and changes things from a left-hand 3D representation to a right-hand 3D representation.  Then when the map is compiled, the BSP file and the engine will both be in the same format.
+
+botman
+
+--------------------------------------------------
+08/13/03 at 12:16:40  Reply by: Hoaxer (slava@deep-shadows.com)
+--------------------------------------------------
+thanks for info :) then how it can happen that everything is rotated as Y and Z were swapped? : I haven't called any glRotatef...
+
+[modified on 08/13/03 at 12:16:40]
+--------------------------------------------------
+08/13/03 at 13:24:26  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Are you drawing the vertexes of the triangles in the proper order (clockwise vs. counter-clockwise)?
+
+If I remember correctly, the plane index number is negative for faces that need to be drawn in a counter-clockwise direction and positive for faces that need to be in a clockwise direction (or is it the other way around?).
+
+Checking some BSP references for Quake should tell you which way the triangles need to be rendered (they are NOT all drawn the same way).
+
+botman
+
+--------------------------------------------------
+08/13/03 at 16:46:50  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Regarding your 2nd question, I can't tell why it doesn't "work" when you use "your code"... because I don't know Delphi at all. But if you wanted to know what that line does, it just adds an offset to an address. Looking at your code it seems you make a loop through all the faces to add this offset to each one (I may be wrong, I don't know Delphi... but to me it's the way you do it). If that's what you do, that's not what the C code does.
+
+--------------------------------------------------
+11/01/03 at 00:49:41  Reply by: DarkNight (the_dark_wonderer@hotmail.com)
+--------------------------------------------------
+I appear to be getting a similar problem, in that my camera is all retarded.
+

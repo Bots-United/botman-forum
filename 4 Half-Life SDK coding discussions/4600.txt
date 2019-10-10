@@ -1,0 +1,115 @@
+--------------------------------------------------
+Subject: my compiling error
+--------------------------------------------------
+07/02/03 at 18:03:38  Posted by: desNotes (desTubes@tampabay.rr.com)
+--------------------------------------------------
+After completing the compilation of Ricochet on Linux (Thanks for all the help), I set up the dll (.so) and upon startup got the following error messages:
+
+Host error: Couldn't get DLL API from ./ricochet/dll/ricochet_i386.so
+
+line 83 1984 segmentation fault $HL $*
+
+Where would I look? And for the record the source does compile and run on windows when compiled on VC++
+
+Thanks,
+
+desNotes
+
+--------------------------------------------------
+07/03/03 at 02:45:43  Reply by: Cheesemonster!!! (cheeseh@houstondod.com)
+--------------------------------------------------
+Means that the DLL it was looking for was not found
+
+I think its meant to be dlls/ricochet_i386.so if you change that in liblist.gam.
+
+Or the file is in the right folder but is corrupt, not a good DLL for HL. It may have some exported functions missing like GetEntityAPI() GiveFnPtrsToDll() etc.
+
+--------------------------------------------------
+07/05/03 at 10:39:12  Reply by: desNotes (desTubes@tampabay.rr.com)
+--------------------------------------------------
+The following error did not appear before but does now (or maybe it flashed by and I missed it):
+
+Load library failed on ./ricochet/dlls/ricochet_i386.so
+undefined symbol strncmp_FPCcTOUi
+
+Now strncmp is one of the functions I had to declare in a separate .h file because it, along
+with several other functions were not declared. Could it be I don't have the right or full library?
+
+Here were the steps I did to install my gcc compiler:
+
+download: gcc-2.95.2.tar.gz
+download: glibc-2.2.patch
+unpack tar file using: tar -zvxf gcc-2.95.2.tar.gz
+change directory using: cd gcc-2.95.2
+configure using: ./configure
+patch using: cat ../glibc-2.2.patch  patch -p0
+make using: make
+install using: make install
+
+
+Thanks again guys,
+
+desNotes
+
+[modified on 07/05/03 at 10:39:12]
+--------------------------------------------------
+07/05/03 at 10:45:30  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+You shouldn't have to declare a function prototype for strncmp(), it should be in string.h (just use "#include <string.h>" and it should get defined properly).
+
+The problem you are having is that the function isn't defined as an external C function (the compiler thinks it's a C++ function).  You want something like this...
+code:
+extern "C" {
+strncmp(blah, blah, blah);
+}
+
+But don't change your prototype (just remove it), use the include file instead.
+
+botman
+
+--------------------------------------------------
+07/06/03 at 16:51:39  Reply by: desNotes (desTubes@tampabay.rr.com)
+--------------------------------------------------
+I found the proper string file, it was bastring.h. Once I included it, the dll compiled and worked. Thank you botman.
+
+Now, I am working on the next issue which to me seems a little on the strange side. The source code is exactly the same for both my windows dll and linux dll...I made no changes execept the additon of the <bastring.h> include. However when I play the game on a Limux server with the new dll, there are three things that happen that do not happen when running my compiled windows dll:
+
+-When landing from a jump, the FOV anles slightly, like someone was limping.
+
+-The crouch button works. The player can crouch and the discs will miss him.
+
+-The jump button works
+
+For those of you who have never played Ricochet, jumping and crouching are not allowed...and shile they are interesting features, I would rather start off with a dll close to standard.
+
+Could it be possible that the Makefile pulled in functions from another mod (HL)? The Makefile is the only thing different from the linux build and the windows build. 
+
+Anyone have and idea or speculation?
+
+Thanks,
+
+desNotes
+
+--------------------------------------------------
+07/07/03 at 05:53:09  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Perhaps you didn't compile the Ricochet client DLL file (and it's using the Valve one instead)?
+
+botman
+
+--------------------------------------------------
+07/08/03 at 04:38:59  Reply by: desNotes (desTubes@tampabay.rr.com)
+--------------------------------------------------
+I found the problem...still working on the solution but there is a separate /pm_shared directory for ricochet and I was linking towards the one for valve.
+
+--------------------------------------------------
+07/09/03 at 18:02:50  Reply by: desNotes (desTubes@tampabay.rr.com)
+--------------------------------------------------
+Just for anyone keeping track, I found the problem with the ricochet/pm_shared files. A couple of them started the C code on the first line of the file rather than having comments. Once I added a blank line as the first line of the file, the files compiled. I thought it may have been the CR/LF issue but I had had each file open before and resaved it.
+
+Anyway, the dll is compiled and works correctly on my server.
+
+Thanks to all,
+
+desNotes
+

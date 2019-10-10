@@ -1,0 +1,98 @@
+--------------------------------------------------
+Subject: running console command from ext (may be offtopic)
+--------------------------------------------------
+04/10/02 at 11:55:25  Posted by: sierra (sierra@webrausch.de)
+--------------------------------------------------
+Hi, I need to send commands to the console from my own external application, which will be a tool to synchronize several hl (/cs) clients in order to connect to the same public server. If the master  player changes the server, the "connect x.x.x.x" command must be executed on all clients.
+
+How can I do this ?
+
+What i've already tried:
+- Emulated keystrokes by WinAPI calls, does not work with HL (because it uses DirectInput ?)
+- send connect parameters to hl command line. Does not work, because the already running hl thread is being terminated when hl.exe is started twice
+- send UDP packets to port 27005. I can send text to the console window, but not run commands.
+
+Now i thought it may be neccessary to write some dll which passes the command string to the game engine. What do you think ? Is there an easier way.
+
+Problem is that most topics cover only the server side, but I want to do this on the client side.
+
+Thanks
+
+--------------------------------------------------
+04/10/02 at 13:01:49  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+The easiest way to do this is to create an external application that you connect to using TCP/IP sockets.  Send the socket application a network packet with the IP address and port number of the server you want them to connect to.
+
+The application would then execute the hl.exe program with the necessary server address and port number...
+code:
+hl.exe +connect <IP address> +hostport <port number>
+
+botman
+
+--------------------------------------------------
+04/10/02 at 13:15:03  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+Yes, but I think Andre Lang does not want the HL thread to be terminated and started again, am I right ?
+
+Maybe the solution resides in investigating the DirectInput input methods ?
+
+
+--------------------------------------------------
+04/10/02 at 13:29:32  Reply by: sierra (sierra3@webrausch.de)
+--------------------------------------------------
+Right, Pierre-Marie, I need a way to send this string to the running hl thread without terminating it first. Writing the client/server application to announce the server change and to launch a command line or something is no problem at all. But can't find a way to send command strings to the running hl thread. I thought a second call to the command line would do this, but hl.exe does not send the new parameters to the already running thread.
+
+--------------------------------------------------
+04/10/02 at 13:53:21  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+Maybe you should directly ask Valve (just a thought...)
+
+
+--------------------------------------------------
+04/11/02 at 02:53:34  Reply by: ReDucTor[FGW] (sjdtmv@tpg.com.au)
+--------------------------------------------------
+Haven't you heard of rcon?
+
+--------------------------------------------------
+04/11/02 at 07:14:39  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+He wants to make his own tool to synchronize clients. rcon won't fit the purpose, I think...
+
+Why don't you just build a custom version of the dedicated server ? You have the source code in the SDK... You could modify it to listen on a special port for commands too...
+
+
+
+--------------------------------------------------
+04/11/02 at 15:07:42  Reply by: ReDucTor[FGW] (sjdtmv@tpg.com.au)
+--------------------------------------------------
+You can use rcon on a client, its not a server only thing, thats one of the good things about it..
+
+--------------------------------------------------
+04/11/02 at 16:27:10  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+QUOTE:
+Why don't you just build a custom version of the dedicated server ? You have the source code in the SDK... You could modify it to listen on a special port for commands too...
+
+
+
+Forget it, bad idea, it's obviously no use for you...
+
+--------------------------------------------------
+04/12/02 at 15:26:13  Reply by: sierra (sierra3@webrausch.de)
+--------------------------------------------------
+To make it more clear: I am writing an application which needs to "remote control" a half-life client running on the same machine. The hl client is connected to an internet game server. My tool should be able ro run console commands on the local halflife client, such as "connect x.x.x.x" to force hl to connect to a different server.
+
+About rcon:
+I tried to emulate rcon calls to the 27005 client port, but they are not accepted. Usually you send "challenge rcon" first and get back a password which you need to supply with each rcon command you send. The _client_ port of hl does not even respond to this challenge. There are few commands that work on the client port however, like "GET x" will send back the value of the variable x, and "lText" will print "Text" to the console.
+
+However, no real commands are accepted. The only thing I can do is to disrupt the current game by sending "B", which results in a drop to the console (disconnect) and "connection accepted by 127.0.0.1" - nothing more . I guess this is part of the handshake which is done when joining a game.
+
+I could imagine only two other ways of controlling hl:
+- writing a DirectInput keyboard emulation device driver, which would be OS-specific and most probably too much work.
+- writing some dll which is loaded by the game and injects the commands into hl (by ClientCommand() ?). Seems this would be difficult too, and interfere with every cheat detection software, which is required by almost all internet servers.
+
+A workaround may be binding a key to "exec makro.cfg". This macro.cfg would be filled by my program while hl is running. Problem is that user interaction is required.
+
+By the way, getting console data back is no problem because there is a log option which forwards all messages to a given UDP port... where my application is watching them.
+
+[modified on 04/12/02 at 15:26:13]

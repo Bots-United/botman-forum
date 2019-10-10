@@ -1,0 +1,28 @@
+--------------------------------------------------
+Subject: just a simple question ...
+--------------------------------------------------
+08/02/01 at 05:27:57  Posted by: @$3.1415rin (as3.1415rin@gmx.de)
+--------------------------------------------------
+I want to use classes for the bot instead of this bot_t structure and these functions in ....(bot_t *pBot) - style, because I think it's then easier to add support for more than one mod. So I began to think about it and wanted to find out where I would have a allocate memory for this classes. I just changed bot_t bots[32]; to bot_t *bots; in bot.cpp. Then I wanted to allocate mem in h_export, GiveFnptrsToDll. This wasn't workin, so I removed all the stuff and replaced bot_t bots[32]; with bot_t *bots = new bot_t[32];. None of this changes resulted in a workin dll. Now I would like to ask where is the difference between the last changes, i.e. between "bot_t bots[32];" and "bot_t *bots = new bot_t[32];". I know what's the difference in the c code, but not the different effects on the mp.dll.
+Can anybody help me please ? thx in advance
+( btw, I tried the same with alloc and I rebuild my whole project and still nothing is workin.)
+
+ah, almost forgot how it's not running .... it's crashing in mp.dll, the stack seems to be empty.
+
+[modified on 08/02/01 at 05:27:57]
+--------------------------------------------------
+08/02/01 at 08:52:49  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+If you make the bot a new C++ class (let's call it CBot), it would make more sense to me to use "pBot = new CBot;" in the BotCreate() function (since that's where the bot gets created anyway).
+
+Then use "delete pBot;" in ClientDisconnect() if the client that is disconnecting is a bot (flags = FL_FAKECLIENT).
+
+botman
+
+--------------------------------------------------
+08/02/01 at 09:41:46  Reply by: theimann (killaruna@botepidemic.com)
+--------------------------------------------------
+I've solved that by adding a pointer to my botclass to the bot_t structure. That way the code that needs bot_t stays compatible but all my own code is OOP-style. I'm creating my botclass in BotCreate() as botman proposed as well and had no problems with that...
+
+Tobias
+

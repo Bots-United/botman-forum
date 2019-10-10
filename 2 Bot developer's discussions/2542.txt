@@ -1,0 +1,151 @@
+--------------------------------------------------
+Subject: Client network address
+--------------------------------------------------
+12/10/01 at 12:26:40  Posted by: jldailey (jldailey@uchicago.edu)
+--------------------------------------------------
+
+How does one find out what the network address of a client is?  I know the info exists because status prints it out, but i cant find it in any of the entvars or clientdata structs... the only place i could see where the hpb template grabs the address is during ClientConnect, but i need it during the game (I'm writing an interface to iptables, to _ban_ hackers from the server using firewall rules).
+
+thanks.
+
+--------------------------------------------------
+12/10/01 at 12:45:50  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+When ClientConnect() is called by the engine, you need to store the IP address in an array.  Create an array of IP addresses like this...
+code:
+char IP_address[32][64];
+
+...then just use the INDEX of the player as the index into the array and store the IP address sent by the engine in ClientConnect.
+
+botman
+
+--------------------------------------------------
+12/10/01 at 13:19:26  Reply by: jldailey (jldailey@uchicago.edu)
+--------------------------------------------------
+
+How do you tell which client index they will have at the beginning of ClientCOnnect?  i am guessing that they dont get added to the ENT table until after the engines CLientConnect gets called. (IOW, INDEXENT(pPlayer) wont be valid since they are still connecting)??   am i right? or do the edict_t *'s get added to INDEXENT() as soon as they are created, ie before CLientConnect?
+
+--------------------------------------------------
+12/10/01 at 14:39:12  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+You could always search each player using their name... I haven't tried this code but it should look something like this.
+
+It will return the edict_t of the found player or NULL if that player isn't found.
+
+code:
+
+edict_t *UTIL_FindPlayerByName( const char *szKeyword )
+{
+      int i = 0;
+      edict_t *pent = NULL;
+
+      for ( i = 0; i < gpGlobals->maxClients; i ++ )
+      {      
+            pent = INDEXENT(i);
+            
+            if( pent != NULL )
+            {
+                  if( !pent->free )
+                  {
+                        if( strcmp( szKeyword, STRING(pent->v.netname) ) == 0 )
+                        {
+                              return( pent );
+                        }
+                  }
+                  
+            }
+      }
+
+      return( NULL );
+}
+
+
+
+
+Oh botman corrected me once ;-). If you use ClientPutInServer instead of ClientConnect then all is well I believe (Because I think clientconnect is what's exectuted when a client gets accepted to the server but also can still be dropped from the sever before actually joining), whatever you're doing though!
+
+[modified on 12/10/01 at 14:37:56]
+
+[modified on 12/10/01 at 14:39:12]
+--------------------------------------------------
+12/10/01 at 21:05:00  Reply by: ReDucTor[FGW] (sjdtmv@tpg.com.au)
+--------------------------------------------------
+Some useless functions, and helpful code :)
+code:
+
+typedef struct {
+ char IP_address[64];
+ char Name[64];
+} ipaddrs_t;
+
+#ifndef MAX_PLAYERS
+#define MAX_PLAYERS 40
+#endif
+
+ipaddrs_t ip_addresses[MAX_PLAYERS];
+int NumberOfAddresses=0;
+
+void AddAddress(char *IP_Address, char *Name)
+{
+strcpy(ip_addresses[NumberOfAddresses].IPAddress, IP_Address);
+strcpy(ip_addresses[NumberOfAddresses].Name, Name);
+NumberOfAddresses++;
+}
+
+ipaddrs_t * GetAddressByNumber(int number)
+{
+return ip_addresses[number];
+}
+
+char * * GetIPAddressByNumber(int number)
+{
+return GetAddressByNumber(number).IP_address;
+}
+
+char * * GetIPAddressByNumber(int number)
+{
+return GetAddressByNumber(number).Name;
+}
+
+ipaddrs_t * GetAddressByName(char *name)
+{
+for(int i=0;i<=NumberOfAddresses;i++)
+{
+if(strcmp(ipaddresses[i].Name,name)==0)
+return ipaddresses[i];
+}
+return NULL;
+}
+
+char * * GetIPAddressByName(char *name)
+{
+return GetAddressByName(name).IP_address;
+}
+
+void ChangeAddressByName(char *name, ipaddr_t newipaddr)
+{
+ipaddr_t *ipaddr = GetAddressByName(name);
+memcpy(newipaddr,ipaddr,sizeof(newipaddr));
+}
+
+inline char *GET_INFO_KEY_VALUE( char *infobuffer, char *key )
+{
+   return pfnInfoKeyValue( infobuffer, key );
+}
+
+BOOL ClientConnect( edict_t *pEntity, const char *pszName, const char *pszAddress, char szRejectReason[ 128 ]  )
+{
+   AddAddress(pszAddress, pszName);
+   ....
+}
+
+void ClientUserInfoChanged( edict_t *pEntity, char *infobuffer )
+{
+   if(strcmp(GET_INFO_KEY_VALUE(infobuffer,"name")), GET_INFO_KEY_VALUE(pfnGetInfoKeyBuffer(pEntity),"name"))
+   {
+     ipaddr_t *ipaddr = GetAddressByName(GET_INFO_KEY_VALUE(pfnGetInfoKeyBuffer(pEntity),"name"));
+     strcpy(ipaddr->Name,GET_INFO_KEY_VALUE(infobuffer,"name")); 
+   }
+   ...
+
+

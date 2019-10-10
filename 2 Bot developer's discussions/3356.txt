@@ -1,0 +1,159 @@
+--------------------------------------------------
+Subject: Can't get relative angle to mobile entities...
+--------------------------------------------------
+06/29/02 at 22:38:07  Posted by: RX (robotix@cfx.nailed.org)
+--------------------------------------------------
+Hi,
+I've tried several ways to do this, but I can't seem to get an angle that's relative to my mobile edicts whether they are the bot, or me as listenserver_edict.
+What I want to do is get a degree measurement that's relative to me and not the entity I'm trying to measure an angle of...
+Example would be drawing a 1 unit radius circle around me (listenserver_edict) and as I'm turning, a fixed entity, like a waypoint appears at an angle to my front (front being 0deg/360deg).
+So as I'm turing in a circle, the waypoint should pass from 0 to 359deg.  What's happening instead is that the angle is remaining relative to the waypoint, and I am the one who's passing through the degrees.  This won't work for me, because I'm trying to create a scenario where I can use the forward movement / straff movement to control my waypoint movements while I point the gun toward an enemy.
+Here's what I've been using for testing...
+      if (test_counter == 100)
+      {
+            test_counter = 0;
+            if ((listenserver_edict != NULL))
+            {
+                  Vector v_direction = listenserver_edict->v.origin - waypoints[30].origin;
+                  Vector test_direction = UTIL_VecToAngles( v_direction );
+                  edict_t test
+                  test.v.v_angle = test_direction;
+                  float x,y,z = 0;
+                  x = test.v.v_angle.x;
+                  y = test.v.v_angle.y;
+                  z = test.v.v_angle.z;
+                  char woot[80];
+                  sprintf(woot, "x = %f, y = %f, z = %f\n", x, y, z);
+                  ClientPrint(listenserver_edict, HUD_PRINTTALK, woot);            
+}
+}
+the above was placed in startframe.
+by switching which origin is subtracted by which just reverses the y degress around waypoint 30.
+Is there anyway to get an angle relative to ME?!
+Please help, pulling hair out over this one... 
+As for aiming one way while running in a diff direction:  I've tried this already-
+using the v.angles to point the upper body, and the v_angle to point the legs, so they move toward v_angle...  It works fine visually, but the GUN actually fires where v_angle is pointed, and not where v.angles is pointing... in fact, the bullets and flames 'visually' actually come out where the gun is 'visually' facing(v.angles), but the rockets and grenades, etc come out where the v_angle is facing.  It's really very odd.  Why won't the damage occur where the bullets hit 'visually' instead of ghosting toward and doing damage at v_angle?
+Any ideas appreciated.  Only solution I can see so far is to point the v.angles and v_angle at the same place (as is done in the template) and using forward/back/straff * 1 to -1 in order to control the movement and calculating the fraction of 1 to -1 based on where the movement destination falls inside of the 360deg circle relative to the bot.  Thanks.
+RX
+
+[modified on 06/29/02 at 22:36:05]
+
+[modified on 06/29/02 at 22:38:07]
+--------------------------------------------------
+06/30/02 at 05:02:13  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+Is this what you are looking for? I made a few measurements to check my angles, I used the client command to add a new command I called "waycheck" and "waycheck set", when you use "waycheck set" command it will store that waypoint index, then when you type "waycheck" it should tell you the angle between you and the waypoint.
+
+Simple GLOBAL INT/DLL.CPP
+code:
+
+int way_check = 0;
+
+
+
+ClientCommand/DLL.CPP
+
+code:
+
+        else if (FStrEq(pcmd,"waycheck"))
+        {
+              if( FStrEq(arg1,"set"))
+              {
+                    way_check = WaypointFindNearest(pEntity,50,-1);
+                    ALERT(at_console,"Waypoint set\n");
+              }
+              else
+              {
+                    if(way_check != -1 )
+                    {
+                          char msg[200];
+                          float angle = UTIL_AngleBetweenOrigin(pEntity,waypoints[way_check].origin);
+
+                          sprintf(msg,"Angle : %0.3f\n",angle);
+
+                          ClientPrint(pEntity,HUD_PRINTCONSOLE,msg);
+                    }
+              }
+
+              return;
+
+        }
+
+
+
+My own function below, this is the guts of the angle finding!:
+
+code:
+
+float UTIL_AngleBetweenOrigin(edict_t *pEdict,Vector origin)
+{
+      Vector v_enemy = origin - pEdict->v.origin;
+      
+      float angles;
+      
+      Vector v_viewpoint = pEdict->v.v_angle;                                    
+      UTIL_MakeVectors(v_viewpoint);                                    
+      v_viewpoint = v_viewpoint + gpGlobals->v_forward * 8192.0;
+
+      v_viewpoint = UTIL_VecToAngles(v_viewpoint);
+      
+      v_viewpoint = UTIL_FixAngles(v_viewpoint);
+
+      v_enemy = UTIL_VecToAngles(v_enemy);
+
+      v_enemy = UTIL_FixAngles(v_enemy);
+      
+      angles = v_viewpoint.y - v_enemy.y;
+
+      if( angles > 180.0 )
+            angles -= 360.0;
+
+      if( angles < -180.0 )
+            angles += 360.0;
+
+      return -angles;
+}
+
+
+
+It seemed to work with me, its a difficult way to get the angles but I never went back to cleaning it up since it worked anyway.
+
+It returns a value between -180 and 180 ( negative being left to you, positive being to the right of you)
+
+Hope this helps you.
+[/code]
+[/code]
+
+[modified on 06/30/02 at 05:02:13]
+--------------------------------------------------
+06/30/02 at 05:05:26  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+oh you'll also need my fix angles function, I think PM's Wrap Angles is prolly better ;) 
+
+code:
+
+Vector UTIL_FixAngles( Vector vec )
+{
+      vec.x = UTIL_FixFloatAngle(vec.x);
+      vec.y = UTIL_FixFloatAngle(vec.y);
+      vec.z = UTIL_FixFloatAngle(vec.z);
+
+      return vec;
+}
+
+float UTIL_FixFloatAngle(float vec)
+{
+      if (vec > 180.0) vec -= 360.0;      
+      if (vec < -180.0) vec += 360.0;
+
+      return vec;
+}
+
+
+--------------------------------------------------
+06/30/02 at 15:13:47  Reply by: RX (robotix@cfx.nailed.org)
+--------------------------------------------------
+Nice job Cheesy, looks good.  Now I can implement the movemnet engine I had in mind. Thanks much!
+RX
+
+

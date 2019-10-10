@@ -1,0 +1,82 @@
+--------------------------------------------------
+Subject: HLDS trouble adding bots
+--------------------------------------------------
+03/17/01 at 10:27:29  Posted by: Quantum (quantum_red@yahoo.com)
+--------------------------------------------------
+I compiled a simple mod and included botman bot 10 by merging the files and code. I used this version because it's simpler than the HPB bot. Everything works but there are a few problems:
+
+1) Although the addbot command works from the bot.cfg file, I can't do addbot from the HLDS console window. Also the variables such as botdontshoot dont appear with their value if I type them in the console.
+
+If I do the same thing from a HL client running a LAN game instead of HLDS, the above 2 problems disappear.
+
+2) The bots don't move correctly when running from HLDS. The stand pretty much still and jump. Again, running from a HL client LAN game, they move okay.
+
+Any suggestions?
+
+--------------------------------------------------
+03/17/01 at 10:51:09  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+The ClientCommand() function (in client.cpp) is used to execute commands from a client.  There isn't a function in the Standard SDK to execute commands from the dedicated server console.
+
+What I did was to create a new CVAR called "bot" then set that cvar to the command I wanted to execute.  StartFrame() would check every second to see if this cvar had been set.  If so, it would read the "bot" cvar, execute the command, then clear the cvar so it wouldn't get executed again a second later.
+
+The format for the dedicated server command would look like this...
+
+bot "addbot Botname"
+
+...don't forget the double quotes.
+
+The movement problem is probably due to a high frame rate causing very little player movement for each frame.  Here's what I changed in the HPB bot to get around the problem of a high frame rate...
+code:
+   if (pBot->prev_time <= gpGlobals->time)
+   {
+      // see how far bot has moved since the previous position...
+      v_diff = pBot->v_prev_origin - pEdict->v.origin;
+      moved_distance = v_diff.Length();
+
+      // save current position as previous
+      pBot->v_prev_origin = pEdict->v.origin;
+      pBot->prev_time = gpGlobals->time + 0.2;
+   }
+   else
+   {
+      moved_distance = 2.0;
+   }
+
+This basically calculates the moved distance every 2 tenths of a second.  Previously this distance was calculated every frame and, for high frame rates, the bots wouldn't move enough per frame and would think they were stuck (thus they tried jumping over whatever was "blocking" them).
+
+Just do something similar for the Bot Number 10 code.  Alternately, you can force the frame rate lower using "fps_max" (or whatever the cvar is that forces the frame rate), but this isn't a very user friendly fix.
+
+botman
+
+--------------------------------------------------
+03/17/01 at 12:54:30  Reply by: Quantum (quantum_red@yahoo.com)
+--------------------------------------------------
+Dude, you are brilliant.. 
+
+1) Thanks for the HLDS console trick - it works
+
+2) I used your sample code from HPB bot which uses time to check for position. It works! I was looking at that part of the code suspecting the problem was there, but it probably would have taken me forever to figure that out on my own. The bots are now running happily all over the map.
+
+I had to modify the code to work with Bot 10 as follows:
+
+// ************ NEW **********
+float  f_prev_time;        // previous time
+
+if (f_prev_time <= gpGlobals->time) {       
+  v_diff = v_prev_origin - pev->origin;
+  moved_distance = v_diff.Length();
+  // save current position as previous       
+  v_prev_origin = pev->origin;       
+  f_prev_time = gpGlobals->time + 0.2; }    
+else  {
+  moved_distance = 2.0; }
+
+// ************ OLD **********
+// see how far bot has moved since the previous position...
+//v_diff = v_prev_origin - pev->origin;
+//moved_distance = v_diff.Length();
+//v_prev_origin = pev->origin;  // save current position as previous
+
+Thanks, I'm sure I'll have one or two more questions as I get a little deeper into this, but so far so good.
+

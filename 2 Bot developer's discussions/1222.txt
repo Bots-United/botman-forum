@@ -1,0 +1,119 @@
+--------------------------------------------------
+Subject: weaponmodels
+--------------------------------------------------
+02/14/01 at 06:36:44  Posted by: @$3.1415rin (as3.1415rin@gmx.de)
+--------------------------------------------------
+Is there a fast way to get the weapon ID, when u only got the String from weaponmodel or the model of a dropped weapon ? 'Coz a lot of string comparisions take a lot of time, I think
+
+@$3.1415rin
+
+--------------------------------------------------
+02/14/01 at 06:53:44  Reply by: theimann (tobias.heimann@cl.cam.ac.uk)
+--------------------------------------------------
+No, there isn't. If you wanted maximum performance you could do some fancy mapping (using STL classes) but that isn't really worth the work just for some string comparisions. What's that in comparision to the 3D-calculations that the engine performs? So don't worry!
+
+Tobias
+
+--------------------------------------------------
+02/15/01 at 02:33:31  Reply by: bigjesus (holybigjesus@hotmail.com)
+--------------------------------------------------
+I wish there were tho that would be a whole lot easier if we had a program that caught the strings from model names man that would rule wed never have to do it again thats for sure lol.
+
+--------------------------------------------------
+02/20/01 at 04:32:39  Reply by: @$3.1415rin (as3.1415rin@gmx.de)
+--------------------------------------------------
+ok, if sb needs this to save time ...:
+code:
+
+if(!szModel)
+            return -1;
+
+      if(!_stricmp(szModel,"models/p_mp5.mdl"))
+            return CS_WEAPON_MP5NAVY;
+      if(!_stricmp(szModel,"models/p_m4a1.mdl"))
+            return CS_WEAPON_M4A1;
+      if(!_stricmp(szModel,"models/p_ak47.mdl"))
+            return CS_WEAPON_AK47;
+
+      if(!_stricmp(szModel,"models/p_usp.mdl"))
+            return CS_WEAPON_USP;
+      if(!_stricmp(szModel,"models/p_glock18.mdl"))
+            return CS_WEAPON_GLOCK18;
+      if(!_stricmp(szModel,"models/p_deagle.mdl"))
+            return CS_WEAPON_DEAGLE;
+      if(!_stricmp(szModel,"models/p_elite.mdl"))
+            return CS_WEAPON_ELITE;
+      if(!_stricmp(szModel,"models/p_P228.mdl"))
+            return CS_WEAPON_P228;
+      if(!_stricmp(szModel,"models/p_fiveseven.mdl"))
+            return CS_WEAPON_FIVESEVEN;
+
+      if(!_stricmp(szModel,"models/p_hegrenade.mdl"))
+            return CS_WEAPON_HEGRENADE;
+      if(!_stricmp(szModel,"models/p_flashbang.mdl"))
+            return CS_WEAPON_FLASHBANG;
+      if(!_stricmp(szModel,"models/p_smokegrenade.mdl"))
+            return CS_WEAPON_SMOKEGRENADE;
+
+      if(!_stricmp(szModel,"models/p_awp.mdl"))
+            return CS_WEAPON_AWP;
+      if(!_stricmp(szModel,"models/p_aug.mdl"))
+            return CS_WEAPON_AUG;
+      if(!_stricmp(szModel,"models/p_g3sg1.mdl"))
+            return CS_WEAPON_G3SG1;
+      if(!_stricmp(szModel,"models/p_m249.mdl"))
+            return CS_WEAPON_M249;
+      if(!_stricmp(szModel,"models/p_m3.mdl"))
+            return CS_WEAPON_M3;
+      if(!_stricmp(szModel,"models/p_mac10.mdl"))
+            return CS_WEAPON_MAC10;
+      if(!_stricmp(szModel,"models/p_p90.mdl"))
+            return CS_WEAPON_P90;
+      if(!_stricmp(szModel,"models/p_tmp.mdl"))
+            return CS_WEAPON_TMP;
+      if(!_stricmp(szModel,"models/p_scout.mdl"))
+            return CS_WEAPON_SCOUT;
+      if(!_stricmp(szModel,"models/p_sg552.mdl"))
+            return CS_WEAPON_SG552;
+      if(!_stricmp(szModel,"models/p_xm1014.mdl"))
+            return CS_WEAPON_XM1014;
+      if(!_stricmp(szModel,"models/p_ump45.mdl"))
+            return CS_WEAPON_UMP45;
+      if(!_stricmp(szModel,"models/p_sg550.mdl"))
+            return CS_WEAPON_SG550;
+      if(!_stricmp(szModel,"models/p_knife.mdl"))
+            return CS_WEAPON_KNIFE;
+      if(!_stricmp(szModel,"models/p_c4.mdl"))
+            return CS_WEAPON_C4;
+
+
+--------------------------------------------------
+02/20/01 at 14:36:14  Reply by: CountFloyd (countfloyd_1999@yahoo.com)
+--------------------------------------------------
+Or something like this:
+
+code:
+
+void DebugShowModel(edict_t *pPlayer)
+{
+      edict_t *pent = NULL;
+      char item_name[128];
+
+      while ((pent = UTIL_FindEntityInSphere( pent, pPlayer->v.origin, 100 )) != NULL)
+      {
+            if (pent->v.effects & EF_NODRAW)
+            {
+                  // someone owns this weapon or it hasn't respawned yet
+                  continue;
+            }
+            sprintf(&item_name[0],"Name: %s - Model %s\n",STRING(pent->v.classname),STRING(pent->v.model));
+            ClientPrint(VARS(pPlayer), HUD_PRINTNOTIFY, item_name);
+      }
+}
+
+
+--------------------------------------------------
+02/21/01 at 06:53:15  Reply by: @$3.1415rin (as3.1415rin@gmx.de)
+--------------------------------------------------
+I just compiled my code with linux and I saw, that it has probs with _stricmp ... ok, let's use the normal strcmp and take care of the cases ...
+

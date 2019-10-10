@@ -1,0 +1,527 @@
+--------------------------------------------------
+Subject: Adding HPB to HL SDK
+--------------------------------------------------
+06/14/03 at 05:09:21  Posted by: DarkNight (the_dark_wonderer@hotmail.com)
+--------------------------------------------------
+Hey,
+
+I was wondering if anyone has accomplished adding HPB to the HL SDK. So far I've got it all in and its basically working fully. I just have one problem. The bots don't seem to be shooting, or they are but their shooting blanks or something.
+
+Anyone have an idea of what the problem is or where I should look to fix this.
+
+Thanks.
+
+--------------------------------------------------
+06/14/03 at 21:24:09  Reply by: DarkNight (the_dark_wonderer@hotmail.com)
+--------------------------------------------------
+After doing some more testing I have figured that the bots are shooting because I can see the shoot anim playing. They also chase after me and each other. Anyone know why they are shooting 'blanks' ?
+
+Here's a screenshot of them trying to shoot each other.
+
+www.singularitymod.com/~entropy/botprob.JPG
+
+--------------------------------------------------
+06/15/03 at 00:22:27  Reply by: DarkNight (the_dark_wonderer@hotmail.com)
+--------------------------------------------------
+Ok I've found something else. When I was merging I commented some stuff out, and now I un-commented it and I get 4 errors.
+
+This the function the errors are coming from.
+
+code:
+
+void StartFrame( void )
+{
+      if ( g_pGameRules )
+            g_pGameRules->Think();
+
+      if ( g_fGameOver )
+            return;
+
+      gpGlobals->teamplay = teamplay.value;
+      g_ulFrameCount++;
+
+      if (gpGlobals->deathmatch)
+   {
+      edict_t *pPlayer;
+      static float check_server_cmd = 0.0;
+      static int i, index, player_index, bot_index;
+      static float previous_time = -1.0;
+      static float client_update_time = 0.0;
+      clientdata_s cd;
+      char msg[256];
+      int count;
+
+      ......
+
+         if (client_update_time <= gpGlobals->time)
+         {
+            client_update_time = gpGlobals->time + 1.0;
+
+            for (i=0; i < 32; i++)
+            {
+               if (bots[i].is_used)
+               {
+                  memset(&cd, 0, sizeof(cd));
+
+                  UpdateClientData( bots[i].pEdict, 1, &cd );
+
+                  // see if a weapon was dropped...
+                  if (bots[i].bot_weapons != cd.weapons)
+                  {
+                     bots[i].bot_weapons = cd.weapons;
+                  }
+               }
+            }
+         }
+
+             ......
+}
+
+
+
+and here's the errors
+
+dlls\client.cpp(1640) : error C2079: 'cd' uses undefined struct 'clientdata_s'
+dlls\client.cpp(1751) : error C2664: 'UpdateClientData' : cannot convert parameter 3 from 'int *' to 'struct clientdata_s *'
+        Types pointed to are unrelated; conversion requires reinterpret_cast, C-style cast or function-style cast
+dlls\client.cpp(1754) : error C2228: left of '.weapons' must have class/struct/union type
+dlls\client.cpp(1756) : error C2228: left of '.weapons' must have class/struct/union type
+
+I just can't work it out.
+
+Please help me :)
+
+
+--------------------------------------------------
+06/15/03 at 06:03:17  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Fetching the weapons for the bot through an UpdateClientData call is not CPU wise and redundant. All you have to do, when you want to access a bot's weapons, is to read directly from its entvars.
+code:
+
+pBot->pEdict->v.weapons
+
+
+instead of
+code:
+
+pBot->bot_weapons
+
+
+You can get rid completely of the bot_weapons member of the bot_t structure. Identically, you can get rid of bot_health and bot_armor and read directly from pEdict->v.health and v.armorvalue. You can also safely remove the parts of code in bot_client.cpp that catch the network messages to fill these variables since they are not needed. Most of bot_client.cpp is useless for a server-side bot.
+
+I don't know why botman made it through an UpdateClientData() call though, this would have been necessary for a client-side bot, but as long as it's server-side, it is IMO much more wise to read directly from the entvars (since that's where UpdateClientData() duplicates his stuff from, anyway).
+
+
+--------------------------------------------------
+06/16/03 at 00:19:01  Reply by: DarkNight (the_dark_wonderer@hotmail.com)
+--------------------------------------------------
+After I fixed up those errors, I did what you said. The bots seem to pick up weapons better now but they still don't shoot at me. They chase me and I think I see their gun playing the shoot anim.. but nothing comes out. It also still crashes when they get up close to me. I think it has something to do with them using the crowbar but I can't work it out.
+
+Here's some debug info it gives me.
+
++      arg1      0x05cc6d64 ""
++      arg2      0x08c9faac "weapon_crowbar"
++      arg3      0x00000001 ""
++      g_argv      0x00000000 ""
+      isFakeClientCommand      0
++      pBot      0x08bd6c02
+
+it crashes at:
+
+isFakeClientCommand = 1;
+
+In:
+
+void FakeClientCommand(edict_t *pBot, char *arg1, char *arg2, char *arg3)
+
+Pierre-Marie Baty: If I could send my sdk to you, do you think you could a quick look at it ? 
+You might be able to see whats wrong cause you have a lot more bot experience then me.
+
+Thanks.
+
+
+--------------------------------------------------
+06/16/03 at 04:58:19  Reply by: DarkNight (the_dark_wonderer@hotmail.com)
+--------------------------------------------------
+Hmmm.. well I some how fixed that crashing bug. Thank god!.. oh wait.. there is no god.. :)
+Anyways.. I still have the problem with them not shooting.. its weird though.. they seem like they try to shoot cause Im pretty sure I can the shoot anims play. But nothing comes out. Im going crazy!
+I've look over everything and I can't figure out any idea's of why its doing this.
+
+Botman ? anyone ? someone ? please... ideas...
+
+--------------------------------------------------
+06/16/03 at 04:58:45  Reply by: RobGP (rob@planetfortress.com)
+--------------------------------------------------
+you would be best off looking at Botmans Bot #10 I think, not the HPB bot.
+
+--------------------------------------------------
+06/16/03 at 05:37:14  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Yes, you don't need ANY of the FakeClient stuff if you integrate the bot into the MOD.
+
+Just call the MOD functions directly to switch weapons, issue commands, etc. rather than trying to create a command string to send to ClientCommand(), just call whatever function ClientCommand() would have done for that command.
+
+botman
+
+--------------------------------------------------
+06/16/03 at 23:15:11  Reply by: DarkNight (the_dark_wonderer@hotmail.com)
+--------------------------------------------------
+@RobGP: Firstly Bot#10 doesn't work. The bots just sit there frozen. Secondly if can just get the HPB to shoot they will be fully working and I won't have to mess with the Bot#10 which doesn't work and has no waypoint system. :)
+
+@Botman: Thanks for bit of info. But I don't think that that is whats causing the bots not to shoot. Got any idea's on the shooting side of things ?
+
+I've been looking over BotShootAtEnemy and BotFireWeapon but I can't see what would be causing the problem.
+
+
+
+--------------------------------------------------
+06/17/03 at 05:46:01  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+They won't shoot if they think they aren't carrying a weapon (the weapon IDs are mismatched perhaps?), or if they think the weapon doesn't have any ammo (not getting the ammo information properly).
+
+The Bot Number 10 source code should show you how to determine which MOD weapons a bot is carrying and shows how to determine how much ammo is being carried by each weapon.  If you haven't looked at that code, you definitely should do that (since it's VERY different than the way the HPB bot does it).
+
+botman
+
+--------------------------------------------------
+06/17/03 at 15:20:34  Reply by: DarkNight (the_dark_wonderer@hotmail.com)
+--------------------------------------------------
+I have taken a look at it :) Im think their not shooting because their weapon stuff isn't getting updated and thats because Im not using the stuff in bot_client.cpp. How would I convert the updating from bot_client.cpp into the SDK ?
+
+I looked around for how the normal players get updated and found this in player:
+
+code:
+
+MESSAGE_BEGIN( MSG_ONE, gmsgWeaponList, NULL, pev );  
+WRITE_STRING(pszName);// string      weapon name
+WRITE_BYTE(GetAmmoIndex(II.pszAmmo1));// byte Ammo Type
+WRITE_BYTE(II.iMaxAmmo1);// byte Max Ammo 1
+WRITE_BYTE(GetAmmoIndex(II.pszAmmo2));// byte            Ammo2 Type
+WRITE_BYTE(II.iMaxAmmo2);// byte Max Ammo 2
+WRITE_BYTE(II.iSlot);      // byte      bucket
+WRITE_BYTE(II.iPosition);// bytebucket pos
+WRITE_BYTE(II.iId);// byte id (bit index into pev->weapons)
+WRITE_BYTE(II.iFlags);      // byte      Flags
+MESSAGE_END();
+
+
+
+Would this be the way I would do it for the bots and if so how/where would I implement it ?
+
+Thanks again.
+
+--------------------------------------------------
+06/17/03 at 18:01:53  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Bots that are internal to a MOD shouldn't be using network messages for anything.
+
+Just access the C++ class information directly (i.e. use CBaseWeapon to get at the weapons).
+
+botman
+
+--------------------------------------------------
+06/18/03 at 04:52:09  Reply by: DarkNight (the_dark_wonderer@hotmail.com)
+--------------------------------------------------
+Ok this is seriously starting to really peve me off. I change all the weapon/ammo carrying using stuff to how Bot #10 does it but they still don't shoot. Botman: Could I pretty pretty please get you to take a look at my SDK ? I beg you :)
+I just need you to see if you can see the problem and then point me in the right direction.
+The only thing thats holding me back is this non shooting bots and I have tried everything I can to get em' to work. 
+
+Here's the link:
+http://www22.brinkster.com/der1/dlls.html
+
+Thanks in advance. :)
+
+[modified on 06/18/03 at 04:52:09]
+--------------------------------------------------
+06/18/03 at 05:50:26  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Are you using Microsoft Visual Studio?  If so, set a break point in your function where the bots should be firing and step through the code line by line to see where things are going wrong.
+
+There's a tutorial for getting Visual Studio debugger set up properly over at the old Wavelength website...
+
+http://www.thewavelength.net/oldcontent/coding/tutorials/34.htm
+
+botman
+
+--------------------------------------------------
+06/19/03 at 04:07:02  Reply by: DarkNight (the_dark_wonderer@hotmail.com)
+--------------------------------------------------
+Ok, I did what you said and went through and in BotShootAtEnemy I found it wasn't going past this:
+
+code:
+
+if (pBot->f_reaction_target_time > gpGlobals->time)
+return;
+
+
+So I commented it out for now and now Im getting a crash in BotWeaponInventory at:
+
+code:
+
+// find out which weapons the bot is carrying...
+   for (i = 0; i < MAX_ITEM_TYPES; i++)
+   {
+      CBasePlayerItem *pItem = NULL;
+
+      if (pCBPlayer->m_rgpPlayerItems[i])// ERROR HERE
+      {
+         pItem = pCBPlayer->m_rgpPlayerItems[i];
+         while (pItem)
+         {
+            pBot->weapon_ptr[pItem->m_iId] = pItem;  // store pointer to item
+
+            pItem = pItem->m_pNext;
+         }
+      }
+   }
+
+
+
+I don't get why its doing this. I bet if you were to get my SDK you would see what the problem is easily. HINT HINT :)
+
+--------------------------------------------------
+06/19/03 at 05:33:55  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+"I don't get why its doing this. I bet if you were to get my SDK you would see what the problem is easily. HINT HINT :)"
+
+Sorry, I don't have the time to dig through someone else's source code.
+
+botman
+
+--------------------------------------------------
+06/20/03 at 21:39:23  Reply by: DarkNight (the_dark_wonderer@hotmail.com)
+--------------------------------------------------
+Hmmm.. alrighty.
+
+--------------------------------------------------
+06/23/03 at 04:42:44  Reply by: DarkNight (the_dark_wonderer@hotmail.com)
+--------------------------------------------------
+Well I figured out why it was crashing. It was because of a bad pointer. After I fixed that I did some further testing... and found the bots are now shooting. But only when they feel like it. Like.. there not shooting then I kill them a few times or wait around a bit and then they suddenly start killing people. Im confused on this one. Any idea's Botman ?
+
+--------------------------------------------------
+06/23/03 at 05:34:23  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+"Any idea's Botman ?"
+
+Nope.  The only thing I can recommend is run them in the debugger if you are using Microsoft Visual C++, or log stuff to an output file to keep track of what the bots are doing all the time...
+code:
+FILE *fp=fopen("bot.txt", "a");
+fprintf(fp, "bot edict=%x, fShootTime=%5.2f, bBotCanShoot=%d, iOtherVariableHere=%d\n",
+ pEdict, pEdict->pBot->fShootTime, pEdict->pBot->bBotCanShoot, pEdict->pBot->iOtherVariableHere);
+fclose(fp);
+
+...obviously replacing fShootTime, bBotCanShoot, iOtherVariableHere with variables from your bot source code.
+
+botman
+
+--------------------------------------------------
+06/27/03 at 00:41:28  Reply by: DarkNight (the_dark_wonderer@hotmail.com)
+--------------------------------------------------
+Back again.. :)
+I've now realized that they weren't shooting when they want. Its that they only want to shoot with egon. Why that is.. I really don't know. One day I'll get this sorted out. :)
+
+Just wondering, How much better are the bots in HPB than Bot#10 ? Are they way smarter or what ?
+
+Also.. which out of HPB and Bot#10 is the laggiest ?
+
+EDIT: Seems like they always have no problems shooting with the gauss or egon. Strange...
+
+[modified on 06/27/03 at 00:41:28]
+--------------------------------------------------
+06/27/03 at 05:30:10  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+"How much better are the bots in HPB than Bot#10 ? Are they way smarter or what ?"
+
+Pretty much the same logic so neither one is really better at combat.  The HPB bot will follow waypoints for a map if they exist, Bot Number 10 will only randomly wander around and might never get to some sections of the level.
+
+"Also.. which out of HPB and Bot#10 is the laggiest"
+
+Neither.  There is no lag for bots.  If you mean which one is more CPU intensive, then the HPB bot is probably slightly more CPU intensive due to the pathfinding code, but you'll probably only notice the difference if you are running 20 or more bots on a server.
+
+botman
+
+--------------------------------------------------
+06/27/03 at 07:45:40  Reply by: DarkNight (the_dark_wonderer@hotmail.com)
+--------------------------------------------------
+Ok thanks. I've decided Im going to use Bot#10. HPB was giving me the shits. So far I've converted the waypoint stuff from HPB to Bot#10. Im yet to properly test if they are using them. Im too tired to do that now. :)
+
+Thanks again.
+
+--------------------------------------------------
+06/27/03 at 17:45:04  Reply by: DarkNight (the_dark_wonderer@hotmail.com)
+--------------------------------------------------
+Ok I've got all the waypoint stuff in fully now. But Im wondering how I go about testing if their actually in the game. Im not sure if it was HPB, but I remember you could make the waypoints appear when you were playing and they looked like coloured beams. How do I get them to appear if HPB has those ?
+
+--------------------------------------------------
+06/27/03 at 18:31:12  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+"waypoint on" in the console will display them.  "waypoint off" will stop displaying them.
+
+You might want to download the HPB bot and read the HPB_bot_waypoint.txt file for a full description of all the HPB bot waypoint commands.
+
+botman
+
+--------------------------------------------------
+06/27/03 at 18:51:52  Reply by: DarkNight (the_dark_wonderer@hotmail.com)
+--------------------------------------------------
+Yeah I figured that out a little while after I posted. heh. They wern't showing because I wasn't calling WaypointThink. But now that Iam calling it I get a weird crash to console. A couple seconds after I turn on waypoints I crash to console with this:
+
+SZ_GetSpace: overflow on netchan->message
+DarkNight overflowed
+WARNING: reliable overflow for DarkNight
+DarkNight overflowed
+Host_EndGame: Server disconnected
+
+Whats this all about ?
+
+--------------------------------------------------
+06/28/03 at 01:44:58  Reply by: Cheesemonster!!! (cheeseh@houstondod.com)
+--------------------------------------------------
+You are most likely getting to many waypoints being drawn (sprite net messages), update your waypoints being displayed every 1 second rather than each frame.
+
+If you are already doing that then I assume you have to many waypoints on the screen at once.
+
+--------------------------------------------------
+06/28/03 at 05:50:45  Reply by: DarkNight (the_dark_wonderer@hotmail.com)
+--------------------------------------------------
+How thats possible I don't know, because Im using a waypoint that worked in normal HPB. :/
+
+--------------------------------------------------
+06/28/03 at 06:08:55  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Drawing too many waypoints means that you have a whole lot (more than just 10 or 20) waypoints visible at the same time and it tries to draw them all during that frame (and crashes).
+
+This can happen when you have the waypoints too close together and thus you will see about 50 or 100 of them at once (that's TOO many to draw).
+
+Spread your waypoints further apart or reduce the radius used to determine if a waypoint should be drawn (I think I had this set at 400, change it to 300 or 200 and see if that works).
+
+botman
+
+--------------------------------------------------
+06/28/03 at 07:03:19  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Get rid of this bug. You have an UTIL_DrawBeam function or something like that, that sends you loads of RELIABLE DATAGRAMS in the same frame. Reliable datagrams are net messages that MUSTN'T be dropped by either side of the connection.
+
+1°) Change the message header so that it sends a MSG_ONE_UNRELIABLE instead of a MSG_ONE
+
+2°) Drop the beams you don't want to draw by checking if they're in the field of view of the listenserver client, and within a certain distance.
+
+
+--------------------------------------------------
+06/28/03 at 08:26:30  Reply by: DarkNight (the_dark_wonderer@hotmail.com)
+--------------------------------------------------
+I still don't get why the same waypoint file I used in normal HPB isn't working with my bot, which uses the same waypoint stuff. I'll try what you said anyways.
+
+--------------------------------------------------
+06/30/03 at 05:43:52  Reply by: DarkNight (the_dark_wonderer@hotmail.com)
+--------------------------------------------------
+Ok tried what you said. No luck with it. I did some more testing and now Im getting a crash to this:
+
+inline Vector operator-(const Vector& v) const      { return Vector(x-v.x, y-v.y, z-v.z);      }
+
+when I turn on waypoints with "waypoint on". Any expericenced a crash to this before and found out what causes it ?
+
+Also..if anyone knows, what would be the steps for getting HPB waypoints working with Bot10. I just want to see if there's anything Im missing here.
+
+Thanks.
+
+--------------------------------------------------
+06/30/03 at 06:52:07  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+I'm not sure why subtracting one Vector from another would cause a crash (unless you are passing in a null pointer as one of the Vectors).
+
+The steps for merging the waypoint code into Bot Number 10 would be to copy waypoint.cpp and add that to the project, the cut-and-paste the lines from dll.cpp of the HPB bot source code somewhere into the Bot Number 10 source code (where you do that is up to you depending on how you want to load/save waypoints and use the waypoint functions).
+
+You're pretty much on your own here.
+
+botman
+
+--------------------------------------------------
+06/30/03 at 07:46:37  Reply by: Cheesemonster!!! (cheeseh@houstondod.com)
+--------------------------------------------------
+If you are debugging with Microsoft Visual C, you can look at the call stack under the debug options when the crash occurs. This will show you what functions where called and what the last thing it was trying to do. It might help.
+
+Typically this will happen if you have something like this in your code..
+code:
+
+void MyFunction ( Vector vOrigin, edict_t *pEntity ... )
+...
+  Vector vSomething = vOrigin - pEntity->v.origin;
+
+
+
+and pEntity is NULL, so you dont pass a correct vector into the - operator function.
+
+or more likely your doing something like
+
+code:
+
+int index = ...;
+...
+float Distance = (waypoints[index].origin - pEntity->v.origin).Length()
+
+
+
+and index is an invalid array index value, e.g. -1 or above the maximum array value (e.g. 1024 (MAX_WAYPOINTS)).
+
+Which is probably somewhere in your WaypointThink function as that gets called when waypoints are on. 
+
+--------------------------------------------------
+07/01/03 at 00:05:33  Reply by: DarkNight (the_dark_wonderer@hotmail.com)
+--------------------------------------------------
+Ahhh.... that was the problem, thanks botman and cheesemonster. I can now get the waypoints to show up in the map.. but now when I go to add one I get yet another crash.. to: 
+
+if (pev->pContainingEntity != NULL) in util.cpp
+
+Im getting sooo close now!!... I think.. :)
+
+--------------------------------------------------
+07/01/03 at 04:06:02  Reply by: Cheesemonster!!! (cheeseh@houstondod.com)
+--------------------------------------------------
+"pev" maybe NULL
+
+8)
+
+--------------------------------------------------
+07/01/03 at 05:00:07  Reply by: DarkNight (the_dark_wonderer@hotmail.com)
+--------------------------------------------------
+Im not sure what it was but I some how fixed it. I now have another problem and its when I add bots to the game. More to the problem is that when they run WaypointFindReachable, pEdict is NULL and thats why its causing the error. Im not sure how to go about fixing this, cause in HPB pEdict is created and initialized like this edict_t *pEdict = pBot->pEdict;, Since Im using Bot#10 now, I changed mine to this edict_t *pEdict = bot.pEdict; and of course created edict_t *pEdict; in the CBot class.
+
+Now when its calling this "i = WaypointFindNearest( pEdict, REACHABLE_RANGE, team);" in BotHeadTowardWaypoint. pEdict is NULL and thats why this "distance = (waypoints[i].origin - pEntity->v.origin).Length();" would be causing the error in WaypointFindReachable.
+
+The question is, how do I go about fixing this ? The big problem with putting these waypoints in is changing all the pointers, and its a pain in the ass. What is pEdict suppose to be pointing to ? the bot ? what ? Im a little confused. heh.
+
+Thanks.
+
+--------------------------------------------------
+07/01/03 at 05:16:20  Reply by: Cheesemonster!!! (cheeseh@houstondod.com)
+--------------------------------------------------
+Don't send Null pointers into functions that don't handle them ;)
+
+You need to check whether the bot is valid before using it, i.e. it has a valid "pEdict" and typically the "is_used" flag is TRUE.
+
+--------------------------------------------------
+07/01/03 at 15:08:11  Reply by: DarkNight (the_dark_wonderer@hotmail.com)
+--------------------------------------------------
+Yeah I know not to pass the NULL pointer. My question is more what should I be pointing pEdict to ?
+
+In HPB it looks like its a pointer to the bot. If this is true, how would I do this with Bot#10 ?
+
+Thanks.
+
+--------------------------------------------------
+07/01/03 at 15:48:29  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+"pEdict" is basically a pointer to the bot's edict_t structure ; since in the HL SDK you almost always reference things using their CBase class, you use the "pev" pointer which points to the entity's entvars_t. These two can be accessed back and forth this way :
+code:
+
+// have pev, want pEdict
+pev->pContainingEntity
+
+// have pEdict, want pev
+pEdict->v
+
+
+Hence pEdict->v.pContainingEntity->v.pContainingEntity->v worths pEdict->v, for example :)
+
+

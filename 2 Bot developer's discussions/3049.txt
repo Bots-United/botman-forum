@@ -1,0 +1,161 @@
+--------------------------------------------------
+Subject: Tactical behaviour in combat
+--------------------------------------------------
+04/30/02 at 02:20:14  Posted by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+Hey all, it has been a while since i posted, but i am here every day :)
+
+Here is something that would be pretty interesting to discuss about. Tactical behaviour in Combat. Yes i have read Williams files and such, but this is more about sharing ideas. I am not talking about flocking to make bots move in formation to a specific location. I am more talking about the following situations:
+
+- a group of bots encounter another (group) of enemy bots, they go for combat and they surely should not rush in all at once. (although it is a sort of tactic). The bots mostly take position and come out to give a few shots. Now, how to determine what the best locations are , so that bots cover each-other and themselves for the enemy? 
+
+Another thing (as for example in dust). We all know the confrontation in the hallway of dust. It would be much more fun to have bots take position , like for example, the terrorists: One could be hiding behind the box, one could be at the left corner of the hallway and one at the right corner. While we are at it, if the terrorists manages to get more inside, one could be hiding in the dark spot near the other crate of the right entrance for the ct's. I am sure there has to be some way to calculate what areas are covered by a bot, but that would take quite some cpu to calculate each waypoint that is covered by a bot. 
+
+Any suggestions, ideas, situations etc, are welcome. I hope we all can learn from it a bit :)
+
+--------------------------------------------------
+04/30/02 at 02:44:53  Reply by: theimann (killaruna@yahoo.com)
+--------------------------------------------------
+Well, since you've read William's papers you know that all of these things can be determined by a dense waypoint grid, a visibility table and some waypoint properties like focus, traffic etc...
+If you precalculate these things you don't even need that much CPU. I have to admit that I've thought about some tactical questions before I had my waypoint grid, but could not find any sensible solution. Now, with the waypoints and statistics added, I'm able to calculate more things that I can find use for :-)
+It might not be impossible to program tactical behaviour without the waypoint grid, but it's surely more complicated and I doubt it will perform as well.
+If you are a friend of waypoint-less bots (here: bots running without pre-designed waypoint files), it's possible to set up the waypoint grid at runtime and calculate all values dynamically and distributed over time. The CPU usage for that solution isn't too high either.
+
+Tobias
+
+--------------------------------------------------
+04/30/02 at 03:03:51  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+well, RealBOt : AI does not use a real grid, it uses waypoints you have to place around. It does do specific calculations, so i can quickly determine if a waypoint is visible, if its reachable (from wpt a to b) etc. But a bot position has to be linked to a waypoint position first in order to find these results. Now, the problem is, i don't have (yet) any real-time calculations to figure out what a bot has covered with its sight. I dont want a number with an 'amount of visibility' i want to know , WHAT it can see and what waypoint it cannot see, so another bot can fill up this gap. THat makes it cpu consuming.
+
+
+--------------------------------------------------
+04/30/02 at 05:43:05  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+I am planning to use a method in RACC (which is a totally unwaypointed bot, meaning that even in game it does not make use of waypoints but is using only his field of view) that permits me to figure out the best cover positions for my bot. So far this method is working well for a bot to determine a hidden location to plant the bomb, but I am planning to use it for combat too. It is certainly perfectible, but here it is. From bot's current location, fire tracelines 360° around (or if like me you are demanding for the human-like side, scan the FOV only), store the lengthes to obstacle in an array, then derivate it and for each peak of the derivated plot, see if the corresponding point is visible or not from the enemy's location. More CPU intensive, I know...
+
+
+--------------------------------------------------
+05/01/02 at 01:23:44  Reply by: William (william@cgf-ai.com)
+--------------------------------------------------
+Hi Stefan,
+
+QUOTE:
+I dont want a number with an 'amount of visibility' i want to know , WHAT it can see and what waypoint it cannot see, so another bot can fill up this gap.
+
+
+
+I have all this info precomputed. In CGF, I indeed retrieve a list of waypoints (not) covered from some other waypoints.
+For the visibility values to properly represent the terrain near the waypoint, you'd have to use a dense distribution of waypoints (not necessarily a grid though).
+
+Note that in general, you do NOT need to process (visibility for) large amounts of waypoints. Typically, it suffices to only consider:
+- waypoints occupied by or near threats
+- portals (doors, windows, alleys, etc.) that lead threats into sight
+
+William
+
+--------------------------------------------------
+05/01/02 at 09:44:26  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+Hey william,
+
+THere is a visibility table already precomputed (and stored in a file). However if i want to precompute the information about what one waypoint can see and so on. I would be busy for some time. Why? Because what i want is to know what the bot can see from a specific waypoint and mark them. So this is happening real-time. THis means, there has to be a very quick way to figure out what waypoints a bot can see in its fov, mark them and let other bots take place and look at a position where the other bots cant look at in order to cover multiple positions as a team. 
+
+Thats the problem for me :)
+
+--------------------------------------------------
+05/01/02 at 10:02:24  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+hmmm... in this case my method might not be that CPU expensive, then... why don't you give it a try ?
+
+
+--------------------------------------------------
+05/01/02 at 10:51:21  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+well, your method was about taking cover. I am not talking about taking cover here. My cover system works ok :). Spreading out 360 degrees tracelines would not solve anything, because i need to mark waypoints that are covered by a bots vision. 
+
+When i know what waypoints are covered , i know what the other team-mates bots can help to cover. Maybe even i could bring in a weight factor that some spots need to be double covered due the amount of danger on that area for example.
+
+
+--------------------------------------------------
+05/01/02 at 15:01:17  Reply by: theimann (killaruna@yahoo.com)
+--------------------------------------------------
+QUOTE:
+This means, there has to be a very quick way to figure out what waypoints a bot can see in its fov, mark them and [...]
+
+
+So what's the problem with using the visibility table? Why don't you use something like this:
+code:
+
+for (int i=0; i<numWpts; i++) {
+  if (visible( botWpt, i ) && inFoV( i )) waypoint[i].covered = true;
+}
+
+
+The visible() function is based on your table and inFoV() is a simple dotproduct... With the 500(?)waypoints you are using you won't notice any performance slowdowns at all.
+
+Tobias
+
+--------------------------------------------------
+05/02/02 at 00:24:14  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+it is slow. Going through 500 waypoints , (and doing everything else of a bot) times the amount of bots you have will slow down greatly. 
+
+I better precalculate complete lists first , that would be much faster.
+
+--------------------------------------------------
+05/02/02 at 04:15:50  Reply by: @$3.1415rin (joebot@botepidemic.com)
+--------------------------------------------------
+so how do you solve then stuff like WaypointFindNearest ? do you spread it on differnt frames ? I don't think so ... tobias' right I think
+
+--------------------------------------------------
+05/02/02 at 14:57:05  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+for a nearest waypoint i do this:
+
+- run the loop through all waypoints and determine on which waypoint it is. 
+
+ok, so thats the same. But, its not called every frame. I have added something else to it aswell. When a bot calculates a path and begins moving, it will store the waypoint it is heading to, the waypoint it came from and the next waypoint he will be heading to. 
+
+When i do a 'findclose' thingy for the bot itself, to know where the bot is. I simply run 3 distance checks first, the closest will eventually determine the distance to check in, this will exclude a lot of waypoints. Also, the check radius is most of the time big enough so the bot will be satisfied with the waypoints it is navigating with. 
+
+If i do it like Tobias proposed, the bot will have to check through all waypoints each frame. Do several checks, mark them, let other bots do checks aswell (which are not covered and should be covered for example, etc). This all will take way to much cpu.
+
+I talked with Count-Floyd about this, and i think the best method for me is to do a precalculation on map load, and generate lists of waypoints that can see each other. So i can quickly read out a complete list of visible waypoints from a specific waypoint. The FOV will be discarded in this case, but i might use it aswell.
+
+--------------------------------------------------
+05/03/02 at 11:10:30  Reply by: William (william@cgf-ai.com)
+--------------------------------------------------
+<quote>
+it is slow.
+</quote>
+
+I don't think so.
+
+Did you measure it? My bet is that you can iterate over 1,000's of waypoints and do dot-products within the time necessary for a single trace-line of 30+ meter distance.
+
+Just have a look at that over-the-top grenade handling paper at my site. Have a close look at the performance numbers (and then consider the faster CPU you have). That will tell you how much you can do.
+
+William
+
+--------------------------------------------------
+05/05/02 at 04:26:53  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+i do not doubt the cpu performance for that William. BUt i am affraid that the cpu that takes, and, the cpu that is used already is just to much atm. :)
+
+--------------------------------------------------
+05/06/02 at 10:59:42  Reply by: William (william@cgf-ai.com)
+--------------------------------------------------
+Then download AMD's CodeAnalyst (free, and works on genuine Intel as well) and have a look where you code spends its time. Unless your bots do significantly more than my Quake2 bots, you have one or two "hot spots" where you simply waste CPU power. 
+Fix them, and you have some freedom to add advanced stuff.
+
+In my case, the 'find nearest waypoint routine' was the nr 1. CPU consumer (25% CPU). Adding caches, guessing the right waypoint and smart lookup tables turned that 25% CPU load into less than 5%. 
+
+William
+
+--------------------------------------------------
+05/06/02 at 12:35:57  Reply by: CountFloyd (countfloyd@botepidemic.com)
+--------------------------------------------------
+There are some good posts in this thread http://dynamic.gamespy.com/~botman/yabb/YaBB.pl?board=2&action=display&num=2291 on how to optimize the nearest waypoint lookup. Especially see the altruistic post from Tobias ;)
+
+

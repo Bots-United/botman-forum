@@ -1,0 +1,95 @@
+--------------------------------------------------
+Subject: Help me for karma!
+--------------------------------------------------
+08/11/01 at 16:51:29  Posted by: AgentDestruction (AgentDestruction@angelfire.com)
+--------------------------------------------------
+Alright, I'll be gone for a while, so you don't have to rush to answer.  
+
+  Does anyone know the full list of commands that can be issued to bots?  As in:
+
+(Sorry, I am at a friends house, and I can't reference the code right now for an example, so this is just an approxamation)
+
+p.edict|=IN_JUMP
+
+(yeah, thats really bad, sorry)
+
+  Thanks if anyone can help.
+
+--------------------------------------------------
+08/12/01 at 06:23:48  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+Bots can use any of the "buttons" that a player can use.  Look at the common\in_buttons.h file for the default IN_ buttons.  Note that MODs can add to these, remove or modify these #defines.
+
+botman
+
+--------------------------------------------------
+08/12/01 at 17:44:05  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+remember, this is the pit fall I fell into when I was a newbie bot coder...!!! Don't use IN_LEFT, IN_RIGHT, IN_FORWARD etc, instead change the Bot pointers yaw if you want it to turn and tell the bot to change its speed to determine if it wants to go forward or backward! Thats only if you're a newbie bot coder like I once was!!!
+
+[Cheesy's words of wisdom...]
+
+I got help from botman! The RunPlayerMove function is called on every frame (at the end of botthink) which changes the bots behavior every frame depending on what you've changed in the bots structure...
+
+
+
+[modified on 08/12/01 at 17:44:05]
+--------------------------------------------------
+08/13/01 at 07:12:53  Reply by: ProgramMan (thevbfreak.pa@netzero.net)
+--------------------------------------------------
+Even though IN_LEFT/IN_RIGHT should not be used, can you use the IN_MOVELEFT/IN_MOVERIGHT flags in the bot's v.button to make the bot strafe?
+
+--------------------------------------------------
+08/13/01 at 08:23:26  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+you can, but you can also put into RunPlayerMove.
+
+lookie here:
+
+code:
+
+void pfnRunPlayerMove(edict_t *fakeclient, const float *viewangles, float forwardmove, float sidemove, 
+                         float upmove, unsigned short buttons, byte impulse, byte msec )
+
+
+
+this is it being called at the end of botthink()
+
+code:
+
+   g_engfuncs.pfnRunPlayerMove( pEdict, pEdict->v.v_angle, pBot->f_move_speed,
+                                0, 0, pEdict->v.button, 0, pBot->msecval);
+
+
+
+you might want to create a new float variable in the bot_t structure called f_side_speed or something. (you'll need to initiliase it to 0 frequently)
+
+So you could change the function call at the end of bot think to something like...
+
+
+code:
+
+   g_engfuncs.pfnRunPlayerMove( pEdict, pEdict->v.v_angle, pBot->f_move_speed,
+                                pBot->f_side_speed, 0, pEdict->v.button, 0, pBot->msecval);
+
+
+
+and to make the bot strafe you just need to do something like
+
+code:
+
+
+pBot->f_side_speed = -400; // Side Move LEFT at max speed (max : 400)
+
+
+
+
+code:
+
+
+pBot->f_side_speed = 400; // Side Move RIGHT at max speed (max : 400)
+
+
+
+
+[modified on 08/13/01 at 08:23:26]

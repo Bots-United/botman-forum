@@ -1,0 +1,245 @@
+--------------------------------------------------
+Subject: global variables
+--------------------------------------------------
+07/12/03 at 12:56:30  Posted by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Hello
+
+I want to find a way to get rid of the need to reference my global variables as "extern" in each .cpp file. I have quite a couple of them, and not only it's a pain to write them all, but also when they get rearranged or renamed (which occurs every so often), I can be certain to be up for 2 hours of source code browsing, trying to make the linker work again.
+
+I thought something like:
+-In each .cpp file, call only one header file (always the same)
+-In this header file, use #ifdef and #define's to either declare the variables or reference them as extern
+
+Example:
+code:
+
+// globalvariables.h
+
+#ifndef _GLOBAL_VARIABLES_DECLARED
+#define _GLOBAL_VARIABLES_DECLARED
+
+float my_global_variable_1 = 0;
+bool my_global_variable_2 = FALSE;
+char *my_global_variable_3 = NULL;
+
+#else
+
+extern float my_global_variable_1;
+extern bool my_global_variable_2;
+extern char *my_global_variable_3;
+
+#endif // _GLOBAL_VARIABLES_DECLARED
+
+
+And then, in every .cpp file of my project, #include "globalvariables.h" instead of writing down all the variables at global scope.
+
+Unfortunately it doesn't work !
+
+Everything compiles successfully, but then the linker complains that every occurence of the variables already have been declared in the first .obj file, like if I had declared the same variables in every file, instead of doing it in the main .cpp file and referencing them as "extern" in all the other files !
+
+Do you see what I want to achieve here, is it possible and how can I do ?
+
+
+[modified on 07/12/03 at 12:56:30]
+--------------------------------------------------
+07/12/03 at 13:03:44  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Use something like this...
+code:
+// globals.h
+
+#ifndef DEFINE_GLOBALS
+typedef GLOBAL extern
+#else
+typedef GLOBAL
+#endif
+
+GLOBAL int g_iInteger1;
+GLOBAL float g_fFloatX;
+GLOBAL char* pCharPtr;
+
+Then in you .cpp files have one that defines the globals...
+code:
+// main.cpp
+
+#define DEFINE_GLOBALS
+#include "globals.h"
+
+void MyFunc()
+{
+   // use globals here!
+}
+
+...and in ones where you want to reference the globals, just include the globals.h file...
+code:
+// other.cpp
+#include "globals.h"
+
+void MyFunc2()
+{
+   // access globals here!
+}
+
+botman
+
+[modified on 07/12/03 at 13:03:44]
+--------------------------------------------------
+07/12/03 at 13:12:02  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+THAT is a smart trick !! Fabulous ! w00t w00t thanks botman :D
+
+
+--------------------------------------------------
+07/12/03 at 14:35:37  Reply by: @$3.1415rin (johannes@_-removeifnotavirus-_lampel.net)
+--------------------------------------------------
+looks nice :)
+
+well, it's because the compiler compiles every .cpp file for itself, and so it doesnt care if there was somewhen some .cpp ahead already defining something
+
+--------------------------------------------------
+07/12/03 at 14:40:22  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+handy trick using the preprocessor :). I once found some typedefs in a book where it turned C almost into BASIC :)
+
+I don't know by heart, so i'll try...
+code:
+
+#define PROGRAM_BEGIN  int main() {
+#define PROGRAM_END return 0; }
+#define BEGIN {
+#define END }
+#define PRINT(char *a) cout << a << endl;
+
+PROGRAM_BEGIN
+ PRINT("Hello world"); 
+PROGRAM_END
+
+
+... :s
+
+--------------------------------------------------
+07/12/03 at 15:25:49  Reply by: Cheesemonster!!! (cheeseh@houstondod.com)
+--------------------------------------------------
+lots of uses for defines. heres something i've conjured up with :p
+
+code:
+
+#define BEGIN_SEARCH_THROUGH_PLAYERS(Variable) \
+        int i; \
+        for ( i = 1; i <= gpGlobals->maxClients; i ++ ) \
+{ \
+                  Variable = INDEXENT(i);\
+                  if ( Variable == NULL )\
+                        continue;\
+                  if ( Variable->free )\
+                        continue;\
+// do more stuff in here to determine a connected player
+
+#define END_SEARCH_THROUGH_PLAYERS }
+// bleh
+
+...
+...
+
+edict_t *pEntity;
+
+BEGIN_SEARCH_THROUGH_PLAYERS(pEntity)
+{ // put these brackets in for look :D
+      // do stuff with pEntity, its now definitely a player!                  
+}
+END_SEARCH_THROUGH_PLAYERS
+
+
+
+
+much more uses for it 8) just check out typical linkfunc functions :P
+
+[modified on 07/12/03 at 15:25:49]
+--------------------------------------------------
+07/12/03 at 17:17:26  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+How about this one ?
+code:
+
+// engine_specific.h
+
+// operating system specific macros, functions and typedefs
+#ifdef _WIN32
+   #define MOD_LIBRARY_NAME MOD_LIBRARY_NAME_WIN32
+   #define METAMOD_LIBRARY_NAME METAMOD_LIBRARY_NAME_WIN32
+   #define DLL_ENTRYPOINT int WINAPI DllMain (HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved)
+   #define DLL_DETACHING (fdwReason == DLL_PROCESS_DETACH)
+   #define RETURN_ENTRYPOINT return (TRUE)
+   #define DLLEXPORT_void void DLLEXPORT
+   #define DLLEXPORT_bool bool DLLEXPORT
+   #define DLLEXPORT_char char DLLEXPORT
+   #define DLLEXPORT_float float DLLEXPORT
+   #define DLLEXPORT_int int DLLEXPORT
+   #define DECLARE_CUSTOM_EXPORTS_ARRAY WORD *p_Ordinals; DWORD *p_Functions; DWORD *p_Names; char *p_FunctionNames[1024]; int num_ordinals; unsigned long base_offset;
+   #define FREE_CUSTOM_EXPORTS_ARRAY if (p_Ordinals) free (p_Ordinals); if (p_Functions) free (p_Functions); if (p_Names) free (p_Names); for (int n = 0; n < num_ordinals; n++) if (p_FunctionNames[n]) free (p_FunctionNames[n]);
+   typedef HINSTANCE dll_t;
+   typedef FARPROC dll_symbol_t;
+   typedef int (FAR *GETENTITYAPI) (DLL_FUNCTIONS *, int);
+   typedef int (FAR *GETNEWDLLFUNCTIONS) (NEW_DLL_FUNCTIONS *, int *);
+   typedef void (DLLEXPORT *GIVEFNPTRSTODLL) (enginefuncs_t *, globalvars_t *);
+   typedef int (*SERVER_GETBLENDINGINTERFACE) (int, struct sv_blending_interface_s **, struct engine_studio_api_s *, float (*)[3][4], float (*)[MAXSTUDIOBONES][3][4]);
+   typedef void (FAR *LINK_ENTITY_FUNC) (entvars_t *);
+   inline dll_t LoadDynamicLibrary (const char *filename) { return (LoadLibrary (filename)); }
+   inline dll_symbol_t GetSymbolInDynamicLibrary (dll_t dll_handle, const char *symbol_name) { return (GetProcAddress (dll_handle, symbol_name)); }
+   inline int CloseDynamicLibrary (dll_t dll_handle) { return (!FreeLibrary (dll_handle)); }
+#else
+   #include <dlfcn.h>
+   #define MOD_LIBRARY_NAME MOD_LIBRARY_NAME_UNIX
+   #define METAMOD_LIBRARY_NAME METAMOD_LIBRARY_NAME_UNIX
+   #define DLL_ENTRY_POINT void _fini (void)
+   #define DLL_DETACHING (TRUE)
+   #define RETURN_ENTRYPOINT return
+   #define DLLEXPORT_void extern "C" EXPORT void
+   #define DLLEXPORT_bool extern "C" EXPORT bool
+   #define DLLEXPORT_char extern "C" EXPORT char
+   #define DLLEXPORT_float extern "C" EXPORT float
+   #define DLLEXPORT_int extern "C" EXPORT int
+   #define DECLARE_CUSTOM_EXPORTS_ARRAY
+   #define FREE_CUSTOM_EXPORTS_ARRAY
+   typedef (void *) dll_t;
+   typedef (void *) dll_symbol_t;
+   typedef int (*GETENTITYAPI) (DLL_FUNCTIONS *, int);
+   typedef int (*GETNEWDLLFUNCTIONS) (NEW_DLL_FUNCTIONS *, int *);
+   typedef void (*GIVEFNPTRSTODLL) (enginefuncs_t *, globalvars_t *);
+   typedef int (*SERVER_GETBLENDINGINTERFACE) (int, struct sv_blending_interface_s **, struct engine_studio_api_s *, float (*)[3][4], float (*)[MAXSTUDIOBONES][3][4]);
+   typedef void (*LINK_ENTITY_FUNC) (entvars_t *);
+   inline dll_t LoadDynamicLibrary (const char *filename) { return (dlopen (filename, RTLD_NOW)); }
+   inline dll_symbol_t GetSymbolInDynamicLibrary (dll_t dll_handle, const char *symbol_name) { return (dlsym (dll_handle, symbol_name)); }
+   inline int CloseDynamicLibrary (dll_t dll_handle) { return (dlclose (dll_handle)); }
+#endif // _WIN32
+
+// dll.cpp
+DECLARE_CUSTOM_EXPORTS_ARRAY
+
+
+DLL_ENTRYPOINT
+{
+   // dynamic library entry point, can be used for uninitialization stuff. Since it is very OS
+   // specific, we are using handy #define's to declare the function name and arguments given
+   // the operating system for which the library is compiled. We use it only as "exit point".
+
+   // are we detaching the DLL ?
+   if (DLL_DETACHING)
+      FreeAllTheStuff (); // free everything that's freeable
+
+   RETURN_ENTRYPOINT; // the return data type is OS specific too
+}
+
+
+DLLEXPORT_void GiveFnptrsToDll (enginefuncs_t* pengfuncsFromEngine, globalvars_t *pGlobals)
+{
+   // actual function follows
+
+
+8)
+
+Also Will Day did quite some preprocessor tricks in metamod too... just the RETURN_META and RETURN_META_VALUE macros are good examples...
+
+
+[modified on 07/12/03 at 17:17:26]

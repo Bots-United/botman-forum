@@ -1,0 +1,88 @@
+--------------------------------------------------
+Subject: gpGlobals->time question
+--------------------------------------------------
+03/02/01 at 04:56:54  Posted by: kidnewbie (a@a)
+--------------------------------------------------
+it's been a long time since my last post here.
+
+just a simple question.
+
+how can i tell my bot to accomplish repeat a piece of code.
+
+example only, how to:
+duck for 3 seconds - then after 3 seconds stand now for another 3 seconds. then after the 3 seconds repeat the ducking process and repeat again and again.
+
+(i know how to make these guys duck, just tell me how to LINK the timer to my code.)
+
+Thanks.
+
+
+
+--------------------------------------------------
+03/02/01 at 06:27:50  Reply by: theimann (tobias.heimann@cl.cam.ac.uk)
+--------------------------------------------------
+#define DUCKING 0
+#define STANDING 1
+
+float timeToSwitchState=0;
+int state=0;
+
+...
+if (gpGlobals->time > timeToSwitchState) {
+  timeToSwitchState = gpGlobals->time + 3.0;
+  state = (state+1) & 1;
+}
+switch (state) {
+  case DUCKING: makeBotDuck(); break;
+  case STANDING: makeBotStand(); break;
+}
+...
+
+Basically, that's it. Use variables to store the time when you began an action or when the action is going to end.
+
+Tobias
+
+--------------------------------------------------
+03/02/01 at 09:26:07  Reply by: ExecutionStyle (c_brennan@hotmail.com)
+--------------------------------------------------
+Hope Tobias isn't offended by this but I would suggest using
+
+state != state;
+instead of 
+state = (state + 1) & 1;
+
+and also making the state variable a bool instead of an int.
+
+If you wanted to have more than 2 states, then you would use an int but the 
+state = (state + 1) & 1;
+wouldn't work any more, you'd have to use
+state = (state + 1) % maxState;
+
+The reason I'm bringing this up is that especially for newbie coders, examples should have the best possible style.
+
+Again, no offense intended Tobias :o)
+
+--------------------------------------------------
+03/02/01 at 16:33:03  Reply by: kidnewbie (a@a)
+--------------------------------------------------
+cool guys, thanks
+
+
+--------------------------------------------------
+03/02/01 at 16:33:34  Reply by: kidnewbie (a@a)
+--------------------------------------------------
+Hey wait, where exactly would i put those mentioned above?
+
+--------------------------------------------------
+03/03/01 at 00:56:30  Reply by: bigjesus (holybigjesus@hotmail.com)
+--------------------------------------------------
+Im not sure but I think right in bot navigat cpp
+
+
+--------------------------------------------------
+03/03/01 at 05:28:42  Reply by: theimann (tobias.heimann@cl.cam.ac.uk)
+--------------------------------------------------
+The easiest way would be to put it in botThink, some lines before calling pfnRunPlayerMove(). Basically you can put it anywhere as long as it gets called every frame for each bot.
+
+Tobias
+

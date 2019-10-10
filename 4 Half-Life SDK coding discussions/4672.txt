@@ -1,0 +1,70 @@
+--------------------------------------------------
+Subject: Hull sizes
+--------------------------------------------------
+07/25/03 at 11:31:04  Posted by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Hello botman, could you dig a little in the HL engine again and tell us what size the different hulls that can be used by TraceHull are ?
+
+I want to know *exactly* how 'big' they are, to eventually save some TraceLines, but so far nowhere could I find this info.
+
+Also, could you confirm that a TraceHull is not more expensive than a TraceLine ? So far, I assume a TraceHull is a TraceLine that the engine fires in a "fattened" BSP world. Hence about the same processing time...
+
+Thank you again :)
+
+
+--------------------------------------------------
+07/25/03 at 12:11:43  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+The hull numbers are defined in the util.h file...
+
+code:
+typedef enum { point_hull=0, human_hull=1, large_hull=2, head_hull=3 };
+
+
+The hull sizes can also be found in the util.h file...
+
+code:
+#define VEC_HUMAN_HULL_MIN      Vector( -16, -16, 0 )
+#define VEC_HUMAN_HULL_MAX      Vector( 16, 16, 72 )
+
+#define VEC_DUCK_HULL_MIN      Vector(-16, -16, -18 )
+#define VEC_DUCK_HULL_MAX      Vector( 16,  16,  18)
+
+
+
+The point hull is just a single point in space (the same thing as a UTIL_Traceline).
+
+The large hull is [-32,-32,-32], [32, 32, 32].
+
+See the utils\qcsg\hulls.txt file for the hull sizes used by Half-Life when compiling a map.
+
+Of course, MODs can change the hull sizes if they want to, but mappers MUST also have the hulls.txt file used by the MOD when they built their maps.  So you can look at a MOD's hulls.txt file to see which hull sizes they are using.
+
+A UTIL_Tracehull() is the same thing as a UTIL_Traceline() just using a different "view" of the world.  When a Half-Life map is compiled, the qcsg (Quake Constructive Geometry) utility make 4 copies of the world surfaces.  The BSP planes are "fattened" outward into the empty space by the hull size to make a new version of the collision tree with "fatter" walls.  When you want to do a traceline, you recusively parse the BSP tree looking for surface collisions between the 2 points (starting point and end point).  You can look at the Quake I source code to see how this is done (I thinks it's called SV_RecursiveHullTrace or something like that).  To trace a hull, you simply trace a line, but you use one of the "fattened" versions of the world.  If a line will fit between point A and point B in the fattened world without hitting anything, then a box of size "hull" will also fit cleanly between point A and point B in the non-fattened world.
+
+So yes, a UTIL_Tracehull should take no longer on average than a UTIL_Traceline (in fact in the Quake I source code, the traceline function actually calls SV_RecursiveHullTrace() and specifies hull 0 (which is the point hull).
+
+botman
+
+--------------------------------------------------
+07/25/03 at 15:32:46  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Thanks, it confirms what I was thinking. Woo-hoo ! Good way to reduce my TraceLine overhead :D
+
+[ €dited: btw, which hull does the head_hull enum corresponds to ? ]
+
+[modified on 07/25/03 at 15:32:46]
+--------------------------------------------------
+07/25/03 at 15:38:18  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Head hull and Duck hull are the same size.
+
+Head hull is the last of the four (hull=3).
+
+botman
+
+--------------------------------------------------
+07/25/03 at 18:06:53  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+w00t!
+

@@ -1,0 +1,54 @@
+--------------------------------------------------
+Subject: Error in BotClient_Valve_Damage?
+--------------------------------------------------
+12/15/00 at 06:38:10  Posted by: MKlimstra (mklimstra@zonnet.nl)
+--------------------------------------------------
+I think there is an error in the BotClient_Valve_Damage:
+code:
+   else if (state == 5)
+   {
+      damage_origin.z = *(float *)p;
+
+      if ((damage_armor > 0)  (damage_taken > 0))
+      {
+         // ignore certain types of damage...
+         if (damage_bits & IGNORE_DAMAGE)
+            return;
+
+         // if the bot doesn't have an enemy and someone is shooting at it then
+         // turn in the attacker's direction...
+         if (bots[bot_index].pBotEnemy == NULL)
+         {
+            // face the attacker...
+            Vector v_enemy = damage_origin - bots[bot_index].pEdict->v.origin;
+            Vector bot_angles = UTIL_VecToAngles( v_enemy );
+
+            bots[bot_index].pEdict->v.ideal_yaw = bot_angles.y;
+
+            BotFixIdealYaw(bots[bot_index].pEdict);
+         }
+      }
+
+      state = 0;
+   }
+
+
+When the damage should be ignored you exit the function, so the state var will not be set to 0.
+
+
+--------------------------------------------------
+12/15/00 at 14:11:14  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+Good point.  I guess I never noticed this bug because I went through and modified the bot_client.cpp functions.  Here's what I currently have in mine...
+code:
+   else if (state == 5)
+   {
+      state = 0;
+
+      damage_origin.z = *(float *)p;
+
+      if ((damage_armor > 0)  (damage_taken > 0))
+
+
+botman
+

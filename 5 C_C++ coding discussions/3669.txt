@@ -1,0 +1,158 @@
+--------------------------------------------------
+Subject: What's the problem with fread() ?
+--------------------------------------------------
+09/08/02 at 16:53:11  Posted by: PM (pm@racc-ai.com)
+--------------------------------------------------
+hmmm.
+
+I'm no good programmer, that's a known fact.
+Anyway, I wish there were some guru overhere to explain me my mistake.
+code:
+
+typedef struct
+{
+   char *sound_path; // relative path to the sound sample being heard
+   float noise_amount; // violence of the sample (low value for soft wind, high value for gunshot)
+   float duration; // amount of time the bot's hearing capability will be occupied by this sound
+} sound_list;
+
+
+sound_list sounds[BOT_NUMBER_OF_AUDIBLE_SOUNDS] = {
+{ "ambience/goal_1.wav", 0, 0 },
+{ "ambience/3dmthrill.wav", 0, 0 },
+{ "ambience/3dmstart.wav", 0, 0 },
+{ "ambience/3dmeagle.wav", 0, 0 },
+{ "ambience/3dmbridge.wav", 0, 0 },
+// ... and so on.......
+(...)
+
+void UTIL_TrainHearingSystem (void)
+{
+   // this function checks for all sounds defined in the sounds array for the according
+   // waveform file, opens such a file, reads the length of the sample and compute its
+   // average noise, then fills in the values in the sounds array with the actual values
+   // from the sound files. It is invoked at server boot time.
+
+   FILE *fp;
+   char *sound8, sound_file[256], chunk_name[5] = "\0";
+   short *sound16, bps, sample_size;
+   long data_length;
+   int array_index, pos, sample_count;
+   float average_noise;
+
+   // tell people what we are doing
+   UTIL_ServerConsole_printf ("RACC: training bot hearing system\n");
+
+   sound8 = (char *) malloc (44); // allocate a little space
+   sound16 = (short *) malloc (44); // allocate a little space
+
+   // cycle through all the wav files in the sound list...
+   for (array_index = 0; array_index < BOT_NUMBER_OF_AUDIBLE_SOUNDS; array_index++)
+   {
+      // build the sound file path
+      sprintf (sound_file, "sound/%s", sounds[array_index].sound_path);
+
+      // try to open the file in read-only binary mode
+      fp = fopen (sound_file, "rb");
+      if (fp != NULL)
+      {
+         fseek (fp, 28, SEEK_SET);
+         fread (&bps, 2, 1, fp); // read the number of bits per second
+
+         fseek (fp, 34, SEEK_SET);
+         fread (&sample_size, 2, 1, fp); // read the size of a sample (in bits)
+         sample_size /= 8; // convert from bits to bytes
+
+         fseek (fp, 36, SEEK_SET); // leave the format chunk now
+
+         // find the data chunk
+         do
+         {
+            while (chunk_name[0] != 'd')
+               fread (&chunk_name, 1, 1, fp); // go and find a 'd'
+            fread (&chunk_name, 3, 1, fp); // read the following 3 bytes
+            chunk_name[3] = 0; // terminate the string
+         }
+         while (strcmp (chunk_name, "ata") != 0);
+
+         fread (&data_length, 4, 1, fp); // read the length of the data
+
+         // now store the duration of the sound file in the sounds array
+         sounds[array_index].duration = (float) data_length / (float) bps;
+
+         sample_count = 0; // reset the sample count
+         average_noise = 0; // reset the average noise
+
+         // is it a 8-bit sound file ?
+         if (sample_size == 1)
+         {
+            realloc (sound8, data_length); // reallocate space
+            if (sound8 == NULL)
+            {
+               fclose (fp); // unable to allocate space ; close file
+               continue; // skip this file
+            }
+
+            // **** THIS LINE CAUSES A CRASH ****
+            fread (&sound8, data_length, 1, fp); // read the file
+            fclose (fp); // close file
+
+            // now compute the noise
+            for (pos = 0; pos < data_length; pos++)
+            {
+               sample_count++; // increment the sample count
+               average_noise += (float) abs (sound8[pos]) / (float) sample_count;
+            }
+         }
+
+         // else this is a 16-bit sound file
+         else if (sample_size == 2)
+         {
+            realloc (sound16, data_length); // reallocate space
+            if (sound16 == NULL)
+            {
+               fclose (fp); // unable to allocate space ; close file
+               continue; // skip this file
+            }
+
+            // **** THIS LINE CAUSES A CRASH ****
+            fread (&sound16, data_length, 1, fp); // read the file
+            fclose (fp); // close file
+
+            // now compute the noise
+            for (pos = 0; pos < data_length / 2; pos++)
+            {
+               sample_count++; // increment the sample count
+               average_noise += (float) abs (sound16[pos] / 256) / (float) sample_count;
+            }
+         }
+
+         // now store the average noise of the sound file in the sounds array
+         sounds[array_index].noise_amount = average_noise;
+      }
+   }
+
+   free (sound8); // free the space used for the 8-bit sound file data
+   free (sound16); // free the space used for the 16-bit sound file data
+}
+
+
+
+Here it is. fread() makes the thing crash, and not even in the executable I would expect ("xxx caused a crash in module unknown").
+
+
+[modified on 09/08/02 at 16:53:11]
+--------------------------------------------------
+09/08/02 at 21:43:00  Reply by: Zipster (skyork99@juno.com)
+--------------------------------------------------
+sound8 and sound16 are already pointers, so you shouldn't be using the address-of (&) operator.
+
+[modified on 09/08/02 at 21:43:00]
+--------------------------------------------------
+09/09/02 at 11:49:18  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+ouch.
+thanks.
+
+
+

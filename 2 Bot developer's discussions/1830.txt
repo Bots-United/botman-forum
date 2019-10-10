@@ -1,0 +1,319 @@
+--------------------------------------------------
+Subject: Does anyone want to look on firing CS code?
+--------------------------------------------------
+06/18/01 at 04:51:03  Posted by: vpupkin (clientbot@narod.ru)
+--------------------------------------------------
+I'm about to finish reverse-engineering FireBullets3() function, with shot-through-wall code, layers calculation, damage etc.
+
+--------------------------------------------------
+06/18/01 at 05:30:27  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+There are already several Half-Life coding tutorials showing how to get bullets to penetrate walls.  Why are you going to so much trouble?
+
+botman
+
+--------------------------------------------------
+06/18/01 at 06:00:16  Reply by: vpupkin (clientbot@narod.ru)
+--------------------------------------------------
+I haven't seen the one :(
+And I had nothing to do in evening a week ago :)
+
+--------------------------------------------------
+06/24/01 at 02:54:00  Reply by: vpupkin (clientbot@narod.ru)
+--------------------------------------------------
+#include <math.h>
+
+#define BULLET_9MM                  0x01
+#define BULLET_45ACP             0x09
+#define BULLET_338MAGNUM      0x0A 
+#define BULLET_762NATO            0x0B
+#define BULLET_556NATO            0x0C
+#define BULLET_50AE                  0x0D
+#define BULLET_57MM                  0x0E
+#define BULLET_357SIG            0x0F
+
+
+int UTIL_IsValidHitTarget (TraceResult * tr);
+{
+      return UTIL_IsValidEntity (tr->pHit);
+}
+
+
+/* Just gotten from dlls\sound.cpp, line 1626 */
+char UTIL_TextureHit (TraceResult * tr, Vector vecSrc, Vector vecEnd)
+{
+      float rgfl1[3];
+      float rgfl2[3];
+      char szbuffer[64];
+      const char *pTextureName;
+
+      CBaseEntity *pEntity = CBaseEntity::Instance(ptr->pHit);
+
+      if ( pEntity && pEntity->Classify() != CLASS_NONE && pEntity->Classify() != CLASS_MACHINE )
+            return CHAR_TEX_FLESH;
+
+      vecSrc.CopyToArray (rgfl1);
+      vecEnd.CopyToArray (rgfl2);
+
+      if (pEntity)
+            pTextureName = TRACE_TEXTURE (ENT(pEntity->pev), rgfl1, rgfl2);
+      else
+            pTextureName = TRACE_TEXTURE (ENT(0), rgfl1, rgfl2);
+
+      if ( pTextureName )
+      {
+            if (*pTextureName == '-' || *pTextureName == '+')
+                  pTextureName += 2;
+
+            if (*pTextureName == '{' || *pTextureName == '!' || *pTextureName == '~' || *pTextureName == ' ')
+                  pTextureName++;
+
+            strcpy(szbuffer, pTextureName);
+            szbuffer[CBTEXTURENAMEMAX - 1] = 0;
+            return TEXTURETYPE_Find(szbuffer);
+      }
+
+      return 0;
+}
+
+
+
+
+CBaseEntity::FireBullets3 ( Vector vecSrc,
+                                          Vector vecDirShooting,
+                                          Vector vecSpread,
+                                          float flDistance,
+                                          int iLayersThrough,
+                                          int iBulletType,
+                                          int iDamage,
+                                          float flRecoil,
+                                          entvars_s * pevAttacker,
+                                          bool bSomething )
+{
+      Vector vecRight = gpGlobals->v_right;
+      Vector vecUp = gpGlobals->v_up;
+    Vector vecDir, vecSome1;
+
+      int iBulletDamage, iCurrentDamage = iDamage;
+    int iCurrentLayer = 0;
+    float floatSome1, floatSome2, floatSome3;
+      float x, y;
+
+    switch (iBulletType)
+    {
+      case BULLET_9MM:
+            floatSome3 = 800.0;
+            iBulletDamage = 0x15;
+        iCurrentDamage += RANDOM_LONG(0, 10) - 4;
+            break;
+            
+      case BULLET_45ACP:
+            floatSome3 = 500.0;
+            iBulletDamage = 0x0F;
+        iCurrentDamage += RANDOM_LONG(0, 4) - 2;
+            break;
+
+      case BULLET_338MAGNUM:
+            floatSome3 = 8000.0;
+            iBulletDamage = 0x2D;
+        iCurrentDamage += RANDOM_LONG(0, 8) - 4;
+        break;
+
+      case BULLET_762NATO:
+            floatSome3 = 5000.0;
+            iBulletDamage = 0x27;
+        iCurrentDamage += RANDOM_LONG(0, 4) - 2;
+        break;
+
+      case BULLET_556NATO:
+            floatSome3 = 4000.0;
+            iBulletDamage = 0x23;
+        iCurrentDamage += RANDOM_LONG(0, 6) - 3;
+        break;
+
+      case BULLET_50AE:
+            floatSome3 = 1000.0;
+            iBulletDamage = 0x1E;
+        iCurrentDamage += RANDOM_LONG(0, 10) - 4;
+        break;
+
+      case BULLET_57MM:
+            floatSome3 = 2000.0;
+            iBulletDamage = 0x1E;
+        iCurrentDamage += RANDOM_LONG(0, 10) - 4;
+        break;
+
+      case BULLET_357SIG:
+            floatSome3 = 800.0;
+            iBulletDamage = 0x19;
+        iCurrentDamage += RANDOM_LONG(0, 10) - 4;
+        break;
+
+      default:
+            floatSome3 = 0;
+            iBulletDamage = 0;
+        break;
+    }
+
+      if ( pevAttacker == NULL )
+            pevAttacker = pev;  // the default attacker is ourselves
+
+      gMultiDamage.type = DMG_BULLET | DMG_NEVERGIB;
+
+      do
+      {
+            x = RANDOM_FLOAT(-0.5,0.5) + RANDOM_FLOAT(-0.5,0.5);
+            y = RANDOM_FLOAT(-0.5,0.5) + RANDOM_FLOAT(-0.5,0.5);
+
+      } while ( (x * x + y * y) > 1);
+
+      Vector vecDir = vecDirShooting +
+                                    x * vecSpread.x * vecRight +
+                                    y * vecSpread.y * vecUp;
+
+      y = 0.5;
+
+      vecEnd = vecSrc + vecDir * flDistance;
+
+      while ( iLayersThrough != 0 )
+      {
+            ClearMultiDamage();
+          UTIL_TraceLine (vecSrc, vecEnd, 0, ENT(pev), &tr);
+
+            vecSrc = vecEnd;
+
+          switch ( UTIL_TextureHit (&tr) )
+            {
+            case CHAR_TEX_METAL:
+                  iCurrentLayer = 1;
+                  iBulletDamage *= 1.5e-1;
+                  y = 0.2;
+                  break;
+
+            case CHAR_TEX_CONCRETE:
+                  iBulletDamage *= 2.5e-1;
+                  break;
+
+            case CHAR_TEX_GRATE:
+                  iCurrentLayer = 1;
+                  iBulletDamage *= 5.0e-1;
+                  y = 0.4;
+                  break;
+
+            case CHAR_TEX_VENT:
+                  iCurrentLayer = 1;
+                  iBulletDamage *= 5.0e-1;
+                  y = 0.45;
+                  break;
+
+            case CHAR_TEX_TILE:
+                  iBulletDamage *= 6.5e-1;
+                  y = 0.3;
+                  break;
+
+            case CHAR_TEX_FLESH:
+                  iCurrentLayer = 1;
+                  iBulletDamage *= 4.0e-1;
+                  y = 0.45;
+                  break;
+
+            case CHAR_TEX_WOOD:
+                  y = 0.6;
+                  break;
+            }
+
+            if ( tr.flFraction != 1.0 )
+            {
+                  CBaseEntity *pEntity = CBaseEntity::Instance(tr.pHit);
+
+            iLayersThrough--;
+                  x = tr.flFraction * flDistance;
+            iCurrentDamage = ( pow (flRecoil, (x * 2.0000001e-3)) * iCurrentDamage;
+
+            if ( x > floatSome3 )
+                  iLayersThrough = 0;
+
+                  if ( tr.pHit.v.solid != SOLID_BSP || iLayersThrough == 0 )
+                  {
+                        if ( !bSomething || RANDOM_LONG(0,3) == 0 )
+                              goto loc_10013B6E;
+                
+                  DecalGunshot (&tr, iBulletType);
+
+                  vecSrc = tr.vecEndPos + vecDir * iBulletDamage;
+                  flDistance = (flDistance - x) * 5.0e-1;
+                  vecEnd = vecDir.x * flDistance + vecSrc;
+                  x = iCurrentDamage;
+
+                        pEntity->TraceAttack(pevAttacker, iDamage, vecDir, &tr, DMG_BULLET | DMG_ALWAYSGIB );
+                        longSome1 = floatSome1 * floatSome2;
+                  }
+                  else
+                  {
+                        if ( !bSomething || RANDOM_LONG(0,3) == 0 )
+                              goto loc_10013CF5; // some changes in TraceAttack() argument
+
+                  vecSrc = vecDir * 42 + tr.vecEndPos;
+                  flDistance = (flDistance - x) * 7.5e-1;
+                  vecEnd = vecDir.x * flDistance + vecSrc;
+                  x = iCurrentDamage;
+
+                vecDir = Vector(0,0,4);
+
+                        pEntity->TraceAttack(pevAttacker, iDamage, vecDir, &tr, DMG_BULLET | DMG_ALWAYSGIB );
+                longSome1 = longSome1 * 7.5e-1;
+                  }
+            }
+            else
+                  iLayersThrough = 0;
+
+
+            ApplyMultiDamage(pev, pevAttacker);
+      }
+}
+
+
+--------------------------------------------------
+06/24/01 at 02:57:08  Reply by: vpupkin (clientbot@narod.ru)
+--------------------------------------------------
+pEntity->TraceAttack in CS has two additional arguments, but I haven't disassemble it yet.
+
+Something can be wrong - ask me, I'll re-look again.
+There is a lot of unused variables - maybe, it is bad Visual C++ optimisation.
+
+I have no server-side mod code, so I can't check it. Would be nice to hear any comments.
+
+--------------------------------------------------
+06/24/01 at 02:59:48  Reply by: vpupkin (clientbot@narod.ru)
+--------------------------------------------------
+CWeaponUSP__PrimaryAttack       (3 vectors, 4096, 1, 9,      1Eh/22h, 0.79,      0, 1);
+CWeaponUMP45__PrimaryAttack (3 vectors, 8192, 1, 9,       1E,       0.82,      0, 0);
+CWeaponTmp__PrimaryAttack       (3 vectors, 8192, 1, 1,       14h, 0.85,      0, 0);
+CWeaponSG552__PrimaryAttack (3 vectors, 8192, 2, 0Ch,       21h, 0.95,      0, 0);
+CWeaponSG550__PrimaryAttack (3 vectors, 8192, 2, 0Ch,       28h, 0.98,      0, 1);
+CWeaponScout__PrimaryAttack (3 vectors, 8192, 3, 0Bh,       4Bh, 0.98,      0, 1);
+CWeaponP90__PrimaryAttack       (3 vectors, 8192, 1, 0Eh,       15h, 0.885, 0, 0);
+CWeaponP228__PrimaryAttack      (3 vectors, 4096, 1, 0Fh,       20h, 0.8,      0, 1);
+CWeaponMP5__PrimaryAttack       (3 vectors, 8192, 1, 1,       1Ah, 0.84,      0, 0);
+CWeaponMac10__PrimaryAttack (3 vectors, 8192, 1, 9,       1Dh, 0.82,      0, 0);
+
+CWeaponM4A1__PrimaryAttack       (3 vectors, 8192, 2, 0Ch,       20h, 0.97,      0, 0);
+CWeaponM4A1__PrimaryAttack       (3 vectors, 8192, 2, 0Ch,       21h, 0.95,      0, 0);
+
+CWeaponM249__PrimaryAttack       (3 vectors, 8192, 2, 0Ch,       20h, 0.97,      0, 0);
+CGlock18__PrimaryAttack       (3 vectors, 8192, 1, 1,       14h, 0.75,      0, 1);
+CWeaponG3SG1__PrimaryAttack (3 vectors, 8192, 3, 0Bh,       3Ch, 0.98,      0, 1);
+CFiveSeven__PrimaryAttack       (3 vectors, 4096, 1, 0Eh,       14h, 0.885, 0, 0);
+CWeaponElite__PrimaryAttack (3 vectors, 8192, 1, 1,       1Bh, 0.75,      0, 1);
+CWeaponElite__PrimaryAttack (3 vectors, 8192, 1, 1,       14h, 0.75,      0, 1);
+CWeaponDEagle__PrimaryAttack(3 vectors, 8192, 2, 0Dh,       36h, 0.81,      0, 1);
+CWeaponAWP__PrimaryAttack       (3 vectors, 8192, 3, 0Ah,       73h, 0.99,      0, 1);
+CWeaponAUG__PrimaryAttack       (3 vectors, 8192, 2, 0Ch,       20h, 0.96,      0, 0);
+CWeaponAK47__PrimaryAttack      (3 vectors, 8192, 2, 0Bh,       24h, 0.98,      0, 0);
+
+
+--------------------------------------------------
+06/25/01 at 04:49:23  Reply by: vpupkin (clientbot@narod.ru)
+--------------------------------------------------
+has anyone looked on it/tested it? :)
+

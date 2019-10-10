@@ -1,0 +1,281 @@
+--------------------------------------------------
+Subject: UTIL_TraceLine
+--------------------------------------------------
+06/22/01 at 05:53:37  Posted by: Spectual (spectual@hotmail.com)
+--------------------------------------------------
+Is it possible to use UTIL_TraceLine with an unspecified end point?
+
+I want to trace a line from a startvector and make it return the first entity it runs into.
+
+--------------------------------------------------
+06/22/01 at 06:03:31  Reply by: theimann (killaruna@botepidemic.com)
+--------------------------------------------------
+Just use an end point in a very far distance, about 10000 units away - that should do it...
+
+Tobias
+
+--------------------------------------------------
+06/22/01 at 06:07:04  Reply by: Spectual (spectual@hotmail.com)
+--------------------------------------------------
+Thanks Tobias.
+
+But how can I create a vector which is that far away?
+
+Say if we have a start vector:
+
+Vector Start = pEntity->v.origin;
+
+How should I make the End vector?
+
+--------------------------------------------------
+06/22/01 at 07:01:55  Reply by: vpupkin (clientbot@narod.ru)
+--------------------------------------------------
+You have to have a start vector and a direction vector.
+
+So, vecEnd = vecStart + vecDir * flDistance;
+
+--------------------------------------------------
+06/22/01 at 12:55:34  Reply by: Spectual (spectual@hotmail.com)
+--------------------------------------------------
+Feel that I really should study about vectors and how they work.
+
+Could someone please show me the code for this?
+
+e.g. A vector starting out from an entity - another vector which has the same angles but is 10000 units away.
+
+--------------------------------------------------
+06/22/01 at 14:13:37  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+See this thread...
+
+http://dynamic.gamespy.com/~wavelength/ubb/Forum3/HTML/000775.html
+
+...you need to understand that Half-Life uses the Vector class for both vectors AND locations in 3D space.  When you trace a line, you do it between 2 locations in 3D space (a starting point and and ending point).  You want the engine to tell you if there is currently anything in between those two points.  The TraceResult structure gives you information about how far the trace went before hitting something and it will also contain information about what entity was hit when something was in the way.
+
+botman
+
+--------------------------------------------------
+06/24/01 at 02:50:28  Reply by: Spectual (spectual@hotmail.com)
+--------------------------------------------------
+Thanks a lot. That cleared up a few things for me.
+
+If this is true...:
+
+vecEnd = vecStart + vecDir * flDistance; 
+
+.. why does this gives a wrong result then:
+
+vecEnd = pEntity->v.origin + pEntity->v.v_angle * 10000; 
+
+I have putted in a WaypointDrawBeam next to the UTIL_TraceLine and it beams in a wrong angle. It starts out correctly though.
+
+
+--------------------------------------------------
+06/24/01 at 05:10:29  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+You might want to use something smaller than 10,000.  The bounds of the X, Y, and Z coordinates in Half-Life life are -4096 to 4096.
+
+Also v_angle is an array of angles (0 to 360 degrees) not a vector.  You can convert the current view angle to a vector by doing something like this...
+code:
+   // set up gpGlobals->v_forward...
+   UTIL_MakeVector(pEdict->v.v_angle);  // convert angles to a vector
+ 
+   vecEnd = pEdict->v.origin + gpGlobals->v_forward * 4000;
+
+
+botman
+
+--------------------------------------------------
+06/24/01 at 08:18:47  Reply by: daRope (fzschocke@web.de)
+--------------------------------------------------
+A code snippet from Adminmod, which might help:
+
+  TraceResult tr; 
+  MAKE_VECTORS( pPlayer->pev->v_angle + pPlayer->pev->punchangle ); 
+  
+
+  Vector vecSrc = pPlayer->pev->origin + pPlayer->pev->view_ofs;
+
+  Vector vecEnd = vecSrc + (gpGlobals->v_forward * 1000); 
+
+  TRACE_LINE( vecSrc, vecEnd, dont_ignore_monsters, pPlayer->edict(), &tr); 
+
+If you are using a players eye position as an endpoint, don't feel tempted to use the EyePosition() member function. It will make a Linux server crash with CS or TFC. Works with HLDM, though.
+
+--------------------------------------------------
+06/24/01 at 13:28:42  Reply by: Spectual (spectual@hotmail.com)
+--------------------------------------------------
+Thanks again for your useful help.
+
+Now it traces along the right line. However, now I have a new problem.
+
+It doesn't stop tracing when it hits my entity.
+
+It just traces right through it and returns "worldspawn".
+
+If possible, how do I make it stop tracing when it hits my entity?
+
+If not possible, any other suggestions on how to make it work?
+
+Is it possible to define my own classname for the waypoints?
+
+
+--------------------------------------------------
+06/25/01 at 05:53:09  Reply by: daRope (fzschocke@web.de)
+--------------------------------------------------
+What kind of an entity do you use? What are it's physics/flags?
+
+--------------------------------------------------
+06/25/01 at 07:51:21  Reply by: Spectual (spectual@hotmail.com)
+--------------------------------------------------
+Well... this is my creating code:
+
+edict_t *bomb = NULL;
+long cb;
+
+             bomb = pfnCreateEntity ();
+
+             pfnPvAllocEntPrivateData (bomb, cb);
+
+             pfnSetModel (bomb, "models/waypoint.mdl");
+              
+             bomb->v.movetype = MOVETYPE_NOCLIP;
+             bomb->v.solid = SOLID_BSP;
+             bomb->v.avelocity.x            = 0;
+             bomb->v.avelocity.y            = 160;
+             bomb->v.avelocity.z            = 0;
+             bomb->v.ltime            = gpGlobals->time;
+             bomb->v.nextthink      = gpGlobals->time;
+             bomb->v.frame            = 0;
+             bomb->v.flags            = 0;
+
+             bomb->v.origin.x = 1931;
+             bomb->v.origin.y = 650;
+             bomb->v.origin.z = 36;
+
+
+--------------------------------------------------
+06/25/01 at 11:04:43  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+You need to call SET_ORIGIN() (i.e. pfnSetOrigin) after setting or changing the origin of an entity.  Try calling pfnSetOrigin() after you set up the origin and see if the engine doesn't handle the collision correctly.
+
+botman
+
+--------------------------------------------------
+06/25/01 at 14:50:50  Reply by: Spectual (spectual@hotmail.com)
+--------------------------------------------------
+That did not solve the problem.
+
+I also tried some different move types, but that did not solve the problem either.
+
+Fact is, traceline does not return anything but worldspawn on any enties but the boxes next to the b1 and b2 on de_dust (on these it returns func_breakable).
+
+I was thinking if the problem can be solved if I made my waypoint func_breakable, but how is this done?
+
+
+--------------------------------------------------
+06/28/01 at 05:13:15  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+ok, here a wild idea.
+In order to pass on the right entities and names, maybe you only 'draw' the entity with your dll, while you dont pass it on?!? LINK_FUNC_TO_ENTITY is used many times. So maybe you have to put that in the engine.cpp ( i believe?) and pass that on to the engine, so half-life knows that there is an entity too?
+
+--------------------------------------------------
+06/28/01 at 05:30:14  Reply by: theimann (killaruna@botepidemic.com)
+--------------------------------------------------
+OK, to narrow your search for errors: The TraceLine()-function works 100% and if it hits a valid entity, it will return that in tr.pHit.
+I'm sure it is your entity that causes the problems: incorrect flags, settings, or just another method you have forgotten to call (like the SET_ORIGIN Botman already mentioned).
+I would check the values of entities that work with traceline (e.g. the breakable crates, other players etc.) and compare solid, movetype and other settings with your own entity.
+Another approach would be to go through the SDK-create()-functions (there is something like that) and look what they are initializing. If you're lucky you will even find some comments that might help you.
+
+Tobias
+
+--------------------------------------------------
+06/28/01 at 06:25:16  Reply by: daRope (fzschocke@web.de)
+--------------------------------------------------
+Are you certain that your traceline goes through the waypoint entity? How do you tell where you are pointing your traceline? 
+
+Also, is it possible to "widen" a trcaeline, i.e. to use a cone instead of a line?
+
+--------------------------------------------------
+06/28/01 at 12:56:59  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+You can't use a cone, but you can trace a hull (the bounding box).  See the UTIL_TraceHull function in the Standard SDK (hulls can be point_hull, human_hull, large_hull, or head_hull).  The crowbar.cpp file used UTIL_TraceHull with a head_hull parameter.
+
+botman
+
+--------------------------------------------------
+06/28/01 at 14:25:37  Reply by: Spectual (spectual@hotmail.com)
+--------------------------------------------------
+I'm "certain" because I use Waypointdrawbeam to draw a beam on the very same vector. It seems alright because it returns func_breakable when I'm pointing at something "breakable".
+
+Its confusing that it returns worldspawn on every thing in the world except the func_breakables.
+
+I'll try your suggestions and return with the result.
+
+--------------------------------------------------
+06/28/01 at 14:30:27  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+It should only return "worldspawn" on brush entities (like walls or ground).
+
+botman
+
+--------------------------------------------------
+06/28/01 at 15:56:40  Reply by: Spectual (spectual@hotmail.com)
+--------------------------------------------------
+I think I'm giving up this idea.
+
+I tried to make it foolproof by making it trace directly to the waypoint. It returned worldspawn. 
+
+Then I tried making it trace directly to the bomb (then it should return weapon_c4). It returned worldspawn. 
+
+
+
+--------------------------------------------------
+06/28/01 at 16:00:18  Reply by: Spectual (spectual@hotmail.com)
+--------------------------------------------------
+By the way - I looked in the SDK to see how "they" did it and the only difference is that they also calls UTIL_SetSize. 
+
+I inserted the line in my code, but still no results.
+
+Could this be something about hitboxes?
+
+I've noticed sometime earlier that it traces a player even over his head.
+
+--------------------------------------------------
+06/29/01 at 04:09:38  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+The order that you place UTIL_SetSize() and UTIL_SetOrigin() does make a difference to the Half-Life engine.  I forget which one needs to come first, but if you do it the wrong way around then you can walk through things that should block you.
+
+botman
+
+--------------------------------------------------
+07/03/01 at 12:42:50  Reply by: Spectual (spectual@hotmail.com)
+--------------------------------------------------
+SetSize first, then SetOrigin.
+
+I made some improvement. Now it crashes when pointing at it - e.g. now the engine stopped ignoring it but crashes because some parameters are not correctly setted (I guess).
+
+In the SDK, they use 2 functions in some AirTank spawning function:
+
+SetTouch ( function )
+SetThink ( function )
+
+I could imagine it crashes because these are not setted.
+
+However I haven't yet succeeded in using them. Visual C++ complains that TouchSet is an undeclared indentifier.
+
+Is that because SetTouch and SetThink are not yet completely implemented in the HPB template bot?
+
+Finally, they also link the entity to a class. I feel that also should be done in order to be able to trace it.
+
+--------------------------------------------------
+07/03/01 at 16:33:57  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+The Think() and Touch() functions are called from the Half-Life engine using DispatchThink() and DispatchTouch().  The CBaseEntity class in the SDK has an m_pfnThink and m_pfnTouch function pointer that can point to a function that will get called when the entity thinks or gets touched.  If these member variables are non-null, the DispatchThink or DispatchTouch function (in the Standard SDK) will call the member functions for that class.
+
+Since there aren't any C++ classes in the HPB bot code your entity probably doesn't have these member functions.  You can intercept the DispatchThink() or DispatchTouch() functions for your entity and compare the edict of the touched entity to the one that you have created.  If the entity being touched is the one that you created then handle it in the DispatchTouch function or just return to the engine if you don't want to do anything when it's touched.  In either case you don't want to call the SDK version of DispatchTouch() since you don't have any pvPrivate data (C++ object) associated with that entity.
+
+Does that help?
+
+botma
+

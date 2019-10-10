@@ -1,0 +1,214 @@
+--------------------------------------------------
+Subject: Botman, how the hell do you get chat to work....
+--------------------------------------------------
+10/22/00 at 02:00:19  Posted by: DarkYouth (darkyouth@thegraze.freeserve.co.uk)
+--------------------------------------------------
+I've tried 
+FakeClientCommand()
+UTIL_SayText()
+and now this:
+
+void BotSay(edict_t *pBot, char *say_msg)
+{
+   isFakeClientCommand = 1;
+   sprintf(&g_argv[0], "%s", say_msg);
+   strcpy(&g_argv[64], "say");
+   strcpy(&g_argv[128], say_msg);
+   ClientCommand(pBot);
+   isFakeClientCommand = 0;
+}
+
+The last one crashes my computer and Im not sure why. Can you help me botman?
+
+Or anyone. Last time I asked I was sure that someone just gave me a little "look at this routine" which didnt even work.
+
+Arrrrrrrggggggggggggggggggghhhhhhhhhhhhhhhh
+
+
+--------------------------------------------------
+10/22/00 at 02:51:11  Reply by: DarkYouth (darkyouth@thegraze.freeserve.co.uk)
+--------------------------------------------------
+I may have a fix for the max_fps problems.
+
+Make botthink dependant on time, not frame starts
+
+Then schedule regualr botthinks at the rate of about 20/30 a second.......
+
+Im not sure on how to do this though.
+
+
+
+--------------------------------------------------
+10/22/00 at 04:58:58  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+I modified the Host_Say function from the original SDK (in the client.cpp file).  It looks like this...
+code:
+edict_t *UTIL_FindEntityByString( edict_t *pentStart, const char *szKeyword, const char *szValue )
+{
+   edict_t *pentEntity;
+ 
+   pentEntity = FIND_ENTITY_BY_STRING( pentStart, szKeyword, szValue );
+ 
+   if (!FNullEnt(pentEntity))
+      return pentEntity;
+   return NULL;
+}
+ 
+edict_t *UTIL_FindEntityByClassname( edict_t *pentStart, const char *szName )
+{
+   return UTIL_FindEntityByString( pentStart, "classname", szName );
+}
+ 
+void UTIL_HostSay( edict_t *pEntity, int teamonly, char *message )
+{
+   int   j;
+   char  text[128];
+   char *pc;
+   int   sender_team, player_team;
+   edict_t *client;
+ 
+   // make sure the text has content
+   for ( pc = message; pc != NULL && *pc != 0; pc++ )
+   {
+      if ( isprint( *pc ) && !isspace( *pc ) )
+      {
+         pc = NULL;   // we've found an alphanumeric character,  so text is valid
+         break;
+      }
+   }
+ 
+   if ( pc != NULL )
+      return;  // no character found, so say nothing
+ 
+   // turn on color set 2  (color on,  no sound)
+   if ( teamonly )
+      sprintf( text, "%c(TEAM) %s: ", 2, STRING( pEntity->v.netname ) );
+   else
+      sprintf( text, "%c%s: ", 2, STRING( pEntity->v.netname ) );
+ 
+   j = sizeof(text) - 2 - strlen(text);  // -2 for /n and null terminator
+   if ( (int)strlen(message) > j )
+      message[j] = 0;
+ 
+   strcat( text, message );
+   strcat( text, "\n" );
+ 
+   // loop through all players
+   // Start with the first player.
+   // This may return the world in single player if the client types something between levels or during spawn
+   // so check it, or it will infinite loop
+ 
+   if (gmsgSayText == 0)
+      gmsgSayText = REG_USER_MSG( "SayText", -1 );
+ 
+   sender_team = UTIL_GetTeam(pEntity);
+ 
+   client = NULL;
+   while ( ((client = UTIL_FindEntityByClassname( client, "player" )) != NULL) &&
+           (!FNullEnt(client)) ) 
+   {
+      if ( client == pEntity )  // skip sender of message
+         continue;
+ 
+      player_team = UTIL_GetTeam(client);
+ 
+      if ( teamonly && (sender_team != player_team) )
+         continue;
+ 
+      pfnMessageBegin( MSG_ONE, gmsgSayText, NULL, client );
+         pfnWriteByte( ENTINDEX(pEntity) );
+         pfnWriteString( text );
+      pfnMessageEnd();
+   }
+ 
+   // print to the sending client
+   pfnMessageBegin( MSG_ONE, gmsgSayText, NULL, pEntity );
+      pfnWriteByte( ENTINDEX(pEntity) );
+      pfnWriteString( text );
+   pfnMessageEnd();
+}
+
+
+For the BotThink() function you could have a timer that keeps track when the last time the BotThink() was called and make sure to call it again after 0.0333333 seconds (1/30th of a second).  That would give you no more than 30 BotThink() calls per second.
+
+I think I'll go ahead and add that to the HPB bot to see if that fixes problems people with ULTRA fast video cards have been having with the bots spinning and jumping.  Anybody wanna send me their Voodoo 5 card so I can test it out? ;)
+
+botman
+
+--------------------------------------------------
+10/22/00 at 09:32:19  Reply by: DStroth (dstroth@crosswinds.net)
+--------------------------------------------------
+Well.. I've managed to create a working botchat function based off your code, Dark Youth.. This is what I have and it seems to work fine:
+
+void BotSayText( edict_t *pEdict, char *pText )
+{
+   if((pText == NULL)  (*pText == 0))
+      return;
+   isFakeClientCommand = 1;
+   strcpy(g_argv, pText);
+   strcpy(&g_argv[64], "say");
+   strcpy(&g_argv[128], pText);
+   ClientCommand(pEdict);
+   isFakeClientCommand = 0;
+}
+
+Calling it from BotThink with 'BotSayText(pEdict, "Blah");' works fine. :)
+
+DStroth
+
+--------------------------------------------------
+10/22/00 at 12:24:44  Reply by: DarkYouth (darkyouth@thegraze.freeserve.co.uk)
+--------------------------------------------------
+It wasnt my code, It was Auxois
+
+It only crashes on de_train....
+
+I was testin on that map and assumed it was general bug. Very wierd though.
+
+--------------------------------------------------
+10/22/00 at 12:44:14  Reply by: Auxois (auxois@nuclearbox.com)
+--------------------------------------------------
+Botman, um, how bout I send you my new Geforce 2 GTS DDR 64m? ;P I actually do have that weird spinning fps_max problem.
+
+DarkYouth: I'm telling you man, that code I gave you for chat that I made works PERFECT, its something else thats crashing your system. Its no more than a simple FakeClientCommand, without adding the text from the command itself ie:"say" to the output text.
+
+--------------------------------------------------
+10/22/00 at 12:44:59  Reply by: DStroth (dstroth@crosswinds.net)
+--------------------------------------------------
+Oh.. ok.. That is strange. Hmm.. I have no idea why that would happen..
+
+DStroth
+
+--------------------------------------------------
+10/22/00 at 13:16:37  Reply by: DarkYouth (darkyouth@thegraze.freeserve.co.uk)
+--------------------------------------------------
+It only happens on one map
+
+Try de_train
+
+Its very wierd, thats why I put the disable chat code in. Otherwise it works fine.
+
+I sometimes hate the half-life technology...
+Deep deep down.
+
+Arrrrrrrrrrrrrgggggggggggghhhhhhhhh
+
+--------------------------------------------------
+10/22/00 at 13:19:19  Reply by: DarkYouth (darkyouth@thegraze.freeserve.co.uk)
+--------------------------------------------------
+Anyone got any ideas on how I can implement team play?
+
+I mean such as 
+(ME) Storm the front
+(BOTS) Affirmative
+ <proceeds to storm front>
+
+
+--------------------------------------------------
+10/22/00 at 13:34:47  Reply by: SUCKLEAD (sucklead@btinternet.com)
+--------------------------------------------------
+Trap the radio command.
+Set a 'storm the front' behaviour flag.
+Set up 1 or more 'storm the front' type waypoints.
+Floyd to the 'storm the front' waypoints with no random movement if the 'storm the front' behaviour flag is set.
+

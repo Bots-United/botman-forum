@@ -1,0 +1,90 @@
+--------------------------------------------------
+Subject: BotFindMonsters Function crashes ARGH!!!
+--------------------------------------------------
+06/19/01 at 13:26:21  Posted by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+called by...
+
+code:
+
+pNewEnemy=BotFindMonsters(pBot);
+
+
+
+bot_combat.cpp
+
+code:
+
+edict_t *BotFindMonsters(bot_t *pBot)
+{
+   Vector vecEnd;
+
+   edict_t *pent = NULL;
+   edict_t *pNewEnemy;
+   edict_t *pEdict = pBot->pEdict;
+
+   Vector bMonsterOrigin = pent->v.origin;
+   char bMonsterName[100];
+
+   while ((pent = UTIL_FindEntityInSphere( pent, pEdict->v.origin, MAX_SEARCH_RADIUS )) != NULL)
+   {
+    vecEnd = bMonsterOrigin + pent->v.view_ofs;
+    strcpy(bMonsterName,STRING(pent->v.classname));
+    if ((strncmp(bMonsterName, "monster_", 8) == 0)&&(IsAlive(pent))&&(FInViewCone( &vecEnd, pEdict ) && FVisible( vecEnd, pEdict )))
+     return(pent);
+    else if ((strncmp(bMonsterName, "drive_", 6) == 0)&&(IsAlive(pent))&&(FInViewCone( &vecEnd, pEdict ) && FVisible( vecEnd, pEdict )))
+    {
+     if(is_team_play!=0)
+     {
+      int player_team = UTIL_GetTeam(pEdict); // Team check to see if the transformation is on the bots team
+      int bot_team = UTIL_GetTeam(pent);
+      if(player_team == bot_team)
+       return(NULL);
+      else
+       return(pent);
+     }
+     else
+      return(pent);
+    } 
+   }
+return(NULL);
+}
+
+
+
+Any Idea why it might be crashing?
+
+
+--------------------------------------------------
+06/19/01 at 13:28:34  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+You probably shouldn't call IsAlive() and FInViewCone() until you know that the entity is a monster.  (i.e. change your complex "if" statement to 2 nested if statements, the first should do the string compare, then inside it, check if the monster is alive and can view the bot).
+
+botman
+
+--------------------------------------------------
+06/19/01 at 13:46:44  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+Ahhh!!! I changed 
+
+(FInViewCone( &vecEnd, pEdict ) && FVisible( vecEnd, pEdict )
+
+to..
+
+(BotEntityIsVisible( pBot, vecEnd )
+
+It works great now just by changing that!!! Thanks ... I'll have a look at the if statements again to try and sort them out if I think they need redoing.. :)
+
+--------------------------------------------------
+06/19/01 at 13:46:58  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+Ahhh!!! I changed 
+
+(FInViewCone( &vecEnd, pEdict ) && FVisible( vecEnd, pEdict )
+
+to..
+
+(BotEntityIsVisible( pBot, vecEnd )
+
+It works great now just by changing that!!! Thanks ... I'll have a look at the if statements again to try and sort them out if I think they need redoing.. :)
+

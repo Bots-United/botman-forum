@@ -1,0 +1,67 @@
+--------------------------------------------------
+Subject: UTIL_GetBotPointer crashes....
+--------------------------------------------------
+08/12/01 at 10:50:26  Posted by: Pembunuh (yip_omar@hotmail.com)
+--------------------------------------------------
+Hi Botman...
+
+I tried using UTIL_GetBotPointer() function to return a pointer to a bot_t obj in the bots[] but it seems like it crashes, I checked the code and it looks fine to me. But when I checked the value of the return result, it was zero.
+
+So can u pls help..
+
+--------------------------------------------------
+08/12/01 at 11:55:28  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+If UTIL_GetBotPointer() returns NULL then that is the indication that the edict value you are passing it is not a bot (hence no bot_t structure is available).  Do not try to dereference this pointer (use it) without checking for NULL first like so...
+code:
+void DoSomeBotStuff(edict_t *pEdict)
+{
+   bot_t *pBot;
+
+   pBot = UTIL_GetBotPointer(pEdict);
+
+   if (pBot != NULL)
+   {
+      // bot stuff here...
+      if (pBot->f_whatever <= gpGlobals->time)
+      {
+         // time to do whatever
+      }
+
+      pBot->count_of_stuff++;
+   }
+
+   // if not a bot then just return
+   return;
+}
+
+botman
+
+--------------------------------------------------
+08/12/01 at 16:52:37  Reply by: Pembunuh (yip_omar@hotmail.com)
+--------------------------------------------------
+HI...ok that solves the prob
+
+But lets say i want to find information on real players and not a bot...is all those information stored in the entwars_t structure or is there any other place where I can find them...
+
+thanks...
+
+--------------------------------------------------
+08/12/01 at 17:36:25  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+QUOTE:
+But lets say i want to find information on real players and not a bot...is all those information stored in the entwars_t structure or is there any other place where I can find them...
+
+
+
+Do a search for all clients in the game (gpGlobals->MaxClients). A for loop will suffice.
+
+You'll need to find the entity which is at the index of the loop so you can edit this entity.
+
+e.g. by using: edict_t *pPlayer = INDEXENT(i);
+
+Check to see if the clients flag is "FL_CLIENT" which will mean it is an actual human player.
+
+Then do your stuff to pPlayer...!!!
+
+[modified on 08/12/01 at 17:36:25]

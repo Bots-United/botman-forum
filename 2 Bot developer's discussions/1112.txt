@@ -1,0 +1,85 @@
+--------------------------------------------------
+Subject: Lifts
+--------------------------------------------------
+01/23/01 at 10:37:30  Posted by: RedFox (redfox@nildram.co.uk)
+--------------------------------------------------
+Hi ppl, having a bit of trouble checking for lifts.
+Basically I check that the lifts origin.z is less than the bots origin.z (works only for platform lifts), but it doesn't seem to work. 
+Anyideas?
+Code here
+
+         if (waypoints[pBot->curr_waypoint_index].flags & W_FL_LIFT)
+      {
+               edict_t *pent = NULL;
+               float pz,cz;
+               //pEdict->v.origin.z=pEdict->v.origin.z-70;
+               //pBot->f_move_speed =-(pBot->f_max_speed / 10);
+               while ((pent = UTIL_FindEntityInSphere( pent, waypoints[pBot->curr_waypoint_index].origin, 100 )) != NULL)
+               {
+                        if(strncmp(STRING(pent->v.classname),"func_plat",9)==0)
+                        {
+                              pz=pent->v.origin.z;
+                              //if (pz<0) pz=-pz;
+                              cz=pEdict->v.origin.z;
+                              //if (cz<0) cz=-cz;
+                              //cz=cz+100;
+                              //{ fp=fopen("bot.txt","a"); fprintf(fp,"pz%d cz%d \n",pz,cz); fclose(fp); }
+                              if(pz<cz)
+                              {
+                                    pBot->f_move_speed = pBot->f_max_speed / 2;  
+                                    break;
+                              }
+                              else
+                              {
+                                    pBot->f_move_speed =-(pBot->f_max_speed / 5); // back off
+                              }
+                        }
+               }
+               //pEdict->v.origin.z=pEdict->v.origin.z+70;
+           BotUseLift( pBot, moved_distance );
+        }
+
+
+Also, how do I get the hit box from the lift (i.e. its dimentions)???
+
+Cheers for any help
+
+RedFox
+
+P.S. Barrysworld is shuting down, that sucks. Their goes my 120ping.
+
+
+
+--------------------------------------------------
+01/23/01 at 13:19:07  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+You've only got a radius of 100 units.  Is that large enough to cover the range that the lift will travel?
+
+You'll probably need to use VecBModelOrigin to get the center of the func_ entity.  You can look at the pent->v.absmin and pent->v.absmax values to find the size of the lift if you need it.
+
+botman
+
+
+
+--------------------------------------------------
+01/23/01 at 15:23:17  Reply by: RedFox (redfox@nildram.co.uk)
+--------------------------------------------------
+Cheers, it searches for the lift at the waypoint origin, not the player, so its ok on that side of things. If the player gets to the first one and the lift isn't their, it will check at the nest waypoint in the list. I suppose I need to check round the player as well.
+
+Thanks for that anyway.
+
+RedFox
+
+--------------------------------------------------
+01/24/01 at 12:13:36  Reply by: RedFox (redfox@nildram.co.uk)
+--------------------------------------------------
+Got it sorted :)
+Just for reference to anyone else implementing lift code. You need to check for func_door as well as func_plat, as some mappers use doors as lift. This threw me for a bit. For an example see flagrun, all lifts are func_door.
+
+RedFox
+
+--------------------------------------------------
+01/25/01 at 13:46:01  Reply by: eLiTe (ali@elitegamer.fsnet.co.uk)
+--------------------------------------------------
+Makes sense, like a vertical sliding door!! I experimented with mapping a bit, but I've not really got the time for it, too much stuff in my head nowadays... I've still got a basic layouit of my house on my hard disk, and only recently found out how to make proper rotating doors :D
+

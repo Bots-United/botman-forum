@@ -1,0 +1,84 @@
+--------------------------------------------------
+Subject: HPB 1.8 When i'm spy i get SZ_ error
+--------------------------------------------------
+09/30/01 at 07:19:31  Posted by: Multch (13steps@naplesnews.net)
+--------------------------------------------------
+I've been useing the HPB_bot ver 1.7 with no porblems since the release of the new patch 1108. But then yesterday i had read your frontpage about the problem & so i decided to be safe and grab the New HPB_bot 1.8 .. But now it seems if i go spy, i'm getting the error that was corrected for the bots, now seems to happen to the human .. hehe
+
+If i don't play spy then i seem to have no problems with 1.8 .. (( Oh, and also .. No, i haven't and pretty much rarely have spies in my games. So at the times it's crashed since updateing to 1.8 , No i have not had any spies joining )) ..
+
+About the only real help i seem to be able to give is a screenshot of the error message - http://grubber.hypermart.net/pics/SZ_1.8.jpg
+I can't seem to capture anything with drwatson, seems the error box cacels drwatson.?
+
+I don't know if your going to fix this or when you might have any time, so i guess i'll just go back to HPB 1.7 .. Cuz the map i just waypointed would be good for me as a spy. Oh well..
+
+Oh i was reading a post down below about this and "Valve Maps" so here's what i was doing & did. I was waypointing a map called "dam" & i was finished and decided to join as spy "crash". So then i went to 2fort started as soldier then switched to spy "crash". 
+
+[modified on 09/30/01 at 07:19:31]
+--------------------------------------------------
+09/30/01 at 10:18:36  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+I've tried tracing through the debug_engine logs to determine what's causing the SZ_GetSpace error and I don't see anything that a bot is doing that a human player doesn't do.  After working with it for several hours Friday and Saturday I just gave up and disabled grenade usage for spy bots altogether (I could have kept the normal grenades and just disabled the gas grenade, but I was pretty pissed off at the time).
+
+I think that this dialog box isn't a "crash" but is the engine intercepting an error condition and the engine is cleanly shutting itself down (thus no Dr.Watson log since it didn't really crash).
+
+When playing the game as a spy and throwing a gas grenade I kept hearing crowbar whacks and seeing little explosions every once in a while until the gas grenade stopped.  I almost never play as a spy (except when testing), but I don't remember the older versions of TFC doing this when a gas grenade was thrown.  Perhaps the TFC code is trying to send a network message directly to a bot which is causing the "SZ_GetSpace" error (since bots don't have a network) client.  This may be similar to the bot problems with AdminMOD/Metamod when they try to send network messages to bots.
+
+botman
+
+--------------------------------------------------
+09/30/01 at 11:01:32  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+Spy newbie eh botman? :)
+
+Yep, when you walk through a gas grenade you get "hallucinations" :)
+
+While you are hallucinating you hear crowbar sounds etc and you will see grenades being thrown about you (but others wont see they grenades - only you can see them) :)
+
+--------------------------------------------------
+09/30/01 at 11:59:57  Reply by: Multch (13steps@naplesnews.net)
+--------------------------------------------------
+Hmmm, ok botman. I've just left HPB 1.8 installed instead for now. I'll just not play spy but if i feel like being spy then i'll re-install HPB 1.7 .. :)
+
+Oh, btw, I've seen no problems with HPB 1.7 & Frontline Force .. Actully they play pretty Dam Good! Their defence is tickin me off on some maps.. hehe .. But this is only me. Hope others have no problems with FLF ..  I've yet to play the other mods for HPB .. 
+
+Heh, i read your frontpage for today the 30'th , i've not expeirenced the sound problems, just can't enable my mic, it works fine for everything else except any mod Half-life .. Yep, i read that info at PHL too.. Nada.. And that voice tweak just crashes my puter.. Oh well, i gave up mostly.. But my only other major problem is i can't connect to any internet games now.. DOH! I've been reading like a fool too.. Can't seem to figure it out.. Not yet am i going to re-install, but i have the Full patches for 1108 & CS.. When i get done waypointing maps i'm doing for the tfc bots so'z i can use your BotMixer5000, then i'll probably Delete my Half-Life folder and re-install .. Bummer about this stuipid spy bug thing.. Oh well.. Anyhow Thanks botman!
+Hi cheesemonster..
+
+--------------------------------------------------
+10/02/01 at 12:03:53  Reply by: Multch (13steps@naplesnews.net)
+--------------------------------------------------
+Ok, so i lied.. I sometimes do have spies in my game's when i choose to have random bots.. And i read about you fixing it. Cool!! Going to grab that puppy now!
+
+--------------------------------------------------
+10/05/01 at 12:51:11  Reply by: maquor (countercrab@home.com)
+--------------------------------------------------
+I have often seen the SZ_GetSpace error.  I'm using HPB_bot on a Linux CS server.  (Podbot doesn't do Linux) It's interesting that this has something to do with bots receiving data from the program like a "real" player.  My server crashes (and immediately restarts with halfd) about once every 18 hours.  When I'm at the halfd console to see it happen, I usually note the "sizebuf" error and that it happens when a bot is killed by or kills a "real" player.
+
+A lot of folks running Admin Mod and bots have gotten rid of crashes by turning off the "messages" script in AM, because it seems to interact with the bots.
+
+I'd be curious to know what was changed to eliminate the problem with the grenade effects?  I'd love to get to the bottom of these periodic crashes.
+
+--------------------------------------------------
+10/05/01 at 12:58:32  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+If the MOD (or AdminMOD or halfd) sends a command to the client, it will cause bots to crash (with the SZ_GetSpace error).  Leon Hartwig said that he will fix this problem in the Half-Life engine before the next engine release.
+
+The problem (as I understand it) is that the engine allocates a buffer to store network messages for clients.  The engine stores these network messages in this buffer before sending them out (presumably so it can resend them if the client doesn't acknowledge them).  Since bots don't have a client, the engine doesn't allocate this buffer for network messages.  When the engine function pfnClientCommand() is called with a command to execute on the client, the Half-Life engine tries to store this command in the buffer.  Since buffers were never allocated for fake clients (bots), the engine shuts down with the SZ_GetSpace error.  Leon will change this so that if the MOD (or add-on) tries to use pfnClientCommand() to send a command to a fake client, the function will just return to the MOD without doing anything else (since you can't send that command to a fake client anyway).
+
+botman
+
+--------------------------------------------------
+10/22/01 at 21:39:30  Reply by: maquor (countercrab@home.com)
+--------------------------------------------------
+Is an engine release the same as a new 1.1.0.X/4.1.0.X release?  Or is it something less frequent?
+
+--------------------------------------------------
+10/23/01 at 04:03:25  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+The engine releases come out when Valve releases a new server and client (i.e. when everybody is forced to upgrade to the latest version if they want to connect to Internet servers).
+
+The next time Valve makes a new client version available will be the new engine.
+
+botman
+

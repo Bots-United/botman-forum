@@ -1,0 +1,336 @@
+--------------------------------------------------
+Subject: Autowaypointing
+--------------------------------------------------
+08/30/01 at 00:21:01  Posted by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+I've been working on an autowaypointing system a loong time now. At the moment only real players lay down waypoints when they met the demands (i.e. distance, height etc) and the autowaypointer also predefines if that are 'door wpts', ladder wpts and so on. 
+
+However, isn't there a much easier way to map this? Not using a scan to scan every position of the map and such. But, a more faster and easier way. Like, as soon as the map loads, you will place 1 wpt at each 'goal' (or each starting position entity). And, then you run a scan. Like this:
+
+- Check 8 directions of 90 units far away. 
+- When not blocked, check if the position is 'on the ground'.
+- If so, then place a wpt.
+
+Now, you have to mark that wpt as 'checked' and then run the same loop at the 8 other waypoints you have added. This way you should be able to 'spread' waypoints around. The only difficulties would be steep grounds, ladders and other 'moving' brushes. But you should be able to create a global waypoint grid fast this way?
+
+Anyone got suggestions , ideas or add-ons for this? i'd like to add such a system later, as i think that would save a lot of autowaypointing, and it would practicly make all maps playable at once (or you use both auto-waypointing systems and the player will fill up the spaces that haven't been autowaypointed as above)..
+
+
+--------------------------------------------------
+08/31/01 at 13:37:26  Reply by: KloBBy (KloBBy2000@hotmail.com)
+--------------------------------------------------
+sounds kewl.
+I think... I think its pretty hard to implent, is'nt it?
+RealBot would've gotten much further whith this thingy implented!
+
+--------------------------------------------------
+08/31/01 at 15:58:04  Reply by: theimann (killaruna@botepidemic.com)
+--------------------------------------------------
+Why do you want to have all waypoints ready at the beginning of the map? It is far more complex than adding them one after one whenever a new position is reached (as you described). The second solution is more realistic as well since human players don't know every corner of a new map either when they first play it.
+You could improve that system by programming a roaming mode for the bots that they use when they can't reach their target with waypoints and - most important - let bots place waypoints in this mode as well. This way maps will get autowaypointed much faster. I'm currently experimenting with a similar kind of autowaypointing and am getting very good results.
+
+Tobias
+
+--------------------------------------------------
+09/03/01 at 10:09:23  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+the advantage is, that it shows the results immidiatly. The auto-waypointing by bots is also a very good idea, and i thought about that too. However, i have to figure out a 'smarter' and much less cpu intensive way to let bots roam on CS...
+
+
+
+--------------------------------------------------
+09/03/01 at 12:20:07  Reply by: William (william@cgf-ai.com)
+--------------------------------------------------
+just nagging:
+
+QUOTE:
+The second solution is more realistic as well since human players don't know every corner of a new map either when they first play it.
+
+
+
+You are assuming the player prefers realism over other features. 
+If I play against bots on a new map, I prefer the bots to play to the best of their abilities, so I can learn the map quickly from their actions (by following another bot to the enemy base, for example).
+
+Another realism vs. gameplay example: probably the best PodBot feature is the "newround" command, enabling me to maximize training time. There's no way I can get humans to do that for me ("hey guys, would you mind killing yourself so I can give my rush another try").
+
+William 
+
+[modified on 09/03/01 at 12:20:07]
+--------------------------------------------------
+09/03/01 at 15:42:50  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+Heres a question...
+
+Is it easy to go through each co-ordinate (Like starting -9999, -9999, -9999) 
+
+If that point is INSIDE a 'wall' i.e. (not in a room between walls , I mean inside a wall) and skip that coordinate to the next 32 or 100 units. 
+
+Some1 could make a program for this somehow. Of course maybe the amount of coordinates skipped could be configured so a lower amount of co-ords skipped will give better results but will take longer to process. Vice versa for bigger co-ord skipping.
+
+It WILL take ages I know! Lets say each coordinate could go like 
+
+(first -10000, -10000 for convienience sake) then.. 
+
+9900,-10000,-10000 then 9800,-10000,-10000 and so on. 
+
+If you catch my drift... If then somehow a tested co-ordinate in the map is in the air and NOT inside a wall... 
+
+Find the floor at that point (somehow like decreasing the z co-ord until a wall was found) a place a neat waypoint.
+
+All the co-ord information can be found from a Bsp reader or decompiler to a map file.
+
+Damn weird idea but worth a try huh?
+
+[Modified to READ BETTER :)]
+
+[modified on 09/03/01 at 15:42:50]
+--------------------------------------------------
+09/03/01 at 16:31:25  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+The maps could be 8192 units across by 8192 units wide by 8192 units high.  If you only checked every 32 units (the width of the player), you would have to check a cubic space of 256x256x256.  That's 16,777,216 locations.  I hope you have a pretty fast CPU.
+
+A better method would be to start at a spawn point (perhaps given as an agument to the application) then use a flood fill algorithm to "fill" the map with waypoints.  As areas of the maps are checked, you could trace downward towards a blockable surface (like a floor) to find places where some waypoints could be placed.
+
+The biggest problem with this is that most of the waypoints won't be located where you want them to (i.e. waypoints more than likely will NOT be placed in the middle of narrow hallways).  You will need to make sure that each waypoint position is far enough from any blockable surface (walls, crates, fences, etc.) so that the waypoint would actually be reachable by a bot.
+
+This would take care of some of the waypoints on nice level surfaces that were easy to get to, but it wouldn't take care of waypoints that required more detailed navigation skills, such as narrow ledges or area where bots would need to jump across gaps to get from one location to another.  Some of these special cases could be taken into account, but it becomes very difficult to develop an algorithm that will handle all of these difficult areas.
+
+This doesn't even begin to handle things like navigation underwater (where you must surface periodically for air in areas where air is available) and it doesn't handle ladders, or areas where bots must use buttons to activate doors or lifts (elevators).
+
+Once you have a grid of "valid" waypoints laid out in a map, you could then begin the task of determining which of those positions was good or bad from a tactical standpoint (sniping, attacking, defending, etc.).
+
+I would definitely think you would want to use some sort of standalone tool for doing something like this (similar to Mr. Elusive's WinBSP application).  I would imagine that you would also like to have some sort of map viewer to allow you to display the level and waypoints.  This would give you a little quicker way of testing out methods of marking locations in a map without having to keep going in and out of Half-Life to display the map and waypoints.
+
+botman 
+
+--------------------------------------------------
+09/04/01 at 06:35:01  Reply by: theimann (killaruna@botepidemic.com)
+--------------------------------------------------
+QUOTE:
+
+The biggest problem with this is that most of the waypoints won't be located where you want them to (i.e. waypoints more than likely will NOT be placed in the middle of narrow hallways).
+
+
+
+This is very true. I experimented with placing waypoints in a uniform grid (which you would probably have to when using floodfill) of 128 units size in boot_camp and many waypoints were completely unusable. Placing the wps only when a player/bot has reached a new location is definitely better.
+
+QUOTE:
+
+This doesn't even begin to handle things like navigation underwater (where you must surface periodically for air in areas where air is available) 
+
+
+
+That one's not so complicated as it seems: if you are using A* for pathfinding you can force a dive-up by strong penalties in the cost function. Handling buttons in combination with doors or platforms is trickier though, the easiest solution IMO is to add a higher layer of pathfinding (hierarchical solution) where you can define paths of arbitrary complexity (to reach location x, first go to button y and press it).
+
+QUOTE:
+
+I would imagine that you would also like to have some sort of map viewer to allow you to display the level and waypoints.  
+
+
+
+Agreed. I'm most scared of displaying the level here (parsing BSPs :-o ), the waypoints are pretty easy to display with OpenGL. But unfortunately they are not so interesting without seeing the environment...
+
+Tobias
+
+--------------------------------------------------
+09/04/01 at 06:57:37  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+Ok. I am convinced that doing a scan like this (fill) is not handy at all. The approach of tobias sounds nice. There is one thing i don't get yet, that is how to make bot lay wpts, and fill the map with it? I think this is quite odd. I mean, in CS you should make a 'waypointless' bot roaming around, and getting to places which are not waypointed yet. Isnt this useless? i mean, if you can get eventually a bot everywhere.. you should probably won't even need wpts...
+
+the only sollution i can think of, is laying wpts in a specific order and transport a bot from every last layed down wpt. Then try certain positions (like filling, but then the bot also checks if he can reach it). The bot will try to get everywhere this way, and place only wpts it could go. (als on narrow spaces/ledges!)
+
+It will look odd to have such a 'scanner bot' go around the level (would be nicer to give the bot speed > 500 and make it move really fast, as if it is a quick scanning bot). 
+
+
+--------------------------------------------------
+09/04/01 at 07:16:13  Reply by: theimann (killaruna@botepidemic.com)
+--------------------------------------------------
+QUOTE:
+
+if you can get eventually a bot everywhere.. you should probably won't even need wpts...
+
+
+
+
+I can indeed get my bot to most places that lay on the same level (i.e. no ladders, lifts etc) without waypoints. However, using waypoints has the following advantages:
+
+1. Even if bots can reach locations without waypoints, they do it faster and much neater with them.
+2. You can estimate how long it will take you to get to your target if you are using wps.
+3. You can build a tactical model of the map and use that to pick good locations.
+
+You don't have to build a special "scannerbot" to get to new positions, sometimes discovery of new location happens very naturally: I suppose when involved in combat your bots do circle-strafe and try to get in best distance for their weapon - how many new positions would you reach only using that?
+
+Tobias
+
+--------------------------------------------------
+09/04/01 at 07:56:31  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+no, thats what not what i meant.
+What i mean is, when you start a level, (CS!) and no wts are used. Assuming the bots lay down wpts.
+
+Now, how to get the bots everywhere? on simple maps, this could work. But, you simply wont get the bots everywhere.  This will result in an incomplete table set of waypoints! So , you cannot create paths at the end.
+
+What i ment was when you do get bots everywhere, you prolly wont need wpts. Ofcourse they are handy to use. But, that is because we cannot get bots everywhere we want without using them...
+
+
+--------------------------------------------------
+09/04/01 at 10:29:10  Reply by: theimann (killaruna@botepidemic.com)
+--------------------------------------------------
+There isn't so much difference between DM and CS levels. You are right that autowaypointing for CS is more difficult than for DM, because in DM players run around looking for enemies and waypoint the map neraly on their own. In CS, a player as terrorist will expect the bots to turn up at the hostage location at some point and won't want to run through the entire map looking for enemies.
+However, I think that most CS maps are well-playable without waypoints for the first round and that bots can roam sufficiently to establish enemy contact or even reach the target location. From then on, fights will start, bots will strafe, more wps will get laid... Regarding incomplete maps: Of course you don't get all locations waypointed in the first round. But that's not necessary - wherever human players are there will be waypoints as well and bots will know the most used routes. You still can add additional wps in later rounds (I hope you designed your system like that - always learning)...
+QUOTE:
+
+What i ment was when you do get bots everywhere, you prolly wont need wpts. 
+
+
+
+Yes you do: Even if my bots can reach most locations by roaming (without wps) they don't get their neither straight nor very cleverly, they just make it somehow after some time. But it wouldn't be fun to play against bots with a navigation like that. I still need waypoints for effective and thus convincing navigation.
+
+Tobias
+
+--------------------------------------------------
+09/04/01 at 10:35:12  Reply by: Tub (tubpc@authmann.de)
+--------------------------------------------------
+even if you can get a bot everywhere, that doesn't mean that waypoints are useless.
+
+- using waypoints can save a lot of cpu time
+- waypoints can contain other data that cannot be put somewhere else (like experience / danger / etc)
+- with waypoints bots don't have to check where they can move again and again
+
+
+about water / buttons etc.. do you know a counter-strike bot that does complex things like dive, do something and get up for water in time? Or push a button, then go through a door?
+and.. do you know a counter-strike map that needs such things? (I'm not talking about custom maps now)
+Button usage might be added later, maybe it has to be placed manually. As far as I understood stefan this autowaypointing is just for laying waypoints, nothing more. Should save the user some time for walking through the level and shortens the bot's learning period.
+
+
+I'm not saying this autowaypointing will work and end all problems. I doubt that the resulting waypoints will be as "good" as waypoints that were layed down manually.. but I think this idea sounds nice, and you should at least give it a try.
+
+
+--------------------------------------------------
+09/04/01 at 11:19:06  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+definatly i will give it a try.
+I think it should be like botman proposed. Using a fill manner (actually like i started the topic). 
+
+What i want, is (what most users want btw) to have a map and play! I dont think many people really want to teach bots first. What if (like William said) the player doesnt know the map? He will try to learn from bots, but they dont know the map.
+
+Also, i don't want to use any 3rd party program. The way i want to auto-waypoint the map should be fast, easy, and sufficient enough. Later on the player can always fill up the gaps. Maybe the gap filling can be even done by some mathematical functions like searching for certain gaps (e.g. check the distance between wpts, then check if the middle of that traceline is empty (no wpt near) and then add one.
+
+At the end, i just want it to be able to have a bot. You can load up every map. And you don't need any program to scan the map first. The bot program/dll will do it for you automaticly. It should clearly inform the player that it is doing so. And give advice to the player too.
+
+Also, tracelines are not sufficient enough when checking spaces and hallways. I have an idea in my head to fix this 'small entrances/hallways' with filling waypoints. But what really concerns me is the fact that some connections between wpts are really not good at all. While using tracelines it 'seems' to be good.
+
+Even tracing 3 lines (like head, body, feet) won't solve the problem. Like some stairs may mess up this check. 
+
+So what could solve this? I think a scanner bot (yes, i like that word :D ). After thinking things over i think it would be doable to :
+
+1. Fill the map with wpts
+2. Do a precalculation
+3. Test all paths to any given location using a scanner bot
+
+Locations are:
+- door entities
+- ladder entities
+- spawn points
+- objectives
+
+So, when a scanner bot starts it will try to go from ALL positions to all other positions. I know you can let a bot start at any given location. So you can easily go from spawn A to B and then when it reached B you could 'teleport' the bot to an other spawn (C) and then go to B again to check if it works.
+
+The bot should walk the found path (it should find a path, if not, then it is broken somewhere and somehow this needs to be fixed). It should discover some 'faulty' connections. And will add flags to those wpts or whatever. 
+
+What also is an obstacle, is that rotating doors will make some connections invalid when opened! Like in assault, you can move to specific areas using a path when the door is closed. But when opened, the path is not valid. Using tracelines to double check is to slow. So that also needs work.
+
+
+--------------------------------------------------
+09/04/01 at 12:34:34  Reply by: Darkhunter (darkhunter@hackermail.net)
+--------------------------------------------------
+Well i think it is a very good idea
+but it is very hard to code :/
+
+Let me/us know about your progress :)
+
+--------------------------------------------------
+09/09/01 at 21:17:09  Reply by: DarthBobo (DarthBobo@swarm.edgegaming.com)
+--------------------------------------------------
+I have been thinking about doing something similar for a while now, but have had no time :{
+
+I came to the conclusion that the fastest way to do it would be to process the BSP tree. This way you don't have to worry about places the bot can't get to as they won't be stored in the tree. The tree format will work well for A* search, and the nodes contain the information to allow easy measurement of distances.
+
+If you are determined to use the bots movement, which will be much slower as you can't process the whole BSP tree before you start the players, then I suggest you check out dejstruikers (bad spelling there ;) algorythm; it is a very good for this kind of navigation.
+
+--------------------------------------------------
+09/10/01 at 14:05:19  Reply by: theimann (killaruna@botepidemic.com)
+--------------------------------------------------
+QUOTE:
+The tree format will work well for A* search, and the nodes contain the information to allow easy measurement of distances.
+
+
+
+Not really I'm afraid... The BSP tree has got nothing to do with a tree (or rather graph) you could use for navigation. BSP nodes are not the same as waypoint-graph-nodes, they won't be of any use, not even for measurement of distances.
+BSP trees determine the visibility of polygons in the engine, i.e. the order in which the polygons are drawn. Extracting waypoints from BSPs is probably the most difficult method you can chose for autowaypointing.
+
+Tobias
+
+--------------------------------------------------
+09/14/01 at 11:36:11  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+instead of doing a total autowaypointing of a map in one routine, i thought of doing the most easiest , yet most to be done waypointing. So, in short, i put waypoints where i am sure they are correct. Like on a bomb spot, on a starting position. In the center of a ladder, a door and so on.
+
+This way the 'waypointer' only needs to connect the waypoints that have been added already by hand.. 
+
+
+--------------------------------------------------
+09/14/01 at 13:58:27  Reply by: theimann (killaruna@botepidemic.com)
+--------------------------------------------------
+For the ladders it's better to place two waypoints, one at the top and one at the bottom. Here's the code I'm using:
+code:
+
+posUp = (pOther->pev->absmax + pOther->pev->absmin) * 0.5;
+posUp.z = pOther->pev->absmax.z;
+posDown = posUp;
+posDown.z = pOther->pev->absmin.z;
+posUp.z += 36;
+posDown.z += 36;
+n.init( posUp, NAV_F_LADDER_TOP, 0 );
+mapGraph.addNavpoint( n );
+n.init( posDown, NAV_F_LADDER_BOTTOM, 0 );
+mapGraph.addNavpoint( n );
+
+
+
+Tobias
+
+--------------------------------------------------
+09/15/01 at 13:40:29  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+thx, i thought about doing something like that, but at the moment i am not concentrated on ladders at all :)
+
+Anyone thought of the idea to 'accelerate' when turning? i mean, when players turn around, they need to 'start moving the mouse' and when finally 'started' they have 'more speed'.. I had some easy code in my BotChangeYaw code for this and worked REALLY well! But, it needs tweaking, with the right balances this is could really make bots more humanlike, the only problem is that you have to make exceptions. Like for doors , or ladders, or any narrow places.
+
+
+--------------------------------------------------
+09/18/01 at 12:55:30  Reply by: William (william@cgf-ai.com)
+--------------------------------------------------
+Stefan, are you refering to implementing momentum and inertia (traagheid in Dutch)?
+
+I've experimented with that for movement (but removed it because I would need to change the way bots take corners: they'd need to steer earlier than they do now).
+I use inertia in the aiming system: any recent movement causes inaccuracy that is dampened away over time.
+
+William
+
+--------------------------------------------------
+09/20/01 at 03:35:14  Reply by: ARES (j.sdubbelboer@freeler.nl)
+--------------------------------------------------
+I think the best way to let the bots waypoint maps is this way:
+
+When a bot spawns it will place a waypoint at his position. Then it will spawn waypoints around him. Then it will recalculate the fastes path matrix. Then find the waypoint closest to it's target and then move to that waypoint. Then again place waypoints around him. And recalculate again. And so on.
+
+I'm now working on such a system. If you want to use this you have to change the floyd algo because else it will be way to slow.
+
+--------------------------------------------------
+09/21/01 at 11:03:37  Reply by: ARES (j.sdubbelboer@freeler.nl)
+--------------------------------------------------
+I have just made a good algorithm that lets the bots waypoint maps. I have tested it with the tfc map well and the bots waypointed the whole down level of the base. It it just if they are exploring the map.
+
+If you would like to see what I made. You can mail me and I will send you the dll so you can see for you self. 
+

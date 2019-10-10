@@ -1,0 +1,723 @@
+--------------------------------------------------
+Subject: getting rid of bots stucking in each others
+--------------------------------------------------
+06/10/02 at 14:10:23  Posted by: W@NJIK (wanjik@voila.fr)
+--------------------------------------------------
+  I really can't understand why fakeclients are stucked when they touch other clients (or fakeclients), instead of sliding like normal clients. The strange thing here is that movetype and solid properties are exactly the same for both (movetype_walk and solid_slidebox if I remember well) so what's wrong? Is it because fakeclients are not handled like clients? Is there a way to correct that?
+  Navigating in squads is a real nightmare for bots because of this, it becomes a whole mess when they are too close from each others, even with a good player avoidance code.
+
+--------------------------------------------------
+06/10/02 at 15:25:06  Reply by: CountFloyd (countfloyd@botepidemic.com)
+--------------------------------------------------
+This is soooo true ! It's a fucking nightmare and although I've got the engine source I have no clue yet. Did you add a Touch function to the Bots ? Well I did and it's not even called half of the time when this happens ! I suspect that if Bots get stuck inside each other and you're trying to move them away, they'll collide with the outer bounding box again and shift inside each other once more. Right now the only halfbaken solution I see is to use a workaround like HL did with the monster unstuck code. If anybody knows another working solution I'd love to see it posted here. 
+
+--------------------------------------------------
+06/10/02 at 15:44:55  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+This sounds like a Counter-Strike only thing.  I've never seen this problem with Half-Life deathmatch, TFC, Frontline Force, DMC, HolyWars, OpFor, etc.
+
+Are any of you other bot developers that do bots for MODs OTHER than Counter-Strike aware of any bots getting "stuck" to bots or players?
+
+botman
+
+--------------------------------------------------
+06/10/02 at 16:20:22  Reply by: CountFloyd (countfloyd@botepidemic.com)
+--------------------------------------------------
+Just to make it clear, Bots never get stuck inside players, players never get stuck inside Bots (though I know for sure that Players could get stuck inside each other in old versions of CS like 5.2 and earlier). AFAIK right now it's a Bot-only thing. I suspect it *would* happen in any HL Mod but it doesn't because the mentioned MODs are mostly deathmatch where no squads are formed and you get killed before even having the chance to move near to the bounding box. Is this a known problem in the Quake2 Community (I'm talking about the SV_RecursiveHull function) ? Anyway, let's see your opinions !  
+
+--------------------------------------------------
+06/11/02 at 03:40:53  Reply by: Onslaught (freedombot@yahoo.com)
+--------------------------------------------------
+g_engfuncs.pfnRunPlayerMove( pEdict, pBot->move_angle, pBot->f_move_speed, pBot->strafe_speed, 0, pEdict->v.button, 0, pBot->msecval);
+
+Does it have something to do with the pBot->f_move_speed? Just guessing...
+
+
+--------------------------------------------------
+06/11/02 at 04:30:52  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+somehow i would say the bounding boxes are not set right or checked right in CS. I didnt see any bot getting stuck at any other HL mod yet. Maybe that was coincidence though.
+
+Coding a 'prevent getting stuck in other players' thingy also does not always solve the problem. 
+
+somehow the bots get really stuck inside each other so even when they want to jump, move back ,etc it wont matter at all. Its one of the most annoying bugs i have in my bot (always have been) and i already given up on fixing this until someone has a totally new idea how to fix this.
+
+[modified on 06/11/02 at 04:30:52]
+--------------------------------------------------
+06/11/02 at 05:20:43  Reply by: BrianL (halfkiller@hotmail.com)
+--------------------------------------------------
+This is the code I use to avoid from touching/running into another player.
+
+code:
+
+void CheckMovement (bot_t *pBot)
+{
+edict_t *pEdict = pBot->pEdict, *pEnt = NULL; 
+
+ while ((pEnt = UTIL_FindEntityInSphere(pEnt, pEdict->v.origin, RANDOM_LONG(55,60))) != NULL) 
+ {
+   if ((FStrEq(STRING(pEnt->v.classname), "player")) && (pEnt != pEdict) 
+   && (FInViewCone(&(pEnt->v.origin + pEnt->v.view_ofs), pEdict) 
+   && FVisible((pEnt->v.origin + pEnt->v.view_ofs), pEdict)))
+   {
+       if (RANDOM_LONG(0,1))
+       {
+         // Slow-down some hehe...
+         pBot->f_move_speed = pBot->f_max_speed/1.5;
+       }
+
+       if (!pBot->strafing)
+       {
+         bool chkLeft = BotCheckWallOnLeft(pBot), chkRight = BotCheckWallOnRight(pBot);
+
+         if (RANDOM_LONG(1, 100) <= 40)
+         {
+            if (RANDOM_LONG(0,1))
+              {
+                  if ((pBot->strafe_left_time < gpGlobals->time) && (!chkLeft)) {
+                         pBot->strafe_left_time = gpGlobals->time + (RANDOM_FLOAT(0.2,0.4));
+                  }
+              }
+              else
+              {
+                  if ((pBot->strafe_right_time < gpGlobals->time) && (!chkRight)) {
+                     pBot->strafe_right_time = gpGlobals->time + (RANDOM_FLOAT(0.4,0.2));
+                  }
+              }
+
+            pBot->strafing = true;
+         }
+       }
+   }
+ }
+}
+
+
+
+Thats what I've came up with but it might not always work in CS (never tested in cs).  You would need to change it abit to make it work in yours.
+
+[modified on 06/11/02 at 05:20:43]
+--------------------------------------------------
+06/11/02 at 14:20:10  Reply by: W@NJIK (wanjik@voila.fr)
+--------------------------------------------------
+To Count Floyd:
+actually it seems that bots get stuck in any player, fakeclient or not. Try to comment any player avoidance code in your bot and stand in their way, they should freeze as soon as they touch you.
+
+To Brian L:
+no matter how good is your code, in a squad the bot has players everywhere around him so it's impossible to avoid them all.
+
+I didn't realized it was a CS specific thing, it seems all we can do here is hope for a bug fix.
+
+--------------------------------------------------
+06/12/02 at 11:24:25  Reply by: CountFloyd (countfloyd@botepidemic.com)
+--------------------------------------------------
+QUOTE:
+
+actually it seems that bots get stuck in any player, fakeclient or not. Try to comment any player avoidance code in your bot and stand in their way, they should freeze as soon as they touch you
+
+
+
+Doesn't happen here though I tried hard. However I'm not using CS 1.4 so it could be very much possible.
+
+QUOTE:
+
+This is the code I use to avoid from touching/running into another player
+
+
+
+Well thanks but this is very, very basic code.
+
+QUOTE:
+
+i already given up on fixing this until someone has a totally new idea how to fix this
+
+
+
+Don't give up that quick ;)
+I know 2 things which help a lot but it's just not 100% ->
+1. Add a Touch Funktion to your Bots and have them move away from touched players i.e. setting the velocity away
+2. Let them duck/stand up very fast ! Somehow this seems to help in a lot of stuck situations. Perhaps this is a ducked hull vs. standing hull problem from the very beginning because it never seems to happen with the ducked hull (if you weren't already stuck before)
+
+I think we're on to something here...
+
+
+
+
+
+
+
+--------------------------------------------------
+06/12/02 at 12:33:53  Reply by: mattkimbo (mattkimbo@yahoo.co.uk)
+--------------------------------------------------
+Think it is todo with the msec value, I don't create bot's for counter strike, but I know the method used in botman's HPB_Bot template is not acurrate enough (I thought it was pretty damn accurate, but following a conversation with Jehannum, it appears it's not) and this will have an effect on the collision boxes.
+
+--------------------------------------------------
+06/12/02 at 12:48:14  Reply by: W@NJIK (wanjik@voila.fr)
+--------------------------------------------------
+I already tried to remove the "advanced bot framework" and use the exact gpGlobals->time difference between two frames when I call pfnRunPlayerMove but this doesn't help
+
+--------------------------------------------------
+06/12/02 at 13:19:37  Reply by: W@NJIK (wanjik@voila.fr)
+--------------------------------------------------
+QUOTE:
+Doesn't happen here though I tried hard. However I'm not using CS 1.4 so it could be very much possible.
+
+
+Just tried it on 1.4 and you're right, clients and fakeclients can't be stucked, it's only fakeclient vs fakeclient (the last time I tried that was on another version, so maybe this has been fixed, or maybe I dreamed)
+
+QUOTE:
+
+I know 2 things which help a lot but it's just not 100%
+
+
+these 2 things are made to unstuck the bots, I'd really like to PREVENT this to happen :)
+
+
+--------------------------------------------------
+06/12/02 at 14:55:03  Reply by: CountFloyd (countfloyd@botepidemic.com)
+--------------------------------------------------
+QUOTE:
+
+think it is todo with the msec value
+
+
+
+Doubt it. I'm using code similar to Leon's since quite a while and it didn't have any effect on the stuck bug
+
+Argh I just wrote a really long answer here but the damn perl script sent it to the NIL device instead and it was gone after refreshing ! Real reply tomorrow ;) 
+
+
+
+
+
+--------------------------------------------------
+06/13/02 at 04:14:53  Reply by: CountFloyd (countfloyd@botepidemic.com)
+--------------------------------------------------
+Ok, another day another try ;)
+
+From my experience avoiding of bouncing into each other is almost impossible with varying framerates etc. for example you can't just feed the Bot with a movespeed of i.e. 120.0 and expect him to move that distance within 1 second, there are so many factors like own velocity, friction, gravity and client prediction amongst others.
+If a nearby waypoint is occupied by a player I already have the Bots go for alternative waypoints or have them pause for a while, still they can run into each other because of crossing paths. To catch this I'm using the Boid concept of separation to have them avoid each other, but even this doesn't completely gets rid of it. I fear the only working solution would be to separate them to very large distances but of course this is no real option... 
+
+--------------------------------------------------
+06/13/02 at 08:34:05  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+Just my own experience.
+
+It seems to be a fakeclient vs fakeclient problem only.
+I saw it happen at least in the Counter-Strike and Team Fortress Classic MODs, since they are the two team play MODs my bot can support.
+Currently I am minimizing the situations where it can occur with an obstacle avoidance and unstuck code, that does work well enough in my opinion.
+I did some little bit of investigating once a while ago, but I was unable to find a way to completely prevent it from happening.
+The last interesting point I was investigating on was a parameter I saw in the CS config.cfg file that seemed to set the model boundaries (I don't have CS installed on the computer I'm writing this on, so I can't tell you what it was, sorry). It seemed to fix the problem with CS 1.3 but it looks like it's back with CS 1.4. Anyhow I gave up because I have lots of more important things to do with my bot right now (memory and such). When I get back home I will try to have an eye on this and do some testing. I'll post my results here if it works.
+
+[edited: I guess this problem is less important for me than for you waypointed bot coders since my bots don't use waypoints, actually it occurs very rarely with my bots.]
+
+[modified on 06/13/02 at 08:34:05]
+--------------------------------------------------
+06/14/02 at 02:39:32  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+I dont think it matter for waypointed or unwaypointed bots, the problem remains.
+
+It indeed seemed to be fixed in CS 1.3 though. If its not CS only it probably is a bug in the engine?
+
+--------------------------------------------------
+06/14/02 at 03:53:49  Reply by: BrianL (halfkiller@hotmail.com)
+--------------------------------------------------
+Don't worry about this anyway,  another update is coming in few months or so (Engine update w00t) its gonna be crazy since all the MOD's will need to be updated to this new updated engine, and hopefully that problem will be fixed dunno though.
+
+--------------------------------------------------
+06/14/02 at 05:10:50  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+yeah, i would like to see the engine update aswell. However, some things confuse me. CS CZ comes with a heavily updated engine, but they say the 'downloadable upgrade' for mod users does NOT contain this updated engine. So if valve comes with their updated engine i wonder what is different?  It would be unwise to have 2 different engines at the end, in fact i cant imagine they would do that. 
+
+Anyway, the engine upgrade really is cool due it will extend the life of HL with a big deal, hopefully its updated as much so it should compete to Q3 or something. 
+
+Oh well, even if it does not compete graphicaly to the Q3/Wolfenstein engine it would not matter. In the end its all about gameplay ;)
+
+--------------------------------------------------
+06/15/02 at 09:38:55  Reply by: Onslaught (freedombot@yahoo.com)
+--------------------------------------------------
+Currently, I run this function whenever a bot comes close with an edict:
+
+void Repel(bot_t *pBot,edict_t *collision)
+{
+      Vector tmp = (collision->v.origin - pBot->pEdict->v.origin).Normalize();
+      pBot->pEdict->v.velocity = -tmp * pBot->f_max_speed;
+}
+
+I think this works quite fine.
+
+--------------------------------------------------
+06/15/02 at 14:18:42  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+despite the unstuck routines, the fact remains they never should get stuck at all. I have added some code (can be disabled by the user though) which will kill any bot which is really stuck for 6 seconds. You can adjust the amount of seconds or turn it off. This really saves me a lot of 'darn those #*$&# bots again stuck in each other' feeling..
+
+--------------------------------------------------
+06/15/02 at 15:16:51  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+Did some testing, and I think I'm on something here.
+
+What happens when a player touches another player is that he <b>slides</b> along. Provided that, I assume his pev->velocity vector gets changed by the engine when a (his ?) Touch () function gets called, to some vector that is <b>parallel</b> to the other entity's bounding box plane surface. Someone with access to the engine's source code could confirm/infirm (isnt't it Markus ?)
+
+The only reason with which I can explain this behaviour doesn't happen with our fakeclients is because we bot coders <b>must</b> be setting our bots' pev->velocity at each frame, <b>after</b> the engine made that correction. This <b>overwriting</b> the correct vector value (parallel to the hit entity bounding box plane surface).
+
+If I intercept my fakeclient's Touch () function and set the velocities accordingly <b>by hand</b>, I get the exact same behaviour as humans. The bug is gone.
+
+Anyway I think it should not be necessary to do that. I will try another thing.
+
+
+--------------------------------------------------
+06/15/02 at 18:01:52  Reply by: Onslaught (freedombot@yahoo.com)
+--------------------------------------------------
+QUOTE:
+despite the unstuck routines, the fact remains they never should get stuck at all. I have added some code (can be disabled by the user though) which will kill any bot which is really stuck for 6 seconds. You can adjust the amount of seconds or turn it off. This really saves me a lot of 'darn those #*$&# bots again stuck in each other' feeling..
+
+
+
+
+my code above, repels the two bots even before they begin to get stuck with each other, this means that the two can be really close to each other, but should never get stuck (except in tight spaces like the half-opened door in the bombspot in de_dust). That is why I only call the function above if a client comes *really* close to the bot. 
+
+
+[modified on 06/15/02 at 18:01:52]
+--------------------------------------------------
+06/16/02 at 11:20:46  Reply by: W@NJIK (wanjik@voila.fr)
+--------------------------------------------------
+To Pierre-Marie Baty:
+I never modified the velocity vector of any bot, the only thing I do to make the bots move is to call g_engfuncs.pfnRunPlayerMove which has a move_angle parameter. I think the engine calculates the velocity with this move_angle depending on friction, gravity, etc...
+
+Also I'm a bit confused, some say that this happens in CS only, others saw it in other MODs. Could someone clarify that?
+According to Pierre-Marie, it's not CS related (btw Pierre-Marie you probably meant your bot is for CS and DMC, not TFC)
+
+--------------------------------------------------
+06/17/02 at 05:42:30  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+i dont think the pev->velocity has anything to do with it. Because when you call runPlayerMove() the engine will calculate the pev->velocity out of the move_speed, strafe_speed and jumping. So AFTER that (or in that function). I assume that the collision detection is checked there to adjust the velocity in order not to go into a wall/player.
+
+If this was not true, then the bots would also get stuck in real clients (which i have never seen happening, nor experienced even when i run into my bots) or against moving objects (boxes in cs_zoption for example). 
+
+--------------------------------------------------
+06/17/02 at 07:44:22  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+I tell you what I saw. One can explain bots don't get stuck in real clients because real clients get their pev->velocity modified correctly to prevent that. I have no clue why this does not happen with walls. Again, I saw it happen in CS *AND* TFC. Therefore, the method I tried to prevent that seems to work. Make your bots draw a beam representing their pev->velocity when they get stuck, you'll see what I mean.
+
+W@NJIK -> my bot is for CS, TFC, HL deathmatch, DMC, OpFor and Azure Sheep.
+
+
+--------------------------------------------------
+06/17/02 at 12:57:48  Reply by: mattkimbo (mattkimbo@yahoo.co.uk)
+--------------------------------------------------
+If the bot does this in Team Fortress, I really believe that it is the msec function. Other wise it can only be the source code... Think about it, the erronious varible is passed in g_engfuncsRunPlayerMove. (Just a theory anyway!!! lol) 
+
+--------------------------------------------------
+06/19/02 at 00:02:10  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+i tried the new msec thingy and i didnt notice any bots getting stuck in each other yet..could this be the fix?
+
+--------------------------------------------------
+06/19/02 at 00:24:43  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+yep i am convinced, look at the post:
+
+http://dynamic.gamespy.com/~botman/yabb/YaBB.pl?board=2&action=display&num=517
+
+and look for the 5th post or something, from Tobias about the bounding box... i believe the better msec calculation fixes this.
+
+--------------------------------------------------
+06/22/02 at 08:36:05  Reply by: mattkimbo (mattkimbo@yahoo.co.uk)
+--------------------------------------------------
+:) HURRAH!!!!! Now when I play a cstrike bot I won't have to smash my mouse into tiny pieces anymore!!!!! lol
+
+--------------------------------------------------
+06/22/02 at 08:55:04  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+which msec thingy did you try ? The one in the thread you posted the URL or another one ?
+
+
+
+--------------------------------------------------
+06/22/02 at 10:56:32  Reply by: mattkimbo (mattkimbo@yahoo.co.uk)
+--------------------------------------------------
+You can get the msec thingy @
+http://www.geocities.com/mattkimbo In the contents is a link called articles in the contents section. everything you need is in there. Have fun! :)
+
+
+--------------------------------------------------
+06/23/02 at 17:40:03  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+Looks like you did a great work here, Periannath34. Thanks a lot ! I'll try this as soon as I get my new hard disk (a few days now) ;)
+
+
+--------------------------------------------------
+06/26/02 at 11:46:40  Reply by: mattkimbo (mattkimbo@yahoo.co.uk)
+--------------------------------------------------
+:) Thank you! If any one needs ANY help with that stuff, just gimme an email at periannath34@hotmail.com (Just make sure you're email isn't a forward or I won't get it :) )
+
+[modified on 06/26/02 at 11:46:40]
+--------------------------------------------------
+06/27/02 at 16:52:29  Reply by: W@NJIK (wanjik@voila.fr)
+--------------------------------------------------
+This doesn't work for me, bots are still stucking in each others :(
+
+--------------------------------------------------
+06/29/02 at 09:03:27  Reply by: mattkimbo (mattkimbo@yahoo.co.uk)
+--------------------------------------------------
+Sure? The msec value is used to calculate the clipping boxes which are causing the bot's to get stuck (may have something todo with cstrike models), so if you have that algorithm working correctly (Making sure calculating the msec value is before the gp_engfuncRunPfnMove and that you only call it ONCE per cycle) the bot's shouldn't be getting stuck.
+
+The method of working out how long it took the computer to calculate this seems to be used in NPCs (Although I can't be 100% sure). Also make sure the msec byte does not hold a value of 255 +
+
+--------------------------------------------------
+06/29/02 at 09:09:19  Reply by: mattkimbo (mattkimbo@yahoo.co.uk)
+--------------------------------------------------
+Oh yeah, does the modified HPB BOT that is on my site with this algorithm work?? (Im not a cstrike fan) Does any body else who has used this method have any problems??
+
+--------------------------------------------------
+06/29/02 at 15:03:06  Reply by: W@NJIK (wanjik@voila.fr)
+--------------------------------------------------
+I removed all pfnRunPlayerMove calls in botThink()
+I tried calculating the msec value once every frame for each bot and once for all bots but they are still getting sucked
+moreover now the bullets get trough them
+
+--------------------------------------------------
+06/29/02 at 22:26:42  Reply by: Onslaught (freedombot@yahoo.com)
+--------------------------------------------------
+if the msec thing doesn't work then the only possible solution that i can think of is to modify the bot's velocity each frame (when other edicts are near) to prevent them from getting too close to each other.
+
+--------------------------------------------------
+07/01/02 at 04:37:10  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+Actually it is completely pointless to calculate the msec thingy without calling RunPlayerMove(), since the ''msec'' value IS the time on which the RunPlayerMove()-ment should extend. If you don't ever call one single RunPlayerMove() not only your bots won't move but they won't play a single animation, and no wonder the bullets pass through them.
+
+
+--------------------------------------------------
+07/02/02 at 01:33:43  Reply by: W@NJIK (wanjik@voila.fr)
+--------------------------------------------------
+:) of course I'm making calls to pfnRunPlayerMove, but I now make them in startFrame(), after the loop with botThink() is finished.
+To all CS bot makers out there: I'd really like to hear someone telling that it works with CS (to test it, remove all player avoidance and unstuck code and add lots of bots) because I'm starting to give up hope.
+
+--------------------------------------------------
+07/02/02 at 05:52:40  Reply by: mattkimbo (mattkimbo@yahoo.co.uk)
+--------------------------------------------------
+He's right, they still get stuck! However, I never noticed this with the earlier version of the HPB_Bot source on my site, but Template 3 = stuck bot's.
+
+The msec routiene is fine so you should stick with it though.
+
+My only question left is, as this anything todo with the CStrike player speeds? as in, the heavier the weapon, the slower the player. I'm wondering about this, becuase we always send a forward velocity and hope for cstrike to deal with it (just wondering).
+
+Next, has this anything todo with the fact we are not holding down a "forward key" for the bot? I know this dosn't mater in other mods, but maybe cstrike has problems with it.
+
+Next point: Gooseman HELP!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+--------------------------------------------------
+07/02/02 at 06:18:59  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+As I said before, this is not specific to Counter-Strike. For the Counter-Strike player speeds, remember that the engine itself sets the client's max speed in pfnSetClientMaxSpeed(), so you should pass pfnRunPlayerMove() this value, unless what your bots will run at constant speed (like the HPB bot does for Counter-Strike, for example.)
+
+No clue neither.
+
+--------------------------------------------------
+07/02/02 at 06:31:49  Reply by: msummers (msummers@scires.com)
+--------------------------------------------------
+I didn't have any luck with the msec code either. Perhaps we need to define "stuck". I would say a bot is stuck if there is no possible movement that will cause him to walk away from the bot he has run into. Some people might think their bots are stuck, whereas in reality you just have bad navigation code. I have had my bots walk into walls and not be able to move but they weren't "stuck". I guess my point is you probaly need bot the msec stuff and some bot avoidance code.
+
+Mike
+
+--------------------------------------------------
+07/09/02 at 07:34:27  Reply by: W@NJIK (wanjik@voila.fr)
+--------------------------------------------------
+Mike Summersgill:
+I think every bot maker who posted here have real stucking problems, you have to force the bots to jump or shoot them to unstuck them, it seems like the bots are 'inside' each others when they're stucked
+
+Here's what I found so far:
+I assume the msec parameter in pfnRunPlayerMove() is the amout of time the bot has to move for the frame TO COME, not for the last frame, so giving the time between the current and the last frame is not a very good idea when the framerate vary a lot. I prefer TheFatal's method which calculates the mean framerate over the last 0.5s .
+Anyway, both methods give the EXACT msec value if you have a constant framerate, but even under this condition, bots are still getting stucked.
+This should mean that it is not a msec issue...
+
+--------------------------------------------------
+07/09/02 at 10:22:50  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+More precisely, the bots are getting stuck because their respective <i>bounding boxes overlap each other</i>.
+
+You are right about the msec thingy, it represents the value of time over which the pfnRunPlayerMove() bot movement should <i>extend</i>.
+
+What I don't get right here, is why, and especially <i><b>where</b></i>, does the code differs between clients and fakeclients.
+
+Could someone try out a thing ?
+-> as soon as a bot touches a player or a bot (intercept DispatchTouch()), <i>invert</i> its velocity vector and add +/- 10 degree (don't call pfnRunPlayerMove that frame) ; and see if the bots still get stuck.
+
+I get interesting results, but I can't tell if it's because of that or because of any other unstuck code in my bot (there are in several places). Could you give your results ?
+
+
+[modified on 07/09/02 at 10:22:50]
+--------------------------------------------------
+07/09/02 at 13:37:05  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+If the bounding boxes are overlapping each other, I wonder if there's some msec limit that bots are exceeding that true clients will never send?
+
+Perhaps you can try clamping the msec value at different high and low numbers (5 <= x <= 250, 10 <= x <= 200, etc.) to see if limiting the range of msec values helps to keep the engine from allowing the bounding boxes to overlap.
+
+botman
+
+--------------------------------------------------
+07/09/02 at 16:08:43  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+I think Botm^H^H^H^Hbotman is right, everything happens as if the bot movement lasted a bit too long...
+Actually, where do those limits come from ?
+How do the game compute the right value for its real clients ?
+If one could lay his hands on this code, I bet our problem would be solved.
+One with access to the HL source code could tell us (no wonder who... ;))
+
+
+[modified on 07/09/02 at 16:08:43]
+--------------------------------------------------
+07/10/02 at 02:34:06  Reply by: W@NJIK (wanjik@voila.fr)
+--------------------------------------------------
+I already thinked of that once and tried setting the msec value to half of what it should be, this didn't help (but it's funny to watch the bots play in slow motion)
+
+--------------------------------------------------
+07/10/02 at 03:02:54  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+when their bounding-boxes overlap, you could always set one of the bot's origin to one further away so they do not overlap. To do this properly you'd need to get vector components betweentheir two origins and keep adding onto it until their bounding boxes won't overlap.
+
+--------------------------------------------------
+07/10/02 at 07:27:08  Reply by: W@NJIK (wanjik@voila.fr)
+--------------------------------------------------
+you should never change the origin by yourself, just think of what could happen if two bots are stucked near a wall...
+
+--------------------------------------------------
+07/10/02 at 19:56:18  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+Yes. I agree with W@njik on this point.
+Ideally one should never set a bot's properties using other means than the standard input commands (v.button, move_speed, strafe_speed and msec.)
+I know some bot authors 'cheat' -a well-known CS bot cheats for jumping for example- but that should not be the right way of doing things.
+
+What is the msec thingy, after all ?
+
+
+
+the duration of the movement of a fakeclient inside the current frame ? or
+
+the speed of this movement inside the current frame ?
+
+
+Not the same thing at all, because if msec is the duration, it has to be strictly equal to the current frame's time. And if it is the speed, it will determine the location where the bot will be after the current frame will be elapsed. Either too far, either too close.
+
+Grrrrrrrrrrrrrr
+
+--------------------------------------------------
+07/11/02 at 13:01:59  Reply by: W@NJIK (wanjik@voila.fr)
+--------------------------------------------------
+To Pierre-Marie Baty:
+I toyed a bit with the velocity vectors of bots (when DispatchTouch() is called), and even when you set the velocity vectors to make the bot run away from the other, they're still stucked!
+(but from where does this damn problem come from??)
+
+--------------------------------------------------
+07/11/02 at 14:33:44  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+Actually if they are stuck it doesn't matter what velocity they go at cos they are still stuck :P Thats why their origin may have to be set. You could get a previous origin within the bot, and once the bot becomes stuck, set the bots origin to its previous origin. But even then you don't seem happy with chaning origins... :p
+
+--------------------------------------------------
+07/12/02 at 02:11:09  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+Well, your method means solving a bug by a cheat, cheesy ;D
+You were right W@njik, that was my unstuck code :(
+If we could find a way to PREDICT IN ADVANCE that the Touch() will get called in the following frame, I guess the velocity thingy would work. Anyway I wish someone could tell us, definitely, WHAT is this msec supposed to be EXACTLY.
+
+
+--------------------------------------------------
+07/12/02 at 10:34:11  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+They'll stick if they're velocity vectors are going to collide from their origins :p
+
+And ..Well if you can't find an answer, cheat!
+
+--------------------------------------------------
+07/12/02 at 11:12:11  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+Pupil Cheesemonster, you'll copy 100 times on the blackboard:
+I won't cheat I won't cheat I won't cheat I won't cheat I won't cheat I won't cheat I won't cheat I won't cheat I won't cheat I won't cheat I won't cheat I won't cheat I won't cheat I won't cheat I won't cheat I won't cheat I won't cheat I won't cheat I won't cheat I won't cheat I won't cheat I won't cheat I won't cheat I won't cheat I won't cheat I won't cheat I won't cheat 
+
+[btw, you're wrong, the bots don't need to face each other exactly to get stuck.]
+
+
+--------------------------------------------------
+07/12/02 at 13:30:34  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+yeah doh.. I feel a dunce now ;D
+
+[modified on 07/12/02 at 13:30:34]
+--------------------------------------------------
+07/12/02 at 19:14:55  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+Well, now I am certain :
+
+The fact that bots get stuck into each other does depend on the msec thing.
+
+The msec parameter in pfnRunPlayerMove is the amount of time in milliseconds the movement will extend.
+So ideally it should be equal to the remaining time before the end of the current frame.
+
+Now, about the bounding boxes :
+The bounding boxes of an entity are only calculated, thus only valid and only exist, during the elapse of the pfnRunPlayerMove. The proof is that if you don't call pfnRunPlayerMove for your bots, you get "ghost" entities that you can walk across, whereas your bots still own them (i.e. these are not "orphans" entities).
+
+So, my conclusion :
+When bots get stuck into each other, it has to be at a certain time where at least one of the bot's bounding boxes are "disabled". Thus it has to happen at some instant when the msec value is insufficient to cover the rest of the frame's duration.
+
+One could now think that it would be sufficient to force msec to a high value to prevent this. No. In this case, you get "overlapping" pfnRunPlayerMove calls for the same entity. And when this is the case, the second pfnRunPlayerMovement (overlapping the first because starting when the first one isn't over) seems just to be ignored by the engine. That's the "slow motion" of the bots you can see when you feed pfnRunPlayerMove with 255 as the msec value. And in this case, there is also a "gap" between two non-overlapping pfnRunPlayerMoves.
+
+The only solution I can see would be to ensure each frame elapses in EXACTLY the same amount of time.
+
+Impossible !
+
+Comments are welcome... :(
+
+
+
+[edited: here's my method for calculating the msec]
+
+I defined msec as a global variable, since obviously its value is the same for all bots in a given frame.
+
+Then, at the end of StartFrame (),
+code:
+
+      msec = (gpGlobals->time - previous_time) * 1000; // save msec value used for bot movement
+      if (msec > 255)
+         msec = 255; // bound it to 255 max
+
+      previous_time = gpGlobals->time; // previous time gets updated at each StartFrame
+
+
+and I stuff pfnRunPlayerMove like that :
+code:
+
+      g_engfuncs.pfnRunPlayerMove ([...], (unsigned char) msec);
+
+
+
+[modified on 07/12/02 at 19:14:55]
+--------------------------------------------------
+07/16/02 at 15:02:35  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+Is this thread already closed ? c'mon ! we want your ideas ! we want your thoughts ! whatever !
+
+
+--------------------------------------------------
+07/16/02 at 15:52:45  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+All I can say is :
+
+when I set pBot->msecval to 5, the bots move in slow motion!
+
+--------------------------------------------------
+07/17/02 at 01:36:55  Reply by: theimann (killaruna@nuclearbox.com)
+--------------------------------------------------
+Since you seem conviced that it is the msec calculation that makes the bots stuck into each other, I'll post my calculation as well. I'm using it since more than a year now I think and did never observe any bots glued together, although I tested Parabot in teamplay mode as well (where bots don't shoot each other as soon as they can). 
+The calculation ensures that the msecs sum up to exactly 1000, as Leon Hartwig pointed out it has to be. msecStart holds the start time of the last 1 sec time period that is checked for 1000 msecs.
+worldTime() returns gpGlobals->time. As botman already mentioned, this varialbe is far from exact: I often get "SUPPOSED MAPCHANGE" messages although the map did not change...
+Anyway, here's the code:
+
+code:
+
+float PB_Action::msec()
+{
+      if ((msecStart+msecCount/1000) < (worldTime()-0.5)) {      // after pause 
+            msecStart = worldTime() - 0.05;
+            msecCount = 0;
+            debugMsg( "MSEC: SUPPOSED PAUSE\n" );
+      }
+
+      if (msecStart > worldTime()) {                              // after map changes...
+            msecStart = worldTime() - 0.05;
+            msecCount = 0;
+            debugMsg( "MSEC: SUPPOSED MAPCHANGE\n" );
+      }
+      float opt = (worldTime()-msecStart) * 1000;            // optimal msec value since start of 1 sec period
+      currentMSec = opt - msecCount;                              // value ve have to add to reach optimum
+      globalFrameTime = currentMSec/1000;                        // duration of last frame in sec
+      msecCount = opt;
+      if (msecCount > 1000) {                                          // do we have to start a new 1 sec period?
+            msecStart += msecCount/1000;
+            msecCount = 0;
+      }
+      // check from THE FATAL:
+      if (currentMSec < 5) currentMSec = 5;
+    else if (currentMSec > 255) currentMSec = 255;
+      return currentMSec;
+}
+
+
+--------------------------------------------------
+07/18/02 at 04:37:06  Reply by: W@NJIK (wanjik@voila.fr)
+--------------------------------------------------
+Using this code bots are still stucking in each others (btw what is globalFrameTime for? I suppose you're using it somewhere else in your code).
+
+However I have interesting results by doing the following:
+when intercepting DispatchTouch() and if the two entities are bots, I forced these two to keep their msec value from the last frame and made it equal for both of them by setting the 2nd bot's msec to the first one's.
+It seems to be better, but it's not working 100%.
+Could someone confirm this?
+
+I'd also like to know if DispatchTouch() is called every frame when two players are sliding along each others or if it is just called the first time they touch
+
+--------------------------------------------------
+07/18/02 at 05:48:07  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+DispatchTouch should be called every frame.
+
+--------------------------------------------------
+07/21/02 at 07:43:30  Reply by: mattkimbo (mattkimbo@yahoo.co.uk)
+--------------------------------------------------
+Hmm, Has any body seen this happen in HL deathmatch b4? Im just wondering if the verticle velocities are being used by other mods (Like C-Strike).
+
+I tried playing around with turning on "low ping server physics" but the problem still remained, so that may discredit my idea (as I believe that the high ping server physics make the client accelerate as they fall).
+
+I think the msec value with my method that I modified from Jehannum (seriously not trying to boast or anything) is doing the Job fine.
+
+I'm gonna stick my neck on the line and say that it IS the bounding boxes for the clients (and so bots) that is causing the bot to get stuck.
+
+On that note, I have to wonder if the bounding box code is not being used correctly under mods like cstrike as (I beleive anyway) that the models in ctrike are shorter than in HL, As the models appear to be hunched over as if they are being stealthy.
+
+I really don't have a clue here, I just throwing ideas arround... Feel free to say Im wrong! :)
+
+--------------------------------------------------
+07/21/02 at 23:33:40  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+None of the methods I tried works.
+I will try to implement an averaging of some variable amount of the past frame's time, in order to see which amount of frames is the best for averaging.
+
+I think we are mistaken on <b>ONE</b> point.
+<i>"The msec total HAS to equal 1000 every second"</i>
+This is wrong.
+Ideally it should, if we could predict right how long the current frame will last. But we can't. So it's useless to constrain it to equal 1000 every period of time. If one has been mistaken in the count for the msec values during the 500 first milliseconds and has set the values too high, so that, let's say, his msec count is already 900, would he have to split the remaining 100 of the count for the remaining 500 milliseconds ? Obviously this is not the right thing to do.
+
+In the msec calculation method we can't rely on this "must equal 1000 every second" assumption.
+
+
+--------------------------------------------------
+10/02/02 at 07:17:53  Reply by: spatel (averburg@liacs.nl)
+--------------------------------------------------
+
+** BUMP **
+
+Help -- I currently have the same
+problem as discussed in this topic.
+My CS bot sometimes get stuck in each
+other and therefor I'll bump this
+post!
+
+** BUMP **
+
+
+Greetz,
+
+Alexander with his magic spatel !
+
+--------------------------------------------------
+10/02/02 at 10:26:54  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Bumping won't help.
+
+It's already been discussed ad-nauseum.
+
+If you want to bring it up again, start a new thread, but everyone will just point you to this thread (or others).
+
+As far as I know, nobody has a 100% fix for this problem.  The best thing you can do is to keep the players from touching each other by checking to see how far they will move (based on the msec value and forward/side speed) and if they are going to collide with another player, don't have them move in that direction.
+
+botman
+

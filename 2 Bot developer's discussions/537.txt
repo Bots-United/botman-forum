@@ -1,0 +1,251 @@
+--------------------------------------------------
+Subject: WaypointFindPath
+--------------------------------------------------
+11/06/00 at 14:53:13  Posted by: The (www.pq_mk@yahoo.com)
+--------------------------------------------------
+Hy botman
+can you explain me the WaypointFindPath function
+(how to use and whats it's suposed to do)?
+pls
+
+--------------------------------------------------
+11/07/00 at 05:33:39  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+The WaypointFindPath() function (in waypoint.cpp) loop through all the paths available from the current waypoint index (i.e. if there are 3 other waypoints you can get to from the current waypoint it will return the index of the 1st one on the first call, the index of the 2nd one on the second call, and the index of the 3rd one on the third call).  You would use it like this...
+
+   PATH *pPath = NULL;
+   int path_index;
+   int index;
+ 
+   while ((index=WaypointFindPath(&pPath, &path_index, pBot->curr_waypoint_index, team)) != -1)
+   {
+      // index is now the index of a waypoint reachable from here
+   }
+
+botman
+
+--------------------------------------------------
+11/07/00 at 07:42:43  Reply by: The (www.pq_mk@yahoo.com)
+--------------------------------------------------
+botman
+you meen it finds waypoint conected with path, not just any reachable waypoint right?
+
+--------------------------------------------------
+11/07/00 at 09:04:04  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+Yes, WaypointFindPath() finds the next waypoint index based on which paths extend from the current waypoint.
+
+WaypointFindReachable() will find the nearest reachable waypoint, but the WaypointReachable() function that it uses isn't too smart, so buyer beware.
+
+botman
+
+--------------------------------------------------
+11/08/00 at 08:03:27  Reply by: The (www.pq_mk@yahoo.com)
+--------------------------------------------------
+can this cause the CS crush?
+am I using the WaypointFindPath in right way
+*** go throo all the waypoints conected with paths
+with current waypoint, skiping the prev.5 waypoints ,and save the results in waypoint_index[s] ***
+??? 
+
+i = WaypointFindPath(&pPath, &path_index, pBot->curr_wpt_index, team);
+   while (i != -1)
+   {
+      if ((i != pBot->curr_wpt_index) &&
+          (i != pBot->prev_wpt_index[0]) &&
+          (i != pBot->prev_wpt_index[1]) &&
+          (i != pBot->prev_wpt_index[2]) &&
+          (i != pBot->prev_wpt_index[3]) &&
+          (i != pBot->prev_wpt_index[4]))
+      {
+         i = WaypointFindPath(&pPath, &path_index, pBot->curr_wpt_index, team);
+         waypoint_index[s] = i;
+         if (s < 10)
+         {
+            s = s + 1;
+         }
+      }
+   }
+
+
+what should I use to make WaypointFindPath
+go throo all conected waypoints, not just the 1st one ?
+
+--------------------------------------------------
+11/08/00 at 11:16:19  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+Are you initializing pPath to NULL and setting the team variable to the correct team?
+
+The loop shown in my first post in this thread will loop through all waypoints that are connected by paths to the current waypoint.
+
+botman
+
+--------------------------------------------------
+11/08/00 at 12:41:21  Reply by: The (www.pq_mk@yahoo.com)
+--------------------------------------------------
+Hey botman
+
+***Are you initializing pPath to NULL and setting the team variable to the correct team?***
+
+yes I did that !
+I've changed the code a bit and :)), it worked
+for a few seconds at least :((
+the bot started doing just that that I've wanted
+but after 6-7 sec. CS crushed :((.
+can someone help me out pls?
+here is the whole code :
+
+
+bool BotFindWaypoint( bot_t *pBot )
+{
+   PATH *pPath = NULL;
+   int path_index;
+   int i, ind, s, waypoint_index[10], selected_index;
+   int team;
+
+   edict_t *pEdict = pBot->pEdict;
+
+   team = UTIL_GetTeam(pEdict);
+   s = 1;
+   selected_index = -1;
+   i = -1;
+   ind = 1;
+
+   while ((i=WaypointFindPath(&pPath, &path_index, pBot->curr_wpt_index, team)) != -1)
+   {
+      if ((i != pBot->curr_wpt_index) &&
+          (i != pBot->prev_wpt_index[0]) &&
+          (i != pBot->prev_wpt_index[1]) &&
+          (i != pBot->prev_wpt_index[2]) &&
+          (i != pBot->prev_wpt_index[3]) &&
+          (i != pBot->prev_wpt_index[4]))
+      {
+         waypoint_index[s] = i;
+         if (s < 10)
+         {
+            s = s + 1;
+         }
+      }
+   }
+   ind = RANDOM_LONG(1, s);
+   if ((ind <= 10) && (ind >= 1))
+   {
+   selected_index = waypoint_index[ind];
+   }
+   else
+   {
+   selected_index = -1;
+   }
+   if (selected_index != -1)  // was a waypoint selected?
+   {
+      pBot->prev_wpt_index[4] = pBot->prev_wpt_index[3];
+      pBot->prev_wpt_index[3] = pBot->prev_wpt_index[2];
+      pBot->prev_wpt_index[2] = pBot->prev_wpt_index[1];
+      pBot->prev_wpt_index[1] = pBot->prev_wpt_index[0];
+      pBot->prev_wpt_index[0] = pBot->curr_wpt_index;
+
+      pBot->curr_wpt_index = selected_index;
+      pBot->wpt_origin = waypoints[team][selected_index].origin;
+
+      return TRUE;
+   }
+   return FALSE;
+}
+
+
+
+--------------------------------------------------
+11/08/00 at 15:28:48  Reply by: DStroth (dstroth@crosswinds.net)
+--------------------------------------------------
+It looks to me like you're not initializing all the values in waypoint_index.. If those aren't initialized to -1 you will have the bot trying to reach invalid waypoints, which probably causes the crash.
+
+DStroth
+
+
+--------------------------------------------------
+11/09/00 at 05:38:38  Reply by: BrianL (halfkiller@hotmail.com)
+--------------------------------------------------
+Here try this code I changed what you needed to do:
+
+bool BotFindWaypoint( bot_t *pBot )
+{
+  PATH *pPath = NULL;
+  int path_index;
+  int i, ind, s, waypoint_index[10], selected_index;
+  int team;
+
+  edict_t *pEdict = pBot->pEdict;
+
+  team = UTIL_GetTeam(pEdict);
+  s = 1;
+  selected_index = -1;
+  i = -1;
+  ind = 1;
+
+  // Start Crash - Fix
+  for (int t=0; t<4; t++) 
+  {
+   wpt_index[t] = -1;
+  };
+  // End Crash - Fix
+
+  while ((i=WaypointFindPath(&pPath, &path_index, pBot->curr_wpt_index, team)) != -1)
+  {
+     if ((i != pBot->curr_wpt_index) &&
+         (i != pBot->prev_wpt_index[0]) &&
+         (i != pBot->prev_wpt_index[1]) &&
+         (i != pBot->prev_wpt_index[2]) &&
+         (i != pBot->prev_wpt_index[3]) &&
+         (i != pBot->prev_wpt_index[4]))
+     {
+        waypoint_index[s] = i;
+        if (s < 10)
+        {
+           s = s + 1;
+        }
+     }
+  }
+  ind = RANDOM_LONG(1, s);
+  if ((ind <= 10) && (ind >= 1))
+  {
+  selected_index = waypoint_index[ind];
+  }
+  else
+  {
+  selected_index = -1;
+  }
+  if (selected_index != -1)  // was a waypoint selected?
+  {
+     pBot->prev_wpt_index[4] = pBot->prev_wpt_index[3];
+     pBot->prev_wpt_index[3] = pBot->prev_wpt_index[2];
+     pBot->prev_wpt_index[2] = pBot->prev_wpt_index[1];
+     pBot->prev_wpt_index[1] = pBot->prev_wpt_index[0];
+     pBot->prev_wpt_index[0] = pBot->curr_wpt_index;
+
+     pBot->curr_wpt_index = selected_index;
+     pBot->wpt_origin = waypoints[team][selected_index].origin;
+
+     return TRUE;
+  }
+  return FALSE;
+}
+
+Hope it works out for you!
+
+--------------------------------------------------
+11/09/00 at 09:53:05  Reply by: The (www.pq_mk@yahoo.com)
+--------------------------------------------------
+thanks for youre replyes guys
+*** you're not initializing all the values in waypoint_index ***
+I think that that won't fix the problem because bot don't select those waypoints that are not initialized. It randomly select between the waypoints that are initialized. I'll try it now.
+Maybe it will work . I don't have much experiance in c++ coding . ;)
+Thanks again guys.
+I'll tell you if it works. 
+
+--------------------------------------------------
+11/09/00 at 13:56:12  Reply by: The (www.pq_mk@yahoo.com)
+--------------------------------------------------
+It worked !!!
+I've changed that and few more things and It worked.
+Thanks ugain guys.
+

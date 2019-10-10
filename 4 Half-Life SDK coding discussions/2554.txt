@@ -1,0 +1,123 @@
+--------------------------------------------------
+Subject: sending messages through dll's.botman check it pls
+--------------------------------------------------
+12/11/01 at 22:59:11  Posted by: SLAVIK (slava@deep-shadows.com)
+--------------------------------------------------
+Is it possible to send message from entity in sp.dll :WRITE_MESSAGE(...) WRITE_SHORT(entity_index) and to hook the message in client.dll in HUD? If it is possible, then please, show me how to di that.
+
+--------------------------------------------------
+12/12/01 at 02:03:25  Reply by: ReDucTor[FGW] (sjdtmv@tpg.com.au)
+--------------------------------------------------
+What exactly do you mean?
+
+Send a message to the client?
+
+Capture a Message on the client?
+
+With or without hooking?
+
+btw, you can't do stuff on the client with a hook...(thats called cheating)
+
+--------------------------------------------------
+12/12/01 at 02:33:52  Reply by: SLAVIK (slava@deep-shadows.com)
+--------------------------------------------------
+I looked through the documentation of HLTV from HLSDK2.2 and ENTITY sends the message with its index to client.dll. It would be more easy to create such code, instead of parsing BSP file.
+
+
+--------------------------------------------------
+12/13/01 at 09:13:17  Reply by: SLAVIK (slava@deep-shadows.com)
+--------------------------------------------------
+botman, what can you tell about sending/hooking messages?
+
+--------------------------------------------------
+12/13/01 at 10:48:41  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+I can tell you to read the ReadMe.txt file included with the HPB bot template source code.
+
+There's no tutorials or anything on how Half-Life sends messages between the server and the client.  You either follow what the ReadMe.txt file says pretty well or you don't.  The bot_client.cpp procedures are state machines that use the variable "state" to keep track of what type of network variable is expected to be sent next (i.e. BYTE, FLOAT, STRING, etc.).
+
+botman
+
+--------------------------------------------------
+12/14/01 at 00:15:40  Reply by: SLAVIK (slava@deep-shadows.com)
+--------------------------------------------------
+thnx, now I understand how it works!!! I have an entity which does nothing - only sends its EntityIndex to the CLIENT, but I have one problem: I don't know how to access ENTITY INDEX...
+
+class CLensFlare : public CBaseDelay
+{
+public:
+        void        Spawn( void );
+        void EXPORT LensThink( void );
+};
+LINK_ENTITY_TO_CLASS( env_lensflare, CLensFlare );
+
+void CLensFlare::Spawn( void )
+{
+SetThink( &CLensFlare::LensThink );
+}
+
+void CLensFlare::LensThink( void )
+{
+        MESSAGE_BEGIN( MSG_ONE, gmsgLensFlare, NULL, pev );
+                WRITE_BYTE( HERE_MUST_BE_THIS_ENTITY_INDEX );
+        MESSAGE_END();
+}
+
+--------------------------------------------------
+12/14/01 at 02:54:43  Reply by: ReDucTor[FGW] (sjdtmv@tpg.com.au)
+--------------------------------------------------
+MESSAGE_BEGIN( MSG_ONE, gmsgLensFlare, NULL, pev );
+   WRITE_[b]SHORT[/b]( [b]entindex()[/b] );
+MESSAGE_END();
+
+--------------------------------------------------
+12/14/01 at 04:18:20  Reply by: SLAVIK (slava@deep-shadows.com)
+--------------------------------------------------
+pls help me: This is code from SP.DLL:
+
+void CLensFlare::LensThink( void )
+{
+        MESSAGE_BEGIN( MSG_ONE, gmsgLensFlare, NULL, pev );
+                WRITE_BYTE(entindex());
+        MESSAGE_END();
+}
+
+and this is code from CLIENT.DLL :
+
+DECLARE_MESSAGE(m_LensFlare, LensFlare )
+int CLensFlare::Init(void)
+{
+      HOOK_MESSAGE( LensFlare );
+      gHUD.AddHudElem(this);
+      return 1;
+};
+
+How can I check that there is no error? 
+
+--------------------------------------------------
+12/14/01 at 04:41:18  Reply by: ReDucTor[FGW] (sjdtmv@tpg.com.au)
+--------------------------------------------------
+what do you mean "How can I check that there is no error?"
+
+--------------------------------------------------
+12/14/01 at 05:39:37  Reply by: SLAVIK (slava@deep-shadows.com)
+--------------------------------------------------
+In the hus I have class CLensFlare (CHudLensFlare) and it must HOOK this message and then (when CLensFlare has entity index) LensFlares or text entitie is here must be drawn on the screen!
+
+--------------------------------------------------
+12/14/01 at 22:23:57  Reply by: SLAVIK (slava@deep-shadows.com)
+--------------------------------------------------
+Is there something wrong in this code sending/hooking messages?
+
+--------------------------------------------------
+12/15/01 at 05:22:21  Reply by: SLAVIK (slava@deep-shadows.com)
+--------------------------------------------------
+Can someone answer my question pls?
+
+--------------------------------------------------
+12/15/01 at 12:39:14  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+You might want to look at some of the client tutorials on one of the Half-Life coding web sites (for example HLPP, see the MOD FAQ for some links).
+
+botman
+

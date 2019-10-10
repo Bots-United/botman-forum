@@ -1,0 +1,64 @@
+--------------------------------------------------
+Subject: Firearms bot respawning
+--------------------------------------------------
+07/12/01 at 03:20:43  Posted by: Noodles (lancecoleborne@mad.scientist.com)
+--------------------------------------------------
+   // if the bot is dead, randomly press fire to respawn...
+   if ((pEdict->v.health < 1) || (pEdict->v.deadflag != DEAD_NO))
+   { 
+      if (pBot->need_to_initialize)
+      {
+         BotSpawnInit(pBot);
+
+         // did another player kill this bot AND bot whine messages loaded AND
+         // has the bot been alive for at least 15 seconds AND
+         if ((pBot->killer_edict != NULL) && (whine_count > 0) &&
+             ((pBot->f_bot_spawn_time + 15.0) <= gpGlobals->time))
+         {
+            if ((RANDOM_LONG(1,100) <= 10))
+            {
+               pBot->b_bot_say_killed = TRUE;
+               pBot->f_bot_say_killed = gpGlobals->time + 10.0 + RANDOM_FLOAT(0.0, 5.0);
+            }
+         }
+
+         pBot->need_to_initialize = FALSE;
+      }
+
+      if (RANDOM_LONG(1, 100) > 50)
+         pEdict->v.button = IN_ATTACK;
+         FakeClientCommand(pEdict, "vguimenuoption", "1", NULL);
+
+      g_engfuncs.pfnRunPlayerMove( pEdict, pEdict->v.v_angle, pBot->f_move_speed,
+                                   0, 0, pEdict->v.button, 0, pBot->msecval);
+
+      return;
+   }
+
+Am i using FakeClientCommand correctly? The bot doesn't want to respawn when it dies. When you die a little box comes up that says how many ppl are alive and when u press any key a vgui menu comes up. Am i doing it right? any suggestions
+
+--------------------------------------------------
+07/12/01 at 04:25:33  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+All this will do is send "vguimenuoption 1" over and over and over again as though a client had entered it on the command line.
+
+Does entering this command on the command line get you out of the menu when you get killed?
+
+botman
+
+--------------------------------------------------
+07/12/01 at 07:37:14  Reply by: Noodles (lancecoleborne@mad.scientist.com)
+--------------------------------------------------
+Yeah it does, hmm when you put vguimenuoption 1 in the concole, you respawn, but the menu is still there.
+
+[modified on 07/12/01 at 07:37:14]
+--------------------------------------------------
+07/13/01 at 05:36:11  Reply by: Noodles (lancecoleborne@mad.scientist.com)
+--------------------------------------------------
+Before the vgui menu comes up, there is a little status window that goes away on key press or console actions like +duck or +attack so i tried FakeClientCommand(pEdict, "+duck", NULL, NULL); before the fake vguimenuoption but they still won't spawn, damn i'm tired 1am in morning :D
+
+------------PROBLEM SOLVED----------------
+
+     
+
+[modified on 07/13/01 at 05:36:11]

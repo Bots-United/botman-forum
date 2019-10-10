@@ -1,0 +1,55 @@
+--------------------------------------------------
+Subject: HPB_bot and GlobalAlloc ?
+--------------------------------------------------
+01/02/03 at 20:34:27  Posted by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Hello botman,
+
+I notice that in your HPB_bot source code, you allocate differently the g_argv memory space according to whether the bot is compiled for Windows or Linux.
+
+For Linux, you just do a (char *) malloc (1024), if I understand right.
+For Win32, you do a GlobalAlloc then cast it to a char pointer with GlobalLock.
+
+Why such a difference ?
+Let's say I would want to get rid of the GlobalAlloc and GlobalLock for portability reasons. Can I safely mallocate 1024 bytes for the g_argv using standard malloc on Win32 ?
+
+
+--------------------------------------------------
+01/03/03 at 05:58:36  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Windows applications have memory allocated in private "chunks" so that one application can't overwrite the memory of another application.  Since DLLs can be shared by several applications, their memory space is also private.
+
+Allocating a global buffer and locking it into memory (to get the pointer reference and so that it won't get swapped out to disk) allow any application to read/write to that memory.  So, in the DLL, I allocate a global memory segment so that the game DLL will be able to read from it.
+
+Using a global buffer might actually be unnecessary.  When I was first creating the HPB bot code back in January of 2000, I had many problems with the code crashing in the game DLL with "Access Violations".  I saw some references on Windows programming websites about using global memory blocks to lock a memory segment in place and prevent it from being swapped out.  I wasn't sure if the access violations were due to the game DLL code trying to access memory that didn't belong to it (in it's process space) or if the access violations were due to the game DLL trying to access memory that had been swapped out.  Putting in the GlobalAlloc and GlobalLock seemed to make these access violation errors go away (but I was also changing lots of other code at the same time and it may have been something else that I changed that fixed this).  I never went back and tried to just allocate a global character array as a buffer and use that (since the GlobalLock seemed to work just fine).
+
+When I ported everything over to Linux, I didn't seem to need to create a shared memory segment (similar to Windows' GlobalAlloc).  Linux appeared to handle process memory contexts in a different manner than Windows did (i.e. all processes in the same "application space" all shared the same "process memory space".
+
+botman
+
+--------------------------------------------------
+01/03/03 at 06:29:56  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Thanks for the explanation.
+
+I think I'll just try to declare
+
+char g_argv[1024];
+
+and let CMD_ARGV and CMD_ARGS return a pointer to it for fakeclient commands.
+I will tell you whether it works or not.
+
+
+--------------------------------------------------
+01/03/03 at 07:07:39  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+declaring g_argv as an array of char doesn't work. The server shuts down as soon as a fakeclient command is tried.
+
+However
+
+g_argv = (char *) malloc (1024);
+
+seems to be OK.
+I'm watching my server running for half an hour. I've also tried in listenserver.
+
+

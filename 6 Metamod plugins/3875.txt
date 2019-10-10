@@ -1,0 +1,98 @@
+--------------------------------------------------
+Subject: Pierre-Marie Baty's PODFix plugin
+--------------------------------------------------
+11/30/02 at 04:10:36  Posted by: bpw (bpcw001@web.de)
+--------------------------------------------------
+Hi,
+
+I'm using Pierre-Marie Baty's PODFix plugin to prevent hostages from being killed in Counter-Strike.
+Now, looking at the source code, I found that the trick is just referring to the "hostage_entity" of CS to intercept all possible evil coming to hostages and giving them incredible health on spawning. 
+
+I was just wondering if and how it could be possible to have this feature for any human player (i. e. non-bot player) in the game so that the bots still can kill themselves, but human players have some kind of "God" status.
+
+This should imply figuring out if the "entity" in question is a "real" player or a bot. How can I figure this out ? Could it work using the
+IsNetClient() function ?
+
+I'm pretty new to this stuff. A little help would be greatly appreciated !
+
+Thx
+
+BPW
+
+--------------------------------------------------
+11/30/02 at 05:53:53  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Yes, checking IsNetClient() would work.  So would this...
+code:
+bool IsHumanPlayer(edict_t *pEdict)
+{
+   if ((pEdict->v.flags & FL_CLIENT) && !(pEdict->v.flags & FL_FAKECLIENT))
+   {
+      return TRUE;
+   }
+
+   return FALSE;
+}
+
+botman
+
+--------------------------------------------------
+11/30/02 at 06:16:36  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Actually, IsNetClient() only works on CBaseEntity classes (which you don't have access to in Counter-Strike).
+
+Use the function I've shown above instead.
+
+botman
+
+--------------------------------------------------
+11/30/02 at 08:14:45  Reply by: bpw (bpcw001@web.de)
+--------------------------------------------------
+Hey botman!
+Many, many thanks for your advice. Going to try it as soon I've got some spare time !
+
+Great site, great forum, btw.
+
+BPW
+
+--------------------------------------------------
+12/01/02 at 20:13:43  Reply by: AustinBotServer (AustinBotServer@MindSpring)
+--------------------------------------------------
+"I was just wondering if and how it could be possible to have this feature for any human player "
+
+A good start would be to limit damage to humans caused by bullets.  Replace the TraceLine() function in the PODFIx 2.0 source code with this one and recompile and humans will no longer take bullet dmage.
+
+void TraceLine (const float *v1, const float *v2, int fNoMonsters, edict_t *pentToSkip, TraceResult *ptr)
+{
+      TRACE_LINE (v1, v2, fNoMonsters, pentToSkip, ptr);
+      
+      // check to see if a hostage was hit      
+      if (strcmp (STRING (ptr->pHit->v.classname), "hostage_entity") == 0 )
+      {
+            ptr->flFraction = 1.0; // pass through the hostage, disallowing damage for it
+            RETURN_META (MRES_SUPERCEDE);
+      }
+      else if( (ptr->pHit->v.flags & FL_CLIENT) && !(ptr->pHit->v.flags & FL_FAKECLIENT) )
+      {
+            ptr->flFraction = 1.0; // disallowing damage for humans
+            RETURN_META (MRES_SUPERCEDE);
+      }               
+      else
+            RETURN_META (MRES_IGNORED);
+}
+
+I just built a new dll to try this and it works great!
+
+You will have to have the HL sdk and Metamod sdk installed and your include paths setup correctly in your compiler to rebuild the dll.
+
+What ever you do, please give your dll a new metamod ID and rename the actual dll to something else.  
+
+
+--------------------------------------------------
+12/02/02 at 08:19:57  Reply by: bpw (bpcw001@web.de)
+--------------------------------------------------
+Thanks to you all.
+I tried it right after botman's last post and it worked like a charm. Studying other metamod plugins' sources, it wasn't so much of a problem to set up a new metamod project and compile it properly in Visual C++.
+However, understanding the inner workings of the HL SDK itself is still a huge thing to tackle :-)
+
+

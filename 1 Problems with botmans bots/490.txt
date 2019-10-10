@@ -1,0 +1,122 @@
+--------------------------------------------------
+Subject: Problem Adding Bots through Console.
+--------------------------------------------------
+11/01/00 at 08:08:36  Posted by: aristocrack (aristocrack@mediaone.net)
+--------------------------------------------------
+
+Maybe I'm doing it wrong, but I'm not able to add BOTs through the console.  My syntax is:
+
+addbot 1 6 Hellman 1
+     {Team} {Class} {Name} {Skill Level}
+
+Why is this not working?  What am I doing wrong?
+
+I even tried just the plain 'addbot' command to add a random player BOT with random skill, skin and ability -- nothing.  The BOTs enter the maps just fine when they begin (based on BOT.CFG) but you cannot add anymore beyond that..
+
+...while I'm at it, another thing I noticed (whether by design or bug), but after the minbot integer has been reached and real players leave the server, the BOTs do not rejoin the server again until the next map.  The 4 bots in the minbot field (minbot 4) remain, however more BOTs do not join the game after players have left.  My understanding is that the minbot/maxbot settings keep adding BOTs until the maximum number is reached, then as real players join, BOTs are kicked (this works) until it reaches the minbot number.  If a real player leaves, shouldn't it automatically add another BOT for every player that leaves?
+
+
+Wassssssssup?
+
+
+
+--------------------------------------------------
+11/01/00 at 11:13:18  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+What is the maxclients set to (how many players can you your server max)?
+
+What is the error you get when entering "addbot"?
+
+What is the "max_bots" value set to?
+
+Bots will/should be added until the total number of bots AND players is "max_bots".  If a player leaves then another bot should be added (as long as the total number of players is less than "max_bots").
+
+botman
+
+--------------------------------------------------
+11/01/00 at 16:52:21  Reply by: aristocrack (aristocrack@mediaone.net)
+--------------------------------------------------
+I have the values in bot.cfg like this:
+
+Maxiumum players = 18 (+maxplayers 14)
+
+min_bots 4
+max_bots 12
+
+The maxiumum number of players is 18 on the server, after all the real player spots are filled, I would like 4 to remain -- 14 real/4 bot.  
+
+There is no error.  It says nothing as if I was typing in a gibberish command.  It does nothing, says nothing.
+
+So, I should have the max_bots setting to 18?  How are other players going to join?
+
+I feel these might be stupid questions, I'm sorry.
+
+Thanks for your help
+
+
+
+
+--------------------------------------------------
+11/01/00 at 17:29:18  Reply by: BeaverMon (BJDobson1@aol.com)
+--------------------------------------------------
+According to the bot.cfg; You should make max_bots be AT LEAST one less than the maxplayers value (otherwise no one will be able to join your server).
+
+
+--------------------------------------------------
+11/02/00 at 05:11:51  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+You have things set up correctly.  These settings...
+
+min_bots 4
+max_bots 12
+
+...on a server with maxclients set to 18 will automatically create 12 bots as soon as the server starts.  As people join, bot should get kicked off until there are 4 bots in the game (4 bots + 8 players=12 total).  Additional people will be allowed to join (up to 18 total players, 4 bots + 14 players).  As these people leave, bots will not be added until the total number of players (bots + human) falls below 12 (i.e. 11) at which point a bot should be created to again make the total number of players 12.  You SHOULD always have at least 12 players on your server.
+
+Make note however that the bots don't get created IMMEDIATELY after a real player disconnects from the game it is usually no more than 5 seconds after a player leaves before a bot joins, but it could be 30 seconds after a player leaves before a bot joins.  The reason for this is there is a timer that indicates what time the server needs to check if bots should be added (every 5 seconds), but if a player joins the server, this timer is reset to 30 seconds in the future to allow the new joining player time to actually get connected and into the game (they may have to download models, sprites, etc. or it may take 10 or 15 seconds before their cleint actually gets in the game).
+
+This should give you a little better explanation of what SHOULD be happening.  If you ALWAYS want bots to replace players that are leaving, you should set the "max_bots" value to 1 less than the maxclients setting (in your case "max_bots 17").
+
+botman
+
+--------------------------------------------------
+11/02/00 at 06:06:11  Reply by: aristocrack (aristocrack@mediaone.net)
+--------------------------------------------------
+Okay, now that we have that straightened out, what is the problem with the console.  The way we're headed with this is to have no BOTs initially until the users vote to add them, at which point the "addbot" function will be important.
+
+I remember reading in one of your text files about the command "bot addbot x x x x".  The syntax from the console (or RCON'ed in) is still "Addbot x x x x", right?  
+
+
+
+--------------------------------------------------
+11/02/00 at 08:40:23  Reply by: aristocrack (aristocrack@mediaone.net)
+--------------------------------------------------
+
+
+...also, I've got a question regarding the HPB_BOT.DLL.  In the liblist.gam file, the tfc.dll is //'ed out and in it's place, the hpb_bot.dll.  They're not supposed to both be running concurrently, right?  In other words, the tfc.dll and hpb_bot.dll can't run together, should they?  
+
+I have:
+
+// tfc.dll
+hpb_bot.dll
+
+Why is there such a size difference between the tfc.dll (supplied by Valve) and the hpb_bot.dll?  The TFC.DLL coming in at just shy of a MB, and the hpb_bot.dll just shy of 300k?  
+
+
+
+
+
+--------------------------------------------------
+11/02/00 at 09:30:13  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+For any dedicated server setup you have to use the "bot" cvar to add bots.  The addbot command will do nothing on dedicated servers.  Use this...
+
+bot "addbot <team> <class> <name> <skill>"
+
+...replacing the <team>, <class>, <name> and <skill> with the appropriate values.  This will assign this string to the CVAR called "bot".  The HPB bot code will check once a second to see if the value of the bot CVAR has changed and if so, it will execute that command (in this case "addbot").
+
+This is the case whether using rcon or the dedicated server console.  You MUST use the bot CVAR to add bots on a dedicated server.  The "addbot" command only works on the console of a listenserver.
+
+The HPB bot DLL file is loaded by the Half-Life engine.  The HPB bot DLL then loads the DLL for whatever MOD you are playing (tfc.dll for TFC, mp.dll for cstrike, hl.dll for Half-Life, etc.).  The HPB bot DLL only contains the code required to get the bots to play the game (not the rest of the MOD code).  And yes, you can only have 1 DLL loaded in the liblist.gam file.  The engine will only load a single DLL.  It is up to the HPB bot DLL to load the MOD DLL (it's the same way with the Admin MOD if you've ever looked at it).
+
+botman
+

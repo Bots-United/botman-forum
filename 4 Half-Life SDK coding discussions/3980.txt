@@ -1,0 +1,231 @@
+--------------------------------------------------
+Subject: Monster points
+--------------------------------------------------
+01/03/03 at 03:03:11  Posted by: chmmr213 (chmmr213@arczip.com)
+--------------------------------------------------
+well i gave up on trying to save stats for the player characters,but i am now at another impass.
+i was wondering if anyone could help me give points for monster kills. i am starting from sdk 2.3.  i have done the  tutorials about it with no success. here is the one i would like to work,
+tut;
+
+#include "player.h"
+
+next, go to the function CBaseMonster :: Killed
+and in the buttom of the function add this:
+
+
+m_IdealMonsterState = MONSTERSTATE_DEAD;
+
+if( pPlayer && pPlayer->IsPlayer() )
+{ 
+pPlayer->AddPoints( 1, false ); 
+}
+
+
+OK, now compile the project, and have fun!
+errors;
+C:\SIERRA\Counter-Strike\2\dlls\combat.cpp(618) : error C2065: 'pPlayer' : undeclared identifier
+C:\SIERRA\Counter-Strike\2\dlls\combat.cpp(618) : error C2227: left of '->IsPlayer' must point to class/struct/union
+C:\SIERRA\Counter-Strike\2\dlls\combat.cpp(620) : error C2227: left of '->AddPoints' must point to class/struct/union
+i have tried another more indepth one with just as much luck.  i have also tried to substitute, 
+m_IdealMonsterState = MONSTERSTATE_DEAD;
+
+if( pevAttacker && pevAttacker->playerclass)
+{ 
+pevAttacker->frags += 1); 
+}
+still no luck i am sure this is funny to you guys but i am trying. please help.  thank you.
+
+
+--------------------------------------------------
+01/03/03 at 03:10:52  Reply by: Snake (Liquid_snakeX2@hotmail.com)
+--------------------------------------------------
+CBasePlayer *pPlayer = GetClassPtr((CBasePlayer *)pev); 
+
+will fix your C:\SIERRA\Counter-Strike\2\dlls\combat.cpp(618) : error C2065: 'pPlayer' : undeclared identifier 
+
+error
+
+--------------------------------------------------
+01/03/03 at 06:06:21  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Actually, that will attempt to convert the monster 'pev' pointer to a CBasePlayer class which will only probably cause a crash when you try to access functions that don't exist.  'pev' is in the context of whatever class contains the code (in this case the CBaseMonster code).
+
+In order to reference a player, you need to have a pointer to a CBasePlayer class, a pointer to a player edict_t structure, or a pointer to a player's pev.  Given one of these you can use SDK functions to convert to the other's of these.  For example, snake's code would convert a player 'pev' pointer to a CBasePlayer class pointer, but you have to have access to the player's 'pev' first.
+
+Some classes have member variables that are pointers to the player that 'owns' them (for example weapons have an owner that is the player that is carrying that weapons).  Monsters have an enemy member variable that points to the player that they are currently attacking, and so on.
+
+Sometimes you don't have anything that associates an entity with a player.  You can use functions like UTIL_FindEntityInSphere() to loop through entities to find one that is within a radius and compare the classname of those entities to one that you are looking for.  There are plenty of examples of using UTIL_FindEntityInSphere() throughtout the SDK source code.  You might want to look at some of those for examples.
+
+botman
+
+--------------------------------------------------
+01/03/03 at 09:21:42  Reply by: chmmr213 (chmmr213@arczip.com)
+--------------------------------------------------
+thank you.  i tried to follow what your saying.  it sounds pretty straight forward except i cant find the way to do it. i think i understand the pointer thing now, does not look like that in the c++ book i am learning from, lol.  i think alot of my problem is these halflife specific stuff.
+the UTIL_FindEntityInSphere() is a hefty funtion for me to try to figure out on my own there are a few examples but all are very hard for me to really understand.
+      while ((pEntity = UTIL_FindEntityInSphere( pEntity, vecSrc, flRadius )) != NULL)
+does this mean in natural programing order 
+
+any entity within an area so far from an attack origin be found and named pentity is not equal to null?
+
+i really dont know what to do i will keep trying,  though.  i know you guys dont want to just give the code out but id figure there would be one accurate tutorial on it at least. got alot of work to do with models skins maps weapons already, so if you can afford the time plz help. maybe more directly explain to me without giving the code  but if you are so inclined to give code by all means.  thank you for your time and effort  
+
+
+--------------------------------------------------
+01/03/03 at 17:23:38  Reply by: chmmr213 (chmmr213@arczip.com)
+--------------------------------------------------
+ok 
+m_IdealMonsterState = MONSTERSTATE_DEAD;
+      pevAttacker->frags += 1;
+in the 
+void CBaseMonster :: Killed( entvars_t *pevAttacker, int iGib )
+function works.  why not say that?  for people like me, and programing in general,  the best answer is one that does the job the simplest way. the only problem i have now is the score only tabulates when the player dies how can i update the score from that point in the most simple way.
+thank you for your time and effort.
+   
+
+
+--------------------------------------------------
+01/06/03 at 01:07:42  Reply by: chmmr213 (chmmr213@arczip.com)
+--------------------------------------------------
+
+
+[modified on 01/06/03 at 01:07:42]
+--------------------------------------------------
+01/06/03 at 01:05:14  Reply by: chmmr213 (chmmr213@arczip.com)
+--------------------------------------------------
+//in case anyone was wondering in the function
+//void CBaseMonster :: Killed( entvars_t *pevAttacker, int iGib )
+//after
+//m_IdealMonsterState = MONSTERSTATE_DEAD; 
+//place
+     pevAttacker->frags += 1; 
+
+
+BaseEntity *ep = CBaseEntity::Instance( pevAttacker );
+
+if ( ep && ep->Classify() == CLASS_PLAYER )
+      {
+            CBasePlayer *PK = (CBasePlayer*)ep;
+
+            MESSAGE_BEGIN( MSG_ALL, gmsgScoreInfo );
+                  WRITE_BYTE( ENTINDEX(PK->edict()) );
+                  WRITE_SHORT( PK->pev->frags );
+                  WRITE_SHORT( PK->m_iDeaths );
+                  WRITE_SHORT( 0 );
+                  WRITE_SHORT( 0 );
+            MESSAGE_END();
+
+            // let the killer paint another decal as soon as he'd like.
+            PK->m_flNextDecalTime = gpGlobals->time;
+      }
+
+
+/*is how to update the score with my monster point tutorial.  this is for giving the points to any one who attacked This is because my brother and i are doing a  role playing mod thank for your time and effort*/
+
+[modified on 01/06/03 at 01:05:14]
+--------------------------------------------------
+01/17/03 at 14:25:28  Reply by: RavenousBugblatterBeast (RavenousBugblatterBeast@hotmail.com)
+--------------------------------------------------
+I've had frags for monsters working for a while, but I could never make it update the scoreboard immediately. I could never get the message to work.
+
+Trying what you suggest: Firstly player.h requires CBaseMonster to be defined. I copied and changed it to CMBaseMonster to get around that. Next I had to forward declare the classes:
+
+class CBasePlayerItem;
+class CSave;
+class CRestore;
+
+before including player.h.
+
+However the one I can't figure out is where you get the value of gmsgScoreInfo from. Its the result of a call to REG_USER_MSG.  The only way I can think of is making monster hook pfnRegUserMsg function and check each message as it is registered and remember the index of ScoreInfo.
+
+
+
+
+--------------------------------------------------
+01/31/03 at 10:12:50  Reply by: chmmr213 (chmmr213@arczip.com)
+--------------------------------------------------
+//here is it finished working perfectly for me
+
+
+
+
+ void CBaseMonster :: Killed( entvars_t *pevAttacker, int iGib )
+{
+      unsigned int      cCount = 0;
+      BOOL                  fDone = FALSE;
+
+      if ( HasMemory( bits_MEMORY_KILLED ) )
+      {
+            if ( ShouldGibMonster( iGib ) )
+                  CallGibMonster();
+            return;
+      }
+ 
+      Remember( bits_MEMORY_KILLED );
+ 
+
+
+      // clear the deceased's sound channels.(may have been firing or reloading when killed)
+      EMIT_SOUND(ENT(pev), CHAN_WEAPON, "common/null.wav", 1, ATTN_NORM);
+      m_IdealMonsterState = MONSTERSTATE_DEAD;
+            pevAttacker->frags += 1;
+ 
+      
+CBaseEntity *ep = CBaseEntity::Instance( pevAttacker );
+
+if ( ep && ep->Classify() == CLASS_PLAYER )
+      {
+            CBasePlayer *PK = (CBasePlayer*)ep;
+
+            MESSAGE_BEGIN( MSG_ALL, gmsgScoreInfo );
+                  WRITE_BYTE( ENTINDEX(PK->edict()) );
+                  WRITE_SHORT( PK->pev->frags );
+                  WRITE_SHORT( PK->m_iDeaths );
+                  WRITE_SHORT( 0 );
+            WRITE_SHORT( g_pGameRules->GetTeamIndex( PK->m_szTeamName) + 1 );
+            MESSAGE_END();
+
+            // let the killer paint another decal as soon as he'd like.
+            PK->m_flNextDecalTime = gpGlobals->time;
+      }
+
+      // Make sure this condition is fired too (TakeDamage breaks out before this happens on death)
+      SetConditions( bits_COND_LIGHT_DAMAGE );
+
+   
+      
+
+      // tell owner ( if any ) that we're dead.This is mostly for MonsterMaker functionality.
+      CBaseEntity *pOwner = CBaseEntity::Instance(pev->owner);
+      if ( pOwner )
+      {
+            pOwner->DeathNotice( pev );
+      }
+
+      if      ( ShouldGibMonster( iGib ) )
+      {
+            CallGibMonster();
+            return;
+      }
+      else if ( pev->flags & FL_MONSTER )
+      {
+            SetTouch( NULL );
+            BecomeDead();
+      }
+      
+      // don't let the status bar glitch for players.with <0 health.
+      if (pev->health < -99)
+      {
+            pev->health = 0;
+      }
+      
+      //pev->enemy = ENT( pevAttacker );//why? (sjb)
+      
+      m_IdealMonsterState = MONSTERSTATE_DEAD;
+
+      
+   
+
+}
+
+

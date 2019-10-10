@@ -1,0 +1,185 @@
+--------------------------------------------------
+Subject: easy bot stuck check?
+--------------------------------------------------
+01/10/02 at 13:50:08  Posted by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+would this work? :)
+
+code:
+
+
+float bot_speed = pBot->pEdict->v.velocity.Length2D();
+
+if( bot_speed < pBot->f_move_speed )
+{
+  // Bot is stuck :-)
+}
+
+
+
+
+or
+
+code:
+
+float bot_speed = pBot->pEdict->v.velocity.Length2D();
+
+if(( bot_speed < 1 ) && ( pBot->f_move_speed >= 1 ))
+{
+  // Bot is stuck :-)
+}
+
+
+
+i.e. this should find that a bot is trying to move forward but isn't actually moving as fast as it wants to...
+
+[modified on 01/10/02 at 13:50:08]
+--------------------------------------------------
+01/10/02 at 16:23:22  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+i never understood that famous difference between velocities and speeds...
+
+--------------------------------------------------
+01/11/02 at 08:30:49  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+hehe. It's like, the bot is moving with a speed of X units in the X direction, Y units in the Y direction and Z units in the Z direction so the velocity is all of them put together ;) i.e. that can be found by getting the Length of the speeds... Hard to explain but easy to do :)
+
+I'm also just checking the 2D length as thats all I want to check (I dont want to include any speed involving gravity)
+
+--------------------------------------------------
+01/12/02 at 00:17:06  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+you could do things like this (i assume z is the gravity part of the stuff):
+
+distance_moved = sqrt ((new_position.x - previous_position.x) * (new_position.x - previous_position.x) + (new_position.y - previous_position.y) * (new_position.y - previous_position.y))
+
+That's bare maths...
+
+--------------------------------------------------
+01/12/02 at 01:06:49  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+yeah I was gonna do that to but its easier this way :p Cos if you do that way you'll need to update previous positions every second so you can get their speed/velocity :) in units per second. I find it easier this way since it seems to work ! ;)
+
+--------------------------------------------------
+01/12/02 at 02:37:16  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+cool...
+can I borrow your code for my bots ? they'll thank you...
+
+:-)
+
+
+--------------------------------------------------
+01/12/02 at 08:04:20  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+Sure, try it out :) !!!
+
+--------------------------------------------------
+01/12/02 at 08:21:53  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+this wont work, why?
+
+- the movespeed is updated every frame
+- whenever you change pBot->f_move_speed, the check will be useless, since the above statement.
+
+
+--------------------------------------------------
+01/12/02 at 09:12:03  Reply by: @$3.1415rin (joebot@botepidemic.com)
+--------------------------------------------------
+.... and the first version would even say the bot is stuck when the bot has just smoothly hit a wall and is running along it ...
+
+--------------------------------------------------
+01/15/02 at 02:33:30  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+yeah, it doesn't work, cheesy....
+
+Now I have to revert all the code to old method. Damn.
+
+
+--------------------------------------------------
+01/15/02 at 03:06:51  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+doooh ;)
+
+--------------------------------------------------
+01/18/02 at 02:56:52  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+Finally I changed all the stuff. It looks like this now :
+
+code:
+
+bool BotIsStuck (bot_t *pBot)
+{
+   // this check is made in two states
+   if (((pBot->pEdict->v.origin - pBot->v_prev_position).Length () < 2)
+       && ((pBot->f_move_speed >= 2) [OR] (pBot->f_strafe_speed >= 2)))
+   {
+      if (!pBot->b_is_stuck)
+      {
+         pBot->b_is_stuck = TRUE; // set stuck flag for next check
+         pBot->f_check_stuck_time = gpGlobals->time + 0.5; // check in half a second
+         return FALSE; // starting check...
+      }
+      else if (pBot->f_check_stuck_time > gpGlobals->time)
+         return FALSE; // still checking...
+      else
+      {
+         pBot->b_is_stuck = FALSE; // reset stuck flag for next check
+         return TRUE; // bot definitely doesn't move as fast as he would like to
+      }
+   }
+   else
+   {
+      pBot->b_is_stuck = FALSE;
+      return FALSE; // bot is definitely NOT stuck
+   }
+}
+
+
+void BotUnstuck (bot_t *pBot)
+{
+   // check if bot can jump onto something and has not jumped for quite a time
+   if (BotCanJumpUp (pBot) && (pBot->f_jump_time + 3.0 < gpGlobals->time))
+      pBot->f_jump_time = gpGlobals->time; // jump up and move forward
+
+   // else check if bot can duck under something
+   else if (BotCanDuckUnder (pBot))
+      pBot->f_duck_time = gpGlobals->time + RANDOM_FLOAT (1.0, 2.0); // duck & move forward
+
+   // else can't figure out whether to jump or duck, try to jump first...
+   else if (pBot->f_jump_time + 3.0 < gpGlobals->time)
+      pBot->f_jump_time = gpGlobals->time; // jump up and move forward
+
+   // else duck
+   else if (pBot->f_duck_time + 3.0 < gpGlobals->time)
+      pBot->f_duck_time = gpGlobals->time + RANDOM_FLOAT (1.0, 2.0); // duck & move forward
+
+   // else is the bot trying to get to an item?...
+   else if (pBot->pBotPickupItem != NULL)
+   {
+      pBot->pBotPickupItem = NULL; // give up trying to reach that item
+      pBot->f_find_item_time = gpGlobals->time + 10.0; // don't look for items
+   }
+
+   // else our destination is REALLY unreachable, try to turnaround to unstuck
+   else
+      BotRandomTurn (pBot);
+}
+
+
+
+[modified on 01/18/02 at 02:55:13]
+
+damn, did you know that you can't write OR's (vertical bars) on those bulletin boards ? ;-)
+
+[modified on 01/18/02 at 02:56:52]
+--------------------------------------------------
+01/18/02 at 18:19:15  Reply by: Teryan (mountainguy32@hotmail.com)
+--------------------------------------------------
+wow looks good.  Did you test it?
+
+--------------------------------------------------
+01/19/02 at 02:33:34  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+yes, works well
+

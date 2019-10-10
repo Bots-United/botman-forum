@@ -1,0 +1,77 @@
+--------------------------------------------------
+Subject: Problem with HPB-Bot: h_export.cpp
+--------------------------------------------------
+11/20/01 at 06:40:01  Posted by: Anchelito (Anchelito@web.de)
+--------------------------------------------------
+So I want to make a bot with the HPB-Bot source code for the mod Day of Defeat. But  now I've got some little problems with the h_export.cpp .
+Botman wrote in his Readme
+
+
+After updating linkfunc.cpp you will also need to change h_export.cpp to let it know about the MOD directory that you are using.  Modify the
+GiveFnptrsToDll() function to know what library (DLL file) needs to be loaded based on the directory name for the MOD.  There are already examples in this function for Half-Life deathmatch, Team Fortress Classic, Counter-
+Strike, Opposing Force, and Front Line Force.
+
+I don't really understand what he meens, but he wrote in the Readme that there are examples in the file.
+
+So I made this:
+
+   strcpy(mod_name &game_dir[pos]);
+   if (strcmpy(mod_name, "valve"==0)        
+   {
+        mod_id = VALVE_DLL;
+#ifndef __linux__
+   h_Library = LoadLibrary("valve\\dlls\\hl.dll");
+#else   
+   h_Library = dlopen("valve/dlls/hl_i386.so",...
+                   ... RTLD_NOW);
+#endif
+   }
+   else if
+   {
+        mod_id = DOD_DLL;
+#ifndef __linux__
+   h_Library = LoadLibrary("dod\\dlls\\dod.dll");
+#else   
+   h_Library = dlopen("dod/dlls/dod_i386.so",...
+                   ... RTLD_NOW);
+#endif
+   }
+
+So I did it like in the examples. But  I couldn't
+debug. So I had to define the DOD_DLL in the bot.h :
+
+.
+.
+.
+#define FRONTLINE_DLL 5
+#define DOD_DLL       6
+
+Now c++ perfectly built the hpb_bot.dll, but I couldn't play DoD.
+So I copied the whole dod directory in the frontline directory and renamed the dod.dll in frontline.dll .
+Then I started Half-life in the new dod(in the frontline directory) and everything worked fine.
+
+What's wrong??????????????
+
+
+
+--------------------------------------------------
+11/20/01 at 07:53:04  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Well, first of all this code...
+code:
+else if 
+  { 
+       mod_id = DOD_DLL;
+
+shouldn't even compile.  You should have something like this...
+code:
+else if (strcmpi(mod_name, "dod") == 0)
+  { 
+       mod_id = DOD_DLL;
+
+You'll also need to change the UTIL_BuildFileName() function in util.cpp to include your new MOD directory name.  There are examples in there of changes for other MODs.
+
+The easiest way to look for places where you need to change things is to search for "VALVE_DLL".  This will show you code that needs to be modified to support a new MOD directory.
+
+botman
+

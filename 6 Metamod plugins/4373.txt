@@ -1,0 +1,71 @@
+--------------------------------------------------
+Subject: Aww. 1 more problem. Bots b0rk when they die
+--------------------------------------------------
+05/02/03 at 16:37:26  Posted by: DllMain (wrwrarwa)
+--------------------------------------------------
+Ok, thanks to some help from hullu, I got my bots to be able to move continuously. However, as soon as they die, they stop. When a client dies does his v.flags / pev.flags get reset? If it does thats probably a cause as to why its not working.. Anywho here is my new system:
+
+In ClientPutInServer:
+
+pEntity->m_nextthink = gpGlobals->time + 0.2f;
+
+and in ClientDisconnect:
+
+pEdict->m_nextthink = 0.0f; //dont crash server when I kick bot :D
+
+and my new StartFrame:
+
+void StartFrame( void )
+{
+for (int i = 1; i <= gpGlobals->maxClients ; i++)
+{
+edict_t *pEdict;
+pEdict = INDEXENT(i);
+float forward_speed = 540.0f;
+float msec_value = 50.0f;
+
+if (pEdict)
+{
+if( pEdict->m_nextthink < gpGlobals->time )//If its time to do the thinking stuff
+{
+if(FBitSet(pEdict->v.flags, FL_FAKECLIENT))//If its a bot
+{
+g_engfuncs.pfnRunPlayerMove( pEdict, pEdict->v.v_angle,
+forward_speed, 0, 0, 0,
+0, msec_value);
+pEdict->m_nextthink = gpGlobals->time + 0.05f;// Delay before next think
+}
+}
+}
+} 
+RETURN_META (MRES_HANDLED);
+}
+
+The bots move forward until they fall off a cliff or whatever, and then once its dead, and respawns, it just hangs in the air like RunPlayerMove isnt being called on it. Is there something I have to add into pfnSpawn? 
+
+The bots move forward until they fall off a cliff or whatever, and then once its dead, and respawns, it just hangs in the air like RunPlayerMove isnt being called on it. Is there something I have to add into pfnSpawn?
+
+EDIT: I fixed it. Just made my own ucustom bool in the edict_t struct, and used it in conjunction with FL_FAKECLIENT. Just if anyone cares to know I changed this:
+
+                        if(FBitSet(pEdict->v.flags, FL_FAKECLIENT)  pEdict->AmIFake)//If its a bot
+
+[modified on 05/02/03 at 16:37:26]
+--------------------------------------------------
+05/03/03 at 06:41:02  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Most MODs that allow you to respawn will check to see if the fire button has been pressed and respawn the player at that point.  Just randomly set the ATTACK bit in the pev->buttons variable to get them to respawn.  Like this...
+code:
+      if (RANDOM_LONG(1, 100) > 50)
+         pEdict->v.button = IN_ATTACK;
+
+
+
+P.S. Just about any code example you need to get bots to do thinks is included in the HPB bot source.  You'll save yourself and us a lot of time by referencing it first.
+
+botman
+
+--------------------------------------------------
+05/03/03 at 09:09:13  Reply by: DllMain (wrwrarwa)
+--------------------------------------------------
+I have been looking at it for about 3 weeks now.. Ill go add some more info to my bot AI post.
+

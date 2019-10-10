@@ -1,0 +1,146 @@
+--------------------------------------------------
+Subject: Metamod hooking (In linux)
+--------------------------------------------------
+07/23/02 at 15:31:50  Posted by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+Hey, I've asked PM how to do metamod hooking with a bot style GiveFnPtrsToDll function, although even when I try it on a listen server it quits back to the desktop, but on a dedicated server it seems okay, so I'm gonna try and do it within linux.
+
+The trouble is I got someone to test it within linux with metamod and they said that the "metamod found" message from my program was displayed but was unsure that metamod was actually called because adminmod didn't work.
+
+Here is the code from the GiveFnptrsToDll function (The metamod part) this is using the base code from HPB_Bot full source in the function.
+
+code:
+
+#ifdef __linux__
+            if ((fp = fopen ("cstrike/dlls/metamod_i386.so", "r")) != NULL)
+            {
+                  fclose (fp); // DLL exists, close it
+                  strcpy(game_dll_filename, "cstrike/dlls/metamod_i386.so");
+                  
+                  printf("PL: Metamod found!\n" );
+            }
+            else
+            {
+                  printf("PL: Couldn't find Metamod!\n" );
+                  strcpy(game_dll_filename, "cstrike/dlls/cs_i386.so");
+            }
+#endif
+
+
+
+I'd like to know if this is the way going about doing it or anyone else has tried it and has worked ok.
+
+--------------------------------------------------
+07/23/02 at 16:43:36  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+Actually heres a little more code and info:
+
+This is code for linkux AND win32 dedicated server metamod checking.
+
+code:
+
+#ifdef __linux__
+            if ((fp = fopen ("cstrike/dlls/metamod_i386.so", "r")) != NULL)
+            {
+                  fclose (fp); // DLL exists, close it
+                  strcpy(game_dll_filename, "cstrike/dlls/metamod_i386.so");
+                  
+                  printf("PL: Linux Metamod found!\n" );
+            }
+            else
+            {
+                  printf("PL: Couldn't find Linux Metamod!\n" );
+                  strcpy(game_dll_filename, "cstrike/dlls/cs_i386.so");
+            }
+#else
+            
+            if( IS_DEDICATED_SERVER() )
+            {
+                  if ((fp = fopen ("cstrike\\dlls\\metamod.dll", "r")) != NULL)
+                  {
+                        fclose (fp); // DLL exists, close it
+                        strcpy(game_dll_filename, "cstrike\\dlls\\metamod.dll");
+                        
+                        printf("PL: Win32 Metamod found!\n" );
+                  }
+                  else
+                  {
+                        printf("PL: Couldn't find Win32 Metamod DLL!\n" );
+                        
+                        strcpy(game_dll_filename, "cstrike\\dlls\\metamod.dll");
+                  }
+            }
+#endif
+
+
+
+This is the output I get from the Win32 Dedicated server.
+
+code:
+
+Adding:  cstrike/dlls\playerlogger.dll
+PL: Win32 Metamod found!
+
+   Metamod version 1.12.4, Copyright (c) 2001-2002 Will Day <willday@metamod.org
+>
+   Metamod comes with ABSOLUTELY NO WARRANTY; for details type `meta gpl'.
+   This is free software, and you are welcome to redistribute it
+   under certain conditions; type `meta gpl' for details.
+
+
+
+
+So it seems that the metamod DLL is being called okay in windows. But as soon as a join the server, the dedicated server quits without errors (perhaps an IsDebuggerPresent() check made by metamod?) 
+
+code:
+
+The thread 0xFFF83857 has exited with code 1 (0x1).
+The program 'D:\Half-Life\hlds.exe' has exited with code 1 (0x1).
+
+
+
+This is exactly what happens when I run it in a listen server as well, when someone actually joins the game.
+
+it has this in the logs
+
+code:
+
+L 07/24/2002 - 00:10:16: [ADMIN] Loading users from file 'users.ini'
+L 07/24/2002 - 00:10:17: [ADMIN] Loaded 1 users
+L 07/24/2002 - 00:10:17: [ADMIN] Loading vault records from file 'vault.ini'
+L 07/24/2002 - 00:10:17: [ADMIN] WARNING: File 'vault.ini' seems to be empty (length 0).
+L 07/24/2002 - 00:10:17: [ADMIN] Loaded 0 vault records
+L 07/24/2002 - 00:10:17: [ADMIN] ERROR: NULL Ent for adminmod_timer
+
+
+
+edit:
+
+A good post about it here:
+
+http://www.ozforums.com/showthread.php?s=496f88b6f9c1d40fde2a3ca311d4c0e2&threadid=16123&highlight=NULL+Ent+for+adminmodtimer
+
+edit: 
+
+looks like I found it (adminmod_timer needed to be in linkfunc.cpp) :/
+
+[modified on 07/23/02 at 16:43:36]
+--------------------------------------------------
+07/23/02 at 16:49:31  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+"But as soon as a join the server, the dedicated server quits without errors (perhaps an IsDebuggerPresent() check made by metamod?)"
+
+Not in metamod, but the CSTRIKE client.dll will check IsDebuggerPresent() and exit() if so.  Try running the dedicated server instead of a listenserver.
+
+botman
+
+--------------------------------------------------
+07/27/02 at 21:28:42  Reply by: Gimli (gimli@jrrclan.com)
+--------------------------------------------------
+Wait from what it looks like your trying to load meta mod from your dll shouldnt it be the other way around?
+
+--------------------------------------------------
+07/28/02 at 04:52:07  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+no its okay I found the prob, adminmod_timer needed to be in linkfunc.cpp
+

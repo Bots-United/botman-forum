@@ -1,0 +1,38 @@
+--------------------------------------------------
+Subject: Need some help with these vectors
+--------------------------------------------------
+09/04/01 at 05:21:27  Posted by: Spectual (spectual@hotmail.com)
+--------------------------------------------------
+I have a entity which I have spawned and I have 2 position vectors:
+
+P1 = Which is the v.origin of the entity
+P2 = Some random position - not important
+
+How do I rotate my entity so that it points in the direction of P2 ?
+
+E.g. I guess I need to set the v.v_angle of the entity, right? But I can't even make it rotate just a bit.
+
+Need help.
+
+--------------------------------------------------
+09/04/01 at 05:48:46  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+The v_angle field of the entvars_t structure is the view angle.  I believe this is only used by players and monsters.  Other entities have no eyes so they don't need view angles.
+
+To change the orientation of an entity you would modify the angles field of the entity (pev->angles in the SDK).  The yaw component of this field (pev->angles.y) will rotate the entity to face a different direction.
+
+If you know a point where you want the entity to face, you can substract one vector from another to obtain the resultant vector.  You can then use UTIL_VecToAngles() to convert the vector to an array of angles.  The yaw component of this will be the angle that you want the entity to rotate towards in order to face the desired point.
+
+If you want the entity to just "jump" to that position you can just set the pev->angle.y value to that angle and the next frame rendered will have it facing that way.  If you want to smoothly rotate the entity to face that direction, you should gradually change the pev->angle.y value (by adding to it or subtracting from it) until it reaches the desired angle.  You can do this by adding a little bit each frame or by creating a Think() function for the entity and setting a nextthink value that will keep calling the Think() function every so often (say every 1/10th a second).  The Think() function would adjust the pev->angles.y value until the entity was facing the proper direction, then disable the Think() function.
+
+botman
+
+--------------------------------------------------
+09/04/01 at 05:56:31  Reply by: Spectual (spectual@hotmail.com)
+--------------------------------------------------
+That makes sense. I changed my code from setting the v.v_angle to v.angles and it started working.
+
+By the way - have you ever come across some tutorial on entity spawning? I could really use getting some deeper knowledge on this subject.
+
+Thanks a lot :-)
+

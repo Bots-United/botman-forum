@@ -1,0 +1,288 @@
+--------------------------------------------------
+Subject: Multiple Bot Compatiblitiy.. Every techie read.
+--------------------------------------------------
+12/13/00 at 10:33:05  Posted by: DarkYouth (darkyouth@thegraze.freeserve.co.uk)
+--------------------------------------------------
+Heres how to make your bot Multibot compatible... Its my own mini-standard in the making so bots can play each other. :) (ie. Pod vs Swat vs RB)
+
+Go to the top of DLL.CPP
+
+and add the following line:
+
+extern bool b_botdontshoot;
+int IsMyBot[32]; // Add this line only
+
+Go into startframe() and on the line before BotThink(pPlayer);
+
+if (IsMyBot[player_index] == 1)
+
+Then go into botcreate() and add the following after BotSpawnInit(pBot);
+
+int x = ENTINDEX(BotEnt);
+IsMyBot[x] = 1;
+
+Then go into ClientCommand() and change all your commands to have your bots initials in front of their name:
+
+i.e.
+SWADDBOT - Add swat bot
+PDADDBOT - Add pod bot
+RBADDBOT - Add RealBot
+
+THEN SIMPLY COMPILE AND IT SHOULD WORK. Then when some bots are Multibot enabled I will show you how to make them fight each other. Sorted.
+
+// BOT DEVELOPERS... 
+// ABOVE WAS FACT... BELOW IS THEORETICAL 
+
+What Im thinking of to automate linking of bots is this:
+
+There should be a file in the cstrike folder called link.dat
+
+I will make a multibot.dll that will be loaded from liblist.gam and it will read the first bot from the file. Each bot should have its own name.
+
+When bot1 loads up it will read the file and find its own name. It will then read the bot below that and link to that.
+
+Then every bot will chain along until the end of the file is reached. That should be it, in theory.
+
+-Bot1
+---Bot2
+------Bot3
+---------Bot4
+
+Anyone wanna try and give some code that does that for h_export.cpp????
+
+
+--------------------------------------------------
+12/13/00 at 10:39:57  Reply by: MKlimstra (mklimstra@zonnet.nl)
+--------------------------------------------------
+It would be really great if that would work! Have you tested it already?
+
+
+--------------------------------------------------
+12/13/00 at 10:45:06  Reply by: MKlimstra (mklimstra@zonnet.nl)
+--------------------------------------------------
+btw: I think it would be better to do it like this:
+
+   ---multibot.dll--
+  /       /      \      \
+bot1 bot2 bot3 bot4 ...
+
+
+
+
+--------------------------------------------------
+12/13/00 at 11:15:24  Reply by: [RB]LeeCA (leeca@stargatesg-1.com)
+--------------------------------------------------
+So far has anyone REALLY got a **working** demo of it?
+
+--------------------------------------------------
+12/13/00 at 11:40:46  Reply by: eLiTe (ali@elitegamer.fsnet.co.uk)
+--------------------------------------------------
+Someone like CF would have to make his code compatible - but CF doesn't want to do it from what I saw on the NuclearBox forum. There's no point ME doing it, my bot isn't even CSv1.0 compatible yet (I don't have v1.0)!
+
+--------------------------------------------------
+12/13/00 at 13:14:30  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+I believe Alfred (from the Admin MOD) has a working method of loading multiple Add-On DLLs for a MOD, so that you could run Admin MOD, HPB_bot, HLDS_LD (or whatever that statistics thing is called), etc.  Alfred just has a text file that contains the names of all the DLLs that the main DLL needs to load (with I assume the actual MOD DLL being last in the list).  The main DLL will pass along the engine call backs to each Add-On DLL and then it will pass them along to the MOD DLL (which means the Add-On DLL SHOULD NOT call the MOD DLL functions otherwise they will get executed multiple times).
+
+Go find out more about this on the Admin MOD Sourceforge site to see what he currently has working (or e-mail him and he can tell you).
+
+botman
+
+--------------------------------------------------
+12/13/00 at 13:28:29  Reply by: cooldude (Cooldude158@excite.com)
+--------------------------------------------------
+that would be sweet, Red Team: HPB_bot Blue Team: Abot Yellow team: ODDbot
+
+--------------------------------------------------
+12/14/00 at 01:33:09  Reply by: MKlimstra (mklimstra@zonnet.nl)
+--------------------------------------------------
+QUOTE:
+Someone like CF would have to make his code compatible - but CF doesn't want to do it from what I saw on the NuclearBox forum. There's no point ME doing it, my bot isn't even CSv1.0 compatible yet (I don't have v1.0)!
+
+
+
+where exactly on nuclearbox did you read that?
+
+--------------------------------------------------
+12/14/00 at 04:11:36  Reply by: eLiTe (ali@elitegamer.fsnet.co.uk)
+--------------------------------------------------
+In the general Bots Forum. I think it's the PLBOT070 topic or something like that... it's one of the recent ones anyway...
+
+--------------------------------------------------
+12/14/00 at 07:26:11  Reply by: theimann (theimann@stud.fh-heilbronn.de)
+--------------------------------------------------
+The idea is great and should work if every bot developer takes care of steering only his bots with the isMyBot-variable.
+If this Admin-Mod already offers the functionality to hook several dlls on top of the game-dll it would be the most simple thing to use it... Has anybody already contacted this Alfred?
+
+Tobias
+
+--------------------------------------------------
+12/14/00 at 08:20:24  Reply by: MKlimstra (mklimstra@zonnet.nl)
+--------------------------------------------------
+I found it:
+QUOTE:
+Dark, why can't you just take a no for a NO! It's not that I dislike you or your Bot or making the small changes. But I absolutely dislike the idea of comparing names to achieve this. I think I had this idea before you even thought about it and threw it away within minutes. It's not smart ! I promise if you tell about this method at Botman's forum they will laugh about it. We have to find another method to detect which Bots are mine and yours. For example 1 idea (not a good one) would be to set additional (hardcoded) Bits in the client flag (if the HL engine doesn't complain, that is). There surely exists another workaround but until no one comes up with a clever idea the answer is no !
+
+
+(CF was wrong about us laughing about it :) )
+He doesn't say he doesn't want to make his bot "multibot compatible", he says that he just doesn't like the system DY proproses.
+Another possibility is to make the multibot-layer handle all the stuff like loading the CS-dll, reacting to ClientCommands, etc. and call the BotThink functions for all bots, and let the bot do what they are meant to do... AI
+
+
+
+--------------------------------------------------
+12/14/00 at 11:27:49  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+"Another possibility is to make the multibot-layer handle all the stuff like loading the CS-dll, reacting to ClientCommands, etc. and call the BotThink functions for all bots, and let the bot do what they are meant to do."
+
+The biggest problem with this is that the bot Add-On needs to get it's hands on much more than just the BotThink() function.  They have to be able to intercept ClientCommand() calls (to handle things like bot commands and custom menus).  Also functions like DispatchKeyValue(), ClientConnect(), ClientDisconnect(), PlayerCustomization() and others may be needed by bots to detect certain game conditions that aren't otherwise available.
+
+I think Alfred has the right idea about having one master loader application that loads the other DLLs and is responsible for passing function calls along to these DLLs.  You could even configure the bot DLL code such that it could work standalone or with this loader, but the bot code MUST implement a method where it will ONLY manipulate the bots that it has created.  Using the EntIndex is sufficient for doing this.  If fact, this is already done in the BotCreate() code (look for the place where "clientindex" is initialized).
+
+botman
+
+--------------------------------------------------
+12/14/00 at 11:50:18  Reply by: DarkYouth (darkyouth@thegraze.freeserve.co.uk)
+--------------------------------------------------
+ok!!!!
+
+Im going to post a dll and waypoint file in about 10 minutes to an hour that shows TeamBot (Elites bot) vs My Bot... S.W.A.T.
+
+I have made no changes to either bot to hinder its performance or improve it. It only works on de_dust since that is the only TB waypointed map.
+
+Release in a while.... gimme a sec, running planetannihilation.com and the swat bot and talking to PC gamer about covermounting my bot (29th december UK edition :)) is quite confusing.
+
+Its a quick thing and it works really well :)
+
+Elites code actually required no changes except for renaming commands.
+
+As for the idea of multibot.dll loading all the bots itself this would be impractical as the code would be far too complex. Plus there can only be one bot that calls the CS functions and it has to be the last one. Sorry. Good idea though
+
+--------------------------------------------------
+12/14/00 at 14:34:17  Reply by: eLiTe (ali@elitegamer.fsnet.co.uk)
+--------------------------------------------------
+I'm really happy that you're using my bot, even though it's not very good yet :)
+
+Maybe you could mention me to PCGamer? I love that magazine!!
+
+See CF? It works, I definitely think you should do it. We could always implement a better method later on...
+
+We could have our own tournaments to see whose bot does best (but NO CHEATING!!! it has to be THE SAME CODE that is released to normal bot users). We should set bots of average skill (full skill would just be crazy), and not just judge on kills, but also judge on how well the bots complete goals and things. Maybe Ditlew could even make NNBot "Multibot Compatible" (Multibot and all related names/ideas (C) DarkYouth 2000)
+
+So could you send me a copy of the modified TEAMbot source DY? I'd like to see the changes, then maybe incorporate them into my latest TEAMbot...
+
+--------------------------------------------------
+12/14/00 at 15:08:24  Reply by: DarkYouth (darkyouth@thegraze.freeserve.co.uk)
+--------------------------------------------------
+DarkYouth enterprises (c) 2000 :)
+
+Its released on another thread... read it.
+
+--------------------------------------------------
+12/14/00 at 15:20:54  Reply by: CountFloyd (countfloyd_1999@yahoo.com)
+--------------------------------------------------
+Elite:
+I never doubted it would work. I only said I dislike the way DarkYouth proposed. If you can remember we had most of this discussion before. I wasn't able to dig out the thread I'm speaking of, but see what I found here:
+http://dynamic.gamespy.com/~botman/yabb/YaBB.pl?board=2&action=display&num=290
+
+I think Botman once questioned the use for multiple Bots fighting against each other. I fully agree, what do you think you would get with that ? You won't see which Bot is the better one because the winning Bot will be the most inhuman and crappy playing Bot (not the smartest and most playable). So the only use I see is to have a different playstyle. But to achieve this, why not improve your own Bot so that it moves/fights better instead of relying on other Bots ?
+
+Besides, I'm glad to be much older than 16 and not having to feed my ego with "I'm the first" messages...
+
+--------------------------------------------------
+12/14/00 at 15:38:56  Reply by: DarkYouth (darkyouth@thegraze.freeserve.co.uk)
+--------------------------------------------------
+I actually feed my ego with cornflakes....
+
+Do you have some kind of problem with me CF?
+
+Youve bickered with me every chance since the whole idea of multiple bots came about.. Its partly my fault too. But lighten up man.
+
+--------------------------------------------------
+12/15/00 at 01:12:55  Reply by: eLiTe (ali@elitegamer.fsnet.co.uk)
+--------------------------------------------------
+DarkYouth is only 16?!!! Wow, that makes me feel old... I should have done more programming when I was young... I'm now 17 and haven't really done much programming at all...
+
+Don't worry CF, I'm not going to leave my bot in its current state!! :) I'm planning on improving everything, but I want to implement buying (and possibly radio commands) b4 I start on improving the nav system. Then I can use some of the nav functions to improve the combat code with 'hunting' (moving towards the last seen location of an enemy after he disappears from view)
+
+
+--------------------------------------------------
+12/27/00 at 16:52:10  Reply by: MKlimstra (mklimstra@zonnet.nl)
+--------------------------------------------------
+QUOTE:
+As for the idea of multibot.dll loading all the bots itself this would be impractical as the code would be far too complex. Plus there can only be one bot that calls the CS functions and it has to be the last one. Sorry. Good idea though
+
+
+(Sorry?) You're right: it would make it very complex and requires much more work (and changes to already existing botcode). However I had some ideas in mind which would not be possible using your method. Doesn't matter since the whose bot versus bot thing doesn't really have much use after all.
+I agree with Count-Floyd that it would not prove which bot is 'the best', since making a bot with perfect aim for example is far more easy than making a realistic (human-like) bot.
+
+
+
+--------------------------------------------------
+12/15/00 at 05:37:53  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+"Plus there can only be one bot that calls the CS functions and it has to be the last one."
+
+Actually NONE of the bot Add-On would call any MOD DLL code.  The master loader Add-On would do that instead.  The engine call back functions to the bot code (stuff in dll.cpp) would be called by the master loader.  These functions would be modified so that they just return to the master loader if they don't need to do anything.  The master loader would call each Add-On's version of these functions, in order, and at the end would call the MOD DLL's version of these functions.  Like this...
+
+1) Half-Life engine calls master loader ClientCommand().
+
+2) master loader calls HPB bot version of ClientCommand().  HPB bot doesn't recognise this command so it returns (WITHOUT passing it on the the MOD DLL).
+
+3) master loader calls SWAT bot version of ClientCommand().  It recognises the command and does something with it, then returns.
+
+4) master loader calls POD bot version of ClientCommand().  It doesn't recognise this command so it returns.
+
+5) master loader has no more Add-On DLL to call so it calls the MOD (CS, TFC, HL, etc) version of ClientCommand().  The MOD executes the command and returns.
+
+It would be the same for all of the engine callback functions in the dll.cpp file.  This could actually be made to work (if anybody was really interested in doing this).  And as I said before, the bot developer could actually support both modes of operation (standalone and running under a master loader).
+
+botman
+
+--------------------------------------------------
+12/15/00 at 05:42:22  Reply by: MKlimstra (mklimstra@zonnet.nl)
+--------------------------------------------------
+The method that Botman described is exactly what I meant.
+
+--------------------------------------------------
+12/15/00 at 14:24:03  Reply by: DarkYouth (darkyouth@thegraze.freeserve.co.uk)
+--------------------------------------------------
+I see what you mean now. It would be a real bugger to cycle through the a loop of dlls but once implemented it should be simple to expand.
+
+Im looking into this... Its looking quite plausible but taking me ages. Im trying to find the single routine (maybe ill use startframe) and call each bot dlls respective startframe() function one after another... heheheh
+
+--------------------------------------------------
+12/15/00 at 14:36:54  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+"Im trying to find the single routine (maybe ill use startframe) and call each bot dlls respective startframe() function one after another"
+
+I still don't think you get it.  The master loader DLL's version of StartFrame() will call the other Add-On DLL's version of StartFrame() and then it will call the MOD's version of StartFrame().
+
+The master loader's version of ClientCommand() will call the other Add-On DLL's version of ClientCommand() and then it will call the MOD's version of ClientCommand().
+
+The master loader's version of DispatchKeyValue() will call the other Add-On DLL's version of DispatchKeyValue() and then it will call the MOD's version of DispatchKeyValue().
+
+The master loader's version of ClientPutInServer() will call the other Add-On DLL's version of ClientPutInServer() and then it will call the MOD's version of ClientPutInServer().
+
+...do I REALLY have to go through EVERY single function in the dll.cpp file to explain this?
+
+botman
+
+--------------------------------------------------
+12/15/00 at 15:52:52  Reply by: DarkYouth (darkyouth@thegraze.freeserve.co.uk)
+--------------------------------------------------
+I get you now.
+
+Each DLL itself referances CS seperately... hhmmm and then when all the think functions have been called CS does its stuff and the who thing goes back to the beginning heheheh
+
+Its looking simpler and simpler.
+
+--------------------------------------------------
+12/15/00 at 15:59:53  Reply by: DarkYouth (darkyouth@thegraze.freeserve.co.uk)
+--------------------------------------------------
+I get you now.
+
+Each DLL itself referances CS seperately... hhmmm and then when all the think functions have been called CS does its stuff and the who thing goes back to the beginning heheheh
+
+Its looking simpler and simpler.
+

@@ -1,0 +1,101 @@
+--------------------------------------------------
+Subject: Need a DMC makefile for borland builder 5.5
+--------------------------------------------------
+04/16/02 at 11:14:38  Posted by: Jimbo (jimbo@jmap.cjb.net)
+--------------------------------------------------
+I have no idea how to code makefiles,
+can someone plz send me a makefile for DMC that will work with borland?
+
+
+
+--------------------------------------------------
+04/16/02 at 12:19:51  Reply by: @$3.1415rin (joebot@botepidemic.com)
+--------------------------------------------------
+i don't think that there are special makefiles for DMC, you can just take the makefile from botman's template and modify it for the files you've added. Should be pretty self explanitory, just add the additional .cpp file you wrote as .o files to the object list, save it, type make and that's it I would say.
+
+--------------------------------------------------
+04/16/02 at 12:42:05  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Yep, just do...
+
+dir /B *.cpp >files.txt
+
+...then edit files.txt and change the .cpp to .o and add a '\' at the ends of the lines and you have a list of all of the object files.
+
+Just replace this section with the same section of the makefile, change the name of the DLL (from mp.dll to dmc.dll) and that should take care of it.
+
+botman
+
+[modified on 04/16/02 at 12:42:05]
+--------------------------------------------------
+04/16/02 at 14:08:36  Reply by: Jimbo (jimbo@jmap.cjb.net)
+--------------------------------------------------
+ok I'll try that when I get home.
+Thanks,
+
+
+
+--------------------------------------------------
+04/17/02 at 12:56:19  Reply by: Jimbo (jimbo@jmap.cjb.net)
+--------------------------------------------------
+I tried compiling the client and it sorta worked
+but i got an error when it got to bcc_client.def
+
+Fatal: Could not open bcc_client.def (error code 2)
+
+** error 2 ** deleting client.dll
+
+what should i change in bcc_client.def from the root source folder to make it work?
+
+When i tried to compile the dlls folder it gave me a bunch of errors :(
+ARGH!
+Why couldnt they just use standard code? damn msvc++ crap
+
+--------------------------------------------------
+04/17/02 at 13:49:39  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+You will need to create a bcc_client.def file for the exported function names.
+
+This is needed to convert the "_" form of an exported function to a non-underscore version (i.e. "_Initialize" becomes "Initialize").
+
+Start with the version included with the SDK patches (copy it to your DMC cl_dll folder).  Most of these functions should be the same in DMC except for the "ammo_XXX" and "weapon_XXX" functions.
+
+Once the DLL builds, you can look at the .map file to see which function names beginning with "_" were exported and add those to the bcc_client.def file.  You will probably also have to remove the onces from bcc_client.def that doen't have a matching function in the DMC client.dll file (the linker should barf on the bad ones and that will tell you that you need to remove it, do these ONE-BY-ONE to keep from removing something you shouldn't).
+
+botman
+
+--------------------------------------------------
+04/26/02 at 08:48:51  Reply by: Jimbo (jimbo@jmap.cjb.net)
+--------------------------------------------------
+I can't get either dll to compile correctly yet
+I'm getting lots of ambiguity errors like
+
+"Error E2015 .\DMC_Teleporters.cpp 403: Ambiguity between 'Vector::operator float *()' and 'Vector::operator const float *() const' in function Dmc_TeleporterTouched(int,dmc_tele_t *,dmc_tele_t *,local_state_s *)"
+
+Ambiguity? does this mean that where the function is called has different args than where it was defined? or is this a difference between the protoype and the defined function?
+
+-Jimbo
+
+--------------------------------------------------
+04/26/02 at 09:03:55  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+The compiler doesn't know how to translate between a "const float" and a "float".
+
+This should be the line where you are getting the error...
+code:
+      for ( i = 0; i < 3; i++ )
+            player->playerstate.origin[ i ] = target->origin[ i ];
+
+...change those 2 lines to this...
+code:
+   player->playerstate.origin.x = target->origin.x;
+   player->playerstate.origin.y = target->origin.y;
+   player->playerstate.origin.z = target->origin.z;
+
+...I hate the way the Microsoft compiler treats and array of floats the same as three floats one after the other "float x, y, z;"
+
+Basically any where that you have variables with pitch, yaw and roll as an array you will have to change them to .x, .y, and .z instead.
+
+botman
+
+[modified on 04/26/02 at 09:03:55]

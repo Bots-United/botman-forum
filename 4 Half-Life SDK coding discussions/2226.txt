@@ -1,0 +1,113 @@
+--------------------------------------------------
+Subject: Weird error when loading .so in Linux
+--------------------------------------------------
+09/02/01 at 09:39:03  Posted by: BillDoor (nf9576@bris.ac.uk)
+--------------------------------------------------
+I'm trying to run my tfc mod in Linux, and after a lot of source changing (and removed unresolved externals) I managed to get it to compile, but when I try to get HLDS to load it, I get the following error:
+code:
+
+[142@localhost hlds_l]$ ./hlds_run -game tfc
+Host_Init
+Added packfile /hlservers/142/hlds_l/valve/pak0.pak (985 files)
+Added packfile /hlservers/142/hlds_l/tfc/pak0.pak (306 files)
+Protocol version 43
+Exe version 3.1.0.6
+Exe build: 18:39:11 Mar 12 2001 (1600)
+WON Auth Server
+PackFile: /hlservers/142/hlds_l/tfc/pak0.pak : valve.rc
+couldn't exec language.cfg
+LoadLibrary failed on /hlservers/142/hlds_l/tfc/dlls/NeoTF_i486.so: /hlservers/142/hlds_l/tfc/dlls/NeoTF_i486.so: undefined symbol: sin
+Host_Error: Couldn't get DLL API from /hlservers/142/hlds_l/tfc/dlls/NeoTF_i486.so!
+Error Host_Error: Couldn't get DLL API from /hlservers/142/hlds_l/tfc/dlls/NeoTF_i486.so!
+
+
+
+I used sin() and cos() in my code, and included math.h, but I have no idea where this error is coming from... can anyone help me?
+
+Thanks,
+BillDoor
+
+--------------------------------------------------
+09/02/01 at 14:37:26  Reply by: @$3.1415rin (as3.1415rin@gmx.de)
+--------------------------------------------------
+i had a similar prob with the stdc++ libs. in the end i found out that the linux compiler used some .o files from the windows compiler, which weren't deleted with the "make clean" command. if this doesn't work, try to find out the lib where the functions are and link it
+
+--------------------------------------------------
+09/03/01 at 05:34:56  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+You might want to also try adding "-lm" to the link command line to include the math library libm.a
+
+botman
+
+--------------------------------------------------
+09/03/01 at 11:03:14  Reply by: BillDoor (nf9576@bris.ac.uk)
+--------------------------------------------------
+OK, now I get another error! :(
+
+I used -lm to include the math library, but then when the .so is loaded a get a segmentation fault:
+
+code:
+
+[142@localhost hlds_l]$ ./hlds_run -game tfc
+Host_Init
+Added packfile /hlservers/142/hlds_l/valve/pak0.pak (985 files)
+Added packfile /hlservers/142/hlds_l/tfc/pak0.pak (306 files)
+Protocol version 43
+Exe version 3.1.0.6
+Exe build: 18:39:11 Mar 12 2001 (1600)
+WON Auth Server
+PackFile: /hlservers/142/hlds_l/tfc/pak0.pak : valve.rc
+couldn't exec language.cfg
+Segmentation fault (core dumped)
+
+
+
+The makefile I use is GNUmakefile:
+code:
+
+MOD_DIR = /hlservers/142/hlds_l/tfc
+
+CPP = gcc
+
+BASEFLAGS = -Dstricmp=strcasecmp -Dstrcmpi=strcasecmp
+
+CPPFLAGS = ${BASEFLAGS} -m486 -O2 -w -I../engine -I../common -I../pm_shared
+OBJ = neotf.o \
+        dll.o engine.o h_export.o linkfunc.o util.o
+
+NeoTF_i486.so: ${OBJ}
+        ${CPP} -fPIC -shared -o $@ ${OBJ} -ldl -lm
+        cp -f NeoTF_i486.so ${MOD_DIR}/dlls
+
+clean:
+        -rm -f *.o
+        -rm -f *.so
+
+%.o:    %.cpp
+        ${CPP} ${CPPFLAGS} -c $< -o $@
+
+%.o:    %.c
+        ${CPP} ${CPPFLAGS} -c $< -o $@
+
+
+
+I'm not sure whether this would be a run-time error in my code or an error when loading the DLL..?
+
+The mod works perfectly in win32, so I guess if there is an error it's in the linux parts of h_export.cpp, but this is almost identical to the HPB_bot file...
+
+Thanks for all the help :)
+
+--------------------------------------------------
+09/03/01 at 12:53:27  Reply by: @$3.1415rin (as3.1415rin@gmx.de)
+--------------------------------------------------
+that looks like a runtime error ...
+
+try to compile ur bot with debug information  (I think it was -g)  and run it again. then debug it with "gdb hlds_run core" and type "bt" to backtrace everything and see where it crashed ... 
+
+--------------------------------------------------
+09/04/01 at 20:39:43  Reply by: BillDoor (nf9576@bris.ac.uk)
+--------------------------------------------------
+Got it working!
+
+The fault was actually caused by a corrupt tfc_i386.so lol :)
+

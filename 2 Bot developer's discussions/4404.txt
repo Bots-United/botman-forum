@@ -1,0 +1,95 @@
+--------------------------------------------------
+Subject: Few questions about weapon pickup.
+--------------------------------------------------
+05/11/03 at 18:02:15  Posted by: Tea (tea@mail97.com)
+--------------------------------------------------
+Q1: My bot can pickup bazooka in DoD and this bazooka was spawned on the floor when the map start, but the bot seem donno he already pickuped the bazooka since I use if (pBot->current_weapon.iId == DOD_WEAPON_BAZOOKA) it return flase(the weapon id sure correct), do I need to do any current_weapon update after the bot pickuped the weapon ? If yes, how ?
+
+Q2: But if I drop my weapon "sten" in front of him, he donno it can pickup, or if I pickup the bazooka first then drop in front to my bot, he also donno it can pickup, why ?
+
+Q3: I look at botman's code and knew the number 5 after item_name is ammo and number 7 is weapon, how do I find out the other number ?
+
+Q4: Any simple command let the bot tell me his current_weapon ? Something like FakeClientCommand(pEdict,"say",my current weapon,0); ?
+
+Here is my code sample thank you for the help.
+_________________________________________________
+ if (strncmp("weapon_bazooka", item_name, 7) == 0)
+  {
+ // check if the item is not visible (i.e. has not respawned)
+ if (pent->v.effects & EF_NODRAW)
+ continue;
+ FakeClientCommand(pEdict,"say","This is a bazooka",0);
+ FakeClientCommand(pEdict, "drop", NULL,NULL);
+ can_pickup = TRUE;
+  }
+  else if (strncmp("weapon_sten", item_name, 7) == 0)
+ {
+ // check if the item is not visible (i.e. has not respawned)
+ if (pent->v.effects & EF_NODRAW)
+  continue;
+ FakeClientCommand(pEdict,"say","This is a STEN",0);
+ FakeClientCommand(pEdict, "drop", NULL,NULL);
+can_pickup = TRUE;
+  }
+
+
+
+[modified on 05/11/03 at 17:53:09]
+
+[modified on 05/11/03 at 18:01:04]
+
+[modified on 05/11/03 at 18:02:15]
+--------------------------------------------------
+05/12/03 at 05:54:34  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+code:
+
+ if (strncmp("weapon_bazooka", item_name, 7) == 0)
+  ...
+ else if (strncmp("weapon_sten", item_name, 7) == 0)
+
+
+
+use strcmp instead of strncmp, because you are only letting strncmp compare the first 7 characters of the string (i.e. up to "weapon_")
+
+change them to this
+
+code:
+
+ if (strcmp("weapon_bazooka", item_name) == 0)
+  ...
+ else if (strcmp("weapon_sten", item_name) == 0)
+...
+
+
+
+see if that helps
+
+--------------------------------------------------
+05/12/03 at 09:13:20  Reply by: Tea (tea@mail97.com)
+--------------------------------------------------
+Thank you for the reply cheesemonster, unlucky it is not work, but you did teach me the difference between strncmp and strcmp, tks again.
+
+I think I should use some command to update the bot current_weapon after he "auto" changed a difference gun, because I have notice after he drop his primary weapon, he will auto change to a handgun(a colt) first before pickup the bazooka, but if (pBot->current_weapon.iId == DOD_WEAPON_COLT) also return false when he hold the colt, so I think the bot donno he have "auto" changed to a new weapon already.
+
+Tks cheesemonter already answer my Q3, but anyone have suggest for my other question please ?
+
+--------------------------------------------------
+05/12/03 at 12:37:54  Reply by: Tea (tea@mail97.com)
+--------------------------------------------------
+Okay, I have fixed the question 2, just look for the weapon model insteal of the name then fixed.
+
+My only problem now is when I use the current_weapon command, bot never know his current_weapon is handgun after he droped his primary weapon, and I found out some of the other weapons like Kar but not just bazooka also can't check by the current_weapon command, but I am sure all of the weapon iID is correct since I can use fakeclient command to change bot use any weapon without problem. 
+
+--------------------------------------------------
+05/12/03 at 15:07:34  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+The weapon ID does not need to be correct to switch weapon, sll you need is the classname i.e. FakeclientCommand(pEdict,"weapon_bazooka",NULL,NULL) , since this is basically what UTIL_SelectItem() does if that is what you are using.
+
+The weapon IDs need not be correct either for the current_weapon to update. AS LONG as you have code in the bot_client.cpp area upon weapon pickup / current weapon functions for YOUR Mod.
+
+--------------------------------------------------
+05/12/03 at 15:35:37  Reply by: Tea (tea@mail97.com)
+--------------------------------------------------
+Errr, I have solved this problem finally, because I did something wrong in the bot_compat.cpp !!! Now everything okay. Tks Cheese ~
+

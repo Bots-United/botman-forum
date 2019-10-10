@@ -1,0 +1,100 @@
+--------------------------------------------------
+Subject: Making a MOD bot
+--------------------------------------------------
+08/25/00 at 14:13:23  Posted by: Guest (hargunk@hotmail.com)
+--------------------------------------------------
+I was going through the Half-Life SDK 2.0 and I started thinking about writing a TFC bot. However, one thing I cannot figure out is how the bot is in the TFC mod? Or any mod for that matter! If you compile the SDK with a bot coded in it, you get the regular version of half-life, no? It's not like you have an SDK that is TFC Specific. How did you get the two dll's (TFC's and your own) to work together in one HPB_Bot.dll file? I would really appreciate any light anyone can shed on this for me. 
+
+Best Regards,
+Calavera
+
+--------------------------------------------------
+08/25/00 at 14:38:14  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+The method that I use is to create a DLL that sits between the Half-Life engine and the game MOD DLL.  The engine calls my DLL and my DLL, in turn, calls the MOD DLL.  As far as the engine knows my DLL is the MOD DLL.
+
+I also intercept engine calls from the MOD DLL.  The MOD DLL calls my version of the engine functions, I examine the parameters (when I need to) and then pass this along to the Half-Life engine.
+
+This technique allows you to create fake clients (bots) on the server without having to have access to the MOD source code.
+
+botman
+
+--------------------------------------------------
+08/25/00 at 15:28:19  Reply by: Calavera (hargunk@hotmail.com)
+--------------------------------------------------
+So, what part of your HPB_Bot source code should I look at to see how you did the interception? Or, could you give me a quick watered down rendition of how you did it?
+
+--------------------------------------------------
+08/25/00 at 16:30:21  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+Look in h_export (that loads the MOD DLL), dll.cpp (that handles stuff from the engine to the MOD) and engine.cpp (that handles stuff from the MOD to the engine) and also take a look at linkfunc.cpp (that is the hooks that makes the engine think my DLL is the MOD DLL.
+
+In linkfunc.cpp I export all of the entities that could exist in the map.  When the engine needs to spawn one of these entities, it calls my exported function and then my function calls the other MODs version of it.
+
+botman
+
+--------------------------------------------------
+08/26/00 at 02:07:18  Reply by: pikachu (emperorstuart@hotmail.com)
+--------------------------------------------------
+You could actually make a bot in delphi, as long as you get all the right funcs exported.
+
+
+
+
+--------------------------------------------------
+09/08/00 at 21:17:47  Reply by: sun-tzu (huseyinsikici@hotmail.com)
+--------------------------------------------------
+Question to Botman: Since you are intercepting calls from and to the MOD, that would be the reason why Bots _have_ to be deployed on the server side. There can't be bots on the client that connect to a server, correct? 
+
+Thanks
+
+
+
+--------------------------------------------------
+09/09/00 at 04:52:12  Reply by: admin (botman@mailandnews.com)
+--------------------------------------------------
+Yes, correct.  The only way to do client side bots is to figure out the details in the Half-Life network protocol (which is sort of Quake like).  Then create a bot that understands (and communicates) in this network protocol.  So far no one has been able to do this.
+
+There's a link on my Links page to the Quake Documentation project.  The QDP has a document describing the Quake network protocol if you are interested (it's also used for Quake recorded movies).  You can also use my NetProbe utility to capture network packets.  It's sort of a poor man's network sniffer that intercepts packets going to/from the server.
+
+botman
+
+--------------------------------------------------
+02/21/01 at 13:33:06  Reply by: ExecutionStyle (c_brennan@hotmail.com)
+--------------------------------------------------
+Absolutely fascinating... botman, you say that for bots to work on the client side, they would have to intercept server transmissions to get game information.  What if the server side bot dll (between HL and the mod) broadcast game info to a client side bot dll such that bots running on the client side could use this info to play the game?  Sounds a lot easier than sniffing packets and deciphering protocols...
+
+-Carl
+
+--------------------------------------------------
+02/22/01 at 04:58:26  Reply by: theimann (tobias.heimann@cl.cam.ac.uk)
+--------------------------------------------------
+> Sounds a lot easier than sniffing packets and deciphering protocols..
+
+It definately is! The thing is that servers generally don't want bots to get connected from the client-side because that would be abused for cheating and spoil the online gaming.
+But nevertheless (this is just a technical question, so please dudes, don't flame for cheating, ok?) here goes one question for you botman: For Q2 there has been an aimbot, intercepting the mouse-interface to make the player (client-side!) aim directly on the enemies. Is there any such a program for HL and if not, what would stop you from just programming one of these instead of trying to decode the entire network protocol?
+
+Just curiously, Tobias
+
+--------------------------------------------------
+02/22/01 at 05:40:29  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+Yes, there is an aimbot for Half-Life (it may be Counter-Strike only, but I'm not sure).  Basically this aimbot intercepts the Windows mouse movement commands on the client.  The aimbot "locks in" on certain colors (bright red for one team, and bright green for the other team).  To use the aimbot you have to use special skins on the models that make the terrorists one color and the counter-terrorist another color.  The aimbot will constantly scan a small square on the center of the display for the colors that it wants to lock in on.  When it sees one of these colors, it "adjusts" the mouse for you toward that direction, thus "helping you" aim at the enemy.
+
+To prevent this server admins must configure the server such that custom models can not be used.  There are also spray logos out there that try to trick the aimbot to locking on to sprayed images instead of players.
+
+botman
+
+--------------------------------------------------
+02/22/01 at 17:51:49  Reply by: bigjesus (holybigjesus@hotmail.com)
+--------------------------------------------------
+so i could have made a bot with java all this friggin time i had to learn c++ just to make a bot LOL!
+
+--------------------------------------------------
+02/23/01 at 05:12:42  Reply by: theimann (tobias.heimann@cl.cam.ac.uk)
+--------------------------------------------------
+No, not in Java. Since Java is an interpreter-language you can't use it to compile DLLs. So don't worry: You didn't learn C++ in vain :-)
+
+Tobias
+
+

@@ -1,0 +1,125 @@
+--------------------------------------------------
+Subject: [botman] about that singleplayer problem...
+--------------------------------------------------
+03/16/02 at 19:31:16  Posted by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+Hello botman
+
+I was thinking about that problem you get in single player mods when bots are installed (you know, the barney not coming, at the end of the intro tram ride).
+
+I noticed that in SP mode, when bots are installed, my HL console gives me things like this on map load:
+code:
+
+Can't find proc: DoorTouch@CBaseDoor
+Can't find proc: RampThink@CAmbientGeneric
+Can't find proc: ToggleUse@CAmbientGeneric
+Can't find proc: MonsterUse@CBaseMonster
+Can't find proc: SUB_DoNothing@CBaseEntity
+Can't find proc: DeadEnd@CFuncTrackTrain
+Can't find proc: TouchChangeLevel@CChangeLevel
+
+
+...tons like this, about 200~300 per level (some are recurrent).
+
+OK then. The second thing I noticed is this: using your 'exports.cpp' handy tool to list the exported content of the MOD DLL I have the SP problem with, I find things like this in it:
+code:
+
+?DoorTouch@CBaseDoor@@QAEXPAVCBaseEntity@@@Z
+?RampThink@CAmbientGeneric@@QAEXXZ
+?ToggleUse@CAmbientGeneric@@QAEXPAVCBaseEntity@@0W4USE_TYPE@@M@Z
+?MonsterUse@CBaseMonster@@QAEXPAVCBaseEntity@@0W4USE_TYPE@@M@Z
+?SUB_DoNothing@CBaseEntity@@QAEXXZ
+?DeadEnd@CFuncTrackTrain@@QAEXXZ
+?TouchChangeLevel@CChangeLevel@@QAEXPAVCBaseEntity@@@Z
+
+
+...tons too, about 200 of them, that come just before the entity list we all know (DelayedUse, GetEntityAPI, GetEntityAPI2, GiveFnptrsToDll, aiscripted_sequence, ambient_generic, ammo_357, ammo_9mmAR...)
+
+In the linkfunc.cpp file of our bots source code, we LINK_ENTITY_TO_FUNCs only our well-known game entities, but the fact that the engine complains about procs it can't find, shows that we should link all this strange stuff in some manner too, shouldn't we ?
+
+What strikes me the most is the fact that EACH warning from the engine has its corresponding export in your exports.cpp's dump list of exported stuff...
+
+I don't know what all those lines are all about. If you have an idea about it, PLEASE tell me. However, I bet we should find a way to link all this stuff too for the engine to find the stuff it needs at the right addresses (because obviously it's not the case ; something important is missing in the DLL interfacing).
+
+I already tried things like:
+code:
+
+LINK_ENTITY_TO_FUNC (AccelerateThink@CApacheHVR); // does not work because of the '@'
+LINK_ENTITY_TO_FUNC (CApacheHVR::AccelerateThink); // compiler says it doesnt know CApacheHVR class
+LINK_ENTITY_TO_CLASS (CApacheHVR, AccelerateThink); // compiler says AccelerateThink is undefined
+
+
+;-) don't laugh, I told you I don't know what these 'entities' are all about! I'm just blindly trying...
+
+Could you tell me everything you know about this problem ? I really want to fix it, there MUST be a way to.
+
+[modified on 03/16/02 at 19:31:16]
+--------------------------------------------------
+03/17/02 at 05:16:59  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+I believe you only get those messages when running with the Debug version of hl.dll.  The debug version explicitly checks if Think, Touch and Use functions are exported and prints a warning message if they are not.  These functions don't actually need to be exported since they are called directly by the Half-Life engine code.  The only functions that need to be exported are the ones the engine will call directly (like to spawn weapons, or the Game DLL API functions like DispatchThink, DispatchSpawn, etc.).
+
+The Think, Touch and Use functions are all called from DispatchThink, DispatchTouch, and DispatchUse (respectively).  So as long as the DispatchX() functions are exported the engine should be able to call thinks correctly.
+
+The short names (with one @ sign) are the Half-Life engine's version of the long MSVC C++ name mangled versions (the ones with two @@ signs).  The Half-Life engine truncates these names in the NAME_FOR_FUNCTION and FUNCTION_FROM_NAME engine functions so that the Valve developers could change the number or type of parameters passed to a function without clobbering the save/restore data in the .sav files.
+
+I spent several days trying to find out why Barney does not get triggered at the end of the train ride, but I never could figure out what trigger was not getting activated.
+
+botman
+
+--------------------------------------------------
+03/17/02 at 06:58:53  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+Thanks a lot for the reply. Things are quite brighter now. You're right, it's a debug DLL specially built for it. I'm attempting to trace the missing calls (not easy). I'll keep searching ; when I found something interesting I'll post it here.
+
+I'm impressed how well you seem to know the Half-Life internals... botman the King ;-)
+
+However, that bug is not my main priority (bot coding goes first). But I hope I will succeed. This would be a VERY appreciated feature for Win32 listenservers running stuffs like metamod and/or HPB-derivated bots to have access to SP mode too...
+
+
+--------------------------------------------------
+03/17/02 at 07:13:57  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+By the way, that's not only Barney that is messed up. Try to force-load a level (console then 'changelevel mapname' with a SP level name) and you'll see that there are many buttons, triggers, retinal scanners you just can't use. And even sometimes, running through that level, you'll be able to 'see its end', that's to say, pass the point where the level should chainload the next one, and nothing happens...
+Even more convincly, slap up a new game WITHOUT the bot DLL, run 2 or 3 levels, grab some weapons and stuff, and SAVE your game. Quit HL, install your bot DLL, launch the game WITH the bot DLL and LOAD your slot.
+Then look at the console messages. That's eloquent.
+Try to wander around in the level and try to use triggers too ; and you'll notice that almost none can be used whereas normally you could use much more of them.
+
+IMHO, all that is meaning that something can't pass correctly through the DLL interfacing.
+
+[modified on 03/17/02 at 07:13:57]
+--------------------------------------------------
+03/17/02 at 07:52:40  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+Laser (RC author) told me you should EXPORT a lot of dll functions... I dunno if that will help.
+
+--------------------------------------------------
+03/17/02 at 10:58:43  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+If botman is right, I shouldn't need to export anything more, because each specific function call is routed in the DispatchXXX() function, which is callable by the engine without problems.
+
+Could you or Laser tell me more about this idea ?
+
+
+--------------------------------------------------
+03/17/02 at 16:58:05  Reply by: Ghoul (oneeyedghoul@aol.com)
+--------------------------------------------------
+When I had my bots installed while testing my SP levels all the triggers worked fine, but when a level change occured the game crashed because nothing was saved between level changes.  This caused a crash in the weapon code because they didn't have an owner.
+
+--------------------------------------------------
+03/17/02 at 18:50:00  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+Looks like that, too...
+What do you mean with "nothing was saved" ?
+What does the engine actually 'forget' to do in that case ?
+
+I need infos, infos again, lots of infos to understand well the problem... Please all tell me your SP+bots experience !
+
+
+--------------------------------------------------
+03/18/02 at 13:59:48  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+Look in the SaveRestore functions. There are SaveRestore functions for most weapons,monsters etc, these are used with level changes (of course this only happens on single player so you dont get this problem on multiplayer)
+
+The function pointers may be incorrect or ... something else :p
+

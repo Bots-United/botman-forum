@@ -1,0 +1,122 @@
+--------------------------------------------------
+Subject: stack overwtflow?
+--------------------------------------------------
+01/21/03 at 00:11:07  Posted by: PM (pm@racc-ai.com)
+--------------------------------------------------
+I want to wrap my BSP stuff into my engine abstraction layer. In order to do this, I have regrouped the infos I need from the BSP file in a separate structure, which I use only once, when I load the map BSP, sort the walkable faces data and save a .map file (engine-independent format) back to disk. Here's the BSP structure I use:
+
+code:
+
+typedef struct
+{
+   dmodel_t dmodels[MAX_MAP_MODELS]; // map's model data array
+   dplane_t dplanes[MAX_MAP_PLANES]; // map's plane data array
+   dvertex_t dvertexes[MAX_MAP_VERTS]; // map's vertice data array
+   dface_t dfaces[MAX_MAP_FACES]; // map's face data array
+   dedge_t dedges[MAX_MAP_EDGES]; // map's edge data array
+   int dsurfedges[MAX_MAP_SURFEDGES]; // map's surfedge data array
+} bsp_file_t;
+
+
+In terms of memory consumption, it is about a hundred of kilobytes, since I don't load all the lumps of the BSP data.
+
+Now since I use this structure only once and throw it to thrash after, I may want to declare it local :
+code:
+
+void LookDownOnTheWorld (void)
+{
+   bsp_file_t bsp_file;
+   // very little stuff below
+   // I only use bsp_file in this function, and nothing nowhere ever points to any of its data
+}
+
+
+THIS, just THIS, compiles, but makes a "stack overflow" fatal error.
+Whereas:
+code:
+
+bsp_file_t bsp_file;
+
+void LookDownOnTheWorld (void)
+{
+   // the exact same stuff as before
+   // I still use bsp_file only in this function, and nothing nowhere ever points to any of its data
+}
+
+
+compiles, and just runs fine.
+
+whaddafùck is that ?
+
+
+--------------------------------------------------
+01/21/03 at 05:34:56  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+I usually get "Stack Overflow" messages when I've got some REAL deep recursion.  You keep calling the same function over and over and the return address keeps getting put on the stack (along with any local variables).  Pretty soon, you run out of stack space and KA-BLOOEY!, it crashes.
+
+I had a similar problem with the first inmplentation of my automatic waypoint generator in my BSP tools.  The recusive flood fill would push some much stuff on the stack that I would run out of stack space.  What I did to fix this was to change the flood fill to a "while" loop and create my own stack to store coordinates using STL <stack> objects.
+
+There's a couple of things you can do to try to fix this problem...
+
+1) Change the amount of stack space allocated to your executable.  See your compiler/linker documentation about how to change the amount of stack space reserved for an application.
+
+2) If you are using recursion, change it to a non-recursive solution (if possible).  Or implement another data structure (like I did) to store the information that would normally be stored recursively.
+
+3) If you are storing LOTS of data on the stack as local variables in a function, consider using global storage space (outside the function) or consider using "new" to allocate memory (which will come off the HEAP and not off the STACK).
+
+botman
+
+--------------------------------------------------
+01/21/03 at 06:16:53  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Thanks botman. I wasn't aware of that fundamental difference of allocation between global and local variables.
+
+Since no recursion is involved here, and I don't want my code to require non-standard linker parameters, I assume sizeof (bsp_file_t) exceeds the maximum stack space, hence I will stick to declaring it global.
+
+
+--------------------------------------------------
+01/21/03 at 12:54:34  Reply by: @$3.1415rin (johannes@_-removeifnotavirus-_lampel.net)
+--------------------------------------------------
+a local pointer, one 'new' call and deleting the object at the exit of the function sounds cleaner to me ...
+
+--------------------------------------------------
+01/25/03 at 09:22:11  Reply by: Phreak (dead_sexy_simon@hotmail.com)
+--------------------------------------------------
+
+I agree, you should create a new instance to allocate memory and delete it at the end of the function. Whatever you place on the stack last, comes off first, but there are assembly functions to push things to the top of the stack so they can be read first. I've seen people get Stack Overflows by pushing the variable to the top of the stack and re-calling it...
+
+Which leads to stack overflows.
+
+I am currently reading up on the stack and memory allocation in a book written by some of the creators of Visual Studio.NET and CLR Runtimes and such...
+
+very interesting...and a good thing to know in this situation..
+
+
+Phreak
+
+--------------------------------------------------
+01/27/03 at 00:48:17  Reply by: bayobot (bayobot@hotmail.com)
+--------------------------------------------------
+code:
+
+void LookDownOnTheWorld (void)
+{
+    static bsp_file_t bsp_file;
+
+    // your code
+}
+
+
+
+like this, bsp_file is global, but the coder knows that this structure can only be used in the function LookDownOnTheWorld (easily understand).
+
+--------------------------------------------------
+01/27/03 at 01:32:26  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Merci, je savais déjà, mais ça, ça marche pas !
+
+Declaring a local variable "static" does NOT mean the variable is meant to be declared global. It just means the variable is not dynamically allocated at each call of the function, but rather one-time initialized when the process starts. It is *STILL* placed on top of the stack, unlike global variables, and this is the problem here.
+
+[€dited: de toute façon, j'ai fini par déclarer bsp_file global. My problem is already solved.]
+
+[modified on 01/27/03 at 01:32:26]

@@ -1,0 +1,145 @@
+--------------------------------------------------
+Subject: How to port the bot to CS 1.6
+--------------------------------------------------
+12/13/03 at 21:39:48  Posted by: Whistler (whistler_wmz@163.com)
+--------------------------------------------------
+A. General compatiability issues
+
+1) New weapons/items issue.
+Because CS 1.6 has some new weapons and items, we must add these entities to our linkfunc.cpp:
+env_lightning
+env_rain
+env_snow
+func_rain
+func_snow
+weapon_famas
+weapon_galil
+weapon_shield
+
+These things may not be 'entities'. I don't know what they are either. They are exported in CS 1.6 mp.dll. But as far as I know, there won't be any problems even if we don't care for them.
+CountTeamPlayers
+CountTeams
+g_flTimeLimit
+
+CS 1.6 new Weapon IDs:
+#define CS_WEAPON_GALIL            14
+#define CS_WEAPON_FAMAS            15
+
+
+2) FL_FAKECLIENT issue.
+CS 1.6 beta version has its integrated bot (Just like botman's HL deathmatch bot based on HLSDK). Although it has been removed in current version, there seems to be some bot-related code left in CS mp.dll. This may causes HL crashes as soon as you add a bot.
+
+WORKAROUND: Do not use FL_FAKECLIENT to flag our bots. Use some other flag which is unused instead, such as (1<<27).
+
+We can use the search/replace function to replace all "FL_FAKECLIENT" to "(1<<27)" in all source files except HLSDK headers.
+
+
+3) WeaponList message issue.
+In CS 1.6 the WeaponList client message is no longer sent with a edict.
+
+WORKAROUND: We can change something like this in pfnMessageBegin() function in engine.cpp:
+
+      if (ed)
+      {
+..................
+           index = UTIL_GetBotIndex(ed);
+           if (index != -1)
+           {
+..................
+              else if (msg_type == message_WeaponList)
+                 botMsgFunction = BotClient_CS_WeaponList;
+..................
+
+To:
+      if (msg_type == message_WeaponList)
+          botMsgFunction = BotClient_CS_WeaponList;
+      else if (ed)
+      {
+..................
+
+4) pfnGetGameDir issue.
+Half-Life 1.1.2.0 has a minor change to this engine function. This function in non-steam version of HL returns something like "C:\Sierra\Half-Life/cstrike", but in HL 1.1.2.0 it returns only "cstrike".
+
+WORKAROUND: Take a look at botman's HPB-Bot 3.0 source code and you'll get it. HPB-Bot 3.0 has already solved this problem.
+
+
+B. CS 1.6 auto detection.
+
+      bool IsVersion16 = FALSE;
+      unsigned char *tempbuf;
+
+      tempbuf=(*g_engfuncs.pfnLoadFileForMe)("sprites/weapon_famas.txt",NULL);
+
+      if (tempbuf)
+      {
+            IsVersion16 = TRUE;
+            (*g_engfuncs.pfnFreeFile)(tempbuf);
+      }
+
+Note: Don't use fopen() or access() functions in standard C library because they may not work. We should use HL engine function because that file is in Steam GCF cache.
+
+
+
+C. Something about the shield.
+
+1) Check whether a player has the shield.
+bool HasShield(edict_t *pPlayer)
+{
+   if (strncmp(STRING(pPlayer->v.viewmodel), "models/shield/v_shield_", 23) == 0)
+      return TRUE;
+   return FALSE;
+}
+
+2) Check whether the shield is put up.
+bool ShieldUp(edict_t *pPlayer)
+{
+   if (!HasShield(pPlayer))
+      return FALSE;
+   if (pPlayer->v.weaponanim == 6 || pPlayer->v.weaponanim == 7)
+      return TRUE; // 6: already put up, 7: putting up, 8: putting down (How to say these in English?)
+   return FALSE;
+}
+
+********
+Hope this helps. Please point out any mistakes.
+
+--------------------------------------------------
+12/13/03 at 22:06:27  Reply by: Whistler (whistler_wmz@163.com)
+--------------------------------------------------
+Botman please delete this post, there is already one under this..... My modem is slow so maybe I clicked the Post button 2 times :-)
+
+--------------------------------------------------
+12/19/03 at 11:30:50  Reply by: Akz (joniv@mbnet.fi)
+--------------------------------------------------
+My bots are just standing still... Why is this happening? Waypoints doesn't show up even if i put "waypoint on"
+
+[modified on 12/19/03 at 11:28:45]
+
+[modified on 12/19/03 at 11:30:50]
+--------------------------------------------------
+12/19/03 at 17:23:57  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+You use Markus' POD-bot 2.6, right ?
+
+1. Bots won't move in CS 1.6 because pfnSetClientMaxSpeed is not initally called and bots have a move speed of zero. To change that, look in BotInit() or BotSpawnInit() -can't remember how he called this function, it's the function that resets most of the variables in the bot structure to their default values-, and instead of setting f_max_speed to zero, set it to CVAR_GET_FLOAT("sv_maxspeed") - which is usually 250.
+
+2. He commented out the line to display waypoints in the waypoints editor.
+
+
+--------------------------------------------------
+12/19/03 at 21:45:27  Reply by: Darjk (steele@gamebox.net)
+--------------------------------------------------
+I fixed it to use CVAR_GET_FLOAT("sv_maxspeed") as I read a few other people mention this problem, however with podbot 2.6 source,  I cannot seem to get them to join a team - they sit in spectator mode.
+
+I've read a few other people mention this problem but so far haven't read any definite fixes or answers to it.  
+Only trouble is I can't see to get debugging with Steam working so I can't find the exact problem causing them not to join.  Even tried using it with Metamod and Adminmod but to no avail.
+
+I have pretty much been through every CS 1.6 thread in Bot development forums and made all the correct compatibility issues that I know of.
+
+If anyone has any suggestions, I'd be more than happy to hear them - Thanks.
+
+--------------------------------------------------
+12/20/03 at 01:55:42  Reply by: Akz (-)
+--------------------------------------------------
+f_max_speed is already CVAR_GET_FLOAT("sv_maxspeed") and none of the waypoint lines are commented. I'm using the default PODBot 2.6 source. Bots just doesn't do anything... they don't shoot, they don't turn, they don't move etc...
+

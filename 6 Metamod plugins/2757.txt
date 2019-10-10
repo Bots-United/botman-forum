@@ -1,0 +1,114 @@
+--------------------------------------------------
+Subject: Sending entities to clients
+--------------------------------------------------
+02/19/02 at 01:20:39  Posted by: skaven (cp@skaven.net)
+--------------------------------------------------
+Hello Botman.
+
+i've patched your mod to create entities during the game.
+In fact, during a map, i run a command (client) that create an entitie, exactly as your mod does.
+And of course this entitie doesn't appear on the client. But if another client connect, he has this ent in the map.
+
+So i think that it's possible to create entitie during a map (after the base map has been spawned) but i don't know how to send it to the clients already connected.
+I've read about the engine apis but i couldn't find a function to be called to do this.
+
+Have you an idea ?
+
+Thanks.
+
+Skaven
+
+--------------------------------------------------
+02/19/02 at 04:18:59  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+It doesn't sound like you are using the proper method of creating entities.  Post the code that you are using that creates the entity and I'll take a look at it to see if I can find any problems.
+
+botman
+
+--------------------------------------------------
+02/19/02 at 05:37:30  Reply by: skaven (cp@skaven.net)
+--------------------------------------------------
+Here is the code (it's just an example with a fixed decal)
+
+GameCreateEntity and GameKeyValue are your functions (stripper2)
+
+void AddInfoDecal(void)
+{
+   edict_t *pent;
+   static char classname[64];
+
+   strcpy(classname, "infodecal");
+   if (FNullEnt(pent = GameCreateEntity(classname))) return;
+
+   static char nullname[1];
+
+   nullname[0] = 0;
+   GameKeyValue(pent, nullname, "classname", classname);
+
+   static char keyname[64];
+   static char value[256];
+
+   strcpy(keyname, "texture\0");
+   strcpy(value, "{capsz\0");
+   GameKeyValue(pent, classname, keyname, value);
+   strcpy(keyname, "origin\0");
+   strcpy(value, "-253 2240 53\0");
+   GameKeyValue(pent, classname, keyname, value);
+
+   gpGamedllFuncs->dllapi_table->pfnSpawn(pent);
+}
+
+void ClientCommand(edict_t *pEntity)
+{
+   if (FStrEq(CMD_ARGV(0), "decal"))
+   {
+       AddInfoDecal();
+       RETURN_META(MRES_SUPERCEDE);
+   }
+
+   RETURN_META(MRES_IGNORED);
+}
+
+
+When i am on the map and i type decal in the console, the decal doesn't appear (i think it's because i'm already on the map and so the world is already spawned)
+But the server (HL engine) take the decal : i run another client on another box and when i connect i can see the decal.
+
+that's why i thought when i add a decal after the map is spawned, the entitie is created but not sent to already connected client. But this entitie is sent to new client.
+
+i'm just looking for a way to send to already connected client this entitie.
+
+Thanks
+
+Skaven
+
+--------------------------------------------------
+02/19/02 at 09:05:22  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+"When i am on the map and i type decal in the console, the decal doesn't appear (i think it's because i'm already on the map and so the world is already spawned)"
+
+Correct.  If you had created some other entity on the fly (weapons, etc.), other players would be able to see these entities.  infodecal entities are only sent to the client when the client connects to the server.
+
+botman
+
+--------------------------------------------------
+02/19/02 at 10:03:38  Reply by: skaven (cp@skaven.net)
+--------------------------------------------------
+and there is no way to send this information to a client already connected ? (maybe with an engine api call ?).
+i mean when a player connect, the server send him the informations about entities. i think there is a way to send it again during the map (maybe the client will not execute the message, but i don't know).
+
+The only solution i see is to snif the udp packets and use metamod trace plugin to know when and what the server send to client when connecting and grep how it sends creation of entities. Then i try to send the same message during a map and see the result on the client side.
+
+--------------------------------------------------
+02/19/02 at 11:06:41  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+No, there's no way to send this type of entity to the client once they have connected.
+
+You can't intercept the UDP packet data (if you want to try, see my NetProbe application).  The UDP packets are encrypted (using Blowfish encryption) and you wouldn't be able to send the correct packet anyway since ALL of the map entities are sent in a single packet (broken up into multiple packets if it's greater than 1400 bytes of data) when the client joins the server.
+
+If you want to spray non-permanent decals, you can use the same technique used by the HPB bot.  Download the 1.8a source code version of the HPB bot.  It has code in it that can be used to "spray" a decal from the decals.wad file (using the worlddecal network message).  You could put something like this in a metamod plugin (or modify the Stripper2 plugin and add this feature).
+
+P.S. This decal will only be temporary, just like all of the other decals (scorch marks, blood splats, player logos, etc.).
+
+botman
+
+[modified on 02/19/02 at 11:06:41]

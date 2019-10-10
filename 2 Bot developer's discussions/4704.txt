@@ -1,0 +1,224 @@
+--------------------------------------------------
+Subject: True AI?
+--------------------------------------------------
+08/06/03 at 10:09:04  Posted by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+Perhaps wrong forum? I recently got a mail from a 'fan' who told me what the real problem is with RealBot , and with all other bots. They are 'just a bunch of if statements'. They are not 'real' ai...
+
+Actually, in a way i think he is right, but then again what is 'real' ai? I was thinking about this, if you want true AI where the AI program should figure all itself out. It would be a disaster to write? 
+
+Then i thought, you code it the 'hard way' so the bot joins the game, and from there you let it completely go its own way. Even simple things will become very difficult! Anyone has thoughts on this? I had a little 'problem identifying/sollution' idea, but the idea itself is already hard to code. Anyhow, i wrote it in Notepad, its not finished, but you get the idea. I am wondering how you have been thinking about this. I mean, come on, writing a new bot from scratch will become not that much harder? When you know the formula's its simply adapting to the game environment, make the formula sensetive for the statistic values from waypoints and you get dynamic 'behaviour' which is actually still static btw. 
+
+my 2 cents.
+
+here my garbage (pseudo code):
+code:
+
+ProblemResult(int problem)
+{
+ // problem attributes 
+ for (every attribute)
+
+  return()
+  {
+   - most found attribute property
+  }
+}
+
+Example:
+Can i move from A to B.
+attributes:
+- able to move? (do i have feet, have wings?)
+- can i go from a to b?
+- <any other attribute available you can think off>
+
+when all true, the function returns true and executes
+the given problem/task. If not, it will not execute the
+task/problem. Assuming that every task/problem should
+be solved, the program should loop through every attribute
+and try to solve this:
+
+- able to move? (false)
+ - do i have feet? (true)
+ - freezetime over? (false)
+
+if no more attributes left, the program knows the
+problem is now 'freezetime'. The sollution would be
+'wait for freezetime to be over' so this attribute will
+turn into TRUE.
+
+PROBLEM: How to 'identify' attributes? And 'problems'? 
+
+
+--------------------------------------------------
+08/06/03 at 11:48:22  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+I believe in database-driven AI.
+
+You need to infer your AI knowledge of its world. Actually, the virtual worlds our bots wander into are relatively simple, and the evolution of this world is conditionned by the interaction that entities have upon each other.
+
+In short, you need to infer your bots knowledge of each entity, and knowledge of each of its properties. Then, the bot will simply evaluate which interactions are needed to suit best its goal.
+
+You could start off with a generic rule: in every game, the goal of a player is to "win". This abstract concept can be reduced to an increase of the player's frags, or when this player make two entities perform an interaction resulting is a round end in favor of the player (e.g, IN_USE the entity "bomb" together with the entity "func_bomb_target").
+
+The bot could then investigate each entity it encounters, from switches and weapons to players, hostages, bombs and targets, and check whether it can, or not, IN_ATTACK this entity, IN_USE it, make its pEdict->v.origin change (pushing it), and what are the consequences of each of its actions ; and also take note of what are the spontaneous actions each of these entities are likely to perform on its own self (e.g, if I see this entity, and I figured out earlier such entities were "players", and it's not the same player model as me, then it's likely to shoot at me = BAD. Lemme take a move so that I don't have this entity in my field of view).
+
+Practically, you need to list and classify ALL the types of actions that a player can perform (move to, press attack button, press use button, etc). Then you need to agree on a representation for this data : the bot's SEMANTICS. Personally, I have choosen natural language, and it gives something like this:
+code:
+
+# 
+# Nouns and nominative groups
+# 
+
+"ARAB": @ "LEET"
+"ARCTIC": @ "AWP"
+"ARCTIC GUN": @ "AWP"
+"ARCTIC RIFLE": @ "AWP"
+"ARCTIC AVENGER": ENTITY ("playermodel" IS "arctic")
+"AWM": @ "AWP"
+#"AWP": ENTITY ("v_model" IS "models/w_awp.mdl")
+#"BAG": ENTITY ("v_model" IS "models/w_backpack.mdl")
+#"BOMB": "BAG" OR ENTITY ("model" IS "models/c4.mdl")
+"BOMB SITE": ENTITY ("classname" IS "func_bomb_target")
+"BOMB SPOT": @ "BOMB SITE"
+"BOT": ENTITY ("flags" CONTAIN "FL_FAKECLIENT")
+"BUTTON": ENTITY ("classname" IS "func_button")
+#"BUY ZONE": ENTITY ("classname" IS "func_buyzone")
+"COUNTER-TERRORIST": "GIGN" OR "GSG9" OR "SAS" OR "SEAL TEAM 6" OR "VIP"
+"CT": @ "COUNTER-TERRORIST"
+"DEAGLE": @ "DESERT EAGLE"
+"DEFUSER": @ "DEFUSE KIT"
+#"DEFUSE KIT": ENTITY ("classname" IS "defuser")
+#"DESERT EAGLE": ENTITY ("v_model" IS "models/w_deagle.mdl")
+"DEVGRU": @ "SEAL TEAM 6"
+"DOOR": ENTITY (("classname" IS "func_door") OR ("classname" IS "func_door_rotating"))
+#"ESCAPE ZONE": ENTITY (("classname" IS "func_escape") OR ("classname" IS "func_rescue"))
+#"RESCUE ZONE": ENTITY (("classname" IS "func_rescue") OR ("classname" IS "func_escape"))
+"GIGN": ENTITY ("playermodel" IS "gign")
+"GORILLA WARFARE": @ "GUERILLA WARFARE"
+"GSG9": ENTITY ("playermodel" IS "gsg9")
+"GUERILLA WARFARE": ENTITY ("playermodel" IS "guerilla")
+"LEET": ENTITY ("playermodel" IS "leet")
+"PHOENIX CONNECTION": ENTITY ("playermodel" IS "terror")
+"PHOENIX CONNEKTION": @ "PHOENIX CONNECTION"
+"SAS": ENTITY ("playermodel" IS "sas")
+"SEAL TEAM 6": ENTITY ("playermodel" IS "urban")
+"SWITCH": @ "BUTTON"
+"TERRO": @ "TERRORIST"
+"TERRORIST": "ARCTIC AVENGER" OR "LEET" OR "GUERILLA WARFARE" OR "PHOENIX CONNECTION"
+"PLAYER": ENTITY ("classname" IS "player")
+"VIP": ENTITY ("playermodel" IS "vip")
+
+
+# 
+# Adjectives and adjective groups
+# 
+
+"STRONG": AND ("health" SUPERIOR "50")
+"WEAK": AND ("health" INFERIOR "50")
+"DROPPED": FUNC ("IS_ON_FLOOR") IS 1
+
+
+
+This is the test patterns I used for my bots. The "@"s mean "synonym of", and the "ENTITY" macro would perform a test using the specified rules on this entity, and if success, the entity was called this name. Identically, "FUNC" macros could call engine functions to perform further tests on the entities. I was able to point my gun at any entity and say: "what's that?" and the bot would answer: it's a weak gsg9 player, it's a dropped bomb, etc. Not very poetic, but sufficient enough for the bot to have knowledge of its world. The bots were able to figure out themselves, that if they MOVED onto a "dropped bomb", they would get a new "weapon", and if they USED that weapon together with an entity whose classname was "func_bomb_target" they would be likely to win the round.
+
+The point is not to have the bots speak in natural language. The actual point is to give them knowledge of their world, in the sense they know how to IDENTIFY entities, once they're identified they know which are their PROPERTIES, deducing thus which are the possible interactions that can be made on them, and given the results, either take an action on this entity or not, and how.
+
+The notion of "comfort" is important here ; every action the AI should perform should be aimed towards an increase of its own comfort. It's up to the programmer to determine the significant parameters of this "comfort".
+
+You also need a planner, something that will evaluate the goal into subgoals, down to the successive entity interactions that have to be made in order for the goal to be completed. Example: 1. Move to bomb spot, 2. Plant bomb, 3. Camp around. Even the first step is very complicated, when the bot is aware that there are entities that won't let it reach the bomb spot safely, and so it's best to get powerful guns before all, to ensure it can perform this part of the objective.
+
+Unfortunately, such a database-driven AI is very, very, very, very CPU consuming. You end up running a game at 2 or 3 fps with more than 4 bots. That's why I simply gave up. Now my project is far less ambitious : I just want to make a credible tactical bot.
+
+Did you look at Terry Winograd's SHRDLU robot ? Apart from its natural language ability, just its semantic system and its goal planner are simply the mark of a true AI. That's what I would have liked to put in my bots.
+
+
+--------------------------------------------------
+08/06/03 at 13:13:04  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+I took a look at that bot program, i had to use the dos box version, the java one crashes here. 
+
+Actually, the whole point is 'how to indentify situations'. How to identify a 'problem' and such. A bot cannot solve a problem if it does not know any answers. The trick is to let it figure out the answers itself. However, this would be really hard to code. Therefor i think giving the bot all possible 'things it can do' should be sufficient so the bot can find the unique 'combination of actions' to make the sollution.
+
+For the moment i am trying to let a bot totally learn the map. Its a simply trial-error system. The bot knows nothing, it will simply bump into walls and remember those spots. I can't get it working right yet. Perhaps i will never get rid of this problem either, as i have tried several times in several ways. Reading bsp info is out of the question btw, its 'cheating' to me for a 'true' ai ;).
+
+Even my 'remember where you bumped' program could be 'hard coded ai', because i simply tell the program to find another location once it bumps into the wall. Ofcourse, going deeper then this is insane, and actually crossing the border of 'common sense' ;)
+
+--------------------------------------------------
+08/06/03 at 13:30:25  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+beware, Stefan, you are becoming a worse AI integrist than I were ! ;D
+
+
+--------------------------------------------------
+08/06/03 at 14:55:41  Reply by: Cheesemonster!!! (cheeseh@houstondod.com)
+--------------------------------------------------
+True AI, read up on AI fundamentals read the books, get the knowledge from them, that's all I can say... ;) I'm trying to minimize on if-else statements on my new bot, let's hope it works out better :p
+
+[modified on 08/06/03 at 14:55:41]
+--------------------------------------------------
+08/07/03 at 06:13:38  Reply by: LightNinja (technobot_mr@web.de)
+--------------------------------------------------
+this gives me an idea.... its offtopic and a suggestion to Pierre-Marie Baty, but I hope you won't blame me...
+
+Your RACC bot uses TraceLines to navigate through the map. With this TraceLines he will check if there is a wall, through which he cannot walk and so on. Everyone knows these TraceLines are very CPU intensive. So I have an alternative idea. Why not save the results of TraceLines (only those which have to do with static things in the map, like walls, steps...} into some kind of array and "draw" a map of the cs map... and then make a procedure which checks at every NAV-TraceLine-Action if this spot has been scanned before, and if, then return the result from the last time instead of scanning again...
+
+I think it#s very hard to code and I couldn't do it (yet...), but you are a very tough programmer...
+
+to stefanhendriks idea: yeah! but I think it is really hard. You've also think about how the bot will save it's experience... compiling C++ code??  some kind of scripts? 
+
+haha, these ideas have inspired many science fiction authors. Everyone knows the movies/books/stories... Think about the bot figuring out the problem: "How can I exit HL without killing myself and then do other things?" OK, it's science fiction, but these are cool stories. Think off Dr.Moriaty from those Star Trek Episodes. He is a character in an interactive Sherlock Holmes holo-novel but is equipped with a higher-level AI and his own personality and figures out his environment isn't the reality and wants to exit the holodeck and become a person out of common matter and be free... hehe.... imagine he thing... remember that the task to "win" is hardcoded and means "make frags"... and then a computer virus spreads over the net which tries to do / does physical harm to users... LOL
+
+--------------------------------------------------
+08/07/03 at 11:17:49  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+LightNinja, that's exactly what I wanted to do first, under the form of what I was calling "bot memory" (the bot coders who were in Amsterdam last summer may remember what I'm talking about). The idea was to make the bot get a snapshot of its FOV scan, on relevant instants, to be used later for pathfinding. But it did not work as I expected, although I sometimes saw very convincing behaviour from the bots ; there were still half the chances that the bot would miss its path. Because for two scans to be equivalent, even roughly similar, the bot would have needed to stand right at the spot where the "snapshot" was taken. If it was 2 meters aside, the result would have been completely different. This is especially true in narrow, closed areas. I gave up that idea. Alas, it was very promising, though...
+
+Now I'm "cheating", I'm using the BSP data... that's to say, I'm using, well, errr... "waypoints"... shame on me... ;D
+
+
+[modified on 08/07/03 at 11:17:49]
+--------------------------------------------------
+08/08/03 at 06:32:16  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+okay, good news for the moment. I have my own grid now laying over the half-life map space. I have blocks of 32x32x32, yeah, some sort of 500Meg of memory i use. I don't care yet, as i have enough memory. I know this is out of the question on console machines or whatever, but i don't care about situations like these. Its purely for myself.
+
+So, this chunk of memory contains 0's and 1's. As i use my own coordinates i had write some 'transform' functions so i know the real hl vector and my own 'vector'. (as you cannot allocate an array by [-8192 to 8192] you have to allocate [(8192*2)] for instance)
+
+The bot is able to know its position on the grid, it also knows when its not moving, the block its ON is not valid. Although this is not true, the principle works it can mark a block.
+
+the bot will try to find a corresponding block (vector) to move to. This does not seem to work yet though, i don't know why. As soon as i get this working i will post something about it. It would be cool to see a bot 'learn' the map on the fly. Imagine when 32 bots are in the game, wandering around and marking the spots that are invalid. Sooner or later the map will be eventually 'mapped'. All thats needed then is a path finder to go through the 3d matrix. Perhaps i can write it so that bots can 'plot' waypoints later on and perhaps convert that to my old RBW format so my REAL bot can use that 'learned' data. Just a guess though.
+
+;)
+
+btw, true AI will never really exist imo. As we have not even solved our own puzzle 'how does our consiousness' work exactly? so how to 'create' one then? :)
+
+--------------------------------------------------
+08/08/03 at 15:27:19  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Yes but...
+
+sorry to tie you to the ground again, but what's the exact difference with autowaypointing that you want us to consider with your method here ?
+
+
+--------------------------------------------------
+08/09/03 at 06:15:38  Reply by: LightNinja (technobot_mr@web.de)
+--------------------------------------------------
+when you set waypoints you set nodes in the map which represent positions to that a bot can move and normally also the path between the nodes. 
+
+his method is the opposite, he marks the spot a bot can NOT move to, so he will wander freely through the area and avoid the walls. 
+
+@stefanhendriks.... Look in POD-Bot and RACC-Bot source for avoid-obstacle code. RACC-Bot does this with tracelines, POD-Bot uses another method (comparing vectors I think). The RACC-Bot method is more CPU intensive, but also more reliable. You will need a method like this to make the bot jump on crates etc. 
+
+--------------------------------------------------
+08/09/03 at 09:13:02  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+true, the method here is the opposite. Lets say i am the positive bot. I think i can go everywhere, and when i do walk into a wall, i just mark it as not walkable.
+
+I took a look at the RhoBot source, quite some neat stuff (neatly coded, easy to find stuff, etc) and i think i should combine both theories. Also mark where humans go to give a certain block more 'favour'. Perhaps i can use my 'touchy' variable for this so i will let bots avoid these areas because they already know they can be passed (because some people did already). Ofcourse if you want to learn via players, this is useless and has nothing to do with AI ;)
+
+one step further is , grid per bot ;) -> also very memory consuming. (imagine: 8192/32 (size of cube/block/etc) ^3, and that * amount of bots.. :S)
+
+what i try to achieve is just a personal goal, trying to explore more methods of figuring the map layout. Also growing interest in some true 'learning' aspects instead of hard-coded sollutions. I do not plan on releasing this stuff as a bot for users, perhaps i do release the source one day. If wanted ofcourse...
+
+

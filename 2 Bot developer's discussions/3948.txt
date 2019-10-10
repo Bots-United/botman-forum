@@ -1,0 +1,2488 @@
+--------------------------------------------------
+Subject: Merry Chribspmas
+--------------------------------------------------
+12/24/02 at 13:52:38  Posted by: PM (pm@racc-ai.com)
+--------------------------------------------------
+The big bearded one clothed in red has seen that you children have been very quiet this year, so he wants to drop a present in your chimney.
+
+Keywords:
+waypoints, BSP files, wayzones, map topology, intelligent waypoint scanning, pathfinding, walkable surfaces
+
+Look at this tiny poem:
+code:
+
+// *********************
+// * BSP reader Plugin *
+// *********************
+// by Pierre-Marie Baty <pm@racc-ai.com>
+// This code is supposed to be part of your bot DLL.
+// However, I made it a metamod plugin for better readability.
+
+
+#include <extdll.h>
+#include <dllapi.h>
+#include <h_export.h>
+#include <meta_api.h>
+
+#define BSPVERSION 30
+#define MAX_MAP_HULLS 4 // hard limit
+#define MAX_MAP_MODELS 400 // variable, but more would stress out the engine and network code
+#define MAX_MAP_BRUSHES 8192 // arbitrary, but with more the map wouldn't compile
+#define MAX_ENGINE_ENTITIES 1024 // hard limit, in actuallity it is too much, as temporary
+#define MAX_MAP_ENTITIES 2048 // entities in the game plus static map entities can overflow
+#define MAX_MAP_ENTSTRING 524288 // abitrary, 512Kb of string data should be enough anyway
+#define MAX_MAP_PLANES 32767 // more than this in a map and the engine will drop faces
+#define MAX_MAP_NODES 32767 // hard limit (negative short's are used as contents values)
+#define MAX_MAP_CLIPNODES 32767 // hard limit (negative short's are used as contents values)
+#define MAX_MAP_LEAFS 8192 // hard limit (Half-Life depends on it to setup PVS bits correctly)
+#define MAX_MAP_VERTS 65535 // hard limit (data structures store them as unsigned shorts)
+#define MAX_MAP_FACES 65535 // hard limit (data structures store them as unsigned shorts)
+#define MAX_MAP_MARKSURFACES 65535 // hard limit (data structures store them as unsigned shorts)
+#define MAX_MAP_TEXTURES 512 // hard limit (Half-Life limitation)
+#define MAX_MAP_TEXINFO 32767 // hard limit (face.texinfo is signed short)
+#define MAX_MAP_EDGES 256000 // arbitrary
+#define MAX_MAP_SURFEDGES 512000 // arbitrary
+#define DEFAULT_MAX_MAP_MIPTEX 0x400000 // 4Mb textures is enough (consider video card memory)
+#define MAX_MAP_LIGHTING 0x400000 // arbitrary
+#define MAX_MAP_VISIBILITY  0x200000 // arbitrary
+#define MAX_KEY 32 // max number of characters in a key name, I assume
+#define MAX_VALUE 4096 // idem for the corresponding value of the key
+#define MAX_TEXTURE_SIZE (98304 * sizeof (short)) // arbitrary
+#define MIPLEVELS 4
+#define MAXLIGHTMAPS 4
+#define NUM_AMBIENTS 4
+#define LUMP_ENTITIES 0
+#define LUMP_PLANES 1
+#define LUMP_TEXTURES 2
+#define LUMP_VERTEXES 3
+#define LUMP_VISIBILITY 4
+#define LUMP_NODES 5
+#define LUMP_TEXINFO 6
+#define LUMP_FACES 7
+#define LUMP_LIGHTING 8
+#define LUMP_CLIPNODES 9
+#define LUMP_LEAFS 10
+#define LUMP_MARKSURFACES 11
+#define LUMP_EDGES 12
+#define LUMP_SURFEDGES 13
+#define LUMP_MODELS 14
+#define HEADER_LUMPS 15
+#define MAP_TOPOLOGY_GRANULARITY 64
+
+
+typedef enum
+{
+    plane_x = 0,
+    plane_y,
+    plane_z,
+    plane_anyx,
+    plane_anyy,
+    plane_anyz
+}
+planetypes;
+
+
+typedef struct
+{
+   unsigned char *pStartOfFileAddress; // memory address of start of file
+   int file_size; // size in bytes of file in memory
+   int file_pos; // position from start of file where the operations are made
+} MFILE;
+
+
+typedef struct
+{
+   int fileofs; // offset of the lump in the BSP file
+   int filelen; // length of the lump in the BSP file
+} lump_t;
+
+
+typedef struct
+{
+   Vector mins; // vector location of the lower corner of the model's bounding box
+   Vector maxs; // vector location of the upper corner of the model's bounding box
+   Vector origin; // vector origin of the model
+   int headnode[MAX_MAP_HULLS]; // WTF is that ???
+   int visleafs; // not including the solid leaf 0
+   int firstface; // index of the model's first face
+   int numfaces; // number of faces the model has
+} dmodel_t;
+
+
+typedef struct
+{
+   int version; // BSP header version number
+   lump_t lumps[HEADER_LUMPS]; // number of lumps the BSP file has
+} dheader_t;
+
+
+typedef struct
+{
+   int nummiptex; // what the hell is a "miptex lump" ???
+   int dataofs[4]; // [nummiptex] -- that's all clear, suddenly.
+} dmiptexlump_t;
+
+
+typedef struct miptex_s
+{
+   char name[16]; // name of the miptex (but what's a miptex, anyway ???)
+   unsigned int width; // I guess this has to do with the width of the miptex
+   unsigned int height; // my two cents it is about the height - how smart I am
+   unsigned int offsets[MIPLEVELS]; // four mip maps stored
+} miptex_t;
+
+
+typedef struct
+{
+   Vector point; // vector coordinates of the vertex (point in space delimiting an angle)
+} dvertex_t;
+
+
+typedef struct
+{
+   Vector normal; // vector coordinates of the plane normal
+   float dist; // distance from the center (0, 0, 0) of the map, I assume
+   planetypes type; // PLANE_X - PLANE_ANYZ ?remove? trivial to regenerate -- WTF ???
+} dplane_t;
+
+
+typedef struct
+{
+   int planenum; // index number of the plane concerned by this node, I assume
+   short children[2]; // negative numbers are -(leafs+1), not nodes -- WTF ???
+   short mins[3]; // for sphere culling -- relative to some bounding box ?
+   short maxs[3]; // where is the documentation ?
+   unsigned short firstface; // index of the first face of the node, I assume
+   unsigned short numfaces; // counting both sides -- WTF ???
+} dnode_t;
+
+
+typedef struct
+{
+   int planenum; // index number of the plane concerned by this clipnode, I assume
+   short children[2]; // negative numbers are contents
+} dclipnode_t;
+
+
+typedef struct texinfo_s
+{
+   float vecs[2][4]; // [s/t][xyz offset] -- okay, but what's a "texinfo" ???
+   int miptex; // gimme a doc, gimme a txt, gimme a pdf but gimme documentation please !!
+   int flags; // oh well
+} texinfo_t;
+
+
+typedef struct
+{
+   unsigned short v[2]; // indices numbers of the vertices bounding this edge
+} dedge_t;
+
+
+typedef struct
+{
+   unsigned short planenum; // index number of the face
+   short side; // index of the side(s) that are textured (or not) on this face, I assume
+   int firstedge; // index number of the first edge of this face
+   short numedges; // number of edges this face has
+   short texinfo; // texture info for this face, I assume
+   unsigned char styles[MAXLIGHTMAPS]; // lightmap styles for this face -- don't ask me more
+   int lightofs; // start of [numstyles*surfsize] samples -- light offset ???
+} dface_t;
+
+
+typedef struct
+{
+   int contents; // contents of the leaf ???
+   int visofs; // -1 = no visibility info -- visibility offset ???
+   short mins[3]; // this might have something to do with some sort of bounding box
+   short maxs[3]; // idem
+   unsigned short firstmarksurface; // index number of the first mark surface
+   unsigned short nummarksurfaces; // number of mark surfaces - don't ask me more
+   unsigned char ambient_level[NUM_AMBIENTS]; // this has to do with ambient sounds
+} dleaf_t;
+
+
+// zone delimiters structure definition
+typedef struct
+{
+   Vector v_origin; // spatial origin of this zone delimiter
+   dface_t *face; // pointer to the BSP face it belongs to
+} zone_delimiter_t;
+
+
+// topologic zone structure definition
+typedef struct
+{
+   zone_delimiter_t *delimiters; // pointer to array of delimiters located in this topologic area
+   int delimiters_count; // number of zone delimiters elements in this array
+} zone_t;
+
+
+// the virtual world itself
+typedef struct
+{
+   int max_map_miptex; // maximum number of miptexes in the map
+   int nummodels; // number of models in the map
+   int visdatasize; // size of the map's lighting data BSP lump
+   int lightdatasize; // size of the map's lighting data BSP lump
+   int texdatasize; // size of the texture data memory space (malloc'ed)
+   int entdatasize; // size of the entity data string in the BSP file
+   int numleafs; // number of leaves in the map's BSP tree
+   int numplanes; // number of planes in the map
+   int numvertexes; // number of vertexes in the map
+   int numnodes; // number of nodes in the map's BSP tree
+   int numtexinfo; // number of texinfos
+   int numfaces; // number of faces in the map
+   int numclipnodes; // number of clipnodes
+   int numedges; // number of edges in the map
+   int nummarksurfaces; // number of marksurfaces
+   int numsurfedges; // number of surfedges
+   int numentities; // number of entities
+   dmodel_t dmodels[MAX_MAP_MODELS]; // map's model data array
+   unsigned char dvisdata[MAX_MAP_VISIBILITY]; // map's vis data array
+   unsigned char dlightdata[MAX_MAP_LIGHTING]; // map's lighting info data array
+   unsigned char *dtexdata; // pointer to map's texture data memory space (malloc'ed at a start)
+   char dentdata[MAX_MAP_ENTSTRING]; // map's entity data string
+   dleaf_t dleafs[MAX_MAP_LEAFS]; // map's leaf data array
+   dplane_t dplanes[MAX_MAP_PLANES]; // map's plane data array
+   dvertex_t dvertexes[MAX_MAP_VERTS]; // map's vertice data array
+   dnode_t dnodes[MAX_MAP_NODES]; // map's node data array
+   texinfo_t texinfo[MAX_MAP_TEXINFO]; // map's texinfo data array
+   dface_t dfaces[MAX_MAP_FACES]; // map's face data array
+   dclipnode_t dclipnodes[MAX_MAP_CLIPNODES]; // map's clipnode data array
+   dedge_t dedges[MAX_MAP_EDGES]; // map's edge data array
+   unsigned short dmarksurfaces[MAX_MAP_MARKSURFACES]; // map's marksurface data array
+   int dsurfedges[MAX_MAP_SURFEDGES]; // map's surfedge data array
+   zone_delimiter_t *zone_delimiters; // pointer to map's zone delimiters memory space (malloc'ed)
+   int zone_delimiters_count; // number of zone delimiters in this map
+   zone_t topology[MAP_TOPOLOGY_GRANULARITY][MAP_TOPOLOGY_GRANULARITY]; // map spatial topology
+} map_t;
+
+
+enginefuncs_t g_engfuncs;
+globalvars_t  *gpGlobals;
+DLL_FUNCTIONS gFunctionTable;
+edict_t *pListenserverEntity = NULL;
+map_t map;
+
+void WINAPI GiveFnptrsToDll (enginefuncs_t* pengfuncsFromEngine, globalvars_t *pGlobals);
+int Spawn (edict_t *pent);
+BOOL ClientConnect (edict_t *pEntity, const char *pszName, const char *pszAddress, char szRejectReason[128]);
+void ClientDisconnect (edict_t *pEntity);
+void ServerActivate (edict_t *pEdictList, int edictCount, int clientMax);
+void ServerDeactivate (void);
+void UTIL_ServerConsole_printf (char *fmt, ...);
+void LoadBSPFile (char *filename);
+static int ReadLump (int lump, void *dest, int size, const dheader_t *header);
+void LookDownOnTheWorld (void);
+
+
+// START of Metamod stuff
+
+gamedll_funcs_t *gpGamedllFuncs;
+mutil_funcs_t *gpMetaUtilFuncs;
+meta_globals_t *gpMetaGlobals;
+
+META_FUNCTIONS gMetaFunctionTable =
+{
+   NULL, // pfnGetEntityAPI()
+   NULL, // pfnGetEntityAPI_Post()
+   GetEntityAPI2, // pfnGetEntityAPI2()
+   NULL, // pfnGetEntityAPI2_Post()
+   NULL, // pfnGetNewDLLFunctions()
+   NULL, // pfnGetNewDLLFunctions_Post()
+   NULL, // pfnGetEngineFunctions()
+   NULL, // pfnGetEngineFunctions_Post()
+};
+
+plugin_info_t Plugin_info = {
+   META_INTERFACE_VERSION, // interface version
+   "blah", // plugin name
+   "0.0001", // plugin version
+   "10/11/2002", // date of creation
+   "Pierre-Marie Baty <pm@racc-ai.com>", // plugin author
+   "http://www.racc-ai.com", // plugin URL
+   "BLAH", // plugin logtag
+   PT_STARTUP, // when loadable
+   PT_ANYTIME, // when unloadable
+};
+
+
+C_DLLEXPORT int Meta_Query (char *ifvers, plugin_info_t **pPlugInfo, mutil_funcs_t *pMetaUtilFuncs)
+{
+   gpMetaUtilFuncs = pMetaUtilFuncs;
+   *pPlugInfo = &Plugin_info;
+
+   // check for interface version compatibility
+   if (!FStrEq (ifvers, Plugin_info.ifvers))
+   {
+      int mmajor = 0, mminor = 0, pmajor = 0, pminor = 0;
+
+      LOG_CONSOLE (PLID, "WARNING: meta-interface version mismatch; requested=%s ours=%s", Plugin_info.logtag, ifvers);
+      LOG_MESSAGE (PLID, "WARNING: meta-interface version mismatch; requested=%s ours=%s", Plugin_info.logtag, ifvers);
+
+      // if plugin has later interface version, it's incompatible (update metamod)
+      sscanf (ifvers, "%d:%d", &mmajor, &mminor);
+      sscanf (META_INTERFACE_VERSION, "%d:%d", &pmajor, &pminor);
+
+      if (pmajor > mmajor  (pmajor == mmajor && pminor > mminor))
+      {
+         LOG_CONSOLE (PLID, "metamod version is too old for this plugin; update metamod");
+         LOG_ERROR (PLID, "metamod version is too old for this plugin; update metamod");
+         return (FALSE);
+      }
+
+      // if plugin has older major interface version, it's incompatible (update plugin)
+      else if (pmajor < mmajor)
+      {
+         LOG_CONSOLE (PLID, "metamod version is incompatible with this plugin; please find a newer version of this plugin");
+         LOG_ERROR (PLID, "metamod version is incompatible with this plugin; please find a newer version of this plugin");
+         return (FALSE);
+      }
+   }
+
+   return (TRUE);
+}
+
+
+C_DLLEXPORT int Meta_Attach (PLUG_LOADTIME now, META_FUNCTIONS *pFunctionTable, meta_globals_t *pMGlobals, gamedll_funcs_t *pGamedllFuncs)
+{
+   if (now > Plugin_info.loadable)
+   {
+      LOG_CONSOLE (PLID, "Can't load plugin right now");
+      LOG_ERROR (PLID, "Can't load plugin right now");
+      return (FALSE);
+   }
+
+   gpMetaGlobals = pMGlobals;
+   memcpy (pFunctionTable, &gMetaFunctionTable, sizeof (META_FUNCTIONS));
+   gpGamedllFuncs = pGamedllFuncs;
+
+   return (TRUE);
+}
+
+
+C_DLLEXPORT int Meta_Detach (PLUG_LOADTIME now, PL_UNLOAD_REASON reason)
+{
+   if (now > Plugin_info.unloadable && reason != PNL_CMD_FORCED)
+   {
+      LOG_CONSOLE (PLID, "Can't unload plugin right now");
+      LOG_ERROR (PLID, "Can't unload plugin right now");
+      return (FALSE);
+   }
+
+   return(TRUE);
+}
+
+
+C_DLLEXPORT int GetEntityAPI2 (DLL_FUNCTIONS *pFunctionTable, int *interfaceVersion)
+{
+   gFunctionTable.pfnSpawn = Spawn;
+   gFunctionTable.pfnClientConnect = ClientConnect;
+   gFunctionTable.pfnClientDisconnect = ClientDisconnect;
+   gFunctionTable.pfnServerActivate = ServerActivate;
+   gFunctionTable.pfnServerDeactivate = ServerDeactivate;
+
+   memcpy (pFunctionTable, &gFunctionTable, sizeof (DLL_FUNCTIONS));
+   return (TRUE);
+}
+
+// END of Metamod stuff
+
+
+
+
+#ifdef _WIN32
+BOOL WINAPI DllMain (HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved)
+{
+   return TRUE; // required Win32 DLL entry point
+}
+#endif
+
+
+void WINAPI GiveFnptrsToDll (enginefuncs_t* pengfuncsFromEngine, globalvars_t *pGlobals)
+{
+   memcpy (&g_engfuncs, pengfuncsFromEngine, sizeof (enginefuncs_t));
+   gpGlobals = pGlobals;
+}
+
+
+int Spawn (edict_t *pent)
+{
+   // are we spawning the world ?
+   if (strcmp ("worldspawn", STRING (pent->v.classname)) == 0)
+   {
+      // then it's a perfect place for firing thousands of tracelines and so build
+      // a visibility table or whatever handy array using our zone delimiters (see below)
+   }
+
+   RETURN_META_VALUE (MRES_IGNORED, 0);
+}
+
+
+BOOL ClientConnect (edict_t *pEntity, const char *pszName, const char *pszAddress, char szRejectReason[128])
+{ 
+   // is this client the listen server client ?
+   if (strcmp (pszAddress, "loopback") == 0)
+      pListenserverEntity = pEntity; // save its edict to pListenserverEntity
+
+   RETURN_META_VALUE (MRES_IGNORED, FALSE);
+}
+
+
+void ClientDisconnect (edict_t *pEntity)
+{
+   // is the client disconnecting the listen server client ?
+   if (pEntity == pListenserverEntity)
+      pListenserverEntity = NULL; // if so, reset his entity pointer
+
+   RETURN_META (MRES_IGNORED);
+}
+
+
+void ServerActivate (edict_t *pEdictList, int edictCount, int clientMax)
+{
+   char bsp_file_path[256];
+
+   // get the map name and build the corresponding BSP file name
+   sprintf (bsp_file_path, "maps/%s.bsp", STRING (gpGlobals->mapname));
+   LoadBSPFile (bsp_file_path); // load the BSP file
+
+   LookDownOnTheWorld (); // look down on the world and sort the walkable faces
+
+   RETURN_META (MRES_IGNORED);
+}
+
+
+void ServerDeactivate (void)
+{
+   // do we need to free the texture data memory space ? (thank you Mark)
+      if (map.dtexdata)
+      {      
+      free (map.dtexdata); // don't forget to free the texture data memory space we malloc'ed earlier
+      map.dtexdata = NULL; // I want no one to access this pointer anymore, right ?
+   }
+
+   // do we need to free the zone delimiters memory space ?
+   if (map.zone_delimiters)
+   {
+      free (map.zone_delimiters); // don't forget to free the zone delimiters memory space
+      map.zone_delimiters = NULL; // I want no one to access this pointer anymore, right ?
+   }
+
+   RETURN_META (MRES_IGNORED);
+}
+
+
+void UTIL_ServerConsole_printf (char *fmt, ...)
+{
+   va_list argptr;
+   static char string[1024];
+
+   va_start (argptr, fmt);
+   vsprintf (string, fmt, argptr);
+   va_end (argptr);
+
+   SERVER_PRINT (string); // print to console
+}
+
+
+void LoadBSPFile (char *filename)
+{
+   // this function loads and interprets the map BSP file at server boot start. It opens the map
+   // file named filename, reads its contents and put it in memory (hence the use of the engine
+   // function LoadFileForMe, a handy tool), parses through the different BSP lumps and fills
+   // the map BSP data structure "map", so that we can access to much more geometric info about
+   // the virtual world than the engine would lets us know normally. This code has been taken
+   // with heavy simplification and major rewriting from Zoner's Half-Life tools source code.
+
+   MFILE fp;
+
+   map.dtexdata = (unsigned char *) malloc (DEFAULT_MAX_MAP_MIPTEX); // allocate memory for texdata
+
+   // ask the engine to find and open the BSP map file we are playing (it can't fail to do this)
+   memset (&fp, 0, sizeof (fp)); // reset the memory-loaded file structure first
+   fp.pStartOfFileAddress = LOAD_FILE_FOR_ME (filename, &fp.file_size); // load the file
+
+   // here we skip all checks. Useless, since the HL engine succeeded in booting the map, the
+   // BSP file has obviously no error.
+
+   map.nummodels = ReadLump (LUMP_MODELS, map.dmodels, sizeof (map.dmodels), (dheader_t *) fp.pStartOfFileAddress);
+   map.numvertexes = ReadLump (LUMP_VERTEXES, map.dvertexes, sizeof (map.dvertexes), (dheader_t *) fp.pStartOfFileAddress);
+   map.numplanes = ReadLump (LUMP_PLANES, map.dplanes, sizeof (map.dplanes), (dheader_t *) fp.pStartOfFileAddress);
+   map.numleafs = ReadLump (LUMP_LEAFS, map.dleafs, sizeof (map.dleafs), (dheader_t *) fp.pStartOfFileAddress);
+   map.numnodes = ReadLump (LUMP_NODES, map.dnodes, sizeof (map.dnodes), (dheader_t *) fp.pStartOfFileAddress);
+   map.numtexinfo = ReadLump (LUMP_TEXINFO, map.texinfo, sizeof (map.texinfo), (dheader_t *) fp.pStartOfFileAddress);
+   map.numclipnodes = ReadLump (LUMP_CLIPNODES, map.dclipnodes, sizeof (map.dclipnodes), (dheader_t *) fp.pStartOfFileAddress);
+   map.numfaces = ReadLump (LUMP_FACES, map.dfaces, sizeof (map.dfaces), (dheader_t *) fp.pStartOfFileAddress);
+   map.nummarksurfaces = ReadLump (LUMP_MARKSURFACES, map.dmarksurfaces, sizeof (map.dmarksurfaces[0]), (dheader_t *) fp.pStartOfFileAddress);
+   map.numsurfedges = ReadLump (LUMP_SURFEDGES, map.dsurfedges, sizeof (map.dsurfedges[0]), (dheader_t *) fp.pStartOfFileAddress);
+   map.numedges = ReadLump (LUMP_EDGES, map.dedges, sizeof (map.dedges), (dheader_t *) fp.pStartOfFileAddress);
+   map.texdatasize = ReadLump (LUMP_TEXTURES, map.dtexdata, 1, (dheader_t *) fp.pStartOfFileAddress);
+   map.visdatasize = ReadLump (LUMP_VISIBILITY, map.dvisdata, 1, (dheader_t *) fp.pStartOfFileAddress);
+   map.lightdatasize = ReadLump (LUMP_LIGHTING, map.dlightdata, 1, (dheader_t *) fp.pStartOfFileAddress);
+   map.entdatasize = ReadLump (LUMP_ENTITIES, map.dentdata, 1, (dheader_t *) fp.pStartOfFileAddress);
+
+   map.dentdata[map.entdatasize] = 0; // terminate the entity data string
+
+   FREE_FILE (fp.pStartOfFileAddress); // everything is loaded, free the BSP file
+}
+
+
+static int ReadLump (int lump, void *dest, int size, const dheader_t *header)
+{
+   // this function reads the lump number lump from a BSP file loaded in memory according to
+   // the info provided by the header header and puts the data read in the memory space pointed
+   // to by dest.
+
+   int length, ofs;
+
+   length = header->lumps[lump].filelen;
+   ofs = header->lumps[lump].fileofs;
+
+   memcpy (dest, (unsigned char *) header + ofs, length);
+
+   return (length / size);
+}
+
+
+void LookDownOnTheWorld (void)
+{
+   // look down on the world
+   dface_t *face;
+   dplane_t *plane;
+   int face_index, edge_index, edge, edge_boundary, count, i, j;
+   Vector v_bound1, v_bound2, v_middle;
+
+   // first count the number of zone delimiters
+   count = 0; // reset the count to zero
+
+   // loop through all the faces of the BSP file...
+   for (face_index = 0; face_index < map.dmodels[0].numfaces; face_index++)
+   {
+      face = &map.dfaces[map.dmodels[0].firstface + face_index];
+      plane = &map.dplanes[face->planenum];
+
+      // discard that plane if it's not walkable (i.e, normal not pointing straight up)
+      if (plane->normal.z < 0.707106)
+         continue;
+
+      count += face->numedges; // increment by the number of edges this face has
+   }
+
+   // now allocate enough memory for a big array that will hold the zone delimiters...
+   map.zone_delimiters = (zone_delimiter_t *) malloc (count * sizeof (zone_delimiter_t));
+   if (map.zone_delimiters == NULL)
+   {
+      ALERT (at_error, "RACC - Fatal: Unable to allocate enough memory for world analysis\n");
+      return; // don't go any further if error
+   }
+   else
+      map.zone_delimiters_count = count; // no error, save the size of the array
+
+   // now store the zone delimiters in the array...
+   UTIL_ServerConsole_printf ("RACC: Looking down on the world"); // tell people what we are doing
+   count = 0; // reset the zone delimiters count
+
+   // loop through all the faces of the BSP file...
+   for (face_index = 0; face_index < map.dmodels[0].numfaces; face_index++)
+   {
+      face = &map.dfaces[map.dmodels[0].firstface + face_index];
+      plane = &map.dplanes[face->planenum];
+
+      // discard that plane if it's not walkable (i.e, normal NOT pointing straight up)
+      if (plane->normal.z < 0.707106)
+         continue;
+
+      // for each face a player could stand upon, loop though the edges and get the vertexes...
+      for (edge_index = 0; edge_index < face->numedges; edge_index++)
+      {
+         // get the coordinates of the vertex of this edge...
+         edge = map.dsurfedges[face->firstedge + edge_index];
+
+         // if its index in the BSP tree is negative...
+         if (edge < 0)
+         {
+            edge = -edge; // revert it
+            edge_boundary = 1; // consider the other side of the segment
+         }
+         else
+            edge_boundary = 0; // else consider the first side of the segment
+
+         // locate the first vertice of this edge
+         v_bound1 = map.dvertexes[map.dedges[edge].v[edge_boundary}}.point;
+
+         // get the coordinates of the vertex of the next edge...
+         edge = map.dsurfedges[face->firstedge + ((edge_index + 1) % face->numedges)];
+
+         // if its index in the BSP tree is negative...
+         if (edge < 0)
+         {
+            edge = -edge; // revert it
+            edge_boundary = 1; // consider the other side of the segment
+         }
+         else
+            edge_boundary = 0; // else consider the first side of the segment
+
+         // locate the second vertice of this edge
+         v_bound2 = map.dvertexes[map.dedges[edge].v[edge_boundary}}.point;
+
+         // compute the middle and store it in the zone delimiters array
+         map.zone_delimiters[count].v_origin = (v_bound1 + v_bound2) / 2;
+         map.zone_delimiters[count].face = face; // store a pointer to the face it belongs too
+
+         // if we've computed 256 zone delimiters more...
+         if (!(count & 0xFF))
+            UTIL_ServerConsole_printf ("."); // print a trailing dot as a progress bar
+
+         count++; // we know one zone delimiter more
+      }
+   }
+   UTIL_ServerConsole_printf (" %d zone delimiters (%d kbytes)\n", count, count * sizeof (zone_delimiter_t) / 1024); // end the progress bar
+
+   // now sort all the zone delimiters in a topologic 2D array
+
+   // first init malloc all the topology array
+   for (i = 0; i < MAP_TOPOLOGY_GRANULARITY; i++)
+      for (j = 0; j < MAP_TOPOLOGY_GRANULARITY; j++)
+      {
+         map.topology[i][j].delimiters = (zone_delimiter_t *) malloc (sizeof (zone_delimiter_t));
+         if (map.topology[i][j].delimiters == NULL)
+         {
+            ALERT (at_error, "RACC - Fatal: Unable to allocate enough memory for world analysis\n");
+            return; // don't go any further if error
+         }
+         else
+            map.topology[i][j].delimiters_count = 0; // no error, save the size of the array
+      }
+
+   // now cycle through all the zone delimiters and store them in the right topological zone
+   UTIL_ServerConsole_printf ("RACC: Sorting zone delimiters"); // tell people what we are doing
+
+   // cycle through all the zone delimiters we know
+   for (count = 0; count < map.zone_delimiters_count; count++)
+   {
+      // compute the latitude and longitude in the topologic array
+      i = (int) ((map.zone_delimiters[count].v_origin.x - map.dmodels[0].mins.x) / (map.dmodels[0].maxs.x - map.dmodels[0].mins.x) * MAP_TOPOLOGY_GRANULARITY);
+      j = (int) ((map.zone_delimiters[count].v_origin.y - map.dmodels[0].mins.y) / (map.dmodels[0].maxs.y - map.dmodels[0].mins.y) * MAP_TOPOLOGY_GRANULARITY);
+
+      // handle the cases where the delimiter is just on the right or upper edge of the array...
+      if (i > MAP_TOPOLOGY_GRANULARITY - 1)
+         i = MAP_TOPOLOGY_GRANULARITY - 1;
+      if (j > MAP_TOPOLOGY_GRANULARITY - 1)
+         j = MAP_TOPOLOGY_GRANULARITY - 1;
+
+      // reallocate space for one element more in the zone
+      map.topology[i][j].delimiters = (zone_delimiter_t *) realloc (map.topology[i][j].delimiters, (map.topology[i][j].delimiters_count + 1) * sizeof (zone_delimiter_t));
+      if (map.topology[i][j].delimiters == NULL)
+      {
+         ALERT (at_error, "RACC - Fatal: Unable to allocate enough memory for world analysis\n");
+         return; // don't go any further if error
+      }
+
+      // store the delimiter at the right place of the array
+      map.topology[i][j].delimiters[map.topology[i][j].delimiters_count] = map.zone_delimiters[count];
+      map.topology[i][j].delimiters_count++; // this topological zone holds now one delimiter more
+
+      // if we've processed 256 delimiters more...
+      if (!(count & 0xFF))
+         UTIL_ServerConsole_printf ("."); // print a trailing dot as a progress bar
+   }
+   UTIL_ServerConsole_printf (" done.\n"); // end the progress bar
+}
+
+
+
+Cool eh ?
+
+Each zone delimiter is represented by a point, which is the middle of the delimiter segment. Given two neighbour walkable faces, the face that has the shortest delimiter segment will provide the "waypoint" for reaching the second face from the first one.
+
+Hey you hardcore-waypoint guys, what's the use of making things simple when you can do them more complicated ? ;D
+
+Obviously, I am retrieving absolutely *ALL* the walkable faces. Including the ones a player will never stand upon. I get about 10,000 of them by map. THIS IS NOT TOO MUCH, YOU'LL SEE WHY !
+
+The second pass of the work is up to you : either after spawning the world, or another moment, all you have to do is to build paths between these zone delimiters. Personally I will use player motion tracking :)
+
+And look at the strawberry on top of the cake: instead of keeping my zone delimiters ("waypoints", if you want) in a blind big array, I sort them according to their latitude and longitude in a topologic 2D array. Why, you say ?
+
+Let's say I have to call the obnoxious WaypointFindNearest(). Whala, you say, 10,000 waypoints to check ? ye're dead, PM !
+Certainly not ;D
+Where is my player ?
+pPlayer->v.origin
+What position is this in the topologic array ?
+origin.x => array[x]
+origin.y => array[y]
+Ta-daaaa ! my array gives me the list of potential faces (a couple of dozens at MAX) on which my player is likely to stand upon. /me binds the face, /me binds its edges, and /me finds the nearest zone delimiter !
+
+eh ! don't leave that fast ! you could at least say thankyou ;D
+
+
+[modified on 12/24/02 at 13:52:38]
+--------------------------------------------------
+12/25/02 at 02:06:53  Reply by: @$3.1415rin (johannes@_-removeifnotavirus-_lampel.net)
+--------------------------------------------------
+nice code :)
+
+A problem I'm currently thinking of is that you don't determine from which uplooking face you could possibly jump to another. This only works with adjacent polygons, right ?
+And wouldnt you still have problem when there is e.g. a big block on a large polygon, blocking the way. Where do you determine this, the way I see it atm, you won't be able to detect this, right ? ( like the table in italy within the demonstration tub showed us )
+
+anyway, again really nice of you that you're uploading your code snippets without problems :)
+
+... continueing to read the code ...
+
+PS : just a short idea, not thought much about it : to get the current face the bot is standing on, why dont you use the BSP way to do it ? since you have the bsp tree, you would 'only' have to remove the not walkable faces, right ?
+
+PPS : Merry Christmas !
+
+[modified on 12/25/02 at 02:02:06]
+
+[modified on 12/25/02 at 02:06:53]
+--------------------------------------------------
+12/25/02 at 03:13:08  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Like I said, Joe, this code has to be used in conjunction with bot ***VISION*** to get the best results. That's the role of my bot's eyes to watch out for the table in cs_italy and blocks that don't allow you to walk here or there onto the BSP face. And using player motion tracking like I intend to do, this will even be more natural.
+
+No, it doesn't only work for adjacent faces ! The "topologic array" returns EVERY face that is in a (short) neighbourhood, including those for which you have to jump over a gap. Again, the vision is here in charge of determining when and where to jump :)
+And whenever you want to bind a face that is outside the 2D array element you would expect it to be, just look in the neighbour ones :) it's ALWAYS faster than blindly cycling through all the faces, eh ?
+
+That's the reason why I am using this array, to answer your question. I don't know a method to parse intelligently through the BSP tree that would be faster. Do you know one ?
+
+
+--------------------------------------------------
+12/25/02 at 05:48:36  Reply by: CountFloyd (countfloyd@botepidemic.com)
+--------------------------------------------------
+Merry Christmas ! ;)
+
+Doesn't Jean Paul van Waveren tackle some of the problems in his Q3 Bot Thesis here -> ftp://ftp.kbs.twi.tudelft.nl/pub/docs/MSc/all/Waveren_Jean-Paul_van/thesis.pdf
+
+If not, Tub (Realbot) showed some impressive stuff in the Netherlands don't you remember ? :D 
+
+--------------------------------------------------
+12/25/02 at 09:42:29  Reply by: @$3.1415rin (johannes@_-removeifnotavirus-_lampel.net)
+--------------------------------------------------
+hi CF :)
+
+I guess pierre is still on this "IdontNeedanyPathdinfing"-trip, so he doesnt need all those complicated stuff tub was doing ...
+
+--------------------------------------------------
+12/25/02 at 17:51:58  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+what in the f^Hhell would you want more anyway ? I don't understand ! You've got all you need to build a blazingly fast pathfinder, don't you ? I don't think you realize well the potential of the thing. Actually, what are you doing when your pathfinder "builds" its path ? Looping through some impressive number of waypoints, isn't it ? I am just showing you how to cut DRASTICALLY down this number, by hundreds, even more maybe ! What on Earth would you want more ???
+
+Hello CF, glad to know you're still amongst us :) but what, don't you remember the time Tub needed to launch his map when we were at Stefan's ? My implementation is a matter of SECONDS, his was a matter of HOURS !
+
+Just tell me what you need more ! I don't understand, really ! :D
+
+
+--------------------------------------------------
+12/27/02 at 06:50:32  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+In order to show you the thing working, have a look at these screenshots :
+
+It gives you the best "waypoint" between two faces...
+http://www.racc-ai.com/de_dust0000.png
+
+It can anticipate the face you're going on...
+http://www.racc-ai.com/de_dust0001.png
+
+And so on just like your pathfinders would...
+http://www.racc-ai.com/de_dust0002.png
+
+Of course works with ALL types of faces, here's the best way to jump on a crate...
+http://www.racc-ai.com/de_dust0004.png
+
+And eventually leads you the way around corners
+http://www.racc-ai.com/de_dust0006.png
+
+Anyway no, too bad, it doesn't cook dinner too ;D
+
+Additional time needed to boot the map: 2 SECONDS.
+I'm running a P3 400.
+
+
+--------------------------------------------------
+12/28/02 at 05:57:47  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+lovely work, I've just gotta steal this ;)
+
+This would be good to get me bots in NS to find places to lay down things to build in commander mode :D
+
+[modified on 12/28/02 at 05:57:47]
+--------------------------------------------------
+01/06/03 at 04:15:57  Reply by: William (william@cgf-ai.com)
+--------------------------------------------------
+4 cents, 2 off-topic:
+@ topologic array: you've built yourself a hash-table. If you want the same functionality with less memory (and slightly slower), just build a table with the faces sorted on the x or y coord, and search as follows: binary search to find the nearest, and two (up and down) searches until you exceed the distance in the x-direction.
+That's the way I look up a nearest waypoint with as few ray casts as possible.
+
+@ area based pathfinding: I ran some tests yesterday, and I was able to squeeze a lookup table for paths between 1550 waypoints in less than 400KB, using areas and portals (it's a waypoint based variant of the AAS system of Jean-Paul). 400KB or 4000KB probably isn't much of an issue on a PC, but it is on the "next-gen" consoles.
+
+@ Christmass / New Year: best wishes to all of you. It's good to see that most of you come back here once in a while, though it's getting silent.
+
+@ CF: Hi there. Please add 'Wildcat NL' to your Xbox Live friends if you have Live (you should - the headphone is pretty good). What are you up to these days (in a PM?)
+
+William
+
+--------------------------------------------------
+01/06/03 at 05:08:33  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Hi William, great to hear from you again ! :)
+
+Yes, Count Floyd told me that as well, what I built was in fact called a "quadtree", although I didn't even know that - eh, I never learned programming basics at school ;)
+
+I also have extended the functionality of this stuff in quite the same way, now I am using two arrays in parallel: one for the zone delimiters (you have my permission to call them "waypoints" - grrrr), and one for the faces, and each one has pointers to the other (faces point to the zone delimiters they contain and zone delimiters point to the face they belong to). Very handy, and blazingly fast.
+
+And yes, a medium-sized map gives me about 400 kbytes of data :) Not a problem I guess, since it's highly compressible (I hex-edited the file, there are tons of zeros ;D)
+
+If anyone think it's worth the post, I'll post my changes here on request as well.
+
+
+--------------------------------------------------
+01/06/03 at 09:54:46  Reply by: CountFloyd (countfloyd@botepidemic.com)
+--------------------------------------------------
+@ William (offtopic again sorry):
+
+Hi, nice to see you post here again. Lots of things have changed, I'll certainly mail you once things get a bit quieter around here.
+This is somewhat funny because I've played with the CGF Bots just yesterday, no kidding !
+
+[modified on 01/06/03 at 09:54:46]
+--------------------------------------------------
+01/12/03 at 08:20:38  Reply by: RedFox (redfox@nildram.co.uk)
+--------------------------------------------------
+Dam, I should check here more often :p
+I had considered this a while back..heh
+
+for a few reasons...
+
+tracelines...couldn't we now optomise the traceline function to use this data, and hopefully be more efficient?!
+thoughts anyone? 
+
+fences n stuff like that (func_illusions) that may or may not block the bots vision...you could use my traceline that got the light level to test weather its actually going to see through it or not :p
+
+lighting levels...obviously :)
+
+and, I could probably adapt the area nav I've come up with to build the data from the actual face info, instead of lots of tracelines...
+pretty much ending up as the same system as the Q3 bot (just a little more efficient/useful)
+Perhaps I should share the way it works..heh
+
+rock!
+
+--------------------------------------------------
+01/12/03 at 09:07:24  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+"tracelines...couldn't we now optomise the traceline function to use this data, and hopefully be more efficient?!"
+
+If you can come up with a traceline function that's more efficient that Carmack's version from the Quake I source code (which is what Half-Life uses), you're a helluva' a lot smarter than Carmack is.  ;D
+
+See the SV_RecursiveHullCheck() function in the Quake I source code if you're interested in seeing how the Half-Life engine implements traceline support.
+
+botman
+
+--------------------------------------------------
+01/12/03 at 10:06:02  Reply by: RedFox (redfox@nildram.co.uk)
+--------------------------------------------------
+havn't had a challange like that for a while :)
+
+I'll see what I can come up with
+hehe
+
+*edit*
+
+hmm, that code looks lill confusing
+as it doesn't explain its self too well, I'll define the problem myself and start from scratch
+
+if I build a function and pit it against TraceHull, will that do? :p
+
+call me optomistic, but I think somthing like this shouldn't take much cpu time atall...
+if it does, its defined wrong
+
+mind if I use the traceline from the BSP viewer botman? I understand that :)
+
+[modified on 01/12/03 at 10:06:02]
+--------------------------------------------------
+01/12/03 at 11:53:36  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Sure, you can do that, but the traceline code from the BSP very is VERY slow because it move 1 vector unit in space at a time.
+
+The SV_RecursiveHull() function recusively interates down the BSP tree to find out what nodes the starting point is in, then it finds what node the ending point is in (if they are the same, the trace can't possibly hit any world surfaces).  Quake and Half-Life support several different hulls.  I think Quake only supported 3 hulls (point, small and large) and Half-Life supports 4.  The hulls used in the BSP trace are just "fatten" versions of the walls in the BSP world.  You make the walls thicker for each hull version (fattening the world by the size of the hull), then trace a line in that fattened world.  If the line passes cleanly from source to destination, then the hull of that size would also pass cleanly from source to destination in the normal non-fattened world.
+
+botman
+
+--------------------------------------------------
+01/12/03 at 12:09:14  Reply by: RedFox (redfox@nildram.co.uk)
+--------------------------------------------------
+ah, thx botman that helps me understand it alot better
+
+I guessed a good meathod would be to fatten the walls (for the hulls)
+
+looking pretty optomised as it is then :)
+
+hmm, if I could iron out the time taken to find the node the start and ends in..that may do the trick
+
+ok, so if your version does it 1 step at a time, does the recursive hull one do it by jumping the distance to the next plane its found?
+just want to know if I'm figuring it out right
+
+--------------------------------------------------
+01/12/03 at 12:55:03  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+The recursive version walks down the BSP tree looking for the node to start and stop in, then it determine which side of a plane each point is on so that is knows which plane(s) will be intersected by the line.  When you get to the plane that's closest to the start point (the last one you check), you're done and you've found the point where the line between start and end will intersect a plane.  The recursive part walks down the plane surfaces once the nodes have been found.
+
+I didn't fully understand how it works, that's why I implemented a much simpler traceline function in my BSP tools (since I understood how that worked).
+
+botman
+
+--------------------------------------------------
+01/12/03 at 13:06:46  Reply by: RedFox (redfox@nildram.co.uk)
+--------------------------------------------------
+yup, think I understand it, to some extent any way
+
+not too sure about nodes..need to know a bit more about them I think
+
+I have a few roughf ideas..but it looks pretty dam tight
+Looks like it runs in O(n) time, where n is the number of nodes...for the initial search anyway (per start/end)
+
+hmm, if the nodes could be sorted (not by what) and put in an array, it could be an O(log n) search
+
+the other best idea was to divide the map up into 128 pixel chuncks, and list each node thats stored within that space
+but dunno how much that'd improove his code...
+
+still, this is a definate challange :p
+
+wonder if a redesign would shead any clues on a better solution
+trying to improove efficient code tends to be a dead end, so starting from scratch and trying different routes seems like a good idea
+
+--------------------------------------------------
+01/12/03 at 15:40:54  Reply by: RedFox (redfox@nildram.co.uk)
+--------------------------------------------------
+hmm, another thought
+if you only allow all the nodes that are in the PVS of the start co-ords, that should reduce alot of checks
+possibly.. (does it already do this?..hmm)
+also, if the end isn't in the PVS, then it Has to hit somthing
+
+
+
+--------------------------------------------------
+01/12/03 at 15:42:27  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+I can't definitely let you gurus alone without you take everything to the l33tage level. I see with great pleasure (and often a bit of scare since I hardly understand everything) that the technical level of botman's forums go up, and up, and up, and up again, my oh my, where will you stop ??? 8)
+
+What you can improve with the traceline thingy though, is the very common case where both source and destination points are in the same leaf. Since you load the BSP data too, you can check it easily, and then just prevent the function call.
+
+
+--------------------------------------------------
+01/13/03 at 09:23:30  Reply by: RedFox (redfox@nildram.co.uk)
+--------------------------------------------------
+Ok...my solution
+If the trace line func has to search through atleast 500 nodes each time, then this meathod should be faster
+
+Sectorise the game world, and store each face in whatever sectors it overlaps...(like PM was working on)
+That way, you get the the info you need to test alot quicker
+
+Could be used with your BSP viewers trace line extreamly easily botman, althoguh that still may not be as fast as the recursive one taking 1 step at a time :p
+still, it'll be close to the same speed
+just get rid of the 1 step at a time, and it'll be faster than the quake one
+
+uhm, as to the actual code...uhm, may need some time on that
+
+gotta try somthing similar anyway, as I want my bots vision tracelines to get blocked by smoke/sprites :)
+
+--------------------------------------------------
+01/13/03 at 10:03:48  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Just remember that a binary search (or binary tree search) takes, on average, O(log2 N) for a balanced binary tree (of which BSP trees are probably not as balanced as you'd like them to be).  For a 1,000 node BSP, you'd only have to search about 10 nodes, for a 10,000 node BSP, you'd only have to search about 13 nodes, and for a 100,000 node BSP, you'd only have to search about 17 nodes.
+
+Your grid solution might allow you to find the starting and ending nodes in linear time, but it could also require a large chunk of memory to store the node index based on 3D world coordinates (assuming that you just hash the 3D position to wind up with a grid location).
+
+botman
+
+--------------------------------------------------
+01/13/03 at 10:29:10  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Not that large... 400 kbytes for the walkable faces, ~4 megabytes for all in an average map.
+
+You're not coding this to fit in a GameBoy cartridge, are you ? ;D
+
+
+--------------------------------------------------
+01/13/03 at 13:11:19  Reply by: RedFox (redfox@nildram.co.uk)
+--------------------------------------------------
+hmmm, well if its a log n search, then I'm starting to wonder why it eats so much cpu time?!
+is it the DotProducts? or do I just have to solve the P=NP prolbem to fix this? lol
+
+as to the memory constraints, it shouldn't eat too much...
+but then thats always the trade off for faster processing..in most cases
+back in the days of quake being run on 32meg of ram (was it 32 or 64?), then it may matter :)
+
+--------------------------------------------------
+01/13/03 at 16:01:54  Reply by: William (william@cgf-ai.com)
+--------------------------------------------------
+>hmmm, well if its a log n search, then I'm starting to wonder why it eats so much cpu time?! 
+
+Because it traverses memory that is not in the cache, and it traverses that memory in a non-linear way (reading ahead in memory is unlikely to yield many hits). 
+In other words, it causes a good number of cache misses, which basically turns the x GHz processor into a 200MHz processor.
+
+>back in the days of quake being run on 32meg of ram (was it 32 or 64?), then it may matter :) 
+
+Quake ran with 8MB (from Dos of course), Quake2 needed at least 16MB. 
+Today's PS2 has 32+MB, Gamecube some 48+, and Xbox has 64-MB of RAM. 60% of the game sales are for consoles. The days of 64MB are not yet over...
+
+[modified on 01/13/03 at 16:01:54]
+--------------------------------------------------
+01/13/03 at 16:30:46  Reply by: RedFox (redfox@nildram.co.uk)
+--------------------------------------------------
+ah, thx 
+I'll have to remember that
+
+so the segment idea may work..if its reducing the number of nodes to check
+
+wonder if theirs a more cpu friendly way of doing it?
+suppose lots of similar trace lines at once may help, as stuff will be cached (player a -> player b...player b -> player a)
+
+hmm, and theirs me use to thinking the game cube etc had 128meg of ram :p
+
+--------------------------------------------------
+01/13/03 at 19:30:14  Reply by: CountFloyd (countfloyd@botepidemic.com)
+--------------------------------------------------
+A bit array storing visibility between your waypoints/zones might help. Needs a fast nearest waypoint lookup though.
+
+--------------------------------------------------
+01/14/03 at 02:06:27  Reply by: William (william@cgf-ai.com)
+--------------------------------------------------
+CF: doesn't Halflife provide a PVS (potentially visible set of polygons) to quickly classify (exclude) many locations as never being visible from the current location? Quake 1 and Quake 2 used it, primarily to cut down on rendering and network traffic.
+
+The PVS can be used as a first check: if the PVS check fails, you have a guarantee that there won't be a line of sight. Otherwise, you need to perform ray casts, since the PVS overestimates the visibility (for space efficiency reasons).
+
+If I remember correctly, Michael Abrash documented the PVS (for Quake 1) in his 'black book'. It's available on-line, and Google will find it for you...
+
+I'm not sure that the PVS is more accurate and efficient than a pre-computed waypoint based bitarray.
+
+William
+
+--------------------------------------------------
+01/14/03 at 04:12:44  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+QUOTE:
+CF: doesn't Halflife provide a PVS (potentially visible set of polygons) to quickly classify (exclude) many locations as never being visible from the current location? Quake 1 and Quake 2 used it, primarily to cut down on rendering and network traffic.
+
+
+right
+
+QUOTE:
+The PVS can be used as a first check: if the PVS check fails, you have a guarantee that there won't be a line of sight. Otherwise, you need to perform ray casts, since the PVS overestimates the visibility (for space efficiency reasons).
+
+
+right, indeed ! Error margin can be up to 300 units sometimes, especially for checks involving a lot the z axis. Don't know why, just constated.
+
+€: Ah okey, I know why now. The larger the face the entity is on, the more inaccurate its visibility status will be, provided at least one pixel of that face is visible and not overlapped.
+
+
+QUOTE:
+I'm not sure that the PVS is more accurate and efficient than a pre-computed waypoint based bitarray.
+
+
+I don't think it is. That's why I am thinking about storing even more data in my faces quadtree, such as the light level of each face for fast lookups.
+Furthermore the PVS has one big flaw : it works only for real clients. A little more complex actually, you can use it upon bots, but it has to be initialized by their side by a real client "in sight". I assume this being tightly related to the monster code ; HL being highly scripted, no monsters are supposed to engage a fight unless a player comes around and actually sees the first one of them. Idem for retrieving the illumination value of bots, doesn't work with Half-Life until those bots have been "seen" by a real client PVS.
+
+I love my TraceLines :)
+
+[modified on 01/14/03 at 04:12:44]
+--------------------------------------------------
+01/14/03 at 04:29:46  Reply by: RedFox (redfox@nildram.co.uk)
+--------------------------------------------------
+http://public.planetmirror.com/pub/gpbb/
+
+:)
+
+well, I was going to implement the wpt grid idea for another reason..working out the nearest cover
+
+it was going to be optomised based on the areas I have for navigation, but could easily be made to work with the faces loaded from the BSP
+and the PVS could be used to help optomise it
+
+to set it up, build yah wpt grid on each face (possbily just walkable faces)...
+setup a quick lookup per face (like PM is doing)
+
+then, using the PVS to help yah clip..check which wpts aern't visible per face from the wpt your stood at.
+if some of the wpts on a face aern't visible, list them
+if all of the wpts on a face aern't visible, list just the face
+
+for ease of lookup, all faces not listed, but that are in the PVS are considered fully seen
+
+:D
+
+should be nice and quick
+well, hopefully
+certainly efficient with memory anyway
+
+heh, if I get all these things done first, I may give the traceline a go
+wonder how much quicker (or slower?!) it'll be
+
+--------------------------------------------------
+01/14/03 at 04:33:11  Reply by: RedFox (redfox@nildram.co.uk)
+--------------------------------------------------
+hey PM, I tested the PVS on a hlds without anyone but bots on, and it worked fine?
+although your tests may have been a bit more acurate than mine...just cobbled somthing together
+
+weird, thought the SetupVisibilty command did all the setup for the PVS..heh
+
+--------------------------------------------------
+01/14/03 at 16:42:41  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Really ?
+
+Oh well. As long as :
+- I won't understand why it works and why it doesn't,
+- I won't be able to predict accurately when it'll work and when it won't,
+- I won't understand HOW it works,
+
+I won't be using the PVS. Do as you like, but I won't. Period.
+
+[edited] yes, one indice more. Works on dedicated servers, but not on listen servers.
+
+
+[modified on 01/14/03 at 16:42:41]
+--------------------------------------------------
+01/17/03 at 13:03:03  Reply by: theimann (killaruna@nuclearbox.com)
+--------------------------------------------------
+Some more information on hash-tables for fast waypoint look-up can be found in dynamic.gamespy.com/~botman/yabb/YaBB.pl?board=2&action=display&num=2291this thread... I like the developments in the bsp-polygon-area!
+
+Tobias
+
+--------------------------------------------------
+01/17/03 at 13:31:18  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Hi matey! Thanks for the link - I did already read it, but didn't understand a fucking word (as usuals). Long time we havent seen you around here anyway :) Are you coming back to bot programming too ?
+
+Yeah, one should never say never ;D
+
+
+
+--------------------------------------------------
+01/17/03 at 20:14:44  Reply by: CountFloyd (countfloyd@botepidemic.com)
+--------------------------------------------------
+Welcome back Tobias, seems like this board is becoming quite active again !
+I understood your hashcode function (and I'm still thankful for it!) back then with 1 exception: how would you get neighbouring positions which weren't put in neighbouring buckets ? I'm currently adding the distance I want to check to the original Vector, calculating the hashcode and if it's not one of the neighbouring (already searched) buckets use that one for a new search. I don't believe that's optimal or is it ? :)
+
+--------------------------------------------------
+01/18/03 at 10:36:09  Reply by: theimann (killaruna@nuclearbox.com)
+--------------------------------------------------
+> Are you coming back to bot programming too ?
+No, I don't think so. There are just too many other things around currently. But it's always nice to check the old forums :-)
+
+> how would you get neighbouring positions which weren't put in neighbouring buckets ?
+Since the hashtable is organized as a geometrical grid, neighbouring waypoints are always put in neighbouring buckets (if not in the same). The method PM described works exactly the same way: the list of waypoints returned for one position is technically called a bucket, and the choice which list to return (i.e. which bucket to search) is made by a hashcode, a mapping from position to an index. A quadtree is something completely different btw...
+
+Tobias
+
+--------------------------------------------------
+01/18/03 at 11:49:37  Reply by: @$3.1415rin (johannes@_-removeifnotavirus-_lampel.net)
+--------------------------------------------------
+> something completely different
+
+huh, I already thought I got something completely wrong :D
+
+--------------------------------------------------
+01/18/03 at 17:15:59  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+My updated BSP stuff.
+
+I now use FACES for pathfinding,
+and DELIMITERS for reachability information between faces.
+
+Note that I don't store this reachability information in the global pathfinder data. Each bots inheritates of a copy of the map topology hashtable, and builds its OWN pathfinding information, which it doesn't share with the other bots. One bot could then be aware that it is possible to get to the roofs in cs_italy, whereas the others don't, unless they SEE one day the first bot jumping onto the door over the balcony.
+
+I even saw bots reaching places where I had never went before ! ;D
+
+code:
+
+// BSP map file constants
+#define BSPVERSION 30
+#define MAX_MAP_HULLS 4 // hard limit
+#define MAX_MAP_MODELS 400 // variable, but more would stress out the engine and network code
+#define MAX_MAP_BRUSHES 8192 // arbitrary, but with more the map wouldn't compile
+#define MAX_ENGINE_ENTITIES 1024 // hard limit, in actuallity it is too much, as temporary
+#define MAX_MAP_ENTITIES 2048 // entities in the game plus static map entities can overflow
+#define MAX_MAP_ENTSTRING 524288 // abitrary, 512Kb of string data should be enough anyway
+#define MAX_MAP_PLANES 32767 // more than this in a map and the engine will drop faces
+#define MAX_MAP_NODES 32767 // hard limit (negative short's are used as contents values)
+#define MAX_MAP_CLIPNODES 32767 // hard limit (negative short's are used as contents values)
+#define MAX_MAP_LEAFS 8192 // hard limit (Half-Life depends on it to setup PVS bits correctly)
+#define MAX_MAP_VERTS 65535 // hard limit (data structures store them as unsigned shorts)
+#define MAX_MAP_FACES 65535 // hard limit (data structures store them as unsigned shorts)
+#define MAX_MAP_MARKSURFACES 65535 // hard limit (data structures store them as unsigned shorts)
+#define MAX_MAP_TEXTURES 512 // hard limit (Half-Life limitation)
+#define MAX_MAP_TEXINFO 32767 // hard limit (face.texinfo is signed short)
+#define MAX_MAP_EDGES 256000 // arbitrary
+#define MAX_MAP_SURFEDGES 512000 // arbitrary
+#define DEFAULT_MAX_MAP_MIPTEX 0x400000 // 4Mb textures is enough (consider video card memory)
+#define MAX_MAP_LIGHTING 0x400000 // arbitrary
+#define MAX_MAP_VISIBILITY  0x200000 // arbitrary
+#define MAX_KEY 32 // max number of characters in a key name, I assume
+#define MAX_VALUE 4096 // idem for the corresponding value of the key
+#define MAX_TEXTURE_SIZE (98304 * sizeof (short)) // arbitrary
+#define MIPLEVELS 4
+#define MAXLIGHTMAPS 4
+#define NUM_AMBIENTS 4
+#define LUMP_ENTITIES 0
+#define LUMP_PLANES 1
+#define LUMP_TEXTURES 2
+#define LUMP_VERTEXES 3
+#define LUMP_VISIBILITY 4
+#define LUMP_NODES 5
+#define LUMP_TEXINFO 6
+#define LUMP_FACES 7
+#define LUMP_LIGHTING 8
+#define LUMP_CLIPNODES 9
+#define LUMP_LEAFS 10
+#define LUMP_MARKSURFACES 11
+#define LUMP_EDGES 12
+#define LUMP_SURFEDGES 13
+#define LUMP_MODELS 14
+#define HEADER_LUMPS 15
+#define MAX_MAP_PARALLELS 64
+#define MAX_MAP_MERIDIANS 64
+
+
+// plane types enumeration
+typedef enum
+{
+   plane_x = 0,
+   plane_y,
+   plane_z,
+   plane_anyx,
+   plane_anyy,
+   plane_anyz
+} planetypes;
+
+
+// BSP map lump-related stuff
+typedef struct
+{
+   int fileofs; // offset of the lump in the BSP file
+   int filelen; // length of the lump in the BSP file
+} lump_t;
+
+
+typedef struct
+{
+   vector mins; // vector location of the lower corner of the model's bounding box
+   vector maxs; // vector location of the upper corner of the model's bounding box
+   vector origin; // vector origin of the model
+   int headnode[MAX_MAP_HULLS]; // WTF is that ???
+   int visleafs; // not including the solid leaf 0
+   int firstface; // index of the model's first face
+   int numfaces; // number of faces the model has
+} dmodel_t;
+
+
+typedef struct
+{
+   int version; // BSP header version number
+   lump_t lumps[HEADER_LUMPS]; // number of lumps the BSP file has
+} dheader_t;
+
+
+typedef struct
+{
+   int nummiptex; // what the hell is a "miptex lump" ???
+   int dataofs[4]; // [nummiptex] -- that's all clear, suddenly.
+} dmiptexlump_t;
+
+
+typedef struct miptex_s
+{
+   char name[16]; // name of the miptex (but what's a miptex, anyway ???)
+   unsigned int width; // I guess this has to do with the width of the miptex, or hasn't it ?
+   unsigned int height; // my two cents it is about the height - how smart I am
+   unsigned int offsets[MIPLEVELS]; // four mip maps stored
+} miptex_t;
+
+
+typedef struct
+{
+   vector point; // vector coordinates of the vertex (point in space delimiting an angle)
+} dvertex_t;
+
+
+typedef struct
+{
+   vector normal; // vector coordinates of the plane normal
+   float dist; // distance from the center (0, 0, 0) of the map, I assume
+   planetypes type; // PLANE_X - PLANE_ANYZ ?remove? trivial to regenerate -- WTF ???
+} dplane_t;
+
+
+typedef struct
+{
+   int planenum; // index number of the plane concerned by this node, I assume
+   short children[2]; // negative numbers are -(leafs+1), not nodes -- WTF ???
+   short mins[3]; // for sphere culling -- is it relative to some bounding box too ???
+   short maxs[3]; // what the hell is all that crappy stuff ? WHERE IS THE DOCUMENTATION ?
+   unsigned short firstface; // index of the first face of the node, I assume
+   unsigned short numfaces; // counting both sides -- WTF ???
+} dnode_t;
+
+
+typedef struct
+{
+   int planenum; // index number of the plane concerned by this clipnode, I assume
+   short children[2]; // negative numbers are contents -- What In The Fuck Again...
+} dclipnode_t;
+
+
+typedef struct texinfo_s
+{
+   float vecs[2][4]; // [s/t][xyz offset] -- okay, but what's a "texinfo" ???
+   int miptex; // gimme a doc, gimme a txt, gimme a pdf but gimme documentation please !!
+   int flags; // oh well
+} texinfo_t;
+
+
+typedef struct
+{
+   unsigned short v[2]; // indices numbers of the vertices bounding this edge, I assume
+} dedge_t;
+
+
+typedef struct
+{
+   unsigned short planenum; // index number of the face
+   short side; // index of the side(s) that are textured (or not) on this face, I assume
+   int firstedge; // index number of the first edge of this face
+   short numedges; // number of edges this face has
+   short texinfo; // texture info for this face, I assume
+   unsigned char styles[MAXLIGHTMAPS]; // lightmap styles for this face -- don't ask me more
+   int lightofs; // start of [numstyles*surfsize] samples -- light offset ???
+} dface_t;
+
+
+typedef struct
+{
+   int contents; // contents of the leaf ???
+   int visofs; // -1 = no visibility info -- visibility offset ???
+   short mins[3]; // this might have something to do with some sort of bounding box
+   short maxs[3]; // idem
+   unsigned short firstmarksurface; // index number of the first mark surface
+   unsigned short nummarksurfaces; // number of mark surfaces - don't ask me more
+   unsigned char ambient_level[NUM_AMBIENTS]; // this has to do with ambient sounds
+} dleaf_t;
+
+
+// zone delimiters structure definition
+typedef struct
+{
+   vector v_origin; // spatial origin of this zone delimiter
+   dface_t *face; // pointer to the BSP face it belongs to
+} zone_delimiter_t;
+
+
+// topologic zone structure definition
+typedef struct
+{
+   dface_t **faces; // pointer to array of faces located in this topologic area (mallocated)
+   int faces_count; // number of faces in this array
+   zone_delimiter_t **delimiters; // pointer to array of delimiters located in this topologic area
+   int delimiters_count; // number of zone delimiters elements in this array
+} zone_t;
+
+
+// the virtual world itself
+typedef struct
+{
+   int max_map_miptex; // maximum number of miptexes in the map
+   int nummodels; // number of models in the map
+   int visdatasize; // size of the map's lighting data BSP lump
+   int lightdatasize; // size of the map's lighting data BSP lump
+   int texdatasize; // size of the texture data memory space (malloc'ed)
+   int entdatasize; // size of the entity data string in the BSP file
+   int numleafs; // number of leaves in the map's BSP tree
+   int numplanes; // number of planes in the map
+   int numvertexes; // number of vertexes in the map
+   int numnodes; // number of nodes in the map's BSP tree
+   int numtexinfo; // number of texinfos
+   int numfaces; // number of faces in the map
+   int numclipnodes; // number of clipnodes
+   int numedges; // number of edges in the map
+   int nummarksurfaces; // number of marksurfaces
+   int numsurfedges; // number of surfedges
+   int numentities; // number of entities
+   dmodel_t dmodels[MAX_MAP_MODELS]; // map's model data array
+   unsigned char dvisdata[MAX_MAP_VISIBILITY]; // map's vis data array
+   unsigned char dlightdata[MAX_MAP_LIGHTING]; // map's lighting info data array
+   unsigned char *dtexdata; // pointer to map's texture data memory space (malloc'ed at a start)
+   char dentdata[MAX_MAP_ENTSTRING]; // map's entity data string
+   dleaf_t dleafs[MAX_MAP_LEAFS]; // map's leaf data array
+   dplane_t dplanes[MAX_MAP_PLANES]; // map's plane data array
+   dvertex_t dvertexes[MAX_MAP_VERTS]; // map's vertice data array
+   dnode_t dnodes[MAX_MAP_NODES]; // map's node data array
+   texinfo_t texinfo[MAX_MAP_TEXINFO]; // map's texinfo data array
+   dface_t dfaces[MAX_MAP_FACES]; // map's face data array
+   dclipnode_t dclipnodes[MAX_MAP_CLIPNODES]; // map's clipnode data array
+   dedge_t dedges[MAX_MAP_EDGES]; // map's edge data array
+   unsigned short dmarksurfaces[MAX_MAP_MARKSURFACES]; // map's marksurface data array
+   int dsurfedges[MAX_MAP_SURFEDGES]; // map's surfedge data array
+   zone_delimiter_t *zone_delimiters; // pointer to map's zone delimiters memory space (malloc'ed)
+   int zone_delimiters_count; // number of zone delimiters in this map
+   zone_t topology[MAX_MAP_PARALLELS][MAX_MAP_MERIDIANS]; // map spatial topology
+   int parallels_count; // number of parallels dividing this map into sectors
+   int meridians_count; // number of meridians dividing this map into sectors
+   vector v_worldmins; // quick access to the world's bounding box lower bottom left corner
+   vector v_worldmaxs; // quick access to the world's bounding box upper top right corner
+} map_t;
+
+
+
+
+
+
+
+
+
+
+void LoadBSPFile (char *filename)
+{
+   // this function loads and interprets the map BSP file at server boot start. It opens the map
+   // file named filename, reads its contents and put it in memory (hence the use of the engine
+   // function LoadFileForMe, a handy tool), parses through the different BSP lumps and fills
+   // the map BSP data structure "map", so that we can access to much more geometric info about
+   // the virtual world than the engine would lets us know normally. This code has been taken
+   // with heavy simplification and major rewriting from Zoner's Half-Life tools source code.
+
+   FILE fp;
+
+   map.dtexdata = (unsigned char *) malloc (DEFAULT_MAX_MAP_MIPTEX); // allocate memory for texdata
+
+   // ask the engine to find and open the BSP map file we are playing (it can't fail to do this)
+   memset (&fp, 0, sizeof (fp)); // reset the memory-loaded file structure first
+   fp._ptr = (char *) pfnLoadFileForMe (filename, &fp._bufsiz); // load the file
+
+   // here we skip all checks. Useless, since the HL engine succeeded in booting the map, the
+   // BSP file has obviously no error.
+
+   map.nummodels = ReadLump (LUMP_MODELS, map.dmodels, sizeof (map.dmodels), (dheader_t *) fp._ptr);
+   map.numvertexes = ReadLump (LUMP_VERTEXES, map.dvertexes, sizeof (map.dvertexes), (dheader_t *) fp._ptr);
+   map.numplanes = ReadLump (LUMP_PLANES, map.dplanes, sizeof (map.dplanes), (dheader_t *) fp._ptr);
+   map.numleafs = ReadLump (LUMP_LEAFS, map.dleafs, sizeof (map.dleafs), (dheader_t *) fp._ptr);
+   map.numnodes = ReadLump (LUMP_NODES, map.dnodes, sizeof (map.dnodes), (dheader_t *) fp._ptr);
+   map.numtexinfo = ReadLump (LUMP_TEXINFO, map.texinfo, sizeof (map.texinfo), (dheader_t *) fp._ptr);
+   map.numclipnodes = ReadLump (LUMP_CLIPNODES, map.dclipnodes, sizeof (map.dclipnodes), (dheader_t *) fp._ptr);
+   map.numfaces = ReadLump (LUMP_FACES, map.dfaces, sizeof (map.dfaces), (dheader_t *) fp._ptr);
+   map.nummarksurfaces = ReadLump (LUMP_MARKSURFACES, map.dmarksurfaces, sizeof (map.dmarksurfaces[0]), (dheader_t *) fp._ptr);
+   map.numsurfedges = ReadLump (LUMP_SURFEDGES, map.dsurfedges, sizeof (map.dsurfedges[0]), (dheader_t *) fp._ptr);
+   map.numedges = ReadLump (LUMP_EDGES, map.dedges, sizeof (map.dedges), (dheader_t *) fp._ptr);
+   map.texdatasize = ReadLump (LUMP_TEXTURES, map.dtexdata, 1, (dheader_t *) fp._ptr);
+   map.visdatasize = ReadLump (LUMP_VISIBILITY, map.dvisdata, 1, (dheader_t *) fp._ptr);
+   map.lightdatasize = ReadLump (LUMP_LIGHTING, map.dlightdata, 1, (dheader_t *) fp._ptr);
+   map.entdatasize = ReadLump (LUMP_ENTITIES, map.dentdata, 1, (dheader_t *) fp._ptr);
+
+   map.dentdata[map.entdatasize] = 0; // terminate the entity data string
+
+   mfclose (&fp); // everything is loaded, free the BSP file
+}
+
+
+static int ReadLump (int lump, void *dest, int size, const dheader_t *header)
+{
+   // this function reads the lump number lump from a BSP file loaded in memory according to
+   // the info provided by the header header and puts the data read in the memory space pointed
+   // to by dest.
+
+   int length, ofs;
+
+   length = header->lumps[lump].filelen;
+   ofs = header->lumps[lump].fileofs;
+
+   memcpy (dest, (unsigned char *) header + ofs, length);
+
+   return (length / size);
+}
+
+
+void LookDownOnTheWorld (void)
+{
+   // this function is called when it's time to draw the map of the world for bots (in extenso,
+   // sort the BSP data and the walkable faces in a handy quadtree). It checks whether a world
+   // map file already exists for the map currently booted, and if so, opens it and use the data
+   // therein. Else if it is a new map that has never been used with RACC which is booted for
+   // the first time, its purpose is to retrieve, compute and sort various map data used by the
+   // bots such as the walkable faces, the location of the zone delimiters, and finally a world
+   // map is "drawn", separating each walkable face to the parallel and meridian it refers to.
+   // Such a world map is very useful for the bots not to have to cycle through all the huge map
+   // data when they want to bind just one face or just one zone delimiter. It speeds up the
+   // search by square the resolution of the world map, ie by parallels * meridians times.
+
+   FILE *fp;
+   char bsp_file_path[256], map_file_path[256];
+   int bsp_file_size, recorded_file_size, size;
+   dface_t *face;
+   dface_t **dummy_array; // mallocated, used as template for speeding up world map drawing
+   dplane_t *plane;
+   int face_index, edge_index, edge, edge_boundary, delimiters_count, i, j;
+   vector v_bound1, v_bound2, v_middle;
+
+   // first look for a valid worldmap file...
+   sprintf (bsp_file_path, "%s/maps/%s.bsp", mod_name, map_name); // build BSP file path
+   sprintf (map_file_path, "racc/worldmaps/%s/%s.map", mod_name, map_name); // build map file path
+
+   // load the bsp and worldmap files
+   fp = mfopen (bsp_file_path, "rb"); // load bsp file
+   mfseek (fp, 0, SEEK_END); // seek at end of file
+   bsp_file_size = mftell (fp); // get the size of the file
+   mfclose (fp); // close the BSP file (we just needed its size)
+
+   fp = mfopen (map_file_path, "rb"); // load map file
+   if (fp != NULL)
+   {
+      // get the recorded file size directly at its offset
+      mfseek (fp, 18, SEEK_SET);
+      mfread (&recorded_file_size, sizeof (recorded_file_size), 1, fp);
+      mfclose (fp); // close the worldmap file (we just needed this data)
+
+      // is the recorded file size the same as the actual BSP file size ?
+      if (bsp_file_size == recorded_file_size)
+      {
+         // world map file is OK, load its data completely this time
+         if (LoadWorldMap ())
+            return; // return if the loading process completed successfully 
+      }
+   }
+
+   // map not found, out of date or failed loading, we have to build a new one
+   ServerConsole_printf ("RACC: Looking down on the world"); // tell people what we are doing
+
+   // get a quick access to the world's bounding box
+   map.v_worldmins = map.dmodels[0].mins;
+   map.v_worldmaxs = map.dmodels[0].maxs;
+
+   // first count the number of zone delimiters
+   delimiters_count = 0; // reset the delimiters_count to zero
+
+   // loop through all the faces of the BSP file...
+   for (face_index = 0; face_index < map.dmodels[0].numfaces; face_index++)
+   {
+      face = &map.dfaces[map.dmodels[0].firstface + face_index]; // quick access to the face
+
+      // if this face is walkable (i.e, plane normal pointing straight up)
+      if (map.dplanes[face->planenum].normal.z < 0.707106)
+         delimiters_count += face->numedges; // increment by the number of edges this face has
+  }
+
+   // now allocate enough memory for a big array that will hold all the zone delimiters...
+   map.zone_delimiters = (zone_delimiter_t *) malloc (delimiters_count * sizeof (zone_delimiter_t));
+   if (map.zone_delimiters == NULL)
+      TerminateOnError ("Fatal: Unable to allocate enough memory for world analysis\n");
+
+   map.zone_delimiters_count = delimiters_count; // no error, save the size of the array
+
+   // now store the zone delimiters in the array...
+   delimiters_count = 0; // reset the zone delimiters count
+
+   // loop through all the faces of the BSP file...
+   for (face_index = 0; face_index < map.dmodels[0].numfaces; face_index++)
+   {
+      face = &map.dfaces[map.dmodels[0].firstface + face_index]; // quick access to the face
+
+      // discard that plane if it's not walkable (i.e, normal NOT pointing straight up)
+      if (map.dplanes[face->planenum].normal.z < 0.707106)
+         continue;
+
+      // face is walkable, loop though the edges and get the vertexes...
+      for (edge_index = 0; edge_index < face->numedges; edge_index++)
+      {
+         // get the coordinates of the vertex of this edge...
+         edge = map.dsurfedges[face->firstedge + edge_index];
+
+         // if its index in the BSP tree is negative...
+         if (edge < 0)
+         {
+            edge = -edge; // revert it
+            edge_boundary = 1; // consider the other side of the segment
+         }
+         else
+            edge_boundary = 0; // else consider the first side of the segment
+
+         // locate the first vertice of this edge
+         v_bound1 = map.dvertexes[map.dedges[edge].v[edge_boundary}}.point;
+
+         // get the coordinates of the vertex of the next edge...
+         edge = map.dsurfedges[face->firstedge + ((edge_index + 1) % face->numedges)];
+
+         // if its index in the BSP tree is negative...
+         if (edge < 0)
+         {
+            edge = -edge; // revert it
+            edge_boundary = 1; // consider the other side of the segment
+         }
+         else
+            edge_boundary = 0; // else consider the first side of the segment
+
+         // locate the second vertice of this edge
+         v_bound2 = map.dvertexes[map.dedges[edge].v[edge_boundary}}.point;
+
+         // compute the middle and store it in the zone delimiters array
+         map.zone_delimiters[delimiters_count].v_origin = (v_bound1 + v_bound2) / 2;
+         map.zone_delimiters[delimiters_count].face = face; // store a pointer to the face it belongs too
+
+         // if we've computed 256 zone delimiters more...
+         if (!(delimiters_count & 0xFF))
+            ServerConsole_printf ("."); // print a trailing dot as a progress bar
+
+         delimiters_count++; // we know one zone delimiter more
+      }
+   }
+   ServerConsole_printf (" done\n"); // end the progress bar
+
+   // now let's build the topology of the map (in short, let's draw the world map for the bots)
+
+   // compute the number of sectors this map should have (200 units-sized sectors by default)
+   map.parallels_count = (map.v_worldmaxs.x - map.v_worldmins.x) / 200;
+   map.meridians_count = (map.v_worldmaxs.y - map.v_worldmins.y) / 200;
+
+   // don't allow the parallels and meridians count to be higher than the maximal value allowed
+   if (map.parallels_count > MAX_MAP_PARALLELS)
+      map.parallels_count = MAX_MAP_PARALLELS; // bound the number of parallels up to MAX_MAP_PARALLELS
+   if (map.meridians_count > MAX_MAP_PARALLELS)
+      map.meridians_count = MAX_MAP_MERIDIANS; // bound the number of meridians up to MAX_MAP_MERIDIANS
+
+   // completely reset all the topology array
+   memset (&map.topology, 0, sizeof (map.topology));
+
+   // now cycle through all the walkable faces and store them in the right topological zone
+   ServerConsole_printf ("RACC: Drawing world map for bots"); // tell people what we are doing
+
+   // init malloc a 16 megabyte (yes, 16 megabyte) huge template memory space
+   dummy_array = (dface_t **) malloc (16 * 1024 * 1024); // *KABLAM* should be enough, bullshit !
+   if (dummy_array == NULL)
+      TerminateOnError ("Fatal: Unable to allocate enough memory for world analysis\n");
+
+   // for each latitude/longitude sector of the map topology array, loop through all the faces...
+   for (i = 0; i < map.parallels_count; i++)
+   {
+      for (j = 0; j < map.meridians_count; j++)
+      {
+         for (face_index = 0; face_index < map.dmodels[0].numfaces; face_index++)
+         {
+            face = &map.dfaces[map.dmodels[0].firstface + face_index];
+            plane = &map.dplanes[face->planenum];
+
+            // discard that plane if it's not walkable (i.e, normal NOT pointing straight up)
+            if (plane->normal.z < 0.707106)
+               continue;
+
+            // face is walkable, loop though the edges and get the vertexes...
+            for (edge_index = 0; edge_index < face->numedges; edge_index++)
+            {
+               // get the coordinates of the vertex of this edge...
+               edge = map.dsurfedges[face->firstedge + edge_index];
+
+               // if its index in the BSP tree is negative...
+               if (edge < 0)
+               {
+                  edge = -edge; // revert it
+                  edge_boundary = 1; // consider the other side of the segment
+               }
+               else
+                  edge_boundary = 0; // else consider the first side of the segment
+
+               // locate the first vertice of this edge
+               v_bound1 = map.dvertexes[map.dedges[edge].v[edge_boundary}}.point;
+
+               // get the coordinates of the vertex of the next edge...
+               edge = map.dsurfedges[face->firstedge + ((edge_index + 1) % face->numedges)];
+
+               // if its index in the BSP tree is negative...
+               if (edge < 0)
+               {
+                  edge = -edge; // revert it
+                  edge_boundary = 1; // consider the other side of the segment
+               }
+               else
+                  edge_boundary = 0; // else consider the first side of the segment
+
+               // locate the second vertice of this edge
+               v_bound2 = map.dvertexes[map.dedges[edge].v[edge_boundary}}.point;
+
+               // does this segment cut one of the topologic sector's boundaries ?
+               if (SegmentBelongsToSector (v_bound1, v_bound2, i, j))
+               {
+                  dummy_array[map.topology[i][j].faces_count] = face; // store the face at the right place of the array
+                  map.topology[i][j].faces_count++; // this topological zone holds now one face more
+               }
+            }
+         }
+
+         // this slot in the world map is finished, allocate the right space for the zone array data
+         map.topology[i][j].faces = (dface_t **) malloc (map.topology[i][j].faces_count * sizeof (dface_t *));
+         if (map.topology[i][j].faces == NULL)
+            TerminateOnError ("RACC - Fatal: Unable to allocate enough memory for world analysis\n");
+
+         // and now just copy the data from our big template array to its final destination
+         memcpy (map.topology[i][j].faces, dummy_array, map.topology[i][j].faces_count * sizeof (dface_t *));
+      }
+
+      ServerConsole_printf ("."); // print a trailing dot as a progress bar every meridian
+   }
+
+   free (dummy_array); // free our very handful 16 megabyte array (thank you array :))
+
+   // now cycle through all the zone delimiters we know
+   for (delimiters_count = 0; delimiters_count < map.zone_delimiters_count; delimiters_count++)
+   {
+      // compute the latitude and longitude in the topologic array
+      i = (int) ((map.zone_delimiters[delimiters_count].v_origin.x - map.v_worldmins.x) / (map.v_worldmaxs.x - map.v_worldmins.x) * map.parallels_count);
+      j = (int) ((map.zone_delimiters[delimiters_count].v_origin.y - map.v_worldmins.y) / (map.v_worldmaxs.y - map.v_worldmins.y) * map.meridians_count);
+
+      // handle the cases where the delimiter is just on the right or upper edge of the array...
+      if (i > map.parallels_count - 1)
+         i = map.parallels_count - 1;
+      if (j > map.meridians_count - 1)
+         j = map.meridians_count - 1;
+
+      // if this zone already records a delimiter...
+      if (map.topology[i][j].delimiters_count > 0)
+      {
+         // reallocate this zone's memory space to hold one element more
+         map.topology[i][j].delimiters = (zone_delimiter_t **) realloc (map.topology[i][j].delimiters, (map.topology[i][j].delimiters_count + 1) * sizeof (zone_delimiter_t *));
+         if (map.topology[i][j].delimiters == NULL)
+            TerminateOnError ("Fatal: Unable to allocate enough memory for world analysis\n");
+      }
+      else
+      {
+         // else first-time allocate memory for it
+         map.topology[i][j].delimiters = (zone_delimiter_t **) malloc (sizeof (zone_delimiter_t *));
+         if (map.topology[i][j].delimiters == NULL)
+            TerminateOnError ("Fatal: Unable to allocate enough memory for world analysis\n");
+      }
+
+      // store the delimiter at the right place of the array
+      map.topology[i][j].delimiters[map.topology[i][j].delimiters_count] = &map.zone_delimiters[delimiters_count];
+      map.topology[i][j].delimiters_count++; // this topological zone holds now one delimiter more
+
+      // if we've processed 256 delimiters more...
+      if (!(delimiters_count & 0xFF))
+         ServerConsole_printf ("."); // print a trailing dot as a progress bar
+   }
+
+   // now it's time to save our worldmap to disk
+   size = SaveWorldMap (bsp_file_size);
+
+   // and terminate the progress bar
+   ServerConsole_printf (" done\n   %d parallels, %d meridians, %.2f kilobytes world data\n",
+                         map.parallels_count, map.meridians_count, (float) size / 1024);
+
+   return;
+}
+
+
+zone_delimiter_t GetNearestDelimiter (entity_t *pEntity)
+{
+   // this function returns the nearest delimiter from pEntity's origin. All the local variables
+   // have been made static to speedup recurrent calls of this function.
+
+   static int i, j, count;
+   static float nearest_distance = 9999.0;
+   static zone_delimiter_t nearest_delimiter;
+   static vector v_entity_bottom;
+
+   // first init the nearest delimiter
+   nearest_delimiter.face = NULL;
+   nearest_delimiter.v_origin = NULLVEC;
+
+   if (IsNull (pEntity))
+      return (nearest_delimiter); // reliability check
+
+   // get a quick access to the entity bottom origin
+   v_entity_bottom = BottomOriginOf (pEntity);
+
+   // compute the latitude and longitude in the topologic array
+   i = (int) ((v_entity_bottom.x - map.v_worldmins.x) / (map.v_worldmaxs.x - map.v_worldmins.x) * map.parallels_count);
+   j = (int) ((v_entity_bottom.y - map.v_worldmins.y) / (map.v_worldmaxs.y - map.v_worldmins.y) * map.meridians_count);
+
+   // handle the cases where the delimiter is just on the right or upper edge of the array...
+   if (i > map.parallels_count - 1)
+      i = map.parallels_count - 1;
+   if (j > map.meridians_count - 1)
+      j = map.meridians_count - 1;
+
+   // loop through all the face we know to be in this topological zone
+   for (count = 0; count < map.topology[i][j].delimiters_count; count++)
+      if ((nearest_delimiter.v_origin == NULLVEC)
+          || (map.topology[i][j].delimiters[count]->v_origin - v_entity_bottom).Length () < nearest_distance)
+      {
+         nearest_distance = (map.topology[i][j].delimiters[count]->v_origin - v_entity_bottom).Length ();
+         nearest_delimiter = *map.topology[i][j].delimiters[count]; // find the nearest delimiter
+      }
+
+   // for better check, look into the neighbour zones too
+   if ((i > 0) && (j > 0))
+   {
+      for (count = 0; count < map.topology[i - 1][j - 1].delimiters_count; count++)
+         if ((map.topology[i - 1][j - 1].delimiters[count]->v_origin - v_entity_bottom).Length () < nearest_distance)
+         {
+            nearest_distance = (map.topology[i - 1][j - 1].delimiters[count]->v_origin - v_entity_bottom).Length ();
+            nearest_delimiter = *map.topology[i - 1][j - 1].delimiters[count]; // find the nearest delimiter
+         }
+   }
+   if (i > 0)
+   {
+      for (count = 0; count < map.topology[i - 1][j].delimiters_count; count++)
+         if ((map.topology[i - 1][j].delimiters[count]->v_origin - v_entity_bottom).Length () < nearest_distance)
+         {
+            nearest_distance = (map.topology[i - 1][j].delimiters[count]->v_origin - v_entity_bottom).Length ();
+            nearest_delimiter = *map.topology[i - 1][j].delimiters[count]; // find the nearest delimiter
+         }
+   }
+   if ((i > 0) && (j < map.meridians_count - 1))
+   {
+      for (count = 0; count < map.topology[i - 1][j + 1].delimiters_count; count++)
+         if ((map.topology[i - 1][j + 1].delimiters[count]->v_origin - v_entity_bottom).Length () < nearest_distance)
+         {
+            nearest_distance = (map.topology[i - 1][j + 1].delimiters[count]->v_origin - v_entity_bottom).Length ();
+            nearest_delimiter = *map.topology[i - 1][j + 1].delimiters[count]; // find the nearest delimiter
+         }
+   }
+   if (j > 0)
+   {
+      for (count = 0; count < map.topology[i][j - 1].delimiters_count; count++)
+         if ((map.topology[i][j - 1].delimiters[count]->v_origin - v_entity_bottom).Length () < nearest_distance)
+         {
+            nearest_distance = (map.topology[i][j - 1].delimiters[count]->v_origin - v_entity_bottom).Length ();
+            nearest_delimiter = *map.topology[i][j - 1].delimiters[count]; // find the nearest delimiter
+         }
+   }
+   if (j < map.meridians_count - 1)
+   {
+      for (count = 0; count < map.topology[i][j + 1].delimiters_count; count++)
+         if ((map.topology[i][j + 1].delimiters[count]->v_origin - v_entity_bottom).Length () < nearest_distance)
+         {
+            nearest_distance = (map.topology[i][j + 1].delimiters[count]->v_origin - v_entity_bottom).Length ();
+            nearest_delimiter = *map.topology[i][j + 1].delimiters[count]; // find the nearest delimiter
+         }
+   }
+   if ((i < map.parallels_count - 1) && (j > 0))
+   {
+      for (count = 0; count < map.topology[i + 1][j - 1].delimiters_count; count++)
+         if ((map.topology[i + 1][j - 1].delimiters[count]->v_origin - v_entity_bottom).Length () < nearest_distance)
+         {
+            nearest_distance = (map.topology[i + 1][j - 1].delimiters[count]->v_origin - v_entity_bottom).Length ();
+            nearest_delimiter = *map.topology[i + 1][j - 1].delimiters[count]; // find the nearest delimiter
+         }
+   }
+   if (i < map.parallels_count - 1)
+   {
+      for (count = 0; count < map.topology[i + 1][j].delimiters_count; count++)
+         if ((map.topology[i + 1][j].delimiters[count]->v_origin - v_entity_bottom).Length () < nearest_distance)
+         {
+            nearest_distance = (map.topology[i + 1][j].delimiters[count]->v_origin - v_entity_bottom).Length ();
+            nearest_delimiter = *map.topology[i + 1][j].delimiters[count]; // find the nearest delimiter
+         }
+   }
+   if ((i < map.parallels_count - 1) && (j < map.meridians_count - 1))
+   {
+      for (count = 0; count < map.topology[i + 1][j + 1].delimiters_count; count++)
+         if ((map.topology[i + 1][j + 1].delimiters[count]->v_origin - v_entity_bottom).Length () < nearest_distance)
+         {
+            nearest_distance = (map.topology[i + 1][j + 1].delimiters[count]->v_origin - v_entity_bottom).Length ();
+            nearest_delimiter = *map.topology[i + 1][j + 1].delimiters[count]; // find the nearest delimiter
+         }
+   }
+
+   return (nearest_delimiter); // and return the nearest we found
+}
+
+
+dface_t *GetGroundFace (entity_t *pEntity)
+{
+   // this function returns the ground face supporting pEntity on floor. All the local variables
+   // have been made static to speedup recurrent calls of this function.
+
+   static int i, j, count, edge, edge_index, edge_boundary;
+   static float angle;
+   static dface_t *face;
+   static vector v_entity_bottom, v_bound1, v_bound2;
+
+   // first reset the face pointer
+   face = NULL;
+
+   if (IsNull (pEntity) || !IsOnFloor (pEntity))
+      return (face); // reliability check
+
+   // get a quick access to the entity bottom origin
+   v_entity_bottom = BottomOriginOf (pEntity); // get entity bottom origin
+
+   // compute the latitude and longitude in the topologic array
+   i = (int) ((v_entity_bottom.x - map.v_worldmins.x) / (map.v_worldmaxs.x - map.v_worldmins.x) * map.parallels_count);
+   j = (int) ((v_entity_bottom.y - map.v_worldmins.y) / (map.v_worldmaxs.y - map.v_worldmins.y) * map.meridians_count);
+
+   // handle the cases where the delimiter is just on the right or upper edge of the array...
+   if (i > map.parallels_count - 1)
+      i = map.parallels_count - 1;
+   if (j > map.meridians_count - 1)
+      j = map.meridians_count - 1;
+
+   // loop through all the face we know to be in this topological zone
+   for (count = 0; count < map.topology[i][j].faces_count; count++)
+   {
+      face = map.topology[i][j].faces[count]; // quick access to the face
+      angle = 0; // reset angle
+
+      // face is walkable, loop though the edges and get the vertexes...
+      for (edge_index = 0; edge_index < face->numedges; edge_index++)
+      {
+         // get the coordinates of the vertex of this edge...
+         edge = map.dsurfedges[face->firstedge + edge_index];
+
+         // if its index in the BSP tree is negative...
+         if (edge < 0)
+         {
+            edge = -edge; // revert it
+            edge_boundary = 1; // consider the other side of the segment
+         }
+         else
+            edge_boundary = 0; // else consider the first side of the segment
+
+         // locate the first vertice of this edge
+         v_bound1 = map.dvertexes[map.dedges[edge].v[edge_boundary}}.point;
+
+         // get the coordinates of the vertex of the next edge...
+         edge = map.dsurfedges[face->firstedge + ((edge_index + 1) % face->numedges)];
+
+         // if its index in the BSP tree is negative...
+         if (edge < 0)
+         {
+            edge = -edge; // revert it
+            edge_boundary = 1; // consider the other side of the segment
+         }
+         else
+            edge_boundary = 0; // else consider the first side of the segment
+
+         // locate the second vertice of this edge
+         v_bound2 = map.dvertexes[map.dedges[edge].v[edge_boundary}}.point;
+
+         // sum up all the angles vertex - point - next vertex and check if we have 360 (thx botman)
+         angle += abs (AngleBetweenVectors ((v_bound1 - v_entity_bottom), (v_bound2 - v_entity_bottom)));
+      }
+
+      // if the resulting angle is 360, then the point is likely to be on the face
+      if (abs (WrapAngle360 (angle)) - 360 < 2)
+         return (face); // if entity is not on face, then it's damn close !
+   }
+
+   return (NULL); // well, not found a face entity could be on I guess...
+}
+
+
+bool SegmentBelongsToSector (const vector &v_bound1, const vector &v_bound2, int sector_i, int sector_j)
+{
+   // this function returns TRUE if the *flattened* segment bounded by the v_bound1 and v_bound2
+   // vertices beclongs to the topological sector whose position in the global array is [sector_i]
+   // [sector_j], FALSE otherwise. The local variables of this function are defined static in
+   // order to speedup recursive calls of this function, which is extensively used in
+   // LookDownOnTheWorld().
+
+   // Code courtesy of Paul "Cheesemonster" Murphy (thanks mate !).
+
+   static float sector_left, sector_right, sector_top, sector_bottom, x, y, m, b;
+   vector sector_min, sector_max, line_min,line_max;
+
+   // first compute the left, right, top and bottom coordinates indices of the sector
+   sector_left = map.v_worldmins.x + (map.v_worldmaxs.x - map.v_worldmins.x) / map.parallels_count * sector_i;
+   sector_right = map.v_worldmins.x + (map.v_worldmaxs.x - map.v_worldmins.x) / map.parallels_count * (sector_i + 1);
+   sector_top = map.v_worldmins.y + (map.v_worldmaxs.y - map.v_worldmins.y) / map.meridians_count * sector_j;
+   sector_bottom = map.v_worldmins.y + (map.v_worldmaxs.y - map.v_worldmins.y) / map.meridians_count * (sector_j + 1);
+
+   // get minimum and maximum vectors and stored in vector
+   sector_min = vector (sector_left, sector_bottom, 0);
+   sector_max = vector (sector_right, sector_top, 0);
+
+   // its obvious it is in sector, if one or both points are inside the box
+   if (((v_bound1.x >= sector_left) && (v_bound1.x <= sector_right) && (v_bound1.y >= sector_bottom) && (v_bound1.y <= sector_top))
+       || ((v_bound2.x >= sector_left) && (v_bound2.x <= sector_right) && (v_bound2.y >= sector_bottom) && (v_bound2.y <= sector_top)))
+      return (TRUE); // if so, segment belongs to sector
+
+   // vertical line ? (!!!undefined gradient!!!)
+   if (v_bound1.x == v_bound2.x)
+   {
+      if ((v_bound1.x >= sector_left) && (v_bound1.x <= sector_right))
+      {
+         if (v_bound1.y > v_bound2.y)
+            return ((v_bound1.y >= sector_top) && (v_bound2.y <= sector_bottom)); // both above or below (not both)
+         else
+            return ((v_bound2.y >= sector_top) && (v_bound1.y <= sector_bottom));
+      }
+
+      return FALSE; // only vertical line can hit top or bottom of sector
+   }
+
+   // horizontal line ? (!!!zero gradient!!!)
+   else if (v_bound1.y == v_bound2.y)
+   {
+      if ((v_bound1.y >= sector_bottom) && (v_bound1.y <= sector_top))
+      {
+         if (v_bound1.x > v_bound2.x)
+            return ((v_bound1.x >= sector_right) && (v_bound2.x <= sector_left)); // both left and right (not left and left/right and right of box etc)
+         else
+            return ((v_bound2.x >= sector_right) && (v_bound1.x <= sector_left));
+      }
+
+      return (FALSE); // only vertical line can hit top or bottom of sector
+   }
+
+   // arrange the bounds of the segment in the right order
+   else if (v_bound1.x < v_bound2.x)
+   {
+      line_min = v_bound1;
+      line_max = v_bound2;
+   }
+   else
+   {
+      line_min = v_bound2;
+      line_max = v_bound1;
+   }
+
+   m = (v_bound2.x - v_bound1.y) / (v_bound2.x - v_bound1.x);
+   b = v_bound1.y - m * v_bound1.x; // y = mx + b
+
+   y = m * sector_left + b; // point must lie inside box AND inside line region.
+
+   // check the left side of the sector....
+   if ((y >= sector_bottom) && (y <= sector_top) && (y >= line_min.y) && (y <= line_max.y))
+   {
+      // intersects box, must also check if this point is INSIDE the length
+      // of the line (by checking a bounding box around the line)
+
+      // x = (y - b) / m
+      x = (y - b) / m;
+
+      if ((x >= line_min.x) && (x <= line_max.x))
+         return (TRUE);
+   }
+
+   y = m * sector_right + b;
+
+   // check the right side...
+   if ((y >= sector_bottom) && (y <= sector_top) && (y >= line_min.y) && (y <= line_max.y))
+   {
+      x = (y - b) / m;
+
+      if ((x >= line_min.x) && (x <= line_max.x))
+         return (TRUE);
+   }
+
+   // must now change subject to x (checking for y point now)
+   // plug y into the equation which is now sector_top/sector_bottom
+   x = (sector_top - b) / m;
+
+   // check to see where it intersects on x axis with top of the box
+   if ((x >= sector_left) && (x <= sector_right) && (x >= line_min.x) && (x <= line_max.x))
+   {
+      // need to also find Y !!! Check if its also inside line region!
+
+      y = m * x + b;
+
+      if ((y >= line_min.y) && (y <= line_max.y))
+         return (TRUE);
+   }
+
+   x = (sector_bottom - b) / m;
+
+   // check to see where it intersects on x axis with bottom of the box
+   if ((x >= sector_left) && (x <= sector_right) && (x >= line_min.x) && (x <= line_max.x))
+   {
+      y = m * x + b;
+
+      if ((y >= line_min.y) && (y <= line_max.y))
+         return (TRUE);
+   }
+
+   return (FALSE); // definitely no intersection possible
+}
+
+
+bool LoadWorldMap (void)
+{
+   // this function saves the loaded world map created by LookDownOnTheWorld() in a .map file on
+   // disk. The format of this file is divided into chunks. For an explanation of the different
+   // chunks of which .map files are made, refer to the SaveWorldMap() function.
+
+   FILE *fp;
+   char map_file_path[256];
+   int i, j, index, array_index;
+
+   // build the world map file path
+   sprintf (map_file_path, "racc/worldmaps/%s/%s.map", mod_name, map_name);
+
+   fp = mfopen (map_file_path, "rb"); // open or create such a file in binary read mode
+   if (fp == NULL)
+      return (FALSE); // error, can't open worldmap file
+
+   mfseek (fp, 0, SEEK_SET); // seek at start of file
+
+   mfseek (fp, sizeof ("RACCMAP"), SEEK_CUR); // skip the RACCMAP tag
+   mfseek (fp, sizeof ("[filesize]") - 1, SEEK_CUR); // skip the filesize chunk tag
+   mfseek (fp, sizeof (int), SEEK_CUR); // skip the filesize chunk data
+   mfseek (fp, sizeof ("[worldsize]") - 1, SEEK_CUR); // skip the worldsize chunk tag
+
+   // read the world size chunk data
+   mfread (&map.v_worldmins, sizeof (vector), 1, fp);
+   mfread (&map.v_worldmaxs, sizeof (vector), 1, fp);
+
+   mfseek (fp, sizeof ("[zonedelimiters]") - 1, SEEK_CUR); // seek at start of zonedelimiters chunk data
+
+   // read the zone delimiters lump (and mallocate for it on the fly...)
+   mfread (&map.zone_delimiters_count, sizeof (int), 1, fp);
+   if (map.zone_delimiters_count == 0)
+      return (FALSE); // error, no zone delimiters have been recorded
+
+   ServerConsole_printf ("RACC: Fetching world map"); // tell people what we are doing
+
+   map.zone_delimiters = (zone_delimiter_t *) malloc (map.zone_delimiters_count * sizeof (zone_delimiter_t));
+   if (map.zone_delimiters == NULL)
+      TerminateOnError ("Fatal: Unable to allocate enough memory for world analysis [1][%d]\n", map.zone_delimiters_count * sizeof (zone_delimiter_t));
+   for (index = 0; index < map.zone_delimiters_count; index++)
+      mfread (&map.zone_delimiters[index], sizeof (map.zone_delimiters[index]), 1, fp);
+
+   mfseek (fp, sizeof ("[topology]") - 1, SEEK_CUR); // seek at start of topology chunk data
+
+   // read the topology chunk data (and mallocate for it on the fly...)
+   mfread (&map.parallels_count, sizeof (map.parallels_count), 1, fp);
+   mfread (&map.meridians_count, sizeof (map.meridians_count), 1, fp);
+   for (i = 0; i < map.parallels_count; i++)
+   {
+      for (j = 0; j < map.meridians_count; j++)
+      {
+         // read the faces count for this zone
+         mfread (&map.topology[i][j].faces_count, sizeof (int), 1, fp);
+
+         // if we actually need to mallocate some space for the face pointers, do it
+         if (map.topology[i][j].faces_count > 0)
+            map.topology[i][j].faces = (dface_t **) malloc (map.topology[i][j].faces_count * sizeof (dface_t *));
+         else
+            map.topology[i][j].faces = (dface_t **) malloc (sizeof (dface_t *)); // failsafe pointer
+
+         // check for validity of malloced space
+         if (map.topology[i][j].faces == NULL)
+            TerminateOnError ("Fatal: Unable to allocate enough memory for world analysis\n");
+
+         // init the first pointer to some failsafe value
+         map.topology[i][j].faces[0] = &map.dfaces[map.dmodels[0].firstface];
+
+         // translate each face array index into a pointer
+         for (index = 0; index < map.topology[i][j].faces_count; index++)
+         {
+            mfread (&array_index, sizeof (int), 1, fp);
+            
+            // test this index against overflow
+            if ((array_index < 0) || (array_index > map.dmodels[0].numfaces - 1))
+               TerminateOnError ("LoadWorldMap(): bad face array index %d (max %d) at [%d][%d], index %d/%d\n", array_index, map.dmodels[0].numfaces - 1, i, j, index, map.topology[i][j].faces_count);
+
+            map.topology[i][j].faces[index] = (dface_t *) ((unsigned long) &map.dfaces[map.dmodels[0].firstface] + array_index * sizeof (dface_t));
+
+            // test this pointer against access violation (pointers are plain evil)
+            if ((map.topology[i][j].faces[index] < &map.dfaces[map.dmodels[0].firstface]) || (map.topology[i][j].faces[index] > &map.dfaces[map.dmodels[0].firstface + map.dmodels[0].numfaces - 1]))
+               TerminateOnError ("LoadWorldMap(): bad face pointer %d (range %d - %d) at [%d][%d], index %d/%d\n", map.topology[i][j].faces[index], &map.dfaces[map.dmodels[0].firstface], &map.dfaces[map.dmodels[0].firstface + map.dmodels[0].numfaces - 1], i, j, index, map.topology[i][j].faces_count);
+         }
+
+         // read the delimiters count for this zone
+         mfread (&map.topology[i][j].delimiters_count, sizeof (int), 1, fp);
+
+         // if we actually need to mallocate some space for the delimiter pointers, do it
+         if (map.topology[i][j].delimiters_count > 0)
+            map.topology[i][j].delimiters = (zone_delimiter_t **) malloc (map.topology[i][j].delimiters_count * sizeof (zone_delimiter_t *));
+         else
+            map.topology[i][j].delimiters = (zone_delimiter_t **) malloc (sizeof (zone_delimiter_t *)); // failsafe pointer
+
+         // check for validity of malloced space
+         if (map.topology[i][j].delimiters == NULL)
+            TerminateOnError ("Fatal: Unable to allocate enough memory for world analysis\n");
+
+         // init the first pointer to some failsafe value
+         map.topology[i][j].delimiters[0] = &map.zone_delimiters[0];
+
+         // translate each delimiter array index into a pointer
+         for (index = 0; index < map.topology[i][j].delimiters_count; index++)
+         {
+            mfread (&array_index, sizeof (int), 1, fp);
+
+            // test this index against overflow
+            if ((array_index < 0) || (array_index > map.zone_delimiters_count - 1))
+               TerminateOnError ("LoadWorldMap(): bad delimiter array index %d (max %d) at [%d][%d], index %d/%d\n", array_index, map.zone_delimiters_count - 1, i, j, index, map.topology[i][j].faces_count);
+
+            map.topology[i][j].delimiters[index] = (zone_delimiter_t *) ((unsigned long) map.zone_delimiters + array_index * sizeof (zone_delimiter_t));
+
+            // test this pointer against access violation (pointers are plain evil)
+            if ((map.topology[i][j].delimiters[index] < &map.zone_delimiters[0]) || (map.topology[i][j].delimiters[index] > &map.zone_delimiters[map.zone_delimiters_count - 1]))
+               TerminateOnError ("LoadWorldMap(): bad delimiter pointer %d (range %d - %d) at [%d][%d], index %d/%d\n", map.topology[i][j].delimiters[index], &map.zone_delimiters[0], &map.zone_delimiters[map.zone_delimiters_count - 1], i, j, index, map.topology[i][j].delimiters_count);
+         }
+      }
+
+      ServerConsole_printf ("."); // print a trailing dot as a progress bar
+   }
+
+   // finished, terminate the progress bar
+   ServerConsole_printf (" done\n   %d parallels, %d meridians, %.2f kilobytes world data\n",
+                         map.parallels_count, map.meridians_count, (float) mftell (fp) / 1024);
+
+   mfclose (fp); // close the file
+   return (TRUE); // and return the error state (no error)
+}
+
+
+int SaveWorldMap (int bsp_file_size)
+{
+   // this function saves the loaded world map created by LookDownOnTheWorld() in a .map file on
+   // disk. The format of this file is divided into chunks. The first chunk is an authentication
+   // tag, which has the value "RACCMAP" followed by an end of string null marker. All the other
+   // chunks are explicitly named in ASCII characters in the file, preceding the chunk data. The
+   // chunks coming after the "RACCMAP" marker are :
+   // [filesize] - tells the size of the BSP file this world map has been drawn for
+   // [worldsize] - gives info about the virtual world's bounding box mins and maxs limits
+   // [zonedelimiters] - number of zone delimiters this map has, followed by the array of them
+   // [topology] - number of parallels and meridians in this map, followed by the zone quadtree
+
+   FILE *fp;
+   char map_file_path[256];
+   int i, j, index, size, array_index;
+
+   // build the world map file path
+   sprintf (map_file_path, "racc/worldmaps/%s/%s.map", mod_name, map_name);
+
+   fp = fopen (map_file_path, "wb"); // open or create such a file in binary write mode
+   if (fp == NULL)
+      TerminateOnError ("Unable to save new worldmap to %s\n", map_file_path);
+
+   fseek (fp, 0, SEEK_SET); // seek at start
+
+   // write the authentication chunk
+   fwrite ("RACCMAP", sizeof ("RACCMAP"), 1, fp);
+
+   // don't write the file size chunk yet (will do this when the map will be fully saved)
+   // this ensure an error in the saving process won't let a badly authenticated file on disk
+   fwrite ("[filesize]", sizeof ("[filesize]") - 1, 1, fp);
+   fwrite ("\0\0\0\0", sizeof (int), 1, fp); // fill the field with zeroes (temporarily)
+
+   // write the world size chunk
+   fwrite ("[worldsize]", sizeof ("[worldsize]") - 1, 1, fp);
+   fwrite (&map.v_worldmins, sizeof (vector), 1, fp);
+   fwrite (&map.v_worldmaxs, sizeof (vector), 1, fp);
+
+   // write the zone delimiters chunk
+   fwrite ("[zonedelimiters]", sizeof ("[zonedelimiters]") - 1, 1, fp);
+   fwrite (&map.zone_delimiters_count, sizeof (int), 1, fp);
+   fwrite (&map.zone_delimiters[0], map.zone_delimiters_count * sizeof (zone_delimiter_t), 1, fp);
+
+   // write the topology chunk
+   fwrite ("[topology]", sizeof ("[topology]") - 1, 1, fp);
+   fwrite (&map.parallels_count, sizeof (int), 1, fp);
+   fwrite (&map.meridians_count, sizeof (int), 1, fp);
+   for (i = 0; i < map.parallels_count; i++)
+      for (j = 0; j < map.meridians_count; j++)
+      {
+         fwrite (&map.topology[i][j].faces_count, sizeof (int), 1, fp);
+         for (index = 0; index < map.topology[i][j].faces_count; index++)
+         {
+            // translate the pointer address into an array relative index
+            array_index = ((unsigned long) map.topology[i][j].faces[index] - (unsigned long) &map.dfaces[map.dmodels[0].firstface]) / sizeof (dface_t);
+            if ((array_index < 0) || (array_index > map.dmodels[0].numfaces - 1))
+               TerminateOnError ("SaveWorldMap(): bad face array index %d (max %d) at [%d][%d], index %d/%d\n", array_index, map.dmodels[0].numfaces - 1, i, j, index, map.topology[i][j].faces_count);
+            fwrite (&array_index, sizeof (int), 1, fp);
+         }
+         fwrite (&map.topology[i][j].delimiters_count, sizeof (int), 1, fp);
+         for (index = 0; index < map.topology[i][j].delimiters_count; index++)
+         {
+            // translate the pointer address into an array relative index
+            array_index = ((unsigned long) map.topology[i][j].delimiters[index] - (unsigned long) map.zone_delimiters) / sizeof (zone_delimiter_t);
+            if ((array_index < 0) || (array_index > map.zone_delimiters_count - 1))
+               TerminateOnError ("SaveWorldMap(): bad delimiter array index %d (max %d) at [%d][%d], index %d/%d\n", array_index, map.zone_delimiters_count - 1, i, j, index, map.topology[i][j].delimiters_count);
+            fwrite (&array_index, sizeof (int), 1, fp);
+         }
+      }
+
+   size = ftell (fp); // get the file size, i.e our current position before we rewind
+
+   // now we're ready to write the authentication lump
+   fseek (fp, 0, SEEK_SET); // rewind the file
+   fseek (fp, sizeof ("RACCMAP"), SEEK_CUR); // skip the RACCMAP tag
+   fseek (fp, sizeof ("[filesize]") - 1, SEEK_CUR); // skip the filesize chunk tag
+   fwrite (&bsp_file_size, sizeof (int), 1, fp); // and write the file size
+
+   fclose (fp); // finished, close the file
+
+   return (size); // and return the world data size
+}
+
+
+void ServerActivate (entity_t *pEdictList, int edictCount, int clientMax)
+{
+   // this function is called when the server has fully loaded and is about to manifest itself
+   // on the network as such. Since a mapchange is actually a server shutdown followed by a
+   // restart, this function is also called when a new map is being loaded. Hence it's the
+   // perfect place for doing initialization stuff for our bots, such as reading the BSP data,
+   // loading the bot profiles, and drawing the world map (ie, filling the navigation quadtree).
+   // Once this function has been called, the server can be considered as running.
+
+   // only process bots if we are in multiplayer mode
+   if (is_multiplayer_game)
+   {
+      char bsp_file_path[256];
+
+      // print a welcome message on the server console
+      ServerConsole_printf ("\n   " RACC_WELCOMETEXT "\n");
+      ServerConsole_printf ("   This program comes with ABSOLUTELY NO WARRANTY; see license for details.\n");
+      ServerConsole_printf ("   This is free software, you are welcome to redistribute it the way you want.\n\n");
+
+      sprintf (mod_name, GetModName ()); // get MOD name
+      sprintf (map_name, GetMapName ()); // get map name
+
+      // build the corresponding BSP file name
+      sprintf (bsp_file_path, "maps/%s.bsp", map_name);
+      LoadBSPFile (bsp_file_path); // load the BSP file
+
+      LookDownOnTheWorld (); // look down on the world and sort the zone delimiters
+   }
+
+   (*other_gFunctionTable.pfnServerActivate) (pEdictList, edictCount, clientMax);
+}
+
+
+void ServerDeactivate (void)
+{
+   // this function is called when the server is shutting down. A particular note about map
+   // changes: changing the map means shutting down the server and starting a new one. Of course
+   // this process is transparent to the user, but either in single player when the hero reaches
+   // a new level and in multiplayer when it's time for a map change, be aware that what happens
+   // is that the server actually shuts down and restarts with a new map. Hence we can use this
+   // function to free and deinit anything which is map-specific, for example we free the memory
+   // space we m'allocated for our BSP data, since a new map means new BSP data to interpret. In
+   // any case, when the new map will be booting, ServerActivate() will be called, so we'll do
+   // the loading of new bots and the new BSP data parsing there.
+
+   // only process bots if we are in multiplayer mode
+   if (is_multiplayer_game)
+   {
+      int i, j;
+
+      memset (&sounds, 0, sizeof (sounds)); // reset sound list
+      sound_count = 0; // reset sound count
+
+      // do we need to free the texture data memory space ?
+      if (map.dtexdata)
+      {      
+         free (map.dtexdata); // don't forget to free the texture data memory space we mallocated
+         map.dtexdata = NULL; // fools the pointer
+      }
+
+      // do we need to free the zone delimiters memory space ?
+      if (map.zone_delimiters)
+      {
+         free (map.zone_delimiters); // don't forget to free the zone delimiters memory space
+         map.zone_delimiters = NULL; // fools the pointer
+      }
+
+      // do we need to free the quadtree data ?
+      for (i = 0; i < map.parallels_count; i++)
+         for (j = 0; j < map.meridians_count; j++)
+         {
+            if (map.topology[i][j].faces)
+            {
+               free (map.topology[i][j].faces); // don't forget to free the faces array in the quadtree
+               map.topology[i][j].faces = NULL; // fools the pointer
+            }
+            if (map.topology[i][j].delimiters)
+            {
+               free (map.topology[i][j].delimiters); // also free the zone delimiters array
+               map.topology[i][j].delimiters = NULL; // fools the pointer
+            }
+         }
+   }
+
+   (*other_gFunctionTable.pfnServerDeactivate) ();
+}
+
+
+
+I stripped most of the unrelated stuff. Have fun :)
+
+
+--------------------------------------------------
+01/18/03 at 17:28:39  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Another pic of the thing in action:
+
+http://www.racc-ai.com/de_dust0000.png
+
+Red lines are the "topological zone" square (the "bucket" in the hashtable, thanks Tobias)
+Blue lines are the faces that are referenced in this bucket, i.e the faces that belong to that topological zone.
+The delimiters (which are not drawn here because of a TempEntity overhead) are one per middle of segment, and are used as way points (in the litteral sense) between faces, storing connectivity info (walk, crouch, jump, ladder, elevator, platform, gauss-jump etc.) - which info is NOT stored in the delimiters themselves, but in the bot's local copy of it (individual memory).
+
+Segment intersection code courtesy of Cheesemonster (thanks mate ! ;))
+
+
+--------------------------------------------------
+01/18/03 at 18:25:30  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+Cheers PM, looks amazing :D
+
+I was wondering how to figure out the best place to put a "waypoint". The way I did it, I did not know when a complete face was finished being read, so what happened was, there where loads of waypoints stuck on loads of edges! thx for all ;D
+
+--------------------------------------------------
+01/18/03 at 21:01:59  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+aaaaaaaaarrrrrggggghhhhhhh, ERRATUM
+code:
+
+dface_t *GetGroundFace (entity_t *pEntity)
+
+
+does NOT WORK !!!
+Currently it returns wrong faces !
+
+uhhh Cheesy, I'm sure you'd appreciate I put one more line of credit to you in the code... ;D not that I am always relying on you (well, NOT always though), but that's math again... :(
+
+[€dited again]: Wait! waitwaitwait.
+I'm not satisfied with the overall design. Count Floyd was right (I'm quite used to be wrong with that guy), I need to abstract the BSP stuff too.
+
+Okey, it's decided now.
+I'll be rewriting the BSP stuff from scratch.
+
+Maybe more like this:
+code:
+
+// walkable faces structure definition
+typedef struct
+{
+   vector *v_corners; // pointer to array of face edges vector locations (mallocated)
+   vector *v_delimiters; // pointer to array of face delimiters vector locations (mallocated)
+   int corner_count; // number of edges (and thus delimiters) this face has
+} walkable_face_t;
+
+
+// topologic zone structure definition
+typedef struct
+{
+   walkable_face_t **faces; // mallocated array of pointers to walkable faces located in this zone
+   int faces_count; // number of walkable faces in this array
+} zone_t;
+
+
+// the virtual world itself
+typedef struct
+{
+   walkable_faces_t *walkable_faces; // pointer to map's walkable faces memory space (mallocated)
+   int walkable_faces_count; // number of walkable faces in this map
+   zone_t topology[MAX_MAP_PARALLELS][MAX_MAP_MERIDIANS]; // map spatial topology
+   int parallels_count; // number of parallels dividing this map into sectors
+   int meridians_count; // number of meridians dividing this map into sectors
+   vector v_worldmins; // quick access to the world's bounding box lower bottom left corner
+   vector v_worldmaxs; // quick access to the world's bounding box upper top right corner
+} map_t;
+
+
+
+[modified on 01/18/03 at 21:01:59]
+--------------------------------------------------
+01/19/03 at 05:40:02  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+I'll look at the getground function PM, Ill use my DotProduct Idea :D
+
+Oh BTW I am having trouble with the file/reading writing, I keep getting exceptions..exceptions..exceptions in free() etc. (when mfclose is called) and things like that, I changed it back to the library functions but, now i get exceptions on level change :(
+

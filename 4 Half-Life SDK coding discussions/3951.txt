@@ -1,0 +1,111 @@
+--------------------------------------------------
+Subject: Tau
+--------------------------------------------------
+12/29/02 at 02:01:09  Posted by: Snake (Liquid_snakeX2@hotmail.com)
+--------------------------------------------------
+where the hell is the gauss beam color a in server side mod!
+
+--------------------------------------------------
+12/29/02 at 04:40:34  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+The gauss gun color is now handled client side and can't be changed in a server side MOD.  Here's the code in cl_dll\ev_hldm.cpp if your interested anyway...
+code:
+                  gEngfuncs.pEfxAPI->R_BeamEntPoint( 
+                        idx | 0x1000,
+                        tr.endpos,
+                        m_iBeam,
+                        0.1,
+                        m_fPrimaryFire ? 1.0 : 2.5,
+                        0.0,
+                        m_fPrimaryFire ? 128.0 : flDamage,
+                        0,
+                        0,
+                        0,
+                        m_fPrimaryFire ? 255 : 255,
+                        m_fPrimaryFire ? 128 : 255,
+                        m_fPrimaryFire ? 0 : 255
+                  );
+
+...in the EV_FireGauss() function.
+
+botman
+
+
+--------------------------------------------------
+12/29/02 at 10:57:34  Reply by: Snake (Liquid_snakeX2@hotmail.com)
+--------------------------------------------------
+why did they change it?
+
+--------------------------------------------------
+12/29/02 at 11:16:58  Reply by: Snake (Liquid_snakeX2@hotmail.com)
+--------------------------------------------------
+dont want to spawn so ill post here ok i have go done with this
+
+code:
+
+if (FStrEq(pcmd, "SnakeX2"))
+      {
+            CBasePlayer *pPlayer = GetClassPtr((CBasePlayer *)pev);
+      
+            char szText[201];
+            hudtextparms_t     hText;
+
+            sprintf(szText, "The pimp of\n\n           Dark-Side\n\n         has entered the server\n\n             Say hello to Snake!\n");
+
+            memset(&hText, 0, sizeof(hText));
+            hText.channel = 1;
+            // These X and Y coordinates are just above
+            //  the health meter.
+            hText.x = 0.30;
+            hText.y = 0.25;
+          
+            hText.effect = 0;    // Fade in/out
+                        
+            hText.r1 = hText.g1 = hText.b1 = 255;
+            hText.a1 = 25;
+            
+            hText.r2 = hText.g2 = hText.b2 = 45;
+            hText.a2 = 255;
+            
+            hText.fadeinTime = 1;
+            hText.fadeoutTime = 5;
+            hText.holdTime = 5;
+            hText.fxTime = 0.5;
+            
+            UTIL_HudMessageAll(hText, szText);
+      }
+
+
+
+but i can not get it do print when you join server so i thought the work work nice but i like it if i join any of my mods server to say the message need help. O and i have that in the client command.
+
+[modified on 12/29/02 at 11:16:58]
+--------------------------------------------------
+12/29/02 at 11:23:26  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+"why did they change it?"
+
+They changed all the weapon effects to be client side instead of being sent from the server to each client.  This uses less network bandwidth and helps to reduce the latency between the clients and the server (i.e. less LAG).
+
+"but i can not get it do print when you join server"
+
+Perhaps you are sending the text in the wrong place (i.e. if you are doing this in ClientPutInServer, the client's HUD hasn't been initialized yet and sending anything to it will be ignored by the client).
+
+Perhaps you can set a timer when the client joins the server then send a message to the client when that timer value is reached.  See the HPB bot source code where the welcome message is sent to a client a few seconds after they join the server as an example.
+
+botman
+
+--------------------------------------------------
+12/29/02 at 11:46:36  Reply by: Snake (Liquid_snakeX2@hotmail.com)
+--------------------------------------------------
+can you tell me witch file .cpp .h
+
+--------------------------------------------------
+12/29/02 at 12:08:45  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+The welcome message stuff in the HPB bot source code can be found in the dll.cpp file.
+
+Just search for "welcome" and you'll see the variables and code used for this.
+
+botman
+

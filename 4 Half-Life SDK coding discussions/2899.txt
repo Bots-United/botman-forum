@@ -1,0 +1,75 @@
+--------------------------------------------------
+Subject: Autoaim
+--------------------------------------------------
+03/25/02 at 18:09:51  Posted by: legolas (simontemplar19@hotmail.com)
+--------------------------------------------------
+Can anyone explaion how the autoaim feature in hl finds the target?
+
+--------------------------------------------------
+03/26/02 at 03:02:18  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+I'ts basically vector maths here.. All you have got to do is find your target and set your angles to face it. There are already functions that do this, here is an example!
+
+[code]
+
+Vector v_enemy,v_angles;
+
+v_enemy = pEnemy->pev->origin - (Player->pev->origin + pPlayer->pev->view_ofs);
+
+v_angles = UTIL_VecToAngles(v_enemy);
+
+pPlayer->pev->angles = v_angles;
+pPlayer->pev->v_angle = v_angles;
+
+--------------------------------------------------
+03/26/02 at 04:27:35  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+This is the function in player.cpp that does the autoaim...
+code:
+Vector CBasePlayer :: GetAutoaimVector( float flDelta )
+
+botman
+
+--------------------------------------------------
+03/26/02 at 05:02:22  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+doh... i'm jumping the gun again :D
+
+--------------------------------------------------
+03/26/02 at 06:41:26  Reply by: legolas (simontemplar19@hotmail.com)
+--------------------------------------------------
+I know that its in player.cpp, but where in the function does it actually create the vector to the entity? 
+
+
+ Thx again for all the help!
+
+--------------------------------------------------
+03/26/02 at 07:59:19  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+code:
+   Vector vecSrc = GetGunPosition( );
+   float flDist = 8192;
+   .
+   .
+   .
+   Vector angles = AutoaimDeflection(vecSrc, flDist, flDelta );
+   .
+   .
+   .
+      m_vecAutoAim = angles * 0.9;
+   .
+   .
+   .
+   UTIL_MakeVectors( pev->v_angle + pev->punchangle + m_vecAutoAim );
+   return gpGlobals->v_forward;
+
+...the "..." represents code left out since it's not really important.  The gpGlobals->v_forward that is returned it where the player will aim at.  The AutoaimDeflection() function loops through all the entities and finds the one that is closest to where the player is currently aiming (using the DotProduct between the monster and the player's view angles to find the smallest angle, thus requiring the least amount of turning to aim at that monster).
+
+botman
+
+
+--------------------------------------------------
+03/26/02 at 08:43:17  Reply by: legolas (simontemplar19@hotmail.com)
+--------------------------------------------------
+Thank You BOTMAN!
+

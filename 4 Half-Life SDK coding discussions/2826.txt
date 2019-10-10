@@ -1,0 +1,82 @@
+--------------------------------------------------
+Subject: Heaps of coding problems
+--------------------------------------------------
+03/08/02 at 23:28:43  Posted by: Bumster (loliavec@ozemail.com.au)
+--------------------------------------------------
+I'm working on making the HL weapons incredibly powerful to make a crazy DM mod.
+
+I'm not having much luck =/
+
+My biggest problems so far:
+
+Shotgun:
+I've set it up all correctly EXCEPT the secondary fire persists in playing the 2-barrel sound and ejecting 2 shells...  this happens even if I replace the 2ndary fire code with the primary fire code.
+What gives??
+
+Crowbar:
+I want it to triple the player's speed while it is wielded...  how?
+
+Python:
+I want it to have a huge rate of fire (I got that working)...  and then to be only able to fire after being 'charged' - using the secondary fire.  1 click = 1 shot.... here's the code that isn't working:
+
+int j=0;
+
+void CPython::PrimaryAttack()
+{
+      while(j>0)
+      {
+      // don't fire underwater
+      if (m_pPlayer->pev->waterlevel == 3)
+      {
+            PlayEmptySound( );
+            m_flNextPrimaryAttack = 0.15;
+            return;
+      }
+
+      m_pPlayer->m_iWeaponVolume = LOUD_GUN_VOLUME;
+      m_pPlayer->m_iWeaponFlash = BRIGHT_GUN_FLASH;
+
+      // m_iClip--;
+
+      m_pPlayer->pev->effects = (int)(m_pPlayer->pev->effects) | EF_MUZZLEFLASH;
+
+      // player "shoot" animation
+      m_pPlayer->SetAnimation( PLAYER_ATTACK1 );
+
+
+      UTIL_MakeVectors( m_pPlayer->pev->v_angle + m_pPlayer->pev->punchangle );
+
+      Vector vecSrc       = m_pPlayer->GetGunPosition( );
+      Vector vecAiming = m_pPlayer->GetAutoaimVector( AUTOAIM_10DEGREES );
+
+      Vector vecDir;
+      vecDir = m_pPlayer->FireBulletsPlayer( 5, vecSrc, vecAiming, VECTOR_CONE_1DEGREES, 8192, BULLET_PLAYER_357, 0, 0, m_pPlayer->pev, m_pPlayer->random_seed );
+
+    int flags;
+#if defined( CLIENT_WEAPONS )
+      flags = FEV_NOTHOST;
+#else
+      flags = 0;
+#endif
+
+      PLAYBACK_EVENT_FULL( flags, m_pPlayer->edict(), m_usFirePython, 0.0, (float *)&g_vecZero, (float *)&g_vecZero, vecDir.x, vecDir.y, 0, 0, 0, 0 );
+
+      m_flNextPrimaryAttack = 0.05;
+      m_flTimeWeaponIdle = UTIL_SharedRandomFloat( m_pPlayer->random_seed, 10, 15 );
+      j--;
+      }
+}
+
+
+void CPython::SecondaryAttack( void )
+{
+EMIT_SOUND(ENT(m_pPlayer->pev), CHAN_WEAPON, "weapons/357_cock1.wav", 0.8, ATTN_NORM);
+j++;
+m_flNextSecondaryAttack = 0.2;
+}
+
+
+Help greatly appreciated!
+
+ - Bumster
+

@@ -1,0 +1,68 @@
+--------------------------------------------------
+Subject: Strange Crash
+--------------------------------------------------
+05/29/01 at 18:54:29  Posted by: Karl (NA)
+--------------------------------------------------
+Hi im working on my own bot using the HL Sdk. I have created a MoveToItem function for the bot to run when he finds an Item. The function seemed to work fine, but after debuging the code i noticed that every now and then i get a crash ( caused in my dll ) that points to a line in the MoveToItem function.
+
+void CBot::MoveToItem( void )
+{
+      if (!pItem)
+            return;
+
+      //the if statement below is the line that the debug points to when it crashes
+      if ((pItem->pev->effects & EF_NODRAW) || (!FVisible(pItem->pev->origin)))
+      {
+            pItem = NULL;
+            return;
+      }
+
+      TurnBotToOrigin(pItem->pev->origin);
+
+      m_fMoveSpeed = m_fMaxSpeed;
+
+      CheckMovement();
+}
+
+I have commented above the line that the debug points to when the dll crashed. Does anybody know any reason why anything in that if statement would cause a crash ( but not always cause a crash, if that makes sense :) ). Any help would be appreciated.
+
+--------------------------------------------------
+05/30/01 at 05:05:06  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+There's nothing in your code that should cause a crash as long as pItem points to a valid CBaseEntity.  Perhaps you are overwriting pItem with garbage somewhere else.  An easy way to do this is to exceed the bounds of an array (stored in memory somewhere above pItem) and accidentally overwrite pItem with data that is not a pointer to a CBaseEntity class.
+
+botman
+
+--------------------------------------------------
+05/30/01 at 07:04:14  Reply by: Karl (NA)
+--------------------------------------------------
+i have looked trough my code and i only ever set pItem to a Entity in my BotFindItem function, all the other pointers are NULL. 
+
+I think i have an idea on what may be causing it.
+If the pItem the bot is moving to changes state in some way, which makes the origin of the item invalid, then this could cause the crash?
+
+Thanks anyway.
+
+--------------------------------------------------
+05/30/01 at 08:15:57  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+No, any values for the origin (including ones outside the range of the map) won't cause a crash on the line indicated.
+
+It would probably be a good idea to print out the value of the pItem pointer before your "if" statement (logging them to a text file).  You will probably find that pItem contains some relatively small value instead of a large address which would typically be assigned to a pointer to an edict.
+
+Just use something like this to log stuff to a file...
+code:
+FILE *fp=fopen("log.txt", "a");
+fprintf(fp, "pItem=%08x", pItem);
+fclose(fp);
+
+The output file will be found in the Half-Life directory after the crash occurs.  Look at the end of the file for the last value that caused the crash.
+
+botman
+
+
+--------------------------------------------------
+05/30/01 at 08:38:18  Reply by: Karl (NA)
+--------------------------------------------------
+Okay i'll try it thanks alot.
+

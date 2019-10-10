@@ -1,0 +1,123 @@
+--------------------------------------------------
+Subject: Detecting when a drops before ClientPutInServer
+--------------------------------------------------
+08/08/03 at 21:23:19  Posted by: voogru (voogru@hotmail.com)
+--------------------------------------------------
+Hello, Im currently trying to find a way to detect if a player has been dropped for some unknown reason when they are connecting or connected.
+
+
+I basically have a slots system, which the server runs at "25" slots. One of these slots are "invisible" (sv_maxvisibleplayers).  So my maxplayers is really 24.
+
+Now, When a client connects Im counting how many players are connected, if its 0, I check if the client is a "donator" or an admin if he is, then I kick the highest pinger of a non "donator" and non-admin.
+
+Problem is, It works most of the time, but sometimes a player can get into the last slot, causing no one else being able to connect to the server.
+
+I assume this is becuase its not properly detecting if someone has disconnected or dropped.
+
+My function to check the slots works like this:
+
+code:
+
+int UTIL_CheckSlots(edict_t *pIgnore) 
+{
+      if(pIgnore == NULL) pIgnore = INDEXENT(0);//just so its not null
+
+      int iCount = gpGlobals->maxClients - 1;
+      
+      for (int i = 1; i <= gpGlobals->maxClients; i++ )
+      {
+            edict_t *pPlayer = INDEXENT( i );
+            if ( pPlayer && pPlayer != pIgnore)
+            {
+                  if( GETPLAYERUSERID(pPlayer) > 0 && !FStrEq(STRING(pPlayer->v.netname),""))
+                        iCount--;      
+            } 
+      }
+
+      return iCount;
+}
+
+
+
+Now, this seems to work most of the time, and when the last slot is filled it properly returns "-1". When someone disconnects, it then returns "0". 
+
+My question is, what is the fastest, best way to detect the amount of clients currently connected (and that are auctually connnected or connecting)
+
+This should be possible, since HLSW (or any server browser it seems like) is able to detect the proper amount of clients connecting/connected at all times.
+
+
+
+Thanks
+
+
+- voogru.
+
+
+
+
+
+
+
+--------------------------------------------------
+08/09/03 at 05:25:29  Reply by: Cheesemonster!!! (cheeseh@houstondod.com)
+--------------------------------------------------
+Fastest way, increase the amount upon client connect (ClientConnect()), and decrease the amount upon client disconnect (ClientDisconnect()).
+
+Ever tried that? I've heard there may be problems with HL not calling ClientDisconnect() that might cause problems.
+
+What I always do now is have a class for a connected player, and an array[32] of them max. Make up nice functions for the class like ClientConnected() which updates stuff in the class like their edict_t pointer, won id/auth id, if they are donaters or not which you can check in ClientPutInServer(), and if the slot is being used, etc. Upon clientPutInServer, you can then kick the players that are needed to kick. always keeping one slot free. 
+
+>>Remember that the SERVER_COMMAND("kick <name>") doesnt always work, for e.g. if the player has a '#' in front of their name, they wont get kicked, because of how the kick command works, it then looks for their number in the game, so you'd need to alter it to kick their id number instead ( found, I think, through ENTINDEX() )
+
+You can always keep track of the slots by looping through your clients that have connected and that have already been checked.
+
+just a thought..eh :P
+
+--------------------------------------------------
+08/09/03 at 16:16:02  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+A few rules to help you out.
+
+- Player entities indices range from 1 to gpGlobals->maxClients.
+
+- Each time ServerActivate() is called, the player count is ZERO.
+
+- Each time ServerDeactivate() is called, the player count is RESET TO ZERO.
+
+- Each time ClientConnect() is called, a player is INITIATING the connection. To know who, get the index # of the entity using ENTINDEX().
+
+- Each time ClientPutInServer() is called, a player has finished the connection process and is ALLOWED IN by the server. To know who, get the index # of the entity using ENTINDEX().
+
+- Each time ClientDisconnect() is called, a player is leaving the server. To know who, get the index # of the entity using ENTINDEX().
+
+You should know enough now to do what you want.
+
+
+--------------------------------------------------
+08/09/03 at 18:20:06  Reply by: voogru (voogru@hotmail.com)
+--------------------------------------------------
+"Fastest way, increase the amount upon client connect (ClientConnect()), and decrease the amount upon client disconnect (ClientDisconnect()). "
+
+My problem is that ClientDisconnect doesnt always get called, This was the first thing I tried to do.
+
+
+I gonna try kicking them in ClientPutInServer if the remaining slots count is less than 0.
+
+--------------------------------------------------
+08/10/03 at 05:46:25  Reply by: Cheesemonster!!! (cheeseh@houstondod.com)
+--------------------------------------------------
+I store all my clients upon clientconnect, as any entity that goes through clientconnect will go through clientdisconnect. ( I think )
+
+I loop through each of the clients each frame in case something has went wrong, this involves checking if the client that is stored still has an edict_t value to it, if it does then if the netname is "" i.e. ( *(STRING(pPlayer->v.netname))== '\0' ), if it is then I call my "ClientDisconnected" Function on that client, which will sort the stuff out and re-initialize that space for the next client(s).
+
+If you need any source, I'll be happy to show you :p
+
+[modified on 08/10/03 at 05:46:25]
+--------------------------------------------------
+08/12/03 at 07:22:13  Reply by: dodgy (andreas.blomqvist@gamefederation.com)
+--------------------------------------------------
+Check to player count in startFrame. 
+That method gets called everyFrame i think.
+
+/dodgy
+

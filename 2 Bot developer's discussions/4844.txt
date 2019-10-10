@@ -1,0 +1,175 @@
+--------------------------------------------------
+Subject: WeaponList message in DMC
+--------------------------------------------------
+09/23/03 at 16:32:48  Posted by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Hi
+
+I notice that in DMC the WeaponList network message that is normally sent to incoming clients with the weapon data, is only sent 6 times, even if there are 8 weapons.
+
+The weapons missing are the nailgun (slot 4, id 8) and the lightning gun (slot 8, id 128).
+
+Even more strange, the weapon classname which is the first packet of a WeaponList network message, is wrong. The default shotgun "weapon_quakegun" is called "weapon_shotgun", the grenade launcher "weapon_grenadelauncher" is called "weapon_grenadel" and so is the rocket launcher.
+
+I figured out myself that the type of ammo the nailgun was using was the same as the supernailgun (ammo ID #2). But since nowhere another message tells which weapon goes with which ammo than the WeaponList and that the lightning gun is not sent through this message, I can only speculate that the ammo the lightning gun uses is the ammo #4, since ammos 1 to 3 are already in use.
+
+DMC bot coders (botman, Cheesy) may want to check their code ; that could explain why bots sometimes don't seem to want to use certain weapons, or fire the inappropriate gun.
+
+
+P.S. If that interests people, I have come up with a generic, non MOD-specific way of dealing with weapons (weapon selection, usage and weapon sounds catching) that doesn't use weapon IDs either and don't rely on a particuliar weapon order for weapon selection but is using simple response curves. I'll post it somewhere around here when it'll be completely debugged.
+
+
+--------------------------------------------------
+09/23/03 at 18:14:08  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Hmmm, it appears that weapons only get sent to the client based on the weapons in that map...
+code:
+            // Send ALL the weapon info now
+            // QUAKECLASSIC
+            // Tell the client about the Quake weapons
+            for (int i = 1; i < 10; i++)
+            {
+                  const char *pszName;
+                  int iAmmoIndex;
+                  int iMaxAmmo = 0;
+                  int iCurrentAmmo = 0;
+                  int iBit = 0;
+
+                  switch( i )
+                  {
+                        case 1: iBit = IT_AXE; break;
+                        case 2: iBit = IT_SHOTGUN; break;
+                        case 3: iBit = IT_SUPER_SHOTGUN; break;
+                        case 4: iBit = IT_NAILGUN; break;
+                        case 5: iBit = IT_SUPER_NAILGUN; break;
+                        case 6: iBit = IT_GRENADE_LAUNCHER; break;
+                        case 7: iBit = IT_ROCKET_LAUNCHER; break;
+                        case 8: iBit = IT_LIGHTNING;  break;
+                        case 9: iBit = IT_EXTRA_WEAPON;  break;
+                        
+                  default:
+                        pszName = "Empty";
+                  } 
+
+                  if ( ! ( m_iQuakeItems & iBit ) )
+                        continue;
+                  
+                  switch( i )
+                  {
+                  case 1: pszName = "weapon_axe"; iAmmoIndex = -1; iBit |= IT_AXE; break;
+                  case 2: pszName = "weapon_shotgun"; iAmmoIndex = iShellIndex; iBit |= IT_SHOTGUN; iCurrentAmmo = m_iAmmoShells ; iMaxAmmo = 100; break;
+                  case 3: pszName = "weapon_doubleshotgun"; iAmmoIndex = iShellIndex; iBit |= IT_SUPER_SHOTGUN; iCurrentAmmo = m_iAmmoShells ; iMaxAmmo = 100; break;
+                  case 4: pszName = "weapon_nailgun"; iAmmoIndex = iNailIndex; iBit |= IT_NAILGUN; iCurrentAmmo = m_iAmmoNails; iMaxAmmo = 200; break;
+                  case 5: pszName = "weapon_supernail"; iAmmoIndex = iNailIndex; iBit |= IT_SUPER_NAILGUN; iCurrentAmmo = m_iAmmoNails; iMaxAmmo = 200; break;
+                  case 6: pszName = "weapon_grenadel"; iAmmoIndex = iRocketIndex; iBit |= IT_GRENADE_LAUNCHER; iCurrentAmmo = m_iAmmoRockets; iMaxAmmo = 100; break;
+                  case 7: pszName = "weapon_rocketl"; iAmmoIndex = iRocketIndex; iBit |= IT_ROCKET_LAUNCHER; iCurrentAmmo = m_iAmmoRockets; iMaxAmmo = 100; break;
+                  case 8: pszName = "weapon_lightning"; iAmmoIndex = iCellIndex; iBit |= IT_LIGHTNING;  iCurrentAmmo = m_iAmmoCells; iMaxAmmo = 100; break;
+                  case 9: pszName = "weapon_grapple"; iAmmoIndex = -1; iBit |= IT_EXTRA_WEAPON; break;
+                        
+                  default:
+                        pszName = "Empty";
+                  } 
+
+                  MESSAGE_BEGIN( MSG_ONE, gmsgWeaponList, NULL, pev );  
+                        WRITE_STRING(pszName);                              // string      weapon name
+                        WRITE_BYTE(iAmmoIndex);                              // byte            Ammo Type
+                        WRITE_BYTE( iMaxAmmo );                                    // byte     Max Ammo 1
+                        WRITE_BYTE( -1 );                                          // byte            Ammo2 Type
+                        WRITE_BYTE( iCurrentAmmo );                                          // byte     Max Ammo 2
+                        WRITE_BYTE( i );                                          // byte            bucket
+                        WRITE_BYTE( 0 );                                          // byte            bucket pos
+                        WRITE_LONG( iBit );                                          // byte            id (bit index into pev->weapons)
+                        
+                        if ( i == 1 || i == 9 )
+                              WRITE_BYTE( 1 );                                          // We can select this one on empty
+                        else
+                              WRITE_BYTE( 0 );                                          // Can't select it when empty.
+
+                  MESSAGE_END();
+            }
+
+...if m_iQuakeItems doesn't have that bit set, then the weapon message won't be added to the WeaponList network message.
+
+m_iQuakeItems is set to 0 in CBasePlayer::Spawn().  In CheatImpulseCommands, it gets set to...
+code:
+            m_iQuakeItems |= IT_NAILGUN | IT_SUPER_NAILGUN | IT_SUPER_SHOTGUN | IT_ROCKET_LAUNCHER | IT_GRENADE_LAUNCHER | IT_LIGHTNING;
+
+...for the "impulse 101" cheat command.
+
+In Multiplay_Gamerules.cpp, it gets set to...
+code:
+pPlayer->m_iQuakeItems |= (IT_SHOTGUN | IT_AXE);
+
+...in the multiplayer PlayerSpawn() function.
+
+It seems as though m_iQuakeItems never really gets initialized with a default value (other than in the multiplay gamerules).
+
+The CItem Touch() functions (for weapons and armor) in quake_items.cpp also sets the appropriate weapon bit in m_iQuakeItems when the weapon (or armor) is picked up.
+
+It seems that the client shouldn't rely on the WeaponList message for DMC since the DMC client seems to use this m_iQuakeItems bits instead.  These get set to the client in the UpdateClientData() function in the player.cpp file.
+
+That's probably why the bots don't use some of the weapons because the WeaponList message never gets sent to them.
+
+It looks like you should just intercept gmsgQItems ("QItems") messages instead of WeaponList messages and then examine the LONG bitmask value that's passed as the only parameter in that network message.
+
+botman
+
+--------------------------------------------------
+09/23/03 at 23:23:05  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+geez how could I forget the DMC sources come with the SDK...
+
+Thanks for the info anyway. What I wanted was a method to automatically determine which weapon goes with which ammo, because my bots had weapon selection problems (ie thinking they were out of ammo where they had some left, and reciprocally), because for weapon availability I just use pEdict->v.weapons. But since ammo and weapon correspondence doesn't seem to be sent elsewhere than in WeaponList and WeaponList is unreliable in DMC, I suppose this info has to be hardcoded by the bot maker. Too bad...
+
+
+--------------------------------------------------
+09/24/03 at 07:48:32  Reply by: Cheesemonster!!! (cheeseh(at)rcbot(dot)net)
+--------------------------------------------------
+My bot can switch weapons and fire them okay knowing how much ammo they have using these, if you really like to see the class I use for my weapons I can show you it ;) It ain't the best, its a lot of repetitive coding since I'm a bit crap at object-orientated methods atm, :P 
+
+--------------------------------------------------
+09/24/03 at 08:58:08  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+OK, figured it out anyway. I had to make my bots fill THEMSELVES their pEdict->v.weapons bitmap upon receiving of a WeapPickup or CurWeapon message. Then I can finally use my code as normal.
+
+
+--------------------------------------------------
+09/24/03 at 09:35:50  Reply by: DiVeBoMbeR (free_fall@attbi.com)
+--------------------------------------------------
+Yeah Cheesy, I would love to see your code.
+I have not been having any luck getting the HPB bots to use the rocket launcher or grenades in DMC.
+Thanks :)
+
+--------------------------------------------------
+09/24/03 at 10:27:43  Reply by: Cheesemonster!!! (cheeseh(at)rcbot(dot)net)
+--------------------------------------------------
+Hmm.. perhaps I should just release my bot code sometime, hehe, sorry but it's really big and a lot of exmplaing since it takes over a lot of functions in the HPB_bot template since I'm using it with my totally re-written bot.
+
+I could explain how to make a class to get it to work when I feel like it though, watch this space :P
+
+--------------------------------------------------
+09/24/03 at 11:24:45  Reply by: DiVeBoMbeR (free_fall@attbi.com)
+--------------------------------------------------
+There would be many DMC server admins who would be most happy with you if you could get that working.
+we love you long time :)
+Thanks!!!
+
+--------------------------------------------------
+09/25/03 at 12:28:18  Reply by: Cheesemonster!!! (cheeseh(at)rcbot(dot)net)
+--------------------------------------------------
+infact my new weapon handling is pretty crap actuaally for DMC, just noticed they wern't shooting and they're not changing weapons arghh!
+
+--------------------------------------------------
+09/25/03 at 13:05:49  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Wheeee!  If I wasn't so lazy, I'd fix the problem in the HPB bot code so it would work properly.
+
+Maybe one of these weekends when I'm not at the office for 12 hours a day, I'll have time to fix the HPB bot so it will know about those DMC weapons.  (but don't hold your breath).
+
+botman
+
+--------------------------------------------------
+09/25/03 at 14:00:45  Reply by: DiVeBoMbeR (free_fall@attbi.com)
+--------------------------------------------------
+Go botman :D
+

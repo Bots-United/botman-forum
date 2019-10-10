@@ -1,0 +1,66 @@
+--------------------------------------------------
+Subject: Botman - About new Dedicated server funcs..
+--------------------------------------------------
+07/05/03 at 10:12:21  Posted by: BrianL (halfkiller@hotmail.com)
+--------------------------------------------------
+QUOTE:
+May 4th, 2003:
+The new dedicated server release (4.1.1.1/3.1.1.1) was giving the HPB bot fits causing the dedicated server to crash with a nastygram upon startup.  This was due to a change Valve made in one of the Half-Life engine functions.
+
+
+
+  Could you point me into the direction as to which function it is ? thx 
+
+--------------------------------------------------
+07/05/03 at 10:35:34  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+QUOTE:
+with a nastygram upon startup
+
+
+I love neologisms like this one ;D
+
+Neways, I'm interested as well...
+
+
+--------------------------------------------------
+07/05/03 at 10:41:22  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+"Could you point me into the direction as to which function it is ? thx"
+
+The function is pfnGetGameDir() which used to return the full path and now only returns the relative path (relative to where the .exe is).
+
+The code that I changed is in this thread in the "Problems" group...
+
+http://dynamic.gamespy.com/~botman/yabb/YaBB.pl?board=1&action=display&num=4379
+
+botman
+
+[modified on 07/05/03 at 10:41:22]
+--------------------------------------------------
+07/06/03 at 15:18:09  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+That was fixed already, but in any case, how could this bug crash the server?
+
+...by "nastygram" I thought it was a "nasty datagram", i.e a network message. What does a word like "nastygram" means exactly ? :)
+
+
+--------------------------------------------------
+07/07/03 at 05:59:25  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+"nastygram" is any nasty message that you get from something.  Nasty in this case means that the server crashed and spit out an error message.
+
+The crash occurred because I was parsing the string from the tail backwards looking for a '/' directory separator.  There wasn't a directory separator after this function changed, so my string index was zero.
+
+The "if" statement below the loop should have caught that the directory name wasn't found and printed out an error message using ALERT.  ALERT doesn't seem to work with dedicated servers (I think it only works with listenservers).  Since the directory name was wrong, the path name used to load the DLL file was also wrong (and thus the DLL would never be loaded) and the function from the DLL would never be correct.
+
+When the bot code tried to call a NULL function, the game crashed with the nastygram.
+
+botman
+
+[modified on 07/07/03 at 05:59:25]
+--------------------------------------------------
+07/07/03 at 09:35:30  Reply by: RobGP (rob@planetfortress.com)
+--------------------------------------------------
+ALERT() does work on dedicated servers, the problem is its being called too early there (before the engine has initialised entirely), you need to somehow get the message across without using the HLengine, either a message box or writing to some kind of log file that can be reviewed after a failure.
+

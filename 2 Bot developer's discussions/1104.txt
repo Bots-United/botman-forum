@@ -1,0 +1,933 @@
+--------------------------------------------------
+Subject: Learning the map...
+--------------------------------------------------
+01/21/01 at 11:10:00  Posted by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+Yeah, this could be interesting.
+DarkYouth already has something built in, and i'm gonna build in something too. The question and purpose of this topic is, how do you think a bot should 'learn' its waypoints? (for movement, the others are easy to do).
+
+i think the following conditions should be met at least:
+
+-> one waypoint should atleast can be 'connected' to an other (use a traceline to figure this one out).
+
+-> waypoints should not be closer than 50 units from each other.
+
+-> maybe a flag which determines how much a waypoint is choosen for a path (if using something like this), so you can filter out unused waypoints to clear up the database.
+
+i think a bot should 'spawn' a waypoint every amount of time. Then after a round, you do the checks above. A bot should also ONLY spawn a waypoint when it hasnt found one yet. This way you 'map' areas which are not mapped yet too. Else you get to many paths. Unless this is your intention ofcourse.
+
+Let me know what you think.
+
+--------------------------------------------------
+01/21/01 at 11:36:23  Reply by: dannywent (dannywent@hotmail.com)
+--------------------------------------------------
+hey stefan,
+
+I'm working on a nav system thats probably a lot what you're talking about, since my bot is waypointless too.  I dont have time to really get into it right now, but email me if you want, or i'll post something later
+
+Dan
+
+--------------------------------------------------
+01/21/01 at 14:09:24  Reply by: DarkYouth (darkyouth@thegraze.freeserve.co.uk)
+--------------------------------------------------
+:) Thats espionage steph...
+
+Anyway, Ive come up with a nice idea for the floyd system.
+
+Each waypoint is given the flag W_FL_NOFLOYD when it is created. This waypoint is always ignored and filtered out. (like W_FL_AIMING in the HPB 2 code)
+
+When the round is over the floyd matrix is re-calculated if nesecary and the flag is removed and bots will now use this waypoint.
+
+Whats that I hear, How will bots attempt to navigate to objectives? I'll tell you how.
+
+Run a scan on all waypoints with waypointroutefromto (the FloydNEXT function) and then this will show which waypoints can be reached. (i.e. can "floyd" there) and is nearest.
+
+i.e. say there are 2 wpts. one 200 units away and another only 100 units away but is non-floyd reachable. Then I simply navigate to the nearest "floydable" waypoint to the waypoint_goal.
+
+In my waypoint add function I have automattic flagging of bomb sites, rescue zones, hostages, escape zones, and sniping spots.
+
+The sniping spots are done by tracing 800 units forward of the player, and 600 down. If the given point is visible, but not reachable then the area is a sniping spot, simple as that.
+
+What about Randomizing of paths? Well I got that one too. I simply choose a random "floydable" waypoint and set that as my level 2 objective. When the bot chooses an objective it also choose a random place, visits there first and then does its objective, removing the element of "fixed" paths.
+
+Wayzoning is easier than you think too. When the waypoint is placed shoot out 8 tracelines at equal intervals and use the lowest distance divided by 2 as the wayzoning area. 
+
+When choosing a waypoint and wayzoninging it simply there is one issue: say there is a waypoint on a plank over lava, and a waypoint on an open platform. Simply do the following for the wayzoning at that time:
+
+use the lowest value you have.
+
+Ladders is a good issue, heres how I solved that one with map learning:
+
+The distance a waypoint is "reachable" at is now about 150-200 units. Any waypoint that is visible at this distance is "reachable" including ones on ladders. The only exception is if the waypoint is suspended in the air and is not flagged as a ladder waypoint.
+
+Handling ladders, easy. Simply make them part of your HeadToward waypoint function :) Pitching up and down at waypoints (even if they arent on ladders). dont forget to set IN_FORWARD. (Add a z vector to make the bots look at the "top" of the wpt while heading to the centre so they dont yaw down when following their path.
+
+**This also enables underwater navigation**
+
+HERES A GOOD TRICK FOR OPTIMIZING YOUR BOTHEADTOWARDWAYPOINT
+
+Dont do the traceline. Screw that. Check if its within 500 units, If its not then you have fallen. Otherwise just keep going on. The odds are there is only a temporaray obstruction since the reachability distance is so small. 
+
+** Good trick when number of floydable waypoints is low **
+
+When > 25% of waypoints are not calculated simply choose the next waypoint by random guessing (seen in the early HPB alpha code) This will keep things going until the map is learned.
+
+To test when to disable the map-learning code simply do the following:
+
+At the start of every round check if from a random waypoint every single map objective is floydable. If so then the odds are that the routes are complete. Then turn off your learning code.
+
+Heres how to detect "important" areas (its what I use :) its dirty but hey) If there are no other important points nearby, and you can see for 1000 units in every direction. This needs four traces, but they are only performed when there are no other important points nearby and only when the waypoints are added, keeping CPU useage low.
+
+That is the S.W.A.T. Bot Version 4.0 (1337 edition) waypoint system I am working on, described in extreme detail. I may have made a tonne of errors in there but thats the outline of my new navigational system.
+
+--------------------------------------------------
+01/21/01 at 14:15:37  Reply by: DarkYouth (darkyouth@thegraze.freeserve.co.uk)
+--------------------------------------------------
+Did I mention it works like a dream?
+:)
+
+And it has all the advantages of a manually waypointed bot and a waypointless bot with virtually no disadvanges, besides using CPU power like a waypointless bot would during the "learning" sessions.
+
+
+--------------------------------------------------
+01/21/01 at 23:42:07  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+i didnt expect a super covert operation explenation about learning maps.
+
+Here's what i do:
+
+My navigation of the BotThink is quite simple now (it was first about 100 lines orso, and those 100 lines where calling other functions etc etc). First, i run the infopoint check. So, check if you can find one, near , reachable (and ofcourse, check if you didnt had a goal yet, else you keep checking for bs) etc. If found one, then go for it. Simple as that.  If not, then do the angle routine. The "find the farest angle and a lot more conditions before picking that angle" routine is the main nav code when no info-points are there. I check for entities, other players, heights, roofs, ladders and more. 
+
+I've also found a simple, but effective way to let bots 'prevent' from getting stuck at the mini 'walls' . Like you have in doorways (like a hallway and then a door, you mostly have a little 'wall' that is almost undetectable). I simply check at the left of a bot, and when its to near, i let it strafe away (ONLY, when he can do this, when he got 2 walls near, then it probably is a small hallway, and it will try to center). When totally 'stuck' it will try to move back and strafe , or even change angle.
+
+I already found a way, to let bots move 'back' when they open a door. Mostly, bots get 'stuck' when a door opens, so, you either can tell the bot to ignore stuck codes for a few secs when opening a door. OR add code that it moves 0.5 secs BACK and then it will resume its path. REALLY, since it hasnt really got at his destination yet. 
+
+Also, a good manner to handle doors is to have a constant check if the bot is facing it. (like i found that bots get to a door, they can 'see' it but they are not really infront, making irritating noises of the door (open/close) and the door doesnt really open at all.
+
+Here a tip on handling ladders, like doors, do a CONSTANT check (i can even show you the code, it is REALLY that simple) if its facing the ladder or not. This way, the bot wont try to strafe off the ladder or something like that.  The only problem is that you have to tell the bot when it has reached 'the end' of the ladder , that it should move completely of the ladder and resume its path. Therefor i use one info-point, if needed at all. 
+
+
+
+--------------------------------------------------
+01/22/01 at 04:19:13  Reply by: William (william@botepidemic.com)
+--------------------------------------------------
+Stefan (hallo!), Dark Youth,
+
+I'd love to share some experiences and offer some feedback on the waypointing / navigation / whatever both of you are trying to accomplish, but I have troubles interpreting your ideas without knowing:
+- what are you trying to achieve?, for example:
+  - how much memory are you willing to spend for navigation?  
+  - how much time may be spent (in-game) on improving paths
+  - what's the max number of waypoints acceptable
+  - what are the AI movement problems, and which ones do you intend to solve with paths
+  - which information should be annotated per waypoint?
+
+Specific questions (Dark Youth):
+- why the 600 down for sniper waypoints?
+
+William
+
+--------------------------------------------------
+01/22/01 at 05:31:26  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+i use:
+
+max: 100 info-points (and this means EVERYTHING, the entire database for storing specific vectors for better movememt, camping, sniping (if built in) etc etc).
+
+RB uses a mix:
+
+the actual navigation brain is:
+-> check for info point
+ TRUE -> go for it (leave this block)
+ FALSE:
+  - Find best angle
+   FOUND -> go for it (leave block)
+   NOT FOUND -> find help (entity)
+     FOUND -> go for it (leave block)
+     NOT FOUND -> keep moving (leave block)
+
+ofcourse, this is in a simple form.
+
+when leaving block, the bot does a similiar 'stuck' check as Botman does, however. The stuck code is completely rewritten from scratch in RB now. The bot instantly checks for HEAD and BODY blocking stuff. The 2 traces (60 units i guess) will let bots jump over stuff, duck under stuff, and the bot will even move backwards and try to unstuck. If that doesnt work, then the REAL unstuck code will come in handy.
+
+What i try to accomplish;
+- let bots 'learn' their random paths, so they make less mistakes and 'learn'. 
+
+E.g. when a bot just doesnt get somewhere, but finally one bot does, then the next round (or actually, real time!!!) the other bots will share the information and learn from each other. The refine / filter code will make the unnescesary wpts deleted from the database. This way the bot keeps his randomness and the most important wpts will remain.
+
+Ofcourse, only MOVE will be filtered... else it wouldnt be helpfull to place the wpts yourself.
+
+ 
+
+--------------------------------------------------
+01/22/01 at 10:39:07  Reply by: DarkYouth (darkyouth@thegraze.freeserve.co.uk)
+--------------------------------------------------
+William I check forward and down for sniping spots. This is reasonable. The functions checks 800 units in front and 600 down to give a point. If this area is visible (i.e. open area) but not reachable (people cant walk up to you) then the area is a suitable sniping spot. If I didnt check down as well I'd have problems with every other waypoint being sniping capable.
+
+Per waypoint I annotate the following data:
+
+Grenade useage - If a player uses a grenade here it is recorded along with the players team and view direction in order to make bots seem to throw grenades like humans.
+
+Area Name - If the point is near a hostage its given the called "the hostage" or similar for bots to chat (i.e. lets group at the hostage)
+
+Ducking / Crouching - If the player is crouching here and there is a cieling less than 50 units above the origin then its a duck point.
+
+Theres some other stuff too (like entitys that area recoreded)
+
+I use a max of 1024 waypoints.
+
+As for manual path improvement in game, its still an option I suppose but I havent bothered with it since the Auto-learn code covers everything.
+
+My overall objective is to automate the process of waypointing and enable the bots to actually learn the levels as a human plays. This means stupidity in the beginning but as the humans play the bot picks up their tricks.
+
+(i.e. throwing a grenade into the vent on cs_assault)
+
+Memory consumption is about half a meg for the floyd table which is recalculated every round if nesecary.
+
+Any other questions?
+
+--------------------------------------------------
+01/23/01 at 05:23:51  Reply by: William (william@botepidemic.com)
+--------------------------------------------------
+Thanks for the info.
+
+There still seem to be 'two camps' in bot navigation:
+- camp 1: bots should learn the map while you play, because that's what humans do. Learning the map is also a challenging problem.
+- camp 2: bots should know the map by heart, because that's what humans do. Not learning the map reduces the amount of code and CPU needed, and leaves more CPU and developer time for more advanced AI (which also is a challenging problem).
+
+Notice the similarities :)
+
+I started out (early in 98) doing camp 1, switched completely to camp 2 (end of 98) because of performance problems and the wish to do more advanced reasoning, and ended up somewhere between the camps in 99:
+- when bots are in the game, the waypoints and their connections are fixed and frozen. this enables rapid path lookup, travel time comparisons and determining the nearest node for a bot, even for ~1024 waypoints on 200Mhz machines. The CPU time saved is put in tactical stuff.
+- waypoints are (auto)inserted when I myself run around in a map. Upon saving, lots of illegal waypoints and connections are discarded. I strive for a inter-waypoint distance of about 1.5 meters, but this depends on the game type. More need for cover, and slower movement should result in smaller inter-waypoint distances.
+- after saving, I do an analysis of the waypoints and their relations with other waypoints (in terms of distance, travel time, reachability, visibility, nearby cover, etc.). It's similar to Dark Youth's check for sniper spots, but a bit more complicated (taking more into account).
+I currently also detect and classify areas (rooms, alleys, roofs, tunnels, etc.). This analysis takes too much time to do every round (> 3 minutes on PIII 500).
+- I also build lots of tiny lookup tables to speed up the AI
+- (here's camp 1): during rounds, I don't bother to obtain new waypoints and links, but I record bot and player activity, including movement / camping, sniping, damage taken, earliest contact during a round.
+- after each round, I accumulate activity data, do a quick analysis, re-rank waypoints for various properties, and update their annotations for new the rankings.
+- after a number of rounds, the bot launcher detects a need to re-analyse the map because of the amount of activity data collected. Upon using the launcher, the user is suggested to have the AI "learn" from his experiences in a number analysis (as described above).
+
+I'm a camp 2 guy because the AI wouldn't be able to find cover from a sniper without a sufficient grid of waypoints in place (something a human would see and learn instantly). I prefer to lookup all nearby waypoints that provide cover from a sniper rather than issueing some 100's of tracelines to figure out where he should go, and whether he'd need to duck to have cover.
+Also, I cannot have a squad:
+- figure out, when patrolling, how much they are spread out and whether somebody should slow down or move up. Note that line distance isn't a good measure of spread out when moving thru a 3D maze with 5 meters between each member. I simply need to have accurate travel times to do the computation.
+- plan a bounding overwatch advance across the map without understanding the map, narrow alleys, points to assemble etc.
+
+Because of the CPU savings made elsewhere, I can permit to run the occasional A* path lookup which can take into account enemy positions and their (potential) lines of fire. In other words, the AI manages to flank, sneak around the back to surprise enemies, etc.
+I don't do random paths. I do use situation specific paths that take into account previous activity at locations (attack routes will change if too many casualties on the route).
+
+Theoretically, I should be able to write code that does nifty tricks when sufficient waypoints are available, and learns the map otherwise, but that would make 100K + lines of code twice as complex, and wouldn't result in more advanced AI (IMO).
+
+Specific comments:
+Stefan: 
+- with 100 infopoints, how do you have the AI efficiently find cover, or find a sniper/ambush spot?
+- doors: if you annotate doors with a specific waypoint, you can have the bot understand the door and the pause (Botman also does this). That's less of an hack than backing of from collissions.
+
+DarkYouth:
+- sniperspot: idea understood and very familiar, but I don't understand 'unreachable'. Myself, I use a traveltime, and interpret long travel times as 'hard to reach'. 
+- 512KB Floyd table -> that isn't for 1024 nodes, I assume, or are you storing next nodes to visit in an indirect way?
+- what do you mean with waypoints being 'floydable'?
+
+I hope this info is of help.
+
+Since I'm preparing a talk on doing terrain reasoning for bots (to be presented in March), I'm particularily interested in any questions you have or things you're struggling with on this topic. (I'm not that good at anticipating the questions the audience might have).
+
+William
+
+
+--------------------------------------------------
+01/23/01 at 05:46:34  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+William, I remember reading some of the discussions you and TheFatal (Rich Whitehouse) used to have over at the BotBoard ( http://botboard.telefragged.com/ ) and was always impressed at the amount of thought both of you put into developing good combat AI techniques.
+
+I guess many of the "tricks" in combat AI come from doing bot development over several years.  Also I believe that some of the more advanced software developers spend more time trying to simulate the real world whereas the less experienced coders just tend to hack something together that is fairly simple and works "most of the time" or "good enough for them".
+
+Just like there are 2 camps of navigation there seems to be 2 camps of development skills.  Those who want to make the AI as human as possible (and who are willing to investigate/understand/develop complex algorithms to achieve this task) and the other camp of developers that try to take the simplest approach because they just want to hack something together fairly quickly to get something out there.
+
+Which is better?  They both have good points and bad points.  Obviously spending a lot of time investigating and trying to understand complex algorithms means you aren't spending as much time writing working code.  You'll take longer during development and MUCH longer during testing to verify that things are working the way you want.  When things don't work the way you want, you typically spend more time walking through the code trying to find the problem.
+
+If you simply hack together something fairly quickly, it might not be the most elegant solution and it may not work in many situations, but you will probably be able to get something out to the public much sooner.  Unfortunetly you may also give false expectations to your fans.  If you announce some great new sniper feature where the bots "always know the best sniper spots", then find several maps where the bots pick some of the worst sniper spots, you may discover that after this happens several times that you have fewer and fewer people wanting to use your bot.
+
+I'm not saying one way is better than the other.  All I'm saying is try to resist the urge to say that your bot does "so-and-so" 100% of the time or that it does something better than any human.  This may tend to turn people off when they find out that it isn't true.  Instead say things like "the bot TRIES to do such-and-such", or "the bots will OCCASIONALLY do so-and-so".  If there's one thing that I've learned about AI is that NOTHING is ever guarenteed to be 100% (since you can't predict ahead of time every possible situation that will occur).
+
+botman
+
+--------------------------------------------------
+01/23/01 at 06:25:49  Reply by: CountFloyd (countfloyd_1999@yahoo.com)
+--------------------------------------------------
+I totally agree with Botman. There are different "breeds" of Bots out there and I also know the advanced discussion between William and Rich some time ago at telefragged (VERY interesting). Don't be too specific about your Bots behaviour :)
+
+William:
+QUOTE:
+
+Because of the CPU savings made elsewhere, I can permit to run the occasional A* path lookup which can take into account enemy positions and their (potential) lines of fire. In other words, the AI manages to flank, sneak around the back to surprise enemies, etc.
+
+
+
+Do you intend to let the Bots cheat ? What I mean is, how can a Bot know all enemy positions on his way (a human doesn't). Do you use the "global" memory of all Bots to know the enemy positions or is there something I've overseen ? Isn't the realtime recalculating of e.g. avoidance paths too much in 1 frame ?
+
+What do you exactly mean with "learning" ? Do they change their Paths the next round after analysing ? Do they actually use "plans" ? Do you use some kind of deterministic FSM or some evolving Algo (I remember reading something about fuzzy logic?) ? Is all this learning for all Bots in the game or only limited to specific skills/personalities ? 
+
+--------------------------------------------------
+01/23/01 at 07:13:55  Reply by: theimann (theimann@stud.fh-heilbronn.de)
+--------------------------------------------------
+Could somebody give me a link to these "interesting discussions" at the BotBoard (or maybe keywords I can search for)? I didn't know that board and was overwhelmed by the number of threads - didn't find anything of the AI-discussions you are mentioning above...
+
+William ( since you are asking for questions :-) ): How do (or did) you link the waypoints that were auto-inserted by a player moving around? Most approaches I have read about use tracelines and assume that a node is reachable when visible. There are many situations where this approach will fail (e.g. gaps, fences, small windows,...). Do the bots just try to reach the next waypoint and "learn" that it's impossible to get there?
+
+Tobias
+
+
+--------------------------------------------------
+01/23/01 at 07:29:28  Reply by: William (william@botepidemic.com)
+--------------------------------------------------
+If I, in some way, suggested or implied that one of the two camps mentioned above is better than the other, or that it is more important to have advanced algorithms than to hack something which is 90% as good in a few lines of code, I apologize. (I admire both approaches if they work).
+
+I love being (a bit) between the "camps" if any, and combine some advanced algorithms with sloppy designs elsewhere. And I tend to prefer simple algorithms so I can finally have platoon-on-platoon combat...
+
+Additional answers:
+QUOTE:
+What I mean is, how can a Bot know all enemy positions on his way (a human doesn't). 
+
+
+No cheating. But a bot, in communication with his team, makes assumptions about likely enemy positions. Often, previous enemy contacts give you a good clue. Game types give you a clue. And in general, enemies tend to favor tactically strong positions as much as you do. 
+
+Real-time calculation of a single path isn't so much a problem if you don't do it every frame, if you have optimized your data (paths, visibility) for it, and if you have a lean A* algorithm.
+
+QUOTE:
+What do you exactly mean with "learning"?
+
+
+They potentially change paths each round (though in practice, they aren't that sensitive to new experience). They change paths within a round for dynamic things (enemy positions, and downed teammate corpses - not sure if I completed the latter). 
+They do use plans: state and avenue of approach at team level, and individual plans to move up, halt, check environment and possibly suppress, and wait for the signal to move up and bound to point position. (Kinda complicated code).
+I ignore skills and bot personalities; learning, in a way, is a global experience (which is disputable but defendable in a AQ2/CS context with floating cameras for casualties).
+
+Basically, the learning here is simple reinforcement learning. Fuzzy logic and genetic algorithms play a very minor role in classification of areas and figuring out hand grenade trajectories.
+
+William
+
+--------------------------------------------------
+01/23/01 at 07:57:46  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+long posts, very intersting stuff here.
+
+William, to answer the question, how to 'learn'  with 100 info-points and let them camp,snipe,duck,jump etc too.
+
+Simple. 
+
+At first, MOVE info-points have #1 priority.
+All others are less important for 'learning'. 
+
+RB navigates using a specific FindAngle routine. Maybe botman still remembers, i sent some questions, botman mailed back , even with code. And from that on i learned his bot and more. Also i send him the final code i got.
+
+Anywayz, the function i have now, is a bit more complex. At first, it does a tracescan of 1000 units forward. Checks if its hit, IF NOT, then probably (but this is not coded yet), it is a good spot to drop a MOVE point. (RB's use info-points real-time, there is no pre-calcs etc). If there is a 'hit' then the distance will be put into a variable. ofcourse the nescesary checks to know if we should ignore the hit or not. 
+
+If its a valid hit , the bot will look in a 90 degrees angle , it traces a few lines (about 15 degrees each), every time it does 2 traces. So from the middle, then 1 trace to the left, and one trace to the right of 15 degrees, then 30 , then 45 (is together 90). 
+
+It will run some checks and will check also if the distance is higher then the distance we already had (infront). If found, IMMIDIATLY break the loop (do finish both scans though). So, mostly the bot does 2 or 4 scans, if stuck all of them. 
+
+If the bot has found a 'better' angle, then it does navigate to that angle. 
+
+The info-points have #1 priority, so in the main code, the bots check for this and then check if it should do this findangle routine. However, the 100 info-points are real-time, calculated real-time to know which info-point is 'the most logical' to go to for a specific goal and more. 
+
+Since RB's can do on some parts of the map quite well without any info-points, they are not needed. Thats the dillema here. When do bots HAVE to learn? 
+
+Therefor humans will be the helping hand. However, bots can also learn MOVE points from other things. Like:
+
+-> where encountered enemy
+-> where 1000 distance check (rarely excists) has no hit.
+
+And probably more you can think off.
+
+The whole navigation aint that easy to explain in one short post here. The code is more based uppon "what should i do if i where a human". So , logical thinking:
+
+a. Nav goes good (not stuck), i should head for goal.
+b. I know i can move to that position (INFO_POINT_MOVE), lets go to it (and know which one is the best to pick if more visible)
+c. Ladder, well, take it if wanted (most times ladders are not the only way to a goal in CS)
+d. Door, lets face the door until we get through (this doesnt work 100%, it should face the center, cant make it work yet! dont know how yet)
+e. Got to close (not hitting) to a wall, strafe a bit from it (prevent getting stuck here).
+
+and there is much more you can think of. All these logical things humans do, does RB. And ofcourse, its sloppy at start. But every time, i re-read the code, re-think about it and its getting better and better everytime.
+
+
+
+--------------------------------------------------
+01/23/01 at 10:43:23  Reply by: DarkYouth (darkyouth@thegraze.freeserve.co.uk)
+--------------------------------------------------
+By "floydable" I meant the Floyd Table has data on how to get from a to b correctly.
+
+When I meant that the vector 800 units forward  and 600 down is not meant to be reachable I meant this:
+
+YOU CANT WALK TO THEM AND THEY CANT WALK TO YOU.
+
+If you can see down into an area where you cannot be reached from by walking directly then that area can be considered a viable sniping area.
+
+512k was a rough estimate. Ive added a lot of stuff to my waypoint system structure so it may be a lot higher.
+
+
+
+--------------------------------------------------
+01/23/01 at 11:46:56  Reply by: William (william@botepidemic.com)
+--------------------------------------------------
+Dark Youth,
+
+OK, I must have understood what you said all along, but it seems strange. Very few maps have spots that are inaccessible once you have left that spot. 
+AFAIK, you basically can reach all locations on the standard CS maps.
+
+Your function probably works just as well if you check for waypoints overlooking a decent number of waypoints from which it takes more than say 15 seconds to arrive the viewpoint.
+
+No offense intended, but in my case, unreachable waypoints mean either: flawed map design (actcity2  and urban for AQ2), or a bad waypoint grid. 
+
+Stefan:
+very elegant solution, but does it work as well for any new feature you have in mind?
+
+wrt door: you can probably compute the door's center by adding the door's max and min dimensions and scaling by 0.5.
+
+William
+
+--------------------------------------------------
+01/24/01 at 00:54:57  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+thanx william. It works mostly, but the problems are, that bots take the wrong angle sometimes! Therefor the info-points come in handy, to intercept the faulty angles it will take and let them route where they should got to. 
+
+Also, when a bot has come through a door (for instance in CS_ASSAULT), then it will mostly turn away since the crate/wall it sees is 'not valid'. It is so close that bots think they are getting stuck and want to prevent it, so they know they can turn 90 degrees, but then they get stuck in the door opening. Therefor info-points also are getting handy to let them know they should move a bit close and more to left, and then they will resume their way.
+
+I've tested this 'find best angle' idea on lots of papers before i actually thought of implementing a bot (it was actually an attempt to help botman out.. cause i didnt do even bot programming). Howevere, i got sick enough of my previous project Arrakis2k to get into this :)
+
+
+
+--------------------------------------------------
+01/24/01 at 01:57:32  Reply by: eLiTe (ali@elitegamer.fsnet.co.uk)
+--------------------------------------------------
+Posted by Botman:
+QUOTE:
+Just like there are 2 camps of navigation there seems to be 2 camps of development skills.  Those who want to make the AI as human as possible (and who are willing to investigate/understand/develop complex algorithms to achieve this task) and the other camp of developers that try to take the simplest approach because they just want to hack something together fairly quickly to get something out there.
+
+
+
+Posted by Stefan:
+QUOTE:
+But every time, i re-read the code, re-think about it and its getting better and better everytime.
+
+
+
+Just because we initially use simple algorithms in our bots 'just to get something out there' does not mean that we are not trying... I would rather have a poor bot that is continually improving, than have to wait 2 years till an author has their bot working perfectly 100% of the time (probably impossible unless the bots goal is simply to walk forward all the time!!).
+
+My code is very simple to start with (eg my combat and waypoint code), but I am always trying to think on how to make it more realistic and human - William's enemy anticipation code sounds truly amazing, and I would love to play against his bots, but this is not something that I see as necessary to play a good game - humans rememember where they last saw an enemy, but they will rarely try and hunt down an enemy by guessing where they will be (unless playing DM), but in CS, I think the best thing to do if you can't see an enemy is to head for the goal, and if you see an enemy on the way then kill them. Simple. It's the same with TF...
+
+I am still thinking how I'm going to implement my new waypoint system, I know what the main function will do, but I'm thinking what I'd have to do in the function that actually links the waypoints (eg link to closest waypoint if it is not already linked, or something along those lines).
+
+And even though my code may be simple, I DO test it out, and if it doesn't work then I WILL spend time wading through the code, just as you said a proper developer would do. And may I point out it is NOT easy to wade through someone else's code, as you are not aware of how everything works - but I am learning. Every time I don't know something about the code I will search for keywords, so that I am eventually going to know where everything is in the code (I probably have 80/90% idea where everything is by now, even in template 2).
+
+I know that you were saying that hacking something together isn't always bad, but I'm just saying that people are playing the bots for fun - it's not like a professional application where everything should be perfect - I do agree that the author should try to make the bots as human as possible, but it is good to 'get something out there' just to get feedback and encouragement from people.
+
+I kind of wish that I hadn't released my bot so soon (although I would still release the source), but at least it's not very good so most people have forgotten about it by now, and I will be able to get things done without people wanting a release (I don't think they realise that my bot is very poor compared to NNBot/PODbot). :D
+
+I do want to get more done with my bot, but my life is kind of bogged down at the moment... I feel very stupid about making all these excuses all the time, but I am just saying that if I don't release anything for a while then I'm not giving up, I just don't have much spare time (well I do but I'm lazy, and I like watching DBZ/Gundam Wing! hehe) :(  I would be working on my waypoint system, but I'm still unsure of where to start...
+
+--------------------------------------------------
+01/24/01 at 04:46:07  Reply by: Swartz45 (angry_madnow@yahoo.com)
+--------------------------------------------------
+Im finding this disscussion the most intersting one on the board =)
+
+I'm trying something kinda similar to that, but its a little different.
+
+When the bots die, they will leave a "caution waypoint" where they died. So when they get in the area of that waypoint, they'll use caution while aproaching and possibly throw some grenades behind unviewable areas to check for enemies
+
+I like the ideas and discussions everyone is having in this thread, Im finding it very intersting.
+
+--------------------------------------------------
+01/24/01 at 05:10:24  Reply by: eLiTe (ali@elitegamer.fsnet.co.uk)
+--------------------------------------------------
+Yes, I thought of doing something like that, but you will have to limit the number of 'caution' waypoints to about 5-10 per bot, otherwise eventually the whole map will be filled with caution waypoints!!
+
+I would maybe be better not to have waypoints for this, but to simple add a new vector array into the pBot structure, so that each bot learns from it's own personaly experience. As I said, it is difficult to know how many fields to put in this array - if u have too many your bot will be cautious ALL the time (maybe that's not a bad thing)!!
+
+And u should also have a minimum distance of about 1000 units for placing new 'caution' waypoints, so that bots don't keep posting them in the same place, but will know all the main locations where they die. This would be great, bcoz then the bots would start being cautious in the same places, and could start having cool sniper wars and things just like online!! Like in siege the bots would always be cautious at the tunnel, and that would make for some great fights :)
+
+And instead of just being 'cautious', u could have some system of detecting corners near there, and have the bot strafe past the corner, shoot, strafe back, etc - this may not be too difficult, if u just get the bot to lock onto the enemies position while strafing. This is not unrealistic, bcoz humans will find out where the enemy campers are using the chasecam!
+
+Is William's bot going to be for TF/CS/FLF??? It sounds AMAZING! Very advanced, even including the bots working together as a team to get to locations at the same time!! Maybe it should be called TEAM bot!
+
+--------------------------------------------------
+01/24/01 at 05:36:56  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+Elite, i think the following might come in handy.
+
+Let bots spawn their 'caution waypoint' , doesnt matter how many. After each round, do a check (like POD does?!? i dont know). You'll do some calculation and make the size of the caution 'waypoint' bigger , when more and more caution waypoints get in the same area. So 1 replaces 10 caution wpts. Then later on, you can let the bots NOT spawn something there when the biggest size (lets say 300, 500 maybe) is reached.
+
+Yes, i find this pretty interesting. 
+
+Anywayz, i think we can help each other out with any kind of problem. Like handling ladders, it aint a big deal. Hehe, its rather simple!. 
+
+ 
+
+
+
+--------------------------------------------------
+01/24/01 at 05:41:00  Reply by: Swartz45 (angry_madnow@yahoo.com)
+--------------------------------------------------
+The caution waypoints Ill be using are a little different than that though. Each bot is limited only one caution waypoint at a time, meaning the next time the bot dies it will leave another caution waypoint, but the previous one will be deleted.
+
+--------------------------------------------------
+01/24/01 at 06:09:15  Reply by: eLiTe (ali@elitegamer.fsnet.co.uk)
+--------------------------------------------------
+That was my first idea for 'caution'-type waypoints, but u should have at least 3 to accomodate for different routes round the map, otherwise it won't really be worth the effort!! If you're going to the effort to make the bots 'cautious', u should make them like humans, and make them catious in ALL the danger areas, nd not just the last area - even newbies learn!
+
+--------------------------------------------------
+01/24/01 at 06:11:29  Reply by: eLiTe (ali@elitegamer.fsnet.co.uk)
+--------------------------------------------------
+QUOTE:
+Your function probably works just as well if you check for waypoints overlooking a decent number of waypoints from which it takes more than say 15 seconds to arrive the viewpoint.
+
+William
+
+
+
+
+No I think it just checks whether the waypoint is directly reachable by walking (eg not on the same level as the sniper waypoint)... maybe not, but I don't think DY does any checking of waypoint times/distances (yet!) :)
+
+--------------------------------------------------
+01/24/01 at 11:21:16  Reply by: DarkYouth (darkyouth@thegraze.freeserve.co.uk)
+--------------------------------------------------
+ARRGGHHH
+
+What I mean is that the given vector cannot be reached and nor can it reach you by travelling in a direct line (i.e. the enemy cant get straight at you)
+
+If the area can see down and no-one can walk right up to you in your sniping view (i.e. no getting close to the sniper via a direct route) then I consider it a sniping zone.
+
+It works :)
+
+
+--------------------------------------------------
+01/24/01 at 13:22:09  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+lol
+
+Anywayz.
+Anyone who think they can make bots walk in formations?? like real swat members , stand infront of a door, one is aside of it, one 'kicks it' the other storm in etc. I want to do this kind of fancy stuff, but i really need some info (i think all of us need it) so i / we  can get an idea how to even get an idea on paper
+
+--------------------------------------------------
+01/24/01 at 13:25:57  Reply by: William (william@botepidemic.com)
+--------------------------------------------------
+Regarding anticipating enemy positions:
+QUOTE:
+but [humans] will rarely try and hunt down an enemy by guessing where they will be 
+
+
+
+Will they go the other way instead? Will they assume the enemy vanishes? Will they go to a random spot? Assuming the enemy is near the last observed spot, or the best tactical spot nearby his last position ain't a bad thing. If you approach the enemy, you come prepared.
+
+I really anticipate enemy positions when having to advance over long distance to a building occupied by threats (become I've seen them there).
+It doesn't make sense to run via the shortest path to that building if I'll be travelling for 5 seconds in view of the enemy, with him having the luxury of being static and having a steady aim.
+I plan my route to get near that spot without providing much opportunity to get sniped at. Nearby, the chances for me, on the move, are better.
+
+
+Caution Points.
+Please don't spoil a great idea by immediately translating kills to waypoints, and limiting the number of waypoints. That way, you are throwing away information.
+What works for me is to continuously collect and add "experience" such as kills in a separate data structure. Don't throw it away, instead accumulate experience.
+After every round, sort the experience, and rerank waypoints for "caution". Then, remove all caution flags, and reissues caution flags to the highest ranking 10% of the waypoints.
+That way, the AI learns more while keeping the caution points limited.
+See http://www.botepidemic.com/aid/cgf/news_99novdec.shtml#adaptivetactics for some more info.
+It sounds like Ditlew now also discovered something similar.
+
+QUOTE:
+Is William's bot going to be for TF/CS/FLF??? It sounds ... [snip] Maybe it should be called TEAM bot!
+
+
+
+It's for Action Quake2, was released December '99, and has almost all features I've mentioned here. It's named CGF, which stands for 'Computer Generated Forces'.
+
+QUOTE:
+I do want to get more done with my bot ...
+
+
+
+I feel silly for playing grandpa but it's probably useful to know:
+If you try hard to develop a bot, you'll run into the wall at some time. The first weeks of creating a bot are great, because you have a simple plan, and everything you do works and takes little time. You get great feedback, lots of ideas, and most of the ideas are just a simple extension. You can release every week. You can even add a few complex things, and they work almost 100%. And you add another complex thing, which works often, but sometimes look silly. It took you slightly longer. And you try to make your bot more advanced ...
+[KABOOM]. There it is: the wall. Progress gets tough. There are no simple things left to add. The thing you'll like to add most requires you to fix up the 30% problems in the previous feature. And it interferes with a few other simple hacks you made before. And a few assumptions in your navigation code need rewriting. And your simple design ain't simple anymore. And actually, would you start again, you'd do things differently.
+Fans start begging for the weekly release you used to be capable of... Is it still fun?
+
+It happened to me. This happened to most bot developers I know. It is normal. Take a break. Tell your fans you need to revise things to make progress. Check out other games and other bots. 
+And you'll find yourself advancing your bot in a few weeks (but with a new, slower, pace).
+
+Developing bots ain't no modeling. The MP5 .md2 is finished after 300 polygons. You cannot extend it anymore, but you can start from scratch working on a next model.
+Developing bots is different. AI does not have limits, and is never finished. And if you run out of CPU power long enough, faster CPU's arrive :(
+
+Take care! Have fun!
+
+William 
+
+--------------------------------------------------
+01/24/01 at 14:18:47  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+you are damn right about your 'bot development story' william.. The longer you are working on it, the harder it gets.. hehe.
+
+But i still think its fun, and i aint no 'taking break' coder. I code straight for 6 hours if i want to. 
+
+--------------------------------------------------
+01/25/01 at 07:00:02  Reply by: theimann (theimann@stud.fh-heilbronn.de)
+--------------------------------------------------
+Six hours of programming, hu? Hopefully you'll at least have a breakfast after that ;-) No seriously, I guess the real breaks are those over a longer period of time: Sometimes there are times when you just have so many things to fix and to develop that you can work on your bot all over the week. But yes, there will come the time when all the "simple things" (as William said) are done and you don't know what to do next. I won't pretend my bot is already that advanced, but even I sometimes take a rest of a week or two (or more) just to get my head free of it... waiting for a new inspiration how to continue :-)
+That's bot development, sometimes it sucks, sometimes it rules.
+
+Philosophically, Tobias
+
+--------------------------------------------------
+01/25/01 at 08:33:28  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+hehe, well. Its true. But i like coding, so i dont mind spending weeks on programming. And when something really bugs me, i sometimes cant even sleep! :D i just have to fix it. 
+
+Anywayz, there is always something that can be improved. Even the simple things! Like , for example, camping. On CS maps, it would suck if CT's would camp! then they never rescue hostages and such. Such simple things, also, add 'effects' is fun to do. And balance it. Like, radio commands, communications. And so on.
+
+--------------------------------------------------
+01/25/01 at 10:32:51  Reply by: DarkYouth (darkyouth@thegraze.freeserve.co.uk)
+--------------------------------------------------
+Steph, I have formations. :)
+
+Abait only in a basic way and there are only 6 of them.
+
+--------------------------------------------------
+01/25/01 at 12:24:59  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+at the moment i'm busy with tactical stuff. But how the heck do you formations? in theory. Not in code.?!?
+
+--------------------------------------------------
+01/25/01 at 13:38:40  Reply by: eLiTe (ali@elitegamer.fsnet.co.uk)
+--------------------------------------------------
+Check to see who is in front, how far away, who is behind, etc (humans can do this on the radar, so it is not cheating to know where your team-mates are)
+
+And William:
+
+1. Sorry - I never had Q2, only 1 and 3 :( Your bots sound so cool! But why aren't u making one for CS? R u just on Botman's forum to help out or what? What projects r u currently working on?
+
+2. I'm kinda worried about 'taking a break', bcoz whenever I stop programming for a while I can't seem to get motivated! It's great when I actually decide that I've got enough time to program again, and I wonder why I haven't programmed for so long... but if I take a break, everything else starts crowding into my head agin, and I end up forgetting about the programming :(  I DON'T want to do that again :(  At least when I go to Uni, programming will be part of the coursework, so I don't have to worry about homework and stuff stopiing me programming, bcoz my homework WILL BE PROGRAMMING!!!!!! I did take a long break off of making my bot over Christmas, trying to fix my new PC, but I'm kinda nervous about improving my waypoint code!! Since I had bugs with my first attempt to use Template 2, I'm kinda nervous about putting any more stuff into THIS version of my template 2 bot, I could screw it up again (at least I've got a backup of my bot that I'm sure works this time) :(  If the code was all my own I would maybe feel more comfortable with it...
+
+--------------------------------------------------
+01/25/01 at 14:01:55  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+Elite, ofcourse, those checks should be made. But then the hard part comes. How to make them walk e.g. in a triangle, or some other formation? 
+
+Anywayz, about taking a break. You're right, me too. If i take a real break, then i just dont program for a month or maybe even longer! 
+
+
+--------------------------------------------------
+01/25/01 at 15:24:35  Reply by: William (william@botepidemic.com)
+--------------------------------------------------
+Wrt taking a break:
+
+Bot development is more about clever ideas and not so much about hours of coding. You can easily waste hours on picking the wrong concept to store bot weapon info, record waypoints, etc.
+
+I tend to get good ideas when trying to explain stuff to others, or washing the dishes. 
+I also get inspiration from reading what other bot developers do (their sites, fora like these). 
+
+I also download game source code even if I don't have the game (Aliens vs. Predators has some interesting AI, though I don't have a clue what the game looks like). UT has some great documentation.
+Most RTS games pull of a few tricks that haven't made it into FPS yet.
+
+Of course, it takes time away from coding, but it gives me fresh ideas, and enables me to see flaws in my own designs.
+
+Given the time a few of you have spent on getting waypoints and pathfinding in the game, reading up on a few Q2 bot frameworks (ACE, for example) wouldn't have set you back.
+
+William
+
+p.s wrt to formations. You may want to check out articles on flocking (Craig Reynolds - search for 'boids') and Dave Pottingers' article on formations in RTS games (available at gamasutra.com)
+
+--------------------------------------------------
+01/31/01 at 20:13:23  Reply by: Mercenary (adamc_@hotmail.com)
+--------------------------------------------------
+Bleh.  Nevermind.
+
+--------------------------------------------------
+01/26/01 at 01:34:23  Reply by: eLiTe (ali@elitegamer.fsnet.co.uk)
+--------------------------------------------------
+Haha, I don't think I've seen Q2 in the shops, but I got Q1 for the PC and Mac for about £10 on the PC and I think £15 on the Mac... :)
+   Those bots do sound truly awesome :D
+
+Stefan, to do with a triangular formation, with bots 1,2 &3 simply get 2 to keep the 1 at 60 degrees (+/- a few degrees, so 50-70 degrees) to the right and 3 at 90 degrees to the right.
+
+3 would have 1 at 60 degrees to the left, and 2 90 degrees to the right.
+
+1 would have 2 at 240 degress, and 3 at 120 degrees.
+
+And the leader should be in charge of organising the other 2 if they go out of formation (eg wrong angle, or too far away). The best way would not be to get 2 & 3 to try and get at a specific angle, but to work out the place where they should be (as a vector, eg find a point 100 units from the leader at 120 degrees to the right from straight ahead of the leader), then get the bots to move towards this point. The formation should change shape if there are obstacles (sach as doorways)... maybe they should just walk in single file whenever there is an obstacle...
+
+--------------------------------------------------
+01/26/01 at 02:12:20  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+sounds logical. I think it will look pretty neat if you see the bots move in real groups and such. Anywayz, just wondered how it could be done. I'm to busy with other stuff right now :)
+
+
+
+--------------------------------------------------
+01/26/01 at 08:08:15  Reply by: -[SK]-Ghost (mocghost@hotmail.com)
+--------------------------------------------------
+learning the map would be very great...
+
+btw...william...computer generated forces is 
+superbest
+Cya
+
+--------------------------------------------------
+01/27/01 at 19:06:44  Reply by: Mercenary (adamc_@hotmail.com)
+--------------------------------------------------
+I was thinking as I was reading this topic.  Is it possible for a bot to "cheat" and know exactly where any given bot is going to go by picking up on its movement choices?  I think that would make it easier for a bot to stick in formations if they knew where there leader bot was deciding to go.  Also for hunting, the bots pick up on enemy movement choices as long as they are in visible range.  They grab where they (the enemy) were going and after 10 seconds if they hadn't found them again, then they go about their normal course.  
+
+Is this a feasable idea?  Or am I just dreaming the impossible?  
+
+Also is there a way to return the angle of a projectile that hits you?  (Determine if its sniper or same level) Another thing.  Can you return how far away a given entity is like 50ft and a general direction like 15 deg left or 90 deg right.  If this is possible then keeping bots in groups couldn't be that hard.  Return their angle and distance in accordance to the bot, and if they aren't within the parameters of their formation then they move so that they are in the formation.  I have all kinds of good ideas but with my luck they will be impossible.  I have a tendency to come up with the HARDEST way possible to do things.  Hmmmmm....
+
+--------------------------------------------------
+01/28/01 at 09:50:06  Reply by: theimann (theimann@stud.fh-heilbronn.de)
+--------------------------------------------------
+Adam, all the things you thought of are possible and implemented in all somewhat advanced bots. Problems with formation don't occur on open terrain but in narrow hallways, at doors or on ladders - and there goes all your angle-checking-stuff...
+
+Tobias
+
+--------------------------------------------------
+01/28/01 at 12:03:06  Reply by: Mercenary (adamc_@hotmail.com)
+--------------------------------------------------
+Well, then you "detect" if the terrain is narrow.  Then decide how you want them to run the formation.  Single file, by 2's or whatever.  Just add that decision as part of the formation AI.  Oh, BTW I just picked up Quake2.  Can't wait to play those bots...
+
+--------------------------------------------------
+01/28/01 at 13:13:45  Reply by: Spyro (theoddbot@hotmail.com)
+--------------------------------------------------
+Hi,
+
+don't you get a pointer to the guy who shot you when you get a damage message?
+
+Just subtract the origins.
+
+-Spyro
+
+--------------------------------------------------
+01/29/01 at 18:55:38  Reply by: Mercenary (adamc_@hotmail.com)
+--------------------------------------------------
+In response to the original thread of learning the map.  Is there any feasable way to teach bots waypoint "sequences".  If Bot needed to get from point a to point b, would there be a way to figure out a sequence to get to a specific point and not just to the next point?  Maybe I am missing the big picture, but I thought bots only went to the "next available" waypoint instead of heading for a specific point.  HELP!?
+
+--------------------------------------------------
+01/30/01 at 01:18:33  Reply by: theimann (theimann@stud.fh-heilbronn.de)
+--------------------------------------------------
+> I thought bots only went to the "next available" waypoint...
+
+That depends on your navigation system. The simpler ones do indeed work like that, the more advanced ones however build up a list or look up a Floyd-table to get a path consisting of several waypoints to the point on the map the bot wants to go to.
+
+Tobias
+
+--------------------------------------------------
+01/30/01 at 17:44:44  Reply by: CountFloyd (countfloyd_1999@yahoo.com)
+--------------------------------------------------
+William, about your tactical positions. I ever wondered how you get those informations. This is what comes to my mind:
+After loading the waypoints, you create a lookup table where you store which waypoints are visible from every other waypoint. Maybe you also give higher positioned waypoints a higher ranking. In the real game you then get the nearest waypoint to the enemy and calculate his tactical position based on this table. Am I totally wrong or is this partly true ? 
+
+
+--------------------------------------------------
+01/30/01 at 17:29:23  Reply by: Mercenary (adamc_@hotmail.com)
+--------------------------------------------------
+From what I know (very little), I would think that waypoints high up, and in view of multiple waypoints and have few waypoints that get there could be viewed as "sniper" spots, waypoints that can reach few spots and see few spots could be considered "cover" and so on.  So I think that in theory you are right.  But then again, I don't really know.
+
+--------------------------------------------------
+01/30/01 at 17:44:20  Reply by: CountFloyd (countfloyd_1999@yahoo.com)
+--------------------------------------------------
+I also would like to hear how William uses this information to calculate a sniper avoidance route. The only thing I could imagine at the moment would be to use this lookup table to add travel costs to the waypoint matrix used for pathfinding. Let's say you've got your Floyd Distance Table and when calculating a Path you add some traveltime to your Floyd Distance Table to receive not the shortest path, but a path which is better covered. Is this also true ?
+
+--------------------------------------------------
+01/31/01 at 04:54:20  Reply by: theimann (theimann@stud.fh-heilbronn.de)
+--------------------------------------------------
+It's not possible to just add costs to an existing Floyd table because you would have to recalculate the entire table again based on your new costs. However, it's very easy to implement different cost-functions using A*, and if I wanted to implement a sniper-avoiding-pathfinding I would do it that way. You could base your costs on travel-time plus additional "in-sight"-penalties (just as you proposed), and using lookup-tables for the "in-sight"-function as William does you don't even need much additional CPU-power.
+
+Tobias
+
+--------------------------------------------------
+01/31/01 at 12:00:41  Reply by: William (william@botepidemic.com)
+--------------------------------------------------
+Hmmm... 
+
+A guessing game ...
+
+QUOTE:
+
+After loading the waypoints, you create a lookup table where you store which waypoints are visible from every other waypoint. Maybe you also give higher positioned waypoints a higher ranking. In the real game you then get the nearest waypoint to the enemy and calculate his tactical position based on this table.
+
+
+
+
+Computing visibility takes a tad too long to do it after loading the waypoints, so it is read from file.
+The tactical value of a position takes into account height, but also a lot more. The tactical value is indeed retrieved for threats (to select the most important threat to attack), but in general, the tactical value is used as a tie-breaker in more complex computations.
+
+QUOTE:
+
+I would think that waypoints high up, and in view of multiple waypoints and have few waypoints that get there could be viewed as "sniper" spots, waypoints that can reach few spots and see few spots could be considered "cover" and so on
+
+
+
+
+I don't agree with your analysis, but you get the idea...
+
+QUOTE:
+
+However, it's very easy to implement different cost-functions using A*, and if I wanted to implement a sniper-avoiding-pathfinding I would do it that way. You could base your costs on travel-time plus additional "in-sight"-penalties (just as you proposed), and using lookup-tables for the "in-sight"-function as William does you don't even need much additional CPU-power.
+
+
+
+
+Implementing different cost-functions in A* indeed is easy. The costs idea is correct, but finding a really good cost function is tough. Look-up table access still hurts, because:
+- line of sight tables tend to get large
+- the amount of data involved is large
+Getting from the idea to the efficient implementation here is the real work (including lots of experiments - code for that first).
+
+Some help:
+- the cost function is partially addressed and explained by Doug Reece et al. (doing research for the USMC at the SAIC institute) here: http://www.sisostds.org/cgf-br/9th/scripts/user_Paper_info.cfm?&client=9THCGF&Paper_Num=9TH-CGF-045&page=view_papers_by_papernum.cfm&process=Papers
+
+Independently of Doug (but inspired by some of his work published earlier), I developed heuristics which do something similar, but with some additional bells and whistles, and tuned for game play (read: efficiency). Doug, on the other hand, designed for large scale US Army terrain databases, which is a serious handicap.
+
+I'll be presenting and publishing a number of the ideas (and problems) on AI "terrain reasoning" at the 2001 Game Developer Conference in San Jose, this March (reportedly the world's biggest, 5,000 visitor conference, but I have yet to experience that).
+See:
+http://cmp.bluedot.com/re/attendee/sessionViewer/gdcEventViewer.esp?presentationIds=121730&searchResults=true&lastChoice=search
+
+That probably limits me in publishing info earlier, but your questions help me creating a better presentation.
+
+William
+
+
+
+--------------------------------------------------
+01/31/01 at 14:27:00  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+If anyone is REALLY interested in implementing A* you should definitely check out Amit's A* page (probably everyone who has ever asked questions about A* has been sent to Amit's web pages)...
+
+http://theory.stanford.edu/~amitp/GameProgramming/
+
+botman
+
+
+--------------------------------------------------
+01/31/01 at 20:25:05  Reply by: Mercenary (adamc_@hotmail.com)
+--------------------------------------------------
+Considering my experience, I figured I was way off.  As I looked back at what I said, I realized that I was assuming way too many things.  I am thinking that AI has to be very specific, and my method was....WRONG.
+
+--------------------------------------------------
+02/01/01 at 23:31:04  Reply by: [RB]LeeCA (leeca@stargatesg-1.com)
+--------------------------------------------------
+Hi stefan :D Looks like yer RB next version secrets are not really that secret after all...
+
+--------------------------------------------------
+02/02/01 at 00:23:20  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+to bad for you leeca, this will not be in the next version yet :)
+
+learning ability will take some (well, lets say A LOT) of preparation :P
+
+
+
+--------------------------------------------------
+02/02/01 at 19:38:29  Reply by: Mercenary (adamc_@hotmail.com)
+--------------------------------------------------
+From what I hear Stanford has a good AI department.
+
+--------------------------------------------------
+02/05/01 at 13:36:38  Reply by: Mercenary (adamc_@hotmail.com)
+--------------------------------------------------
+Does the CGF bot have "on the fly" mission learning, or do you have to have a precompiled mission?  BTW, my mission maker likes to bug out A LOT.  Anyone have a working version?
+
+--------------------------------------------------
+02/06/01 at 01:01:34  Reply by: William (william@botepidemic.com)
+--------------------------------------------------
+Adam,
+
+CGF requires missions to run, and is not capable of generating missions itself. (Due to some recent improvements in CGF's terrain understanding, technically it would be possible to generate missions on the fly, but I won't go there).
+
+Writing missions by hand isn't that hard.
+
+wrt our previous discussion: your idea to express sniping in terms of waypoints is a good one; I just disagreed with the tactical analysis (notably for cover).
+
+William
+
+
+--------------------------------------------------
+02/06/01 at 19:01:26  Reply by: Mercenary (adamc_@hotmail.com)
+--------------------------------------------------
+Oh, I thought it was just completely in left field.  As I am *ahem* inexperienced in "tactical analysis of a virtual 3D 'battle field'", I just took a shot in the dark.  I feel that I was making a LOT of assumptions about some things (such as my explanation of cover) as I already stated in a previous post.  
+-----------------------------
+I think that the way a lot of navigation systems are set up, using waypoints, is really only good for deathmatch type games.  In more strategic games (CS) more information about the 'terrain' is needed in order to make intelligent decisions about possible strategies.  Some of the more advanced bots have custom waypoints that affect the bots, but in most cases, movement is neither systematically analyzed or planned (at least none that I know of).  There are ways to get from one point to the next, but in most cases the bots just go in pointless circles, or get stuck in AI holes with the waypoints.  (I saw a bot going in circles in one room because the AI kept telling him he was stuck, although a door would have provided a GOOD exit).  Is there any alternate way of using map data to attain logical places to go with bots?  Although in most cases, experience is said to be the best teacher, it (experience) might not always be practical.  However in most games, you are provided more than one chance at a scenario, so experience is VERY helpful.  
+
+Basically, other than 'way pointing', is there any other way to control bot movement?  What other systems are available?  Just altering the waypoint system code to include experience, hot spots, sniper zones, and other things may not be the best solution.
+
+BTW, besides blowing hours on end searching the Internet, does anyone know of any good references for learning AI? (Are there any?)  If so, point me in a good direction.  I am VERY interested in learning more about this.
+
+--------------------------------------------------
+02/07/01 at 11:10:58  Reply by: William (william@botepidemic.com)
+--------------------------------------------------
+Hi,
+
+a few reactions:
+- inexperienced in analyzing terrain: that's easily solved: join a CS server, get killed early, and use the cam to track what the better players do. Also, try that in a few other games (R6: Rogue Spear is recommended, since it is a slow paced game as well).
+
+- waypoints, other games, and other info: you need indeed more info than just waypoints and some waypoint flags. But often, that info is easily combined with waypoints. For example, you can describe rooms or alleys as groups of waypoints. You can't blame waypoints for what the games fail to do with them.
+
+- references for learning AI (related to games):
+http://satirist.org/learn-game/lists/papers.html
+
+William
+
+
+
+--------------------------------------------------
+02/07/01 at 19:37:25  Reply by: Mercenary (adamc_@hotmail.com)
+--------------------------------------------------
+That's not exactly what I was getting at, but anyways..I was just asking if other systems are available.
+
+Thanks for the link.  You are always too helpful.  =)
+
+--------------------------------------------------
+02/08/01 at 19:40:38  Reply by: Mercenary (adamc_@hotmail.com)
+--------------------------------------------------
+Ok, now I'm just spamming.  This is a good topic.
+
+--------------------------------------------------
+04/16/01 at 19:06:41  Reply by: everyman (eric@gamershomepage.com)
+--------------------------------------------------
+I am seeking a critique of my navigational system, and the strategies I have used to cope with its weaknesses. All feedback will be embraced.  =]
+
+- - -
+
+Solo-bot navigational system:
+(1) Bots select navigational routes and traverse directly from waypoint to waypoint until they reach their navigational objective. A waypoint is considered to have been reached when the bot is within a minimal distance.
+
+Problems with this system:
+(a) Waypoints placed near brush edges often lead to bots getting stuck. Correctable by continual maintence of waypoints/paths.
+(b) Multiple bots both moving towards the same waypoint at the same time will get stuck on eachother, and since neither ever "reaches" the waypoint they become stuck indefinately.
+(c) Two bots travelling between the same two waypoints in opposite directions will get stuck on eachother.
+
+My solution:
+(2) Blend Craig W. Reynold's notion of "separation" into individual bots' movement routines. This essentially creates repulsion fields around each bot, alleviating problems (b) and (c) mentioned above.
+(3) Waypoint origins are randomly displaced during navigation, decreasing the chances of bot collision, and creating minor deviance of bots' paths.
+
+New problems:
+(d) In confined spaces (e.g. doorway or narrow passage) the separation (i.e. repulsion) technique doesn't help. Bots are still stuck, they're just further apart (at the repulsion horizon).
+(e) On occasion, a bot may be repulsed closer to the next waypoint along his path; however, it backtracks to traverse the waypoints in the "correct order" because it never "reached" the first waypoint.
+
+Group navigational system:
+(4) At this point, I decided to have my bots roam in squads (i.e. groups of one to four). Current implementation simply has each squad share the same navigational path. Currently, no system of explicit squad cohesion (or re-grouping) exists, but occurs naturally at the beginning of each round.
+
+Issues on the horizon:
+(f) Problems (d) and (e) from above are magnified.
+(g) Individual bots shouldn't simply share the same paths, and instead should choose complimentary paths within the same immediate vicinity. What implementation strategies show potential here, knowing that not all squad members have deterministic paths (e.g. humans)?
+(h) The shift to wayzone to wayzone (rather than point-to-point) navigation seems beneficial in a squad-centric environment. What approaches to wayzoning have yielded satisfactory results in practice?
+
+- - -
+
+Thoughts? Comments?
+
+
+Eric Bieschke
+original author of Rho-Bot (HLDM)
+current author of a newer bot (CS)
+
+
+--------------------------------------------------
+04/17/01 at 02:11:07  Reply by: William (william@botepidemic.com)
+--------------------------------------------------
+Please move the discussion to the new thread:
+http://dynamic.gamespy.com/~botman/yabb/YaBB.pl?board=2&action=display&num=1540&start=
+
+William
+(I'll post tonite)
+

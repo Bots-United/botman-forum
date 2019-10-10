@@ -1,0 +1,120 @@
+--------------------------------------------------
+Subject: Compile Error
+--------------------------------------------------
+07/17/01 at 04:56:06  Posted by: [LW]Rob (rob@tfcautoop.cjb.net)
+--------------------------------------------------
+Heres the code:
+
+KeyValueData *pkvd;
+char classname[32];
+char keyname[32];
+char value[32];
+
+pkvd.szClassName = classname; <-Error is on this line (4943)
+pkvd.szKeyName = keyname;
+pkvd.szValue = value;
+
+The error is:
+
+D:\autoop\maindll\entitystuff.cpp(4943) : error C2228: left of '.szClassName' must have class/struct/union type
+
+The only way I can see of getting round it is to place a "->" rather than a "." after pkvd but I doubt thats correct.
+
+any suggestions?
+
+- Rob.
+
+--------------------------------------------------
+07/17/01 at 06:25:41  Reply by: groby (r.blum@gmx.net)
+--------------------------------------------------
+QUOTE:
+
+The only way I can see of getting round it is to place a "->" rather than a "." after pkvd but I doubt thats correct
+
+
+
+
+That would be the way to silence the compiler, yes...
+
+But it will only create other problems. Since pkvd is an (uninitialized) pointer, it points at some random location in memory. Assigning anything to any of its members will overwrite some random part of memory - later crashes are almost guaranteed.
+
+So, having a declaration of
+
+KeyValueData kvd;
+
+instead will properly allocate space for all the members. However, kvd will become invalid as soon as you exit the current function. So, if you need it to stick around longer, that's not it either. It's hard to say from this fragment, though.
+
+Furthermore, you cannot assign strings using the '=' operator. The correct way to copy data over would be
+
+strcpy(kvd.szClassName,classname);
+
+This assumes that classname cannot hold more data than szClassName, and that it is properly 0-terminated. (Which it is not in your sample)
+
+QUOTE:
+any suggestions?
+
+
+Given that both of the problems you have are very basic problems in C++, I suggest you read up a bit on C++ before you try doing your own bot.
+
+(If I had any links, I'd post 'em. Sorry. Maybe other board members can help?)
+
+Good luck!
+
+--------------------------------------------------
+07/17/01 at 06:26:18  Reply by: bluesy (bluesy@bezeqint.net)
+--------------------------------------------------
+since these are strings you are working with,
+you should use strcpy() instead of =.
+
+--------------------------------------------------
+07/17/01 at 06:35:36  Reply by: [LW]Rob (rob@tfcautoop.cjb.net)
+--------------------------------------------------
+Given that both of the problems you have are very basic problems in C++, I suggest you read up a bit on C++ before you try doing your own bot.
+
+Technically it isnt my code, its Botmans, so I assume any problems I have with it are of my own fault, but I basically copied it from the mail.
+
+Strcpy is used later on, I'm not quite sure myself how Botman came up with some of that, but with the stuff hes done on his bots I won't question it :)
+
+If I add a bit more it may become clearer.
+
+KeyValueData *pkvd;
+char classname[32];
+char keyname[32];
+char value[32];
+
+pkvd.szClassName = classname;
+pkvd.szKeyName = keyname;
+pkvd.szValue = value;
+
+strcpy(classname, "func_door");
+strcpy(keyname, "lip");
+strcpy(value, "4");
+(*other_gFunctionTable.pfnKeyValue)(pent, pkvd);
+
+- Rob.
+
+[modified on 07/17/01 at 06:35:36]
+--------------------------------------------------
+07/17/01 at 07:24:55  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+It should be this...
+code:
+KeyValueData pkvd;  // a structure, NOT a pointer to a structure
+char classname[32];  // buffer for sz strings
+char keyname[32]; 
+char value[32]; 
+
+// assign the structure member pointers to character array buffers...
+pkvd.szClassName = classname;
+pkvd.szKeyName = keyname;
+pkvd.szValue = value;
+
+strcpy(classname, "func_door"); 
+strcpy(keyname, "lip"); 
+strcpy(value, "4"); 
+(*other_gFunctionTable.pfnKeyValue)(pent, &pkvd); // use address of structure
+
+...these variables can be local since they don't need to hang around after the pnfKeyValue function completes.
+
+botman
+

@@ -1,0 +1,132 @@
+--------------------------------------------------
+Subject: Can't Damage Monsters at All
+--------------------------------------------------
+02/18/03 at 13:52:16  Posted by: EricBLivingston (eric@thelivingstons.org)
+--------------------------------------------------
+I'm using the Natural Selection Mod. I can spawn in monsters just fine, and they react to players, attack, and can damage and kill them just fine.
+
+However, I can empty multiple clips of any weapon (or all weapons on me) into even a lowly headcrab and it just keeps on coming.
+
+Apparently, the monsters just aren't taking damage from my weapons. Any suggestions?
+
+Thanks,
+Eric
+
+--------------------------------------------------
+02/18/03 at 14:13:05  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+I don't recall anyone else complaining about this problem in NS, so I'm not sure why a weapon wouldn't do damage.  I'm not really sure if anyone else running a NS server had tried the Monster plugin or not.
+
+The Monster plugin code uses the Half-Life engine 'takedamage' field in an entity to indicate that this entity should take damage.  The 'takedamage' field is commonly used for things like glass or other breakables that will take damage and be destroyed.  When you shoot (or hit) something that takes damage, the health of that entity should get reduced.  This is what the Monster plugin is using to determine when a monster was injured or killed.
+
+Perhaps NS isn't using the 'takedamage' field in the same way that other MODs do (although I doubt it since most mappers assume this field is used to set the "strength" of breakables).
+
+There's really not much you can do to change this if it's something to do with the NS MOD itself.  Perhaps someone here has used the Monster plugin on NS and got it to work.  Maybe they can comment on this.
+
+You also might want to post a question in the forum on the NS website to see if any of the server operators there have tried using the Monster plugin or not.
+
+botman 
+
+--------------------------------------------------
+02/19/03 at 08:11:05  Reply by: EricBLivingston (eric@thelivingstons.org)
+--------------------------------------------------
+I'll try to ask some questions on the Natural Selection side - I've done searches and can't find any mention of the Monster plugin though.
+
+Is there any hint to be gained from the fact that monsters can damage players? Is the damage mechanism different for players and monsters, such that one would work and the other not?
+
+Thanks,
+Eric
+
+--------------------------------------------------
+02/19/03 at 08:43:58  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Yes, the way that monsters damage players is different from the way that players damage monsters.
+
+But, the way that players damage other types of entities (breakables, glass, monsters, etc.) should be the same across all MODs (but might not be this way in NS for some strange reason which will only be known to the coders who wrote the NS MOD).
+
+The way that monsters damage players is unique to the Monster plugin because monsters don't normally exist in other MODs and there isn't an engine interface between the engine and the MOD DLL code that allows external damage.  The way that I am damaging players in the Monster plugin is to 'cheat' and simply take away some of your health and at the same time, send a 'damage' message to the client's HUD to let them know that they are being damaged.  If the MOD coders had decided not to use the engine edict 'health' field to indicate the player's health, the monsters in the Monster plugin would not be able to hurt you (since 'health' wasn't really your health).
+
+botman
+
+--------------------------------------------------
+02/19/03 at 10:05:55  Reply by: EricBLivingston (eric@thelivingstons.org)
+--------------------------------------------------
+QUOTE:
+The way that monsters damage players is unique to the Monster plugin because monsters don't normally exist in other MODs and there isn't an engine interface between the engine and the MOD DLL code that allows external damage.  The way that I am damaging players in the Monster plugin is to 'cheat' and simply take away some of your health and at the same time, send a 'damage' message to the client's HUD to let them know that they are being damaged.  If the MOD coders had decided not to use the engine edict 'health' field to indicate the player's health, the monsters in the Monster plugin would not be able to hurt you (since 'health' wasn't really your health).
+
+
+
+
+Luckily, that works fine in Natural Selection - monsters are quite capable of damaging and killing players - even more so given that they are currently invulnerable!
+
+I looked through the Monster code and it all seems pretty straightforward. I assume this (in the CMBaseEntity :: TakeDamage function):
+
+QUOTE:
+
+if (!pev->takedamage)
+            return 0;
+
+
+
+
+could be a problem, if Natural Selection doesn't use this field, as mentioned above. Is there a way around this?
+
+Also, I found this:
+
+QUOTE:
+
+// if Attacker == Inflictor, the attack was a melee or other instant-hit attack.
+// (that is, no actual entity projectile was involved in the attack so use the shooter's origin). 
+if ( pevAttacker == pevInflictor )      
+{
+      vecTemp = pevInflictor->origin - ( VecBModelOrigin(pev) );
+}
+else
+// an actual missile was involved.
+{
+      vecTemp = pevInflictor->origin - ( VecBModelOrigin(pev) );
+}
+
+
+
+
+I'm sure it has nothing to do with the Natural Selection problem, but I did think it odd that the two results of the if/then are identical...
+
+Anyway, I'll continue to try to figure out what the NS folks are doing. If you know anyone who is also trying this mod on NS please let me know if they figure anything out!
+
+Thanks,
+Eric
+
+--------------------------------------------------
+02/19/03 at 11:24:47  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+The code you quoted is originally from the Half-Life SDK source code (so there might be some cases where thinks don't make a lot of sense :)).
+
+The pev->takedamage part is used to check to make sure that the entity being damaged has this flag set.  Entities that will can be damaged in the Half-Life engine typically have this field set to TRUE (or 1) to indicate that they are 'shootable'.  As I said above, mappers typically set this when entities are created that can be damaged by players or explosions.  Players in the game will also have this field set to true.
+
+I would find it hard to believe that NS doesn't use the 'takedamage' field since so many map entities would depend on it (no breakable glass? what kind of MOD would have that?).
+
+You may get luck by e-mailing the NS coder directly and see if he knows why things wouldn't work.  Maybe he can download the plugin and try it out too see if he can figure out why monsters don't get damaged (but I wouldn't count on someone going that far to troubleshoot the problem).
+
+botman
+
+--------------------------------------------------
+02/23/03 at 17:01:58  Reply by: RavenousBugblatterBeast (RavenousBugblatterBeast@hotmail.com)
+--------------------------------------------------
+I can confirm that monsters don't take damage from players in Natural Selection.
+
+NS has lots of problems with foreign entities - the existence of the Adminmod timer entity was causing it to crash for several versions.
+
+NS dynamically casts entity pointers to its own class - don't know if this maybe relevant - it may be trying to dynamically cast the monster entity to something it shouldn't. This was the cause of the problems with Adminmod.
+
+
+
+--------------------------------------------------
+02/24/03 at 04:24:57  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Then they may have scrapped the engine 'edict' structure altogether and have their own variables used to keep track of health, damamge, etc.
+
+Not much anyone can do about this unless the NS guys are willing to release their source code.
+
+botman
+

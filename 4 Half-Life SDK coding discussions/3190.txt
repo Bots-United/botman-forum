@@ -1,0 +1,82 @@
+--------------------------------------------------
+Subject: Making hornets not target their owner?
+--------------------------------------------------
+06/04/02 at 11:53:43  Posted by: kippie (da_matt@hotmail.com)
+--------------------------------------------------
+Well, as I have already told you guys in a few posts, i'm working on a weapon that has projectiles like the hornets.
+But now I have a problem: I have set m_flFieldOfView to VIEW_FIELD_WIDE so they can find their targets more easy. And thats where I get the problems, when I'm walking forward and I shoot with the gun, the projectiles see and target me.
+Any way I can prevent them from targetting me?
+
+Tnx, buhbye ^^
+
+--------------------------------------------------
+06/04/02 at 11:58:23  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+Have your projectiles a pev->owner edict pointer or such similar thing ? If so, you can set a check somewhere the projectile chooses its target not to target the launcher (you, in the case).
+
+--------------------------------------------------
+06/05/02 at 04:31:07  Reply by: kippie (da_matt@hotmail.com)
+--------------------------------------------------
+Well, so I found out I have to put it in IRelationship, but what is the best way to say the owner is the one who fired the projectile?
+
+--------------------------------------------------
+06/05/02 at 04:52:56  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Set the pev->owner to the owner of the hornet when the Create is called to spawn the hornet.
+
+Then when the IRelationship() is checked, if the pev->owner is the player being checked, return R_NO;
+
+botman
+
+--------------------------------------------------
+06/05/02 at 06:18:19  Reply by: kippie (da_matt@hotmail.com)
+--------------------------------------------------
+hmm, I have been trying and trying, but I really can't find a way of setting the one fireing the gun as the pev_owner :| .
+Plz help me more ^^
+
+ps: if u need the sourcecode, just look at the hornetgun/hornet.cpp source, I haven't changed anything in the tracking methods
+
+--------------------------------------------------
+06/05/02 at 06:28:22  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Here's where the hornetgun creates the hornet (I'm assuming you DON'T have the CLIENT_DLL flag enabled otherwise hornets are "created" on the client not the server) at line 141 of hornetgun.cpp...
+code:
+#ifndef CLIENT_DLL
+UTIL_MakeVectors( m_pPlayer->pev->v_angle );
+
+CBaseEntity *pHornet = CBaseEntity::Create( "hornet", m_pPlayer->GetGunPosition( ) +
+      gpGlobals->v_forward * 16 + gpGlobals->v_right * 8 + gpGlobals->v_up * -12,
+      m_pPlayer->pev->v_angle, m_pPlayer->edict() );
+pHornet->pev->velocity = gpGlobals->v_forward * 300;
+
+m_flRechargeTime = gpGlobals->time + 0.5;
+#endif
+
+...just add...
+code:
+pHornet->pev->owner = m_pPlayer;
+
+...after the Create function.
+
+botman
+
+--------------------------------------------------
+06/05/02 at 06:48:54  Reply by: kippie (da_matt@hotmail.com)
+--------------------------------------------------
+If I do that, I get an error saying
+SDK\SourceCode\dlls\hornetgun.cpp(154) : error C2440: '=' : cannot convert from 'class CBasePlayer *' to 'struct edict_s *'
+        Types pointed to are unrelated; conversion requires reinterpret_cast, C-style cast or function-style cast
+
+[modified on 06/05/02 at 06:48:54]
+--------------------------------------------------
+06/05/02 at 07:40:36  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+Try this
+code:
+
+pHornet->pev->owner = m_pPlayer->pev->pContainingEntity;
+
+
+Looks like botman forgot the type mismatch issue here.
+
+

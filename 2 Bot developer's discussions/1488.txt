@@ -1,0 +1,197 @@
+--------------------------------------------------
+Subject: navigation questions
+--------------------------------------------------
+04/05/01 at 17:46:09  Posted by: jldailey (jldailey@uchicago.edu)
+--------------------------------------------------
+I have been thinking a lot about navigation and trying to come up with a minimalist system for pre-storing routes similar to what is done in the HPB template...
+I want to design a system of storage that could easily store over 1000 waypoints for a map without being a burden.
+But in the 1000 waypoint case, storing a 2D lookup table just for shortest routes (forget tactical info, or path distances, or goal flags of any kind) is already 1000^2 * 4 = 4MB of memory just to store one int inside the table... thats an awful lot and was wondering if there was a way around this except trying to do a graph search every time to find a route?
+
+Actually it just occured to me while writing this that you might be able to make a table that only stores the major goal points. so, say a map has a dozen goals, you only have to store 1000 * 12 * 4 = 48K for a lookup table that stores the most repetitive searches... but for some reason that doesnt sound like all that good of an idea really, maybe since i just thought of it and am not real confident in it yet... anyone else?
+
+
+--------------------------------------------------
+04/06/01 at 04:43:30  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+Instead of storing an int (32 bits) for each entry in the table you could just store 1 bit (indicating if a path exists from X to Y).  This would allow for directed graphs (one-way paths) since you might have a 1 from X to Y but a 0 from Y to X.  So that would only be 125,000 bytes (1000^2 / 8).  Just use a simple modulo function on the X or Y index and shift a 1 left for the remainder of X MOD 8 to get the bit position.
+
+Of course this wouldn't allow for a weighted directed graph (you can't assign any kind of value to the relationship between 2 points like distance or type of terrain).  With only 1 bit you either know that it's reachable or it isn't.
+
+If you want an alternative to a fixed directed graph (like Warshall-Floyd's algorithm), your best choice is probably using A* instead.  See my "Links" page for a URL to Amit's A* page if you decide to go this route.
+
+botman
+
+--------------------------------------------------
+04/07/01 at 12:30:49  Reply by: William (william@botepidemic.com)
+--------------------------------------------------
+Jesse,
+
+a. 4MB is not an awful lot anymore. I saw CS using over 128MB at my system.
+
+b. To store a path, you just need to store the next waypoint on the path. For 1000 waypoints, you only would need a unsigned short (2 bytes), giving you just 2MB memory consumption.
+If you look at a waypoint, there is no need for waypoints to have more than 15 outgoing neighbors. Rather than storing the id of the next waypoint on the path, it's more efficient to store the index in the outgoing neighboring waypoints list (which is a value < 15, and 15 signalling 'no path'). This takes only 4 bits. The resulting memory consumption then is 512KB.
+
+c. If you contemplate doing just the major paths, you should look at hierarchical path finding or hierarchical routing. It's not that easy to determine the exact granularity.
+Hierarchical path finding is typically combined with a large cache for the last retrieved detailed paths.
+
+However, don't start optimizing before you have the most simple algorithm running and you have measured its performance (problems).
+
+William
+
+p.s. Botman, the 1-bit solution just generates garbage. In general, you can reach 80% of all other waypoints from the average waypoint.
+That 125KB might save you a few unnecessary (and expensive) A* searches, but it would be better spent just caching the last few A* searches. Bots don't move that quickly, and typically search for paths from the same starting position in their next think frame.
+
+--------------------------------------------------
+04/07/01 at 13:07:14  Reply by: theimann (killaruna@yahoo.com)
+--------------------------------------------------
+> Bots don't move that quickly, and typically search for paths from the same starting position in their next think frame. 
+
+William, does that mean you do an A*-search every frame? Or does Gladiator do this (as it uses A*-caching as well AFAIK)?
+I always wondered what you could cache in an A*... Of course, if you are doing the search every frame you will likely have the same starting navpoint and you would store the result for that - sure. But why don't you limit new searches to the times the bot actually reaches a new navpoint? Wouldn't that give you the same result with an easier implementation?
+
+Tobias
+
+--------------------------------------------------
+04/07/01 at 13:33:23  Reply by: William (william@botepidemic.com)
+--------------------------------------------------
+I don't do A* often, and I don't cache paths: I have most of them precomputed in a table.
+
+I can't speak for Gladiator.
+
+Limiting new searches until the bot moves to a new nav point? What if the threat moves while the bot remains in position?
+There is a chance, however, that a path in the cache contains the path needed (for example, if the threat would move along the path towards the bot).
+
+William
+
+--------------------------------------------------
+04/07/01 at 17:02:07  Reply by: eLiTe (ali@elitegamer.fsnet.co.uk)
+--------------------------------------------------
+I am not satisfied with my current waypoint system, but I don't have any AI knowledge yet, do you have any good sites with tutorials on waypoint graphs and all that type of stuff? I want to design a new path finding system for my bots, the current one still has problems (though it is much improved over my first waypoint system)
+
+--------------------------------------------------
+04/09/01 at 09:51:05  Reply by: theimann (killaruna@yahoo.com)
+--------------------------------------------------
+Look at Amit's A* pages - Botman has the link...
+
+Tobias
+
+--------------------------------------------------
+04/09/01 at 11:26:18  Reply by: CountFloyd (countfloyd_1999@yahoo.com)
+--------------------------------------------------
+In addition here's a nice article at Gamasutra talking about possible improvements to A*
+http://www.gamasutra.com/features/20010314/pinter_pfv.htm
+
+--------------------------------------------------
+04/09/01 at 11:37:49  Reply by: jldailey (jldailey@uchicago.edu)
+--------------------------------------------------
+
+QUOTE:
+
+b. To store a path, you just need to store the next waypoint on the path. For 1000 waypoints, you only would need a unsigned short (2 bytes), giving you just 2MB memory consumption.
+If you look at a waypoint, there is no need for waypoints to have more than 15 outgoing neighbors. Rather than storing the id of the next waypoint on the path, it's more efficient to store the index in the outgoing neighboring waypoints list (which is a value < 15, and 15 signalling 'no path'). This takes only 4 bits. The resulting memory consumption then is 512KB.
+
+
+
+
+ok, i think i see what you mean, you have underneath everything a representation of waypoints that includes an extra 30k (1000 * 15neighbors * 2 (short index) = 30k) to maintain lists of neighbors. then a path becomes a list of N * .5 byte for an N length list... (meaning that at absolute worst you have a 500k path touching every node once, yeah right... and if N is odd you waste half a byte somewhere, big deal)
+
+ok, that makes sense and is quite beautiful...
+
+so then this idea about caching, lets say an average path might be somewhere around 25-50 hops (considering that i want a fairly dense grid) so that makes the path storage without overhead only 13-25 bytes... wow thats rad...
+you could store in a 2 dimensional array the 1,000 most commonly used paths for 13-25k plus some constant overhead.
+
+am i doing this right? am i talking out my ass or is this correct, cuz man that sounds _small_...
+
+
+
+--------------------------------------------------
+04/09/01 at 11:49:13  Reply by: William (william@botepidemic.com)
+--------------------------------------------------
+QUOTE:
+
+[use of .5 byte per cell for storage of all paths]
+ok, that makes sense and is quite beautiful...
+
+so then this idea about caching
+
+
+
+
+Because I store all paths in about 550KB (for N=1000), I don't use a cache. Being able to lookup any path at almost zero costs is a big advantage, and about 100 to 1000 times as fast as an A* search.
+
+I suggest to use caching solely when:
+- your paths change significantly in unpredictable ways;
+- 550KB is too much; or
+- if you have over N = 2000 waypoints; or
+- if you have plenty of time to figure out how and how often the AI does path retrieval, so you can implement cache update mechanisms such as LRU or MRU.
+Implementing a cache is more work, and in general gives worse performance than an efficient lookup table.
+
+William
+
+--------------------------------------------------
+04/09/01 at 16:18:14  Reply by: eLiTe (ali@elitegamer.fsnet.co.uk)
+--------------------------------------------------
+I think waypoints should be as little as possible on a map, with the bots only using waypoints as rough guides, eg 'here I will have to make a choice to go this way or that', or 'I can reach the goal by going this way'. This is the way I try to waypoint maps manually, and would result in a very small number of waypoints (never likely to need more than 200 waypoints). This is amybe too simplistic of me but I think if you make a system that the bots can use real-time to look for cover and places where it should jump/duck then you will not need very many waypoints at all. If the bot is to place it's own waypoints it would place hundreds (even thousands), it is very hard to detect what route is a good one and what isn't without actually having the bots play for a few rounds to gain experience. That is why it is better to place waypoints yourself until someone comes up with a system that can waypoint like a human. I can waypoint a map in 5-10 minutes for a basic layout, so any automatic system which takes only a few minutes would help, but I think the best (most efficient/tactical) results will only be gotten manually.
+
+--------------------------------------------------
+04/09/01 at 16:35:49  Reply by: eLiTe (ali@elitegamer.fsnet.co.uk)
+--------------------------------------------------
+Thankyou for the link CF, the Gamasutra site is very interesting! I should study some AI techniques and try to make my bots more intelligent/efficient. I do want to do the bots to teach myself more about computers, I hope I don't seem annoying on the Nuclearbox site always talking about my bots? I think it is good that I can enjoy making the bots, and other people will also enjoy using them!
+
+--------------------------------------------------
+04/10/01 at 01:18:39  Reply by: William (william@botepidemic.com)
+--------------------------------------------------
+QUOTE:
+
+if you make a system that the bots can use real-time to look for cover and places where it should jump/duck then you will not need very many waypoints at all
+
+
+
+
+Correct. But you ignore performance, and the ever present need of the AI to have more CPU for more advanced reasoning.
+Such an approach probably will work at the faster machines today for some 8 to 12 bots, but with occasional slow-downs. And with little room for additional AI gimmicks.
+
+Fact is, that in the same time you can dynamically check one position for providing cover, you could check 200 positions if you had put in sufficient waypoints to represent each cover position, and if you had precomputed line-of-sight information.
+
+Being able to check 199 times more often for cover means that your AI can take into account cover in just about any decision it makes. It becomes possible to find paths that are concealed from any observed threats.
+
+It's wise to start tackling a problem with the simplest solution that works. That gives you plenty of time to see what needs to be done next, and you don't need to convert a complex solution.
+But keep an eye open for future needs.
+
+William
+
+
+--------------------------------------------------
+04/11/01 at 12:45:39  Reply by: eLiTe (ali@elitegamer.fsnet.co.uk)
+--------------------------------------------------
+Well put it this way, it will be much faster than Realbot!!
+
+I know I should take performance into account, it just doesn't affect me usually because I've got a 1Ghz Athlon and a P3500Mhz.
+
+I am very interested in the idea of being able to examine a level and make waypoints, including cover waypoints, etc, but it is also nice to have a bot that can fight without waypoints (my bot doesn't use waypoints at all in combat), and get it's own tactical information. I suppose waypoints could give similar results but it seems more fun to do real-time calculation. When I say real-time calculation I don't mean HUNDREDS of tracelines. Even though lots of tracelines would be effective I like to try to use the minimal amount, even though I have lots of processor power. I would just do a few tracelines to see if the enemy can't see you from a certain position, then run to that position as cover. Cover waypoints could work but would give more predictable results (especially if you have made the waypoints yourself).
+
+If I found out how to make my bot act exactly as a human, but I was reduced to only having 2/3 bots in game I think it could still be worth it. Even though a technique may be CPU intensive it could still be useful in future when we have more powerful computers...
+
+--------------------------------------------------
+04/11/01 at 15:12:29  Reply by: William (william@botepidemic.com)
+--------------------------------------------------
+As a counter example:
+- to find a good cover spot, you look for a spot where you would find cover given the current position of the threat, and any position the threat can move into in the same time it takes you to move into cover.
+
+Besides, you need to do multiple trace lines just to figure out whether one spot provides sufficient cover to the head, body, legs, left side, right side, etc.
+
+This is talking hundreds of trace lines...
+
+Because you can take much more information into account if you'd precompute information you'd otherwise compute multiple times at run-time, you end-up being less predictable: you are able to look beyond the lonely tiny crate next to you to find more useful cover in a bunker 10 yards away.
+
+I started out doing many checks in real-time. I couldn't get decent path finding that avoided contact that way.
+
+William
+
+
+
+--------------------------------------------------
+04/11/01 at 18:26:29  Reply by: eLiTe (ali@elitegamer.fsnet.co.uk)
+--------------------------------------------------
+Yeah. But since I am making a bot for CS the cover at longer distances aren't really important, once you see the enemy one of you is usually dead in a few seconds. I agree that pre-computation has CPU benefits, but I still want to have some real-time cover analysing anyway so that I can have a 'cover me' radio command in my bots. It may not be efficient doing it real-time but I'm interested in trying it nevertheless. Also the pre-calculated stuff would mean increased file size, and would have to contain a lot of data about visibility from other points, and I'm just going for simple at the moment. I'm not necessarily going for the most efficient, or the best algorithm, I'm just trying to make something that will give fairly good results with not much processor usage (eg less than 10 tracelines to see what direction to move in to take cover from the enemy). Well I'll probably find out that it doesn't work, just like you said, but I want to try my own methods and find out what works, most of my ideas have worked well so far
+

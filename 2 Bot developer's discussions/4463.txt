@@ -1,0 +1,72 @@
+--------------------------------------------------
+Subject: latest changes in HPB_bot 3.0
+--------------------------------------------------
+05/30/03 at 07:13:19  Posted by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Hello botman
+
+I was wondering what were the exact changes you made to the latest HPB_bot so that I could make them also on the metamod plugin without having to re-download the whole 3.0 source.
+
+Is it just about GET_GAME_DIRECTORY or were there other things ?
+
+
+--------------------------------------------------
+05/30/03 at 07:15:52  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Just the code shown in my second post in this thread...
+
+http://dynamic.gamespy.com/~botman/yabb/YaBB.pl?board=1&action=display&num=4379
+
+botman
+
+--------------------------------------------------
+05/30/03 at 09:00:28  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Thanks !
+
+I had already changed it, I was using a more generic way of formatting a path string
+code:
+
+void GetGameDir (char *game_dir)
+{
+   // This function fixes the erratic behaviour caused by the use of the GET_GAME_DIR engine
+   // macro, which returns either an absolute directory path, or a relative one, depending on
+   // whether the game server is run standalone or not. This one always return a RELATIVE path.
+
+   unsigned char length, fieldstart, fieldstop;
+
+   GET_GAME_DIR (game_dir); // call the engine macro and let it mallocate for the char pointer
+
+   length = strlen (game_dir); // get the length of the returned string
+   length--; // ignore the trailing string terminator
+
+   // format the returned string to get the last directory name
+   fieldstop = length;
+   while (((game_dir[fieldstop] == '\\') || (game_dir[fieldstop] == '/')) && (fieldstop > 0))
+      fieldstop--; // shift back any trailing separator
+
+   fieldstart = fieldstop;
+   while ((game_dir[fieldstart] != '\\') && (game_dir[fieldstart] != '/') && (fieldstart > 0))
+      fieldstart--; // shift back to the start of the last subdirectory name
+
+   if ((game_dir[fieldstart] == '\\') || (game_dir[fieldstart] == '/'))
+      fieldstart++; // if we reached a separator, step over it
+
+   // now copy the formatted string back onto itself character per character
+   for (length = fieldstart; length <= fieldstop; length++)
+      game_dir[length - fieldstart] = game_dir[length];
+   game_dir[length - fieldstart] = 0; // terminate the string
+
+   return;
+}
+
+
+I made this one supercede to the GET_GAME_DIRECTORY() macro so any string works, like:
+valve
+valve\
+C:\SIERRA\Half-Life\valve
+C:\SIERRA\Half-Life\valve\
+
+Okey, I'm updating the plugin. Soon to be available from my site.
+
+

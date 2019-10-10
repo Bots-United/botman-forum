@@ -1,0 +1,116 @@
+--------------------------------------------------
+Subject: question about damage multiplying
+--------------------------------------------------
+10/06/02 at 13:26:23  Posted by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Hello
+
+I'm writing a damage multiplier plugin for metamod and I have a couple of questions. Here's the core of the stuff :
+code:
+
+void StartFrame (void)
+{
+   float adjusted_value;
+
+   // cycle through all players
+   for (int playerindex = 1; playerindex <= gpGlobals->maxClients; playerindex++)
+   {
+      edict_t *pPlayer = INDEXENT (playerindex);
+
+      if (!pPlayer  pPlayer->free)
+         continue; // skip invalid players
+
+      // if this player has lowered armor and still has some
+      if ((previous_armor[playerindex] > pPlayer->v.armorvalue) && (pPlayer->v.armorvalue > 0))
+      {
+         adjusted_value = previous_armor[playerindex] + (pPlayer->v.armorvalue - previous_armor[playerindex])
+                                                        * CVAR_GET_FLOAT ("damage_multiplier");
+
+         if (adjusted_value > 0)
+            pPlayer->v.armorvalue = adjusted_value; // if it won't kill him, adjust the armor
+         else
+            pPlayer->v.armorvalue = 0; // else completely reset it
+
+         // is this really needed ?
+         MESSAGE_BEGIN (MSG_ONE, GET_USER_MSG_ID (PLID, "Battery", NULL), NULL, pPlayer);
+         WRITE_SHORT (pPlayer->v.armorvalue); // let other players know this new value
+         MESSAGE_END ();
+      }
+
+      // if this player has lowered health and altering it will still let him alive
+      if ((previous_health[playerindex] > pPlayer->v.health) && (pPlayer->v.health > 0))
+      {
+         adjusted_value = previous_health[playerindex] + (pPlayer->v.health - previous_health[playerindex])
+                                                         * CVAR_GET_FLOAT ("damage_multiplier");
+
+         if (adjusted_value > 0)
+            pPlayer->v.health = adjusted_value; // if it won't kill him, adjust the health
+         else
+            pPlayer->v.health /= 4; // else divide by 4
+
+         // is this really needed ?
+         MESSAGE_BEGIN (MSG_ONE, GET_USER_MSG_ID (PLID, "Health", NULL), NULL, pPlayer);
+         WRITE_BYTE (pPlayer->v.health); // let other players know this new value
+         MESSAGE_END ();
+      }
+
+      previous_armor[playerindex] = pPlayer->v.armorvalue;
+      previous_health[playerindex] = pPlayer->v.health;
+   }
+
+   RETURN_META (MRES_IGNORED);
+}
+
+
+
+What I do with the health is more tricky than for the armor. I am currently avoiding to kill a player because of the damage it gets. Why ?
+If a player gets some health damage and I find that after multiplication, this resulting damage will kill him, I just can't set his health to zero, it won't be sufficient to kill him. I can't use ClientKill neither, because it won't take in account the damage inflictor, which is likely to be an enemy player, and the result will be : my player suicided. This is not what I want to do.
+I have tried to set his pev->deadflag to DEAD_DYING. It plays the death animation, but can't respawn, and the engine does not get informed that some other player killed him.
+I also have tried a completely different approach which consists in hooking the "Battery" and "Health" network messages and directly modifying the values on-the-fly (because here, I am only adjusting the new health and armor ONE frame later). Unfortunately, the message hooking does not seem to work.
+
+So my first question is : how can I force a player to kill another one like a "standard" kill ?
+
+And the second is : do I have to send a network message when I forcibly adjust the health of a player, and if so, who do I have to send this to ? The victim player only, or all the net clients ?
+
+Thanks in advance.
+
+
+[modified on 10/06/02 at 13:26:23]
+--------------------------------------------------
+10/06/02 at 14:03:30  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Credit for kills are handled internally in the MOD DLL code.  There's no method that I know of that will allow something external to the game DLL to kill a player and credit someone else with the kill.
+
+If the MOD uses pev->frags for the kills (why is frags a 'float', are you ever going to have 3.5 kills?), you can increment the frags for a player if you can determine which player caused the damage that lead to a kill (not an easy thing to do either).
+
+botman
+
+--------------------------------------------------
+10/06/02 at 20:38:31  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+QUOTE:
+If the MOD uses pev->frags for the kills (why is frags a 'float', are you ever going to have 3.5 kills?), you can increment the frags for a player if you can determine which player caused the damage that lead to a kill (not an easy thing to do either).
+
+
+
+
+Of course it is !
+(edict_t *) pev->dmg_inflictor
+
+but for the float thingy, don't ask me, ask Valve rather... ;)
+
+[edited: Eureka ! I understood ! pev->frags is a float because of the name "Half-Life" - lol ? ROFL ]
+
+
+but by the way, about the network message, is it necessary to send it and who to send it to ?
+
+[modified on 10/06/02 at 20:38:31]
+--------------------------------------------------
+10/07/02 at 05:42:36  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Yes, I think you need to send these.
+
+If I remember correctly, the health and armor updates are only sent to the client by the server when these values change.  If you intercept the changes to these before they get sent to the client, your network messages are redundant and unnecessary.  If you notice the changes after they have been sent (and make further changes yourself), then you would have to send the network messages to insure that the client displays the proper values.  I'd go ahead and send it anyway since sending it twice won't hurt anything and your not going to be sending these messages very often so it won't effect network latency.
+
+botman
+

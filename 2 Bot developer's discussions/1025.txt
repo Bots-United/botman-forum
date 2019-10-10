@@ -1,0 +1,76 @@
+--------------------------------------------------
+Subject: Template 2 Problems
+--------------------------------------------------
+01/09/01 at 03:08:11  Posted by: eLiTe (ali@elitegamer.fsnet.co.uk)
+--------------------------------------------------
+I just started porting my bot over to the template 2 last night (managed to fix my new computer finally - heat problems).
+
+I noticed the problem that Tom mentioned about insane values being returned from the WaypointRouteFromTo function, and I think this actually crashes my code, but since there's so much new stuff in the template, I can't really be sure where problems are occuring...
+
+I wondered if Botman introduced these on purpose to make sure that we actually had to do some work instead of just using his functions!!! LOL :P
+
+Can anyone give me an indication as to where the bugs in the template2 are?
+
+I know that the Floyd system is better than my old waypoint system, but it's a bit too large and complicated for my humble teenage mind to grasp at the moment (in other words I can't be bothered right now!!! not until I know it's correct anyway)... could there problems with giving a destination value of -1 (I attempted to get the destination value from FindRandomGoal, but that didn't work either, even though I placed a waypoint at the enemy flag)?
+
+--------------------------------------------------
+01/09/01 at 05:40:22  Reply by: RedFox (redfox@nildram.co.uk)
+--------------------------------------------------
+Fun isn't it, took me a while.
+Just to let you know how I stoped the fromto fuinction crashing my code. Just check if the value it returns is less than the number of waypoints in the level and greaterthan or equal to 0. :)
+Did you place the waypoint at the flag,save it then test your code by realoading the level (that helps).
+
+Hope thats of some help :)
+
+RedFox
+
+--------------------------------------------------
+01/09/01 at 05:41:47  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+First, I'll assume that you are using the EXACT same WaypointAdd() and WaypointPathAdd() functions (if you're not then the Floyd/Warshall code will probably not work properly).
+
+The Floyd's algorithm depends on vertices (the waypoint) and edges (the path from one waypoint to another waypoint).  Without both of these the Floyd algorithm is useless.  WaypointAdd() and WaypointDelete() add or remove waypoints with the necessary flags for the Floyd algorithm to work properly (like W_FL_TEAM for example).  WaypointAddPath() and WaypointDeletePath() keep the linked list of path arrays updated to indicate edges between one waypoint and another waypoint.  Note that these edges are 1-way.  A path can exist from point A to point B without a path having to exist from point B to point A (for example jumping out a window on the second floor).
+
+When you call WaypointRouteFromTo() it takes the current waypoint index (where the bot currently is) and the destination waypoint index (the goal of where the bots wants to be) and returns the index of the next waypoint that the bot should go to in order to get to that goal waypoint.  A return value of -1 indicates that there is NO path from the current waypoint index to the destination waypoint index.
+
+botman
+
+--------------------------------------------------
+01/09/01 at 05:43:16  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+P.S. You DO have to restart the level after saving waypoints.  Also don't edit waypoints while bots are in the level.  This will cause invalid waypoint indexes to be returned and can lead to a crash.
+
+botman
+
+--------------------------------------------------
+01/09/01 at 06:56:36  Reply by: eLiTe (ali@elitegamer.fsnet.co.uk)
+--------------------------------------------------
+Okay, thanks for that. I thought that was how the waypoint system worked, I just mean that I wouldn't be able to code it myself!! (well maybe if you gave me 6 months :P )
+
+How does the waypoint algorithm decide to make paths? One reason that the bots aren't finding connecting paths may be that they can't see through doors... I'll have to check that later too.
+
+Thanks for your help, I'll just restart the levels each time...
+
+BTW Tom - I DO check that it is less than the num_waypoints, but I had a funny feeling that num_waypoints was wrong... there's just so much extra stuff in this new template that I'm a bit lost :(
+
+--------------------------------------------------
+01/09/01 at 07:08:00  Reply by: eLiTe (ali@elitegamer.fsnet.co.uk)
+--------------------------------------------------
+Also - instead of just ignoring these insane values, how about actually figuring out what they mean? IS it something to do with supplying -1 as a source/destination, or is it something to do with incorrectly converting an unassigned short to an int?
+
+I put an (int) b4 the return statement or WaypointRouteFromTo, as I think that does a type-cast or whatever its called. This should work, as I saw it in the function below WaypointRouteFromTo.
+
+To Botman - LOL, I like the "ADD IN LATER" bits in bot.cpp, where it talks about adding in jump and duck support!! Basically all I'd need to do is call those functions u provided in bot_navigation.cpp, then set IN_JUMP or IN_DUCK. I thought that u must have had a good laugh when u wrote in that bit (all the newbies will think, "Oh, how can I do that? Oh no!!", when they only need to call your functions).
+
+The new template has all the terrain analysing stuff that I was going to add (and more). While its nice having this done already, I feel slightly lame using it, without having to do any work for it :(
+
+--------------------------------------------------
+01/10/01 at 07:17:43  Reply by: eLiTe (ali@elitegamer.fsnet.co.uk)
+--------------------------------------------------
+Okay, I got it working - I have to go to 'Clean' then 'Rebuild All' every time I compile otherwise the bots will crash :(
+
+--------------------------------------------------
+02/09/01 at 04:52:38  Reply by: bigjesus (holybigjesus@hotmail.com)
+--------------------------------------------------
+Damn it !!! thats exactly what I thought when i saw that code to was how can I add this in lol.. thanx for not letting me go tofar with it and getting mad about it or any thing lol its a good thing botman has a scince of humor like this other wize i wouldnt know how to take it.
+

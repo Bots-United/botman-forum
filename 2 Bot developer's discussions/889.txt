@@ -1,0 +1,95 @@
+--------------------------------------------------
+Subject: VGUI buy code not working
+--------------------------------------------------
+12/16/00 at 11:39:48  Posted by: yotaku (acoates@uci.edu)
+--------------------------------------------------
+I'm trying to get buying to work with the VGUI interface properly, instead of the "wrong" way, just calling 3 fakeClientCommands in a row.  (which btw doesn't work on my computer) 
+
+I got the VGUI codes from this post: 
+http://dynamic.gamespy.com/~botman/yabb/YaBB.pl?board=2&action=display&num=836
+
+My bot.txt file, shows that the bots are sending the "buy" command.  But the menu never seems to come up.  I'm using the static var to skip 4 out of 5 times as "Marcus Klimstra" told me.  But it still doesn't seem to work.  Here is what I have:
+
+bot_client.cpp:
+
+// This message is sent when the Counter-Strike VGUI menu is displayed.
+void BotClient_CS_VGUI(void *p, int bot_index)
+{
+      static int state = 0; 
+
+   int i = *(int *)p;
+
+      if (state==0)
+      {
+            if (i == 2)  // is it a team select menu?
+              bots[bot_index].start_action = MSG_CS_TEAM_SELECT;
+
+         else if (i == 26)  // is is a terrorist model select menu?
+              bots[bot_index].start_action = MSG_CS_T_SELECT;
+
+         else if (i == 27)  // is is a counter-terrorist model select menu?
+              bots[bot_index].start_action = MSG_CS_CT_SELECT;
+
+         else if (i == 28) // Buy menu
+                  bots[bot_index].start_action = MSG_CS_MENU_BUY_0;
+
+         else if (i == 29) // pistol buy
+                  bots[bot_index].start_action = MSG_CS_MENU_BUY_1;
+
+         else if (i == 30) // shotgun
+                  bots[bot_index].start_action = MSG_CS_MENU_BUY_2;
+
+         else if (i == 31) // sub-machine
+                  bots[bot_index].start_action = MSG_CS_MENU_BUY_3;
+      }
+
+      else if (state == 4) 
+            state = -1; 
+
+      state++; 
+}
+
+
+in bot.cpp:
+
+      // Check for new round
+   float distance_moved = (pEdict->v.oldorigin - pEdict->v.origin).Length();
+   if (distance_moved > 300)
+   {
+            if ((pBot->bot_money > 2000) && (pBot->start_action == MSG_CS_IDLE))
+            {
+                  pBot->start_action = MSG_CS_MENU_WAITING;
+                  FakeClientCommand(pEdict, "buy", NULL, NULL);
+                  FILE *fp=fopen("bot.txt","a"); fprintf(fp,"Issuing buy command.  Money=%d\n", pBot->bot_money); fclose(fp);
+                  //UTIL_HostSay( pEdict, 0, "issuing buy command" );
+                  return;
+            }
+   }
+
+/*      if (pBot->start_action != MSG_CS_IDLE)
+      {
+            FILE *fp=fopen("bot.txt","a"); fprintf(fp,"Not Idle, Code=%d\n", pBot->start_action); fclose(fp);
+      }*/
+   if (pBot->start_action == MSG_CS_MENU_BUY_0 )
+   {
+        pBot->start_action = MSG_CS_IDLE;
+        FakeClientCommand(pEdict, "menuselect", "3", NULL);
+        FILE *fp=fopen("bot.txt","a"); fprintf(fp,"In buy menu..pressing 3\n"); fclose(fp);
+        return;
+   }
+
+   if (pBot->start_action == MSG_CS_MENU_BUY_3)
+   {
+        pBot->start_action = MSG_CS_IDLE;
+      FakeClientCommand(pEdict, "menuselect", "1", NULL);
+        FILE *fp=fopen("bot.txt","a"); fprintf(fp,"In buy sub menu..pressing 1\n"); fclose(fp);      
+        return;
+   }
+
+
+Plz help.. 
+
+Thanks.
+
+
+

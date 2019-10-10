@@ -1,0 +1,83 @@
+--------------------------------------------------
+Subject: [shameless n00b question] how to spawn entities ?
+--------------------------------------------------
+12/01/02 at 15:08:08  Posted by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Hello, whoever almighty guru you are...
+
+Might thou shed your lights on my uncommensurable stupidity and explain me what I do wrong :
+code:
+
+void ServerCommand_AddSpawnPoint (void)
+{
+   edict_t *pNewSpawnPoint = NULL;
+   char arg1[128];
+   
+   sprintf (arg1, CMD_ARGV (1)); // get argument to the command
+   if ((strcmp (arg1, CVAR_GET_STRING ("spawnpoint_type_1")) != 0)
+       && (strcmp (arg1, CVAR_GET_STRING ("spawnpoint_type_2")) != 0))
+   {
+      UTIL_printf ("Usage: addspawnpoint [type]\n");
+      CLIENT_COMMAND (pListenserverEntity, "play items/suitchargeno1.wav\n"); // play a fancy sound
+      return; // return if error in argument
+   }
+
+   // create the new spawn point at origin of player (a little higher)
+   if ((pNewSpawnPoint = CREATE_NAMED_ENTITY (MAKE_STRING (arg1))) != NULL)
+   {
+      SET_ORIGIN (pNewSpawnPoint, pListenserverEntity->v.origin + Vector (0, 0, 5)); // set it origin
+      MDLL_Spawn (pNewSpawnPoint); // spawn it
+
+      // tell people what we did
+      UTIL_printf ("Spawn point created at %.1f, %.1f, %.1f...\n",
+                   pNewSpawnPoint->v.origin.x, pNewSpawnPoint->v.origin.y, pNewSpawnPoint->v.origin.z);
+      CLIENT_COMMAND (pListenserverEntity, "play weapons/mine_deploy.wav\n"); // play a fancy sound
+   }
+   else
+   {
+      UTIL_printf ("Error creating spawn point !\n"); // error (max entities reached ?)
+      CLIENT_COMMAND (pListenserverEntity, "play items/suitchargeno1.wav\n"); // play a fancy sound
+   }
+
+   return;
+}
+
+
+I'm creating a plugin to edit map spawn points and save them back to the BSP file. This function is called everytime I issue a server command such as "addspawnpoint info_player_deathmatch" in the console. Guess what ? Dah, you guessed right one more time: it doesn't work. The sound is played, the message "spawn point created" is printed, but nothing new seems to appear when I list the game entities using FIND_ENTITY_BY_CLASSNAME. What did I do wrong ?
+
+
+[modified on 12/01/02 at 15:08:08]
+--------------------------------------------------
+12/01/02 at 15:54:31  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+can you edit the BSP file directly? The best I've seen done is with rocketcrowbar mod, Laser (the author) makes LEC files (which are just text files) which hold the classnames/origins/angles of the things added, which is then loaded when the map starts and each thing in the file is spawned.
+
+
+Make sure you call DispatchSpawn() as well (Is that what MDLL_Spawn is doing ? :))
+
+Also try instead of using "!= NULL" for checking the pNewSpawnPoint, try using !FNullEnt(), it's better because I think it can return NULL when an invalid classname has been given.
+
+Also I don't know if you call SET_ORIGIN before or after you spawn the entity. Just try something ;D
+
+
+
+
+
+--------------------------------------------------
+12/01/02 at 19:41:48  Reply by: AustinBotServer (AustinBotServer@MindSpring)
+--------------------------------------------------
+
+[quoteI'm creating a plugin to edit map spawn points and save them back to the BSP file. 
+[modified on 12/01/02 at 15:08:08]
+[/quote]
+
+PM that is exactly what I am working on right now! Perhaps we should get together via eamil and trade what we have. I am also adding the functionality of dropping items such as grenades, guns and ammo anywhere in the map.
+
+For you problem, you are obviously using 
+info_player_start // CT spawn
+info_player_deathmatch // T spawn
+Right?
+
+I am simply saving the new spawn points back to the bsp file directly.  The map has to be loaded again to see them. Not ideal but it works for me since I know almost nothing about what I am doing!
+
+

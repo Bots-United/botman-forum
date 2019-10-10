@@ -1,0 +1,111 @@
+--------------------------------------------------
+Subject: deaths
+--------------------------------------------------
+06/04/03 at 04:34:28  Posted by: Blood_Dust (di@html.com)
+--------------------------------------------------
+we people get killed in my mod i does it 2 time?
+
+--------------------------------------------------
+06/04/03 at 05:56:46  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+then m_iDeaths is increased twice...
+I suggest you look in your code for occurences of "m_iDeaths++".
+Perhaps you are sending twice the same network message ?
+
+
+--------------------------------------------------
+06/04/03 at 13:16:06  Reply by: Blood_Dust (di@html.com)
+--------------------------------------------------
+looks right to me
+code:
+
+//=========================================================
+// PlayerKilled - someone/something killed this player
+//=========================================================
+void CHalfLifeMultiplay :: PlayerKilled( CBasePlayer *pVictim, entvars_t *pKiller, entvars_t *pInflictor )
+{
+      DeathNotice( pVictim, pKiller, pInflictor );
+
+      pVictim->m_iDeaths += 1;
+
+
+      FireTargets( "game_playerdie", pVictim, pVictim, USE_TOGGLE, 0 );
+      CBasePlayer *peKiller = NULL;
+      CBaseEntity *ktmp = CBaseEntity::Instance( pKiller );
+      if ( ktmp && (ktmp->Classify() == CLASS_PLAYER) )
+            peKiller = (CBasePlayer*)ktmp;
+
+      if ( pVictim->pev == pKiller )  
+      {  // killed self
+            pKiller->frags -= 1;
+      }
+      else if ( ktmp && ktmp->IsPlayer() )
+      {
+            // if a player dies in a deathmatch game and the killer is a client, award the killer some points
+            pKiller->frags += IPointsForKill( peKiller, pVictim );
+            
+            FireTargets( "game_playerkill", ktmp, ktmp, USE_TOGGLE, 0 );
+      }
+      else
+      {  // killed by the world
+            pKiller->frags -= 1;
+      }
+
+      // update the scores
+      // killed scores
+      MESSAGE_BEGIN( MSG_ALL, gmsgScoreInfo );
+            WRITE_BYTE( ENTINDEX(pVictim->edict()) );
+            WRITE_SHORT( pVictim->pev->frags );
+            WRITE_SHORT( pVictim->m_iDeaths );
+            WRITE_SHORT( 0 );
+            WRITE_SHORT( GetTeamIndex( pVictim->m_szTeamName ) + 1 );
+      MESSAGE_END();
+
+      // killers score, if it's a player
+      CBaseEntity *ep = CBaseEntity::Instance( pKiller );
+      if ( ep && ep->Classify() == CLASS_PLAYER )
+      {
+            CBasePlayer *PK = (CBasePlayer*)ep;
+
+            MESSAGE_BEGIN( MSG_ALL, gmsgScoreInfo );
+                  WRITE_BYTE( ENTINDEX(PK->edict()) );
+                  WRITE_SHORT( PK->pev->frags );
+                  WRITE_SHORT( PK->m_iDeaths );
+                  WRITE_SHORT( 0 );
+                  WRITE_SHORT( GetTeamIndex( PK->m_szTeamName) + 1 );
+            MESSAGE_END();
+
+            // let the killer paint another decal as soon as he'd like.
+            PK->m_flNextDecalTime = gpGlobals->time;
+      }
+#ifndef HLDEMO_BUILD
+      if ( pVictim->HasNamedPlayerItem("weapon_satchel") )
+      {
+            DeactivateSatchels( pVictim );
+      }
+#endif
+}
+
+
+--------------------------------------------------
+06/04/03 at 13:41:41  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Then this function has to be called twice... dunno...
+
+
+--------------------------------------------------
+06/04/03 at 14:52:15  Reply by: Blood_Dust (di@html.com)
+--------------------------------------------------
+im not following
+
+--------------------------------------------------
+06/04/03 at 15:31:22  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+I mean, these 2 deaths come obviously from somewhere. There's something somewhere in your code, that cause either the m_iDeaths variable to be increased twice (and seeing your PlayerKilled function this seems not to be the case), OR two network messages being sent. Or something like that. Try to do step-by-step debugging early enough to catch the event, for example set a breakpoint on the first line of your function, and see if it is called twice or not.
+
+
+--------------------------------------------------
+06/05/03 at 05:48:19  Reply by: Blood_Dust (di@html.com)
+--------------------------------------------------
+thanks man it worked
+

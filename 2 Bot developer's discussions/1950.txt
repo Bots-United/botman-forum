@@ -1,0 +1,847 @@
+--------------------------------------------------
+Subject: unwaypointed navigation
+--------------------------------------------------
+07/10/01 at 09:44:49  Posted by: runabout (runabout@crosswinds.net)
+--------------------------------------------------
+how is it done? source code please? examples?
+
+--------------------------------------------------
+07/10/01 at 11:12:41  Reply by: actionhank (clandday@hotmail.com)
+--------------------------------------------------
+Check out botmans first few bots or riche's project warehouse (jumbot hompage ) for his advancedbot frame if you want source code. BBut these bots just run around aimlessly and are crap to play with
+RULE OF THUMB:
+Stick with waypoints for a while longer or info points (like realbot) but these also have large performance penalties. so stick with waypoints.
+
+--------------------------------------------------
+07/10/01 at 12:02:46  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+The way the HPB bot "navigates" without waypoints is the following...
+
+1. When you approach a wall turn to avoid it.  Turn in the direction that requires the least amount of turning (i.e. less than 90 degrees).  The bots will randomly add about 10 or so degrees (away from the wall) so that they don't always run parallel to the wall.
+
+2. If you are running along next to a wall and the wall suddenly disappears.  Turn in the direction of what used to be a wall (for some random amount of time).  This is used to handle the case where a bot approaches a corner (the wall disappears) and you want the bot to occasionally turn 'round that corner.
+
+3. Keep heading towards items that you can see (like weapons, healthkits, ammo, etc.) and head directly towards enemies when you see them.
+
+...and that's about it.  It's a pretty simple navigation scheme and for small rooms with a door way in the middle of one wall, they will get stuck in there for quite a while.  For other more open areas they will tend to wander around all over the place.
+
+But like neil said, waypoints are a MUCH better way of getting the bots to navigate areas much more closely to how a human would.  And if you have goal locations (like capture the flag, rescue the hostage, or plant the bomb), you'll never get the bots to accomplish the goals reliably without some kind of waypoint for navigation.
+
+botman
+
+--------------------------------------------------
+07/10/01 at 18:34:28  Reply by: runabout (runabout@crosswinds.net)
+--------------------------------------------------
+how about the more advanced functions, like learning? like tobias did with parabot... or stefan is doing currently with realbot.
+
+--------------------------------------------------
+07/11/01 at 00:12:58  Reply by: William (william@cgf-ai.com)
+--------------------------------------------------
+QUOTE:
+
+how about the more advanced functions, like learning? like tobias did with parabot... or stefan is doing currently with realbot. 
+
+
+
+
+That topic has received a thread of its own:
+"http://dynamic.gamespy.com/~botman/yabb/YaBB.pl?board=2&action=display&num=1104"Learning the Map....
+
+IMO, not using waypoints is like having the bot reinvent the wheel when sampling the environment. 
+Quake based engine have rather static environments. Sampling the environment with ray traces isn't cheap. If you sample the environment once, and store that in waypoints (with plenty of attributes), that leaves you with more CPU time for more advanced AI.
+
+William
+
+
+
+--------------------------------------------------
+07/11/01 at 04:58:44  Reply by: theimann (killaruna@botepidemic.com)
+--------------------------------------------------
+> like tobias did with parabot... 
+
+That learning consist in setting the right waypoints at the right locations automatically. The unwaypointed navigation in Parabot works with shapetracking: Head straight towards the target until you encounter an obstacle (wall, gap), then follow its edge until you can head straight towards the target again. The tricky part (as usual) are the many exceptions you'll have to consider.
+
+Tobias
+
+--------------------------------------------------
+07/11/01 at 18:34:51  Reply by: groby (r.blum@gmx.net)
+--------------------------------------------------
+I haven't seen a single waypointless bot with decent navigation. If anybody knows some, share with us!
+
+I think what you're looking for is a way for the users not having to create waypoints by hand. For this, there's two choices:
+
+There are bots that sample the environment and learn as they go. Some even learn from the user (Realbot) - although those bots tend to repeat your mistakes too. A friend of mine now has a bunch of realbots who really like jumping off the roof in assault :-)
+
+The other camp precomputes the waypoints - i.e. before the bot even starts.
+
+I'm personally in the 'precomputed' camp. 
+
+The waypoints for my bot are created by using the .bsp file. I'm deriving all the pathing, visibility, etc. from that.
+
+So far, it works nicely. My current problem is to determine the strategical value of points, plus a higher level understanding of the world. (I.e this collection of WPs is inside a house, and those are the exits..)
+
+Would that help you? Has anybody any ideas on higher level understanding?
+
+
+--------------------------------------------------
+07/12/01 at 07:43:44  Reply by: theimann (killaruna@botepidemic.com)
+--------------------------------------------------
+QUOTE:
+
+The waypoints for my bot are created by using the .bsp file. I'm deriving all the pathing, visibility, etc. from that.
+
+
+
+
+If that works you are the first who has done this for HL. When we have been discussing about extracting bsp-files a time ago we thought it might be possible to get the "high-level-understanding" from that as well. The easiest possibility is to label the waypoints by hand - but that's not what you want I guess.
+William has written an automatic classification for waypoints for Q2: have a look at his (and others) opinion on that topic in this thread 
+dynamic.gamespy.com/~botman/yabb/YaBB.pl?board=2&action=display&num=471Using the maps as the basis of navigation
+
+
+Tobias
+
+[modified on 07/12/01 at 07:41:04]
+
+[modified on 07/12/01 at 07:43:44]
+--------------------------------------------------
+07/12/01 at 10:09:15  Reply by: groby (r.blum@gmx.net)
+--------------------------------------------------
+
+QUOTE:
+
+If that works you are the first who has done this for HL. 
+
+
+
+
+Yay! But honestly, I'm surprised - it is not that difficult to extract (basic) pathing from a BSP. It's getting trickier when it comes to jumps and stairs.
+
+That's my main focus for the pathing right now. If you want to compare notes, my BSP reader can export waypoints and paths in the HPB bot format. I'd like to get some opinions on how good those waypoints are. 
+
+QUOTE:
+
+When we have been discussing about extracting bsp-files a time ago we thought it might be possible to get the "high-level-understanding" from that as well. 
+
+
+
+
+Would you mind comparing notes?
+
+QUOTE:
+
+The easiest possibility is to label the waypoints by hand - but that's not what you want I guess.
+
+
+
+
+Not really. I want my waypoint files to be of consistent quality (Plus, I hate waypointing :-). 
+
+Right now, that quality is not too good, but I have a few plans on how to improve that. When I'm done with this, it should be possible to get thoroughly waypointed maps with good quality waypoints.
+
+That is only the first part of the struggle, though. It provides the groundwork for more flexible bots.
+
+QUOTE:
+
+William has written an automatic classification for waypoints for Q2: have a look at his 
+
+
+
+
+Thanks. I read it, and disagree with him :-). Even if the basic bot AI is not very good, it stands to gain from any kind of knowledge we can gather from the map. If we only improve tactical AI, we'll never get very far. I'd rather have my bots demonstrate understanding of the strategical situation - tactics come second. 
+
+Remember, this is a personal opinion, not an attack on William. In fact, his web site has been an invaluable source of ideas and inspirations for me.
+
+Robert
+
+--------------------------------------------------
+07/12/01 at 11:43:07  Reply by: William (william@cgf-ai.com)
+--------------------------------------------------
+A couple of additions and comments:
+
+Wrt automated waypoint extraction from bsp's. Jan Paul van Waveren's MSc thesis is about to be published, given a good deal of insight in how to tackle basic and advanced creation of path finding info from the bsp. You still have to write the algorithm (and do the floating point epsilon error handling), but it will help you.
+(Jan Paul is better known as MrElusive and the developer of the QuakeIIIArena AI and bsp parser).
+
+I get my best ideas from discussing with people who disagree with me... Keep it going!
+
+What do you (Robert) mean by 'strategic'? (To me, tactics deal with activities taking some 2s or longer, not the reloading and aiming stuff. Strategy would deal with long-term goals (30s and beyond)).
+
+From a gameplay stand-point, good strategic AI combined with bad tactical AI is being seen as just bad tactical AI; typically, the player won't see any strategy unless you find a way to communicate it to him.
+Decent tactics however may convince the player that the AI is capable of more than that, without really being capable of doing so. The HL squad AI is a great example of that (it doesn't even do real suppression fire, it just makes you believe it does).
+
+IMO, the radio communication added to PODBot 2.0 adds more the AI than better adding tactical understanding would; the AI feels more alive, and tries to present you with an overview of the battle.
+
+From an AI standpoint, good tactical AI without any strategic AI is almost impossible; my CGF bots definitely have troubles in that area.
+
+Wrt to tactical (and strategic) map understanding, I recommend you look at my GDC slides and paper: 
+http://www.cgf-ai.com/products.html
+The links on that site also refer to one or two other (on-line) publications doing some analysis.
+
+Recently, I've been working on some strategic planning. Have a look at my post in the
+dynamic.gamespy.com/~botman/yabb/YaBB.pl?board=2&action=display&num=1740&start=17Tactical Game Progression thread or just this www.cgf-ai.com/images/planner/cs_siege_assaultplan.gifhand crafted animation.
+
+William
+
+[modified on 07/12/01 at 11:43:07]
+--------------------------------------------------
+07/12/01 at 12:42:22  Reply by: theimann (killaruna@botepidemic.com)
+--------------------------------------------------
+QUOTE:
+
+Would you mind comparing notes?
+
+
+
+I have never worked on bsp extraction myself. My hopes ;-) were all based on Carl who definitely was working on that - see this dynamic.gamespy.com/~botman/yabb/YaBB.pl?board=2&action=display&num=1412thread. Maybe he would be willing to share his results...
+
+IMHO, more import than classification of areas in rooms, hallways etc. are the connections between different positions to be able to guess the player's next moves. If a room has only one exit a player inside must use that at some time and the bot could wait and ambush him there. However, there are other ways to get this information than by bsp-files and I'm investigating more in that direction.
+
+Tobias
+
+--------------------------------------------------
+07/13/01 at 14:23:18  Reply by: groby (r.blum@gmx.net)
+--------------------------------------------------
+
+QUOTE:
+Jan Paul van Waveren's MSc thesis is about to be published, given a good deal of insight in how to tackle basic and advanced creation of path finding info from the bsp. 
+
+
+
+Any word on where it's going to be published?
+
+QUOTE:
+
+You still have to write the algorithm (and do the floating point epsilon error handling), but it will help you.
+
+
+
+
+I already have a basic algorithm. All I'm hoping for is some additional insight into pruning what I have. Right now, it's creating 180 waypoints in cs_bloodstrike. (For those who don't know it: It's a square room with a solid square in the middle, some hiding spots in the corners, and a few walls for ducking behind)
+
+That is excessive, I know. My main problems are
+
+a) Roof polygons have normals pointing up. They should really point down - so I have to eliminiate unreachable polygons.
+
+b) Stairs get a waypoint for each step. My extractor needs a better understanding of what requires a jump and what is a staircase.
+
+QUOTE:
+
+What do you (Robert) mean by 'strategic'? (To me, tactics deal with activities taking some 2s or longer, not the reloading and aiming stuff. Strategy would deal with long-term goals (30s and beyond)).
+
+
+
+
+I would say we agree. My separation is slighly different. Anything up to 1s is a 'reflex' or 'instinct'. From then up to 20 seconds, we're talking tactics. Flushing a particular hallway, leapfrogging a door, etc.
+
+Everything that (potentially) spans a longer time frame is strategy. That includes a general plan of attack, deciding where to put your flanks, what your snipers should cover, etc.
+
+QUOTE:
+
+From a gameplay stand-point, good strategic AI combined with bad tactical AI is being seen as just bad tactical AI; typically, the player won't see any strategy unless you find a way to communicate it to him.
+
+
+
+
+If I manage to position my bots in positions with strategic value, I most certainly already hold an advantage. Having that great sniping spot _secured_ for my team allows me to get quite a few kills.
+
+Of course tactical AI helps - and I'm not saying I don't need it. My primary focus is just on the other end of the spectrum. 
+
+Once my bots know what to do, I will show'em how to do it effeciently.
+
+
+QUOTE:
+
+Decent tactics however may convince the player that the AI is capable of more than that, without really being capable of doing so. The HL squad AI is a great example of that (it doesn't even do real suppression fire, it just makes you believe it does).
+
+
+
+
+But having a strategic plan makes it possible to execute good tactics. When I have my supression fire guy in place, he will shoot at everything in sight - which looks like supression fire. Even though he's not doing it with the _intention_ of doing so.
+
+QUOTE:
+
+Wrt to tactical (and strategic) map understanding, I recommend you look at my GDC slides and paper: 
+
+
+
+
+You don't think I left any of your papers unread, do you? :-)
+
+QUOTE:
+
+Recently, I've been working on some strategic planning. Have a look at my post in the
+Tactical Game Progression thread or just this hand crafted animation.
+
+
+
+
+_Very_ interesting. But to get that level of understanding, I need a better knowledge about the level than just pathing.
+
+I need to find choke points, escape routes, sniper spots, etc. - Which is why I'm submitting myself to the pain of reading a BSP file.
+
+Much of the splitting up into sections can probably be generated from the geometry information. You still might need to refine this data for optimal AI, but my ultimate goal is a bot that can navigate any map and appear as a decent player.
+
+Bye,
+  Robert
+
+--------------------------------------------------
+07/13/01 at 14:26:33  Reply by: groby (r.blum@gmx.net)
+--------------------------------------------------
+Thanks for the pointer to the thread - contained some very good links. 
+
+My favorite is the BSP display tool. I'm considering hacking it to be a waypoint display tool - HL takes too long to start :-)
+
+QUOTE:
+
+IMHO, more import than classification of areas in rooms, hallways etc. are the connections between different positions to be able to guess the player's next moves. If a room has only one exit a player inside must use that at some time and the bot could wait and ambush him there. 
+
+
+
+Maybe it's just that I have weird favorite maps, but in most of my favorites, there's almost always more than one exit. So I'm not really concerned with the wait'n'ambush approach - I have my bots go in for the kill.
+
+QUOTE:
+
+However, there are other ways to get this information than by bsp-files and I'm investigating more in that direction.
+
+
+
+
+Ahh. Now we're talking. What approach are you taking? 
+
+
+
+--------------------------------------------------
+07/13/01 at 17:46:26  Reply by: CountFloyd (countfloyd@botepidemic.com)
+--------------------------------------------------
+QUOTE:
+My favorite is the BSP display tool. I'm considering hacking it to be a waypoint display tool
+
+
+
+What about hacking it into a universal waypoint creator instead, I had hopes that Carl would do this. CARL WHERE ARE YOU NOW ?!?
+
+QUOTE:
+
+What approach are you taking?
+
+
+
+I can't really speak for Tobias here, but I think another legitimate approach would be 'recording' lots of stuff. Like if a human can reach location A from location B a Bot could do this too. For ambush situations you could extend this system to record traffic or kills at positions near (influence maps?). I believe William or Tobias could tell you much more about this.
+
+[modified on 07/13/01 at 17:46:26]
+--------------------------------------------------
+07/14/01 at 06:39:01  Reply by: theimann (killaruna@botepidemic.com)
+--------------------------------------------------
+QUOTE:
+For ambush situations you could extend this system to record traffic or kills at positions near (influence maps?). 
+
+
+
+Correct. I'm still trying to develop a system that can extract ambush positions from a huge heap of recorded player-moves. The first thing I'm aiming for is this: When a player enters a room or hallway, is there any point that he most probable will pass within the next 5-10 seconds. I was thinking of deviding the map in small cubes (128*128*128 would be optimal) and start recording if a player leaves one cube and enters another - which will happen frequently of course. The cubes that the player passes within the next 5-10 seconds must be stored under the side of the original cube that he left. The main problem ist that this will produce a LOT of data and you'll have to sort out the uninteresting part very quickly to prevent an overflow. For a start you could only check if the player returns to the same cube within a given time and detect one-entry-rooms this way.
+I haven't started any coding-experiments for this yet so I can't tell how CPU-consuming or memory intensive it will be... (Note that I dont't use these cubes as waypoints)
+
+Tobias
+
+--------------------------------------------------
+07/14/01 at 08:35:42  Reply by: groby (r.blum@gmx.net)
+--------------------------------------------------
+Influence maps are definitely another tool in the repertoire. The problem with influence maps is that they reflect the skills of the people who played them.
+
+IOW: If I played and recorded my moves, my bots are already dead :-)
+
+No, seriously: I plan on using influence maps on top of the information generated from the BSP. Mostly to adjust (short-time) for the behavior of the opposing players. 
+
+I.e. if the CT's in Italy in that one round tend to go to the right though the market place, the maps will reflect that for this round. Probably,influence points will 'decay' with time.
+
+QUOTE:
+
+I was thinking of deviding the map in small cubes (128*128*128 would be optimal) and start recording if a player leaves one cube and enters another - which will happen frequently of course. The cubes that the player passes within the next 5-10 seconds must be stored under the side of the original cube that he left. 
+
+
+
+
+That sounds like an _enormous_ amount of data to store. Again, the BSP will help you cull this data. (Most of those cubes can never be touched)
+
+Brings up an idea for another interesting approach: What if you, for each cube, just recorded the probability of moving into an adjacent cube?
+
+But even then, and if you culled the octree seriously, the amount of data will be insane. I still like the idea - but you need to apply some serious compression to that data :-)
+
+QUOTE:
+
+For a start you could only check if the player returns to the same cube within a given time and detect one-entry-rooms this way
+
+
+
+Only if your entrance is smaller than a cube and not spread across two cubes. Plus he might be running circles. I'm not sure you can detect the existence of rooms without using some of the BSP data. Either through preprocessing, or by doing a lot of tracelines.
+
+Good luck with this, and keep us posted on your progress. It sounds like an interesting and fresh approach to bots.
+
+Robert
+
+--------------------------------------------------
+07/15/01 at 06:23:06  Reply by: theimann (killaruna@botepidemic.com)
+--------------------------------------------------
+QUOTE:
+the BSP will help you cull this data. (Most of those cubes can never be touched)
+
+
+There's no need for using the BSP for that. I can add new cubes dynamically whenever a player enters an area that has not been cubed yet. (I'm handling my waypoints in a similar way)
+
+QUOTE:
+Only if your entrance is smaller than a cube and not spread across two cubes
+
+
+Yes, good point. I don't know how probable this case is but I will have to think of something for that... And yes, it *IS* an enormous amount of data that needs to be recorded. I will let you know how I get on with that.
+
+Tobias
+
+
+[modified on 07/15/01 at 06:23:06]
+--------------------------------------------------
+07/16/01 at 12:41:32  Reply by: William (william@cgf-ai.com)
+--------------------------------------------------
+Tobias:
+
+Why do you determine ambush positions by capturing experience and then doing geometric analysis, rather than the other way around: geometric analysis and correcting the results with experience?
+
+If you make the AI primarily dependent on experience, you:
+- have a need for a 'backup' facility that identifies ambush positions until sufficient experience has been captured (e.g. manual waypoint hints);
+- you get the intersection of 'performed ambushes' and 'geometrically OK ambushes', rather than the union of the two.
+
+If you'd do geometric analysis, you'd always start with a decent set of ambush positions. Subsequent experience makes the bad ambush spots less attractive, and adds a few your computations didn't identify (the union of the two sets). You still have some innovation, both from a geometric analysis and gamer input, rather than the lowest common denominator.
+
+Geometrically, an ambush position is easily identified by the following properties:
+- dotproduct(attack direction from ambush spot to target spot, traffic direction at target spot) <= 0
+(in other words, you attack the target from the side or in the back)
+- threat cannot see ambusher when moving towards target spot
+There's probably a whole bunch more, but that won't be as specific for an ambush spot.
+
+I capture traffic data per waypoint, and classify the traffic in one the 26 3D directions (8 flat, 8 up, 8 down, 2 along z-axis). The number of samples is probably identical to your number of 128^3 cubes, but I solely store local data.
+
+I suspect that this suffices to get 80% of the ambush positions. The others are identified by watching the players closely (being static and prone at a position for sometime, and then killing somebody who's moving in a direction with dot <= 0).
+
+Robert:
+
+Isn't influence maps about the interaction between two or more 'pieces' in the game (the term originates from AI for the Go game); the data Tobias is discussing seems to be 'traffic data'.
+
+Why bother with parsing the bsp, if you can do tactical analysis after 1 hour of manually dropping waypoints? The game industry did solve the bsp parsing problem, but has yet to find good answers for the tactical questions...
+
+--------------------------------------------------
+07/16/01 at 15:44:39  Reply by: groby (r.blum@gmx.net)
+--------------------------------------------------
+QUOTE:
+
+Isn't influence maps about the interaction between two or more 'pieces' in the game 
+
+
+
+
+Yes and no. It originates in go, but the idea is that each piece exerts an influence over adjacent cells. Now if I remember good and bad waypoints I can have each of them influence neighboring waypoints. (IOW: If a waypoint is bad because I get killed there often, neighboring waypoints are assumed to be bad too. A little bit less, but still bad)
+
+I treat waypoints as some sort of gravity well. The less I get killed, the higher the gravity of a waypoint. (Or the higher the cost of traversing the waypoint - not decided yet)
+
+QUOTE:
+
+Why bother with parsing the bsp, if you can do tactical analysis after 1 hour of manually dropping waypoints?
+
+
+
+
+a) I hate waypointing. The interface is more than cumbersome.
+
+b) Manual waypointing will always be incomplete. You'll always forget the things you never knew you could do. My autowaypointer analyzes each single surface - too tedious to do by hand.
+
+c) It is an interesting problem.
+
+I plan on releasing my bsp reader as soon as it gets basic waypointing done. People can use that as a basis and improve those automatic waypoints.
+
+IMHO, touching up a machine generated file is way better than generating it completely from scratch. (And my goal is not having to touch up)
+
+QUOTE:
+
+The game industry did solve the bsp parsing problem, but has yet to find good answers for the tactical questions... 
+
+
+
+
+The BSP holds some of the answers. 
+You precompute visibilities for your map, don't you? AFAIK, you do it in the engine - I'd rather exclude that from my bot code.
+
+Ultimately, I'm dreaming of a stand-alone waypointing tool. It can autowaypoint, you can clean up waypoints by hand, you can add additional information....
+
+Wouldn't that be a game designers dream? Never having to waypoint again, instead constructing interesting scenarios based on that info?
+
+
+
+--------------------------------------------------
+07/16/01 at 17:04:09  Reply by: CountFloyd (countfloyd@botepidemic.com)
+--------------------------------------------------
+I believe that both ways have 1 bigger problem with them, please correct me if I'm wrong. If you're recording Player Movement the quality of the waypoints heavily depends on the skill of the player from whom they got recorded, so they might as well miss important positions which wouldn't be the case by parsing the BSP File. With BSP File reading I could imagine having problems with waypoints which need special attention like i.e. button triggered doors. Having this waypoint recorded you would know what special actions need to be performed to open that door (e.g. User presses Button if Door is at a certain Position). Creating that waypoint and the connections to other waypoints from the BSP would need some really tricky calculations or am I wrong here ?   
+
+--------------------------------------------------
+07/16/01 at 19:43:50  Reply by: groby (r.blum@gmx.net)
+--------------------------------------------------
+
+QUOTE:
+ With BSP File reading I could imagine having problems with waypoints which need special attention like i.e. button triggered doors. 
+
+
+
+
+Not sure about this yet. I plan on storing them as special waypoints. (Doors have a special entity, so I can identify them. Buttons are linked through a key, so I can find the button too)
+
+When your path has to go through a door, you can check the status of the door as soon as it's visible. If it's closed, just go to the button, push it, and come back.
+
+QUOTE:
+
+Creating that waypoint and the connections to other waypoints from the BSP would need some really tricky calculations or am I wrong here ?   
+
+
+
+
+I don't think they're tricky, but I'm not there yet. As I said, as soon as the basic waypointing works, I'll make the BSP parser available for download. I hope to get enough feedback to improve it from there.
+
+And if it's really not working out, you can still take the BSP generated waypoints as a starting point and touch it up by hand. This should still save you the effort of running through the whole level and dropping waypoints.
+
+Robert
+
+--------------------------------------------------
+07/17/01 at 04:36:53  Reply by: theimann (killaruna@botepidemic.com)
+--------------------------------------------------
+QUOTE:
+Why do you determine ambush positions by capturing experience and then doing geometric analysis, rather than the other way around: geometric analysis and correcting the results with experience?
+
+
+
+Basically because of the same reason as Robert: I want to get around manual waypointing. I realize that you have a big advantage if you start with a set of geometrically found positions, but how do you get these except by adding them manually (or maybe bsp-analysis)?
+The problem of lacking experience in early stages of the game is unavoidable in that case and bots won't be able to ambush you until some time has passed... As I said, I haven't started experimenting with that yet and can't tell how much time it will take and how many ambush positions can be determined by using traffic-data only.
+QUOTE:
+If you're recording Player Movement the quality of the waypoints heavily depends on the skill of the player from whom they got recorded, so they might as well miss important positions 
+
+
+That's right, but if the player really is so bad, he won't notice it;). I see it more as an advantage, an automatic skill adoption to the knowledge of the player. If the human can't get an important power-up, why should the bot be able to get it and use it against him?
+
+Tobias
+
+--------------------------------------------------
+07/17/01 at 05:59:45  Reply by: G-man (ajbruin99@hotmail.com)
+--------------------------------------------------
+In nodes.cpp from the hl sdk there is a function called "HandleLinkEnt". You could try using this to find the button which belongs to the door
+
+--------------------------------------------------
+07/17/01 at 06:13:30  Reply by: groby (r.blum@gmx.net)
+--------------------------------------------------
+QUOTE:
+
+That's right, but if the player really is so bad, he won't notice it. I see it more as an advantage, an automatic skill adoption to the knowledge of the player. If the human can't get an important power-up, why should the bot be able to get it and use it against him? 
+
+
+
+
+Because the player might make the waypoints/knowledge file available for others to download. Depending on how much time it takes to create a decent knowledge file, that's the way things will go. 
+
+Only if you can generate enough knowledge in one or two rounds people will not do this.
+
+And now we're faced with the same problem that we have right now: Crappy waypoints ruin the fun even with the best bots. And many people do not have the time and/or inclination to create proper waypoint files.
+
+Don't get me wrong - I think you have a very interesting approach, and I'm curious to see it. It just won't do for the masses (Yeah. Right. Keep dreaming :-) of bot users out there.
+
+That's why I try to provide a tool that will make waypointing easier. 
+
+Robert
+
+--------------------------------------------------
+07/17/01 at 07:05:26  Reply by: theimann (killaruna@botepidemic.com)
+--------------------------------------------------
+QUOTE:
+I think you have a very interesting approach, and I'm curious to see it.
+
+
+
+For the waypoints this is already done and builds up files very quickly (not for CS though), the small DMC maps e.g. get mapped in the first minutes of a game. Sharing waypoint files rather increases the quality of them instead of decreasing it, since the files will always get expanded where improvements can be made. Even if I had fully automatic BSP-extraction I would probably prefer this learning for pathfinding. I've never heard any complains from users that the learning takes too long and the navigation is bad in the first minutes - people rather find it interesting to see that the bot adopts to their moves, positions and preferences.
+The problem I'm facing is only the tactical understanding of the map like the mentioned ambush positions: these might indeed take a longer time to learn and it might be impossible to get them all without manual waypoint placement or BSP-extraction.
+
+Tobias
+
+--------------------------------------------------
+07/17/01 at 07:38:27  Reply by: groby (r.blum@gmx.net)
+--------------------------------------------------
+Tobias: So what bot is your bot? Is it out yet? Can I try it?
+
+Thanks,
+  Robert
+
+--------------------------------------------------
+07/17/01 at 07:54:20  Reply by: theimann (killaruna@botepidemic.com)
+--------------------------------------------------
+Robert: Visit the www.botepidemic.com/parabotParabot-website. You might want to wait for the new version 0.7 where navigation in the learning phase has still been improved (should be out till the week-end).
+
+Tobias
+
+--------------------------------------------------
+07/18/01 at 06:49:41  Reply by: G-man (ajbruin99@hotmail.com)
+--------------------------------------------------
+Shouldn't it be better to get tactical understanding of the map while loading it (like the BSDbot does)? This won't take too much time and everyone making a bot can change this to his own preferences.
+
+--------------------------------------------------
+07/18/01 at 07:40:11  Reply by: theimann (killaruna@botepidemic.com)
+--------------------------------------------------
+QUOTE:
+Shouldn't it be better to get tactical understanding of the map while loading it (like the BSDbot does)? 
+
+
+I'm not aware of any special tactical understanding that BSDbot gains while loading maps - do you know more about that? AFAIK it is based on manually edited waypoints and that's exactly what Robert and me want to get around.
+
+Tobias
+
+--------------------------------------------------
+07/18/01 at 08:41:58  Reply by: groby (r.blum@gmx.net)
+--------------------------------------------------
+I'm pretty sure BSDBot does not analyse terrain - my bot is based on BSDbot :-)
+
+--------------------------------------------------
+07/18/01 at 14:11:13  Reply by: G-man (ajbruin99@hotmail.com)
+--------------------------------------------------
+I thought so because you don't have to specifie the sniper/camp waypoints yourself. I looked into the source and it sets a few parameters for every waypoint (like ambush, traffic etc.).
+
+--------------------------------------------------
+07/18/01 at 15:29:59  Reply by: William (william@cgf-ai.com)
+--------------------------------------------------
+Quoting Robert:
+QUOTE:
+
+You precompute visibilities for your map, don't you? AFAIK, you do it in the engine - I'd rather exclude that from my bot code. 
+
+
+
+
+I indeed precompute visibilities and a whole lot of other data, but I do it using the game engine. That way, I'm sure to the same physics, game rules, environment dynamics (doors, etc.). that would be tough to reconstruct otherwise.
+In addition, some of the pre-computed tables need patching on the fly, in-game. For example, visibility is affected by rotating doors.
+
+Count Floyd indirectly referred to the problem of not having as much info available in a bsp reader as in the game itself.
+Team-only doors (TFC), rocket jumps (or their counter-part in HL), etc. all are tough to deal with in off-line bsp parsing: you soon end up re-doing all kinds of game logic, and mimic the game engine's physics flaws.
+
+Nevertheless, the QIII bsp parser, once completed, proved to be a nice debugging tool for level designers: it showed them spots that the player could reach.
+
+William
+
+--------------------------------------------------
+07/18/01 at 16:39:55  Reply by: groby (r.blum@gmx.net)
+--------------------------------------------------
+QUOTE:
+I do it using the game engine. That way, I'm sure to the same physics, game rules, environment dynamics (doors, etc.). that would be tough to reconstruct otherwise. 
+
+
+
+
+You got a point there. Let's just see how far I get with my static BSP based analysis.
+
+QUOTE:
+rocket jumps (or their counter-part in HL), etc. all are tough to deal with in off-line bsp parsing
+
+
+Now here I can't follow. How would your bots learn to rocket jump _without_ knowing about the fact that
+
+a) Rockets can accelerate you
+b) Damage is not necessary deadly
+
+That's something you need to hardcode. Might as well hardcode the rocket jump :-)
+
+
+
+--------------------------------------------------
+07/18/01 at 17:31:50  Reply by: CountFloyd (countfloyd@botepidemic.com)
+--------------------------------------------------
+QUOTE:
+How would your bots learn to rocket jump _without_ knowing about the fact that
+a) Rockets can accelerate you
+b) Damage is not necessary deadly
+That's something you need to hardcode.
+
+
+
+No, it's different with Tobias' approach and there's not much which needs to be hardcoded AFAIK. Just imagine a human players movement gets recorded every frame in the game. Human picks up a rocket launcher from one position (DLL monitors this in the background), human moves to another position where a rocket jump is required to reach a special item or something similar and performs the jump (DLL still monitors it). After that the Bot would have the knowledge that he needs to do this special action at this certain position in case he has the rocket launcher. Then the Bots could try do it themselves replaying all the stuff the human did previously (getting the launcher, moving to the position, performing the jump). No real hardcoding would be needed and even no real knowledge of the game physics would be required, he's just replaying successful movements of humans who should know what they are doing (hopefully). Same could be applied (and it is very well in ParaBot) to open doors, pressing buttons and a lot of other more complicated actions in the game.
+Of course you don't have some other advantages like a visibility lookup, it would be great to see both methods applied in 1 single Bot.  
+
+--------------------------------------------------
+07/18/01 at 18:32:16  Reply by: groby (r.blum@gmx.net)
+--------------------------------------------------
+QUOTE:
+After that the Bot would have the knowledge that he needs to do this special action at this certain position in case he has the rocket launcher.
+
+
+
+
+Only if the bot knows about causality. How should he know what part of the human action to omit or modify, if not by knowing the game physics?
+
+QUOTE:
+ Then the Bots could try do it themselves replaying all the stuff the human did previously (getting the launcher, moving to the position, performing the jump). 
+
+
+
+
+Replay is fine. As soon as the bot has to modify actions, e.g. enemy fire, he has _no_ clue what to do unless a human has been in exactly the same position. Obviously not desireable :-)
+
+So the bot has to 'reason' about its environment - it has to know or figure out that the rocket jump makes it possible to go to that special item, not necessarily the whole sequence.
+
+QUOTE:
+
+Same could be applied (and it is very well in ParaBot) to open doors, pressing buttons and a lot of other more complicated actions in the game.
+
+
+
+How much does parabot play back, and how much is reasoning?
+
+
+
+--------------------------------------------------
+07/19/01 at 04:32:29  Reply by: theimann (killaruna@botepidemic.com)
+--------------------------------------------------
+QUOTE:
+How much does parabot play back, and how much is reasoning?
+
+
+
+The "playback" is used for collecting items, reaching camping-spots and all other forms of "fixed target"-navigation: The bot knows where it wants to get and tries to reach that position by copying the moves of human players.
+For this it is very important that decisions can be made which moves are to be copied and which to be omitted (as Robert pointed out). In Parabot this is done by always updating routes when a better (faster) way of getting to the target has been found. 
+Example: If a player reaches a navpoint the first time in combat doing lots of zigzag-moves, then the bot will repeat these unnecessary moves considering the lack of alternatives. However, there will come a point when a human reaches this same target without evasive maneuvers, showing the bot an easier way of getting there... In practice this works really well and you can hardly observe any unnecessary moves while the bots are trying to reach their destinations.
+For opening tricky doors or triggering platforms/lifts this (still relatively) simple method of picking routes won't work, and that's where reasoning comes into the game: Parabot checks if the door the player just passes or the platform he is standing on has to be triggered beforehand and traces back the player-route until the trigger (generally a button) has been found. A similar thing applies for buttons you have to shoot at: If the player shoots at a wall nothing is recorded, if he shoots at the right button it is. But only if the player runs afterwards to the door that has been opened by this action, the path is actually recorded and the bots will copy the shot as well. I don't have implemented gauss/rocket-jumping yet but I would do it the same way: only if the player does not shoot at enemies but at the ground beneath him to jump it should get recorded. 
+So there is actually a lot of reasoning involved in the whole process of recording moves, it is *NOT* a stupid playback.
+For moving in combat or under enemy fire I've got a different kind of navigation and bots won't be able to use all the recorded paths - given that they decide to face the enemy and not to continue on their journey.
+I hope this helped clearing things up a bit...
+
+Tobias
+
+--------------------------------------------------
+07/19/01 at 08:13:15  Reply by: groby (r.blum@gmx.net)
+--------------------------------------------------
+Thank you for that post, Tobias!
+
+It helped clear up a lot of things I was thinking about. And as I suspected, the bot _has_ to know that there is something like a rocket jump.
+
+You can then have him record everything that looks like a rocket jump. But so far there seems to be no bot that just thinks 'Gee, that looks funny - lemme try it' without knowing somehow that it can do a rocket jump.
+
+I like the way your bot reasons about buttons - it closely resembles a human player. If I press multiple buttons, it will just try the last one.
+
+Will it remember it did not work, though? Or will it redo that route over and over until somebody shows him the right route?
+
+QUOTE:
+
+So there is actually a lot of reasoning involved in the whole process of recording moves, it is *NOT* a stupid playback
+
+
+
+That's what I suspected. And to do that reasoning, he has to have some form of knowledge of the games physics, right?
+
+QUOTE:
+I hope this helped clearing things up a bit... 
+
+
+
+Sure did. Thanks again!
+
+Robert
+
+
+--------------------------------------------------
+07/19/01 at 08:43:07  Reply by: theimann (killaruna@botepidemic.com)
+--------------------------------------------------
+QUOTE:
+If I press multiple buttons, it will just try the last one.
+
+
+That's how it used to work in the old version. In v0.7 it traces the player route back until it has found the correct one (I'm using the targetnames for that as you'll do parsing the BSP). If there is a trigger for that door on the map but the player has not activated it beforehand the bot will assume that the door was open by chance and won't record the path.
+
+QUOTE:
+Will it remember it did not work, though? Or will it redo that route over and over until somebody shows him the right route?
+
+
+I hold statistics of how succesful the routes are for the bots. If a route proves to be impossible to follow it will get discarded very quickly.
+
+QUOTE:
+And to do that reasoning, he has to have some form of knowledge of the games physics, right?
+
+
+Not necessarily the exact physics, but the bots have to know what movements are possible under which circumstances, yes.
+
+Tobias
+
+--------------------------------------------------
+07/19/01 at 10:45:09  Reply by: William (william@cgf-ai.com)
+--------------------------------------------------
+Clarifying my post regarding rocket jumping and off-line bsp parsing:
+
+Rocket-jumping is one of the most complex things to tackle when automatically parsing a level, because:
+- you'd need to figure out a lot of the game physics
+- missing out on a RJ move might prevent you from populating up to 25% of the map with waypoints (because it seemed to be an unreachable area).
+
+It can be done off-line (QIIIA does it). But it's one of those small things that consume a big part of the code and development time.
+NB: CS has something similar, on for example cs_italy, with jumps on top of rotating doors that have been openened: that way, you can access a few roofs that cannot be accessed otherwise.
+
+I'm not trying to scare Robert away from doing automated bsp analysis. I'm just forwarding a few things I learned from MrElusive until his thesis becomes available (not sure when).
+
+Tobias' on-line analysis is a nice workaround for the complex thingies such as RJ; on the other hand, I'm curious how expensive, for example, on-line path updating is. In theory, a new move might require complete recomputation of every path.
+
+William
+
+--------------------------------------------------
+07/21/01 at 17:56:45  Reply by: theimann (killaruna@botepidemic.com)
+--------------------------------------------------
+QUOTE:
+I'm curious how expensive, for example, on-line path updating is. In theory, a new move might require complete recomputation of every path.
+
+
+
+In my case not very expensive: Since I'm using a hierarchical waypoint system I have only got to check for path updates at 1st-level-points (of which there are maybe 100 in an average map). That means it's one Dijkstra (not A*, because teleporters mess with your estimate) per second or so, no problem at all... 
+Why should I have to recompute every path if I add a new one? I did not understand what situation you were referring to. The result of my Dijkstra-search is only used to decide if the newly recorded path should get added or not, I'm not doing anything more there.
+
+Tobias
+
+--------------------------------------------------
+07/22/01 at 02:06:28  Reply by: William (william@cgf-ai.com)
+--------------------------------------------------
+The theoretical example is a circular map, where you, up until now, have mapped a horseshoe shape but not yet the full circle. The closing move should cause a good amount of the paths being updated (because a shorter path has become available).
+
+As mentioned, it's the theoretical example, but especially in the early stages of mapping, these situations may occur. On the other hand, the number of waypoints usually is pretty small at that time.
+
+William
+
+btw, on hierarchical pathfinding
+- Tanenbaum's 3rd ed. 'Introduction to Computer Networks' has some nice info on hierarchical pathfinding (routing, in his case), and the optimal number of hierarchies and cell sizes. You probably have that book somewhere.
+
+--------------------------------------------------
+07/22/01 at 15:24:06  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+Isnt it possible to allow 9 tracelines (each at 10 degrees within the bots field of vision) from the bots point of view in parallel with the bots pitch, and allow the bot to turn towards the traceline that hit something the furthest? :) Probably really cpu intensive hehe.
+
+Oh and it would only allow bots to turn between 0 and 10 degrees each time hehe
+
+
+
+[modified on 07/22/01 at 15:24:06]
+--------------------------------------------------
+07/23/01 at 05:24:33  Reply by: theimann (killaruna@botepidemic.com)
+--------------------------------------------------
+QUOTE:
+The closing move should cause a good amount of the paths being updated (because a shorter path has become available).
+
+
+
+Aaah - I see what you mean... But that holds only true if you are using a Floyd table that has to be recomputed. Since I'm using no tables at all and all pathfinding is done dynamically I don't have to update anything. The Dijkstra will just have some more paths to chose from and automatically get the shortest route.
+
+Tobias
+
+P.S.: Thanks for the book tip! I'll see if I can find that one...
+
+--------------------------------------------------
+07/23/01 at 05:40:23  Reply by: William (william@cgf-ai.com)
+--------------------------------------------------
+Tobias,
+
+dynamic pathfinding: that makes sense! 
+
+You do cache (per bot) the last few requested paths, don't you? There's a big performance gain in that, and even if you would trail behind an update providing shorter paths, that wouldn't seem to be _that_ unrealistic, especially because the bot would take the new path the next time (some 20+ seconds later).
+
+QIIIA has a similar architecture: dynamic hierarchitcal path finding, and a fat cache.
+
+William
+

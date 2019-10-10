@@ -1,0 +1,111 @@
+--------------------------------------------------
+Subject: Hear system or i detect sytem??? (read this botman
+--------------------------------------------------
+09/18/00 at 10:10:56  Posted by: Dr.poRKa (drporka666@crosswinds.net)
+--------------------------------------------------
+What about inplanting a hear system so the bots can hear you walk and shooting.
+When you are shooting in the back of a bot the bot whil turn around and he (or she) whil fire back.
+
+or the detect sytem.
+The bot whil have a range. if you are 
+(or anthoter bot) walk in that range ,
+He whil walk (ot trying to find you)to you and fire back ( even if you behind him).
+(mebay a little unreal)
+butt is good when you (or a bot) is camping...
+
+
+What whil be the best?
+I think the detect system.
+or are there any other ideas?
+pleas post!!!!
+
+
+
+--------------------------------------------------
+09/18/00 at 11:18:25  Reply by: William (william@botepidemic.com)
+--------------------------------------------------
+designing a hearing system that enables the bots to hear sounds is the best way to do this, since it allows bots to filter for certain sounds only (notably weapon usage, footsteps, and doors/elevators).
+
+it is important to distinguish between the different propagation distances for each of the sounds: a gun shot travels far, whereas the empty shell hitting the ground doesn't.
+
+the larger the distance to the bot, the larger the error applied to the position of the sound, in order to reflect the lack of directional precision in human hearing.
+
+as a last feature, some sounds (notably combat sounds) should be given priority over other (environmental sounds). and the bot should be deaf for external sounds when firing himself.
+
+the system itself is best implemented as an event aka. publish/subscribe system.
+
+William
+(you can try an implementation of this - except for the 'deaf when firing' effect by following the www button below).
+
+--------------------------------------------------
+09/18/00 at 15:02:38  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+In Half-Life (and I assume in Quake 1 & 2) you have to kind of "fake" the hearing.
+
+In standard Half-Life deathmatch, players will make noise when moving at greater than 220 units per second (when on the ground, it's a different speed for ladders, but I don't remember what it is).
+
+Most of the sound effects have been moved client side since the network improvments were made to Half-Life.  Hence there is nothing that happens on the server to produce movement sounds.  Any players that are in the PAS (potentially audible set) on a client will be checked to see what speed they are moving at.  Anyone moving fast enough will produce sounds.
+
+For gunshot noises and explosions you have to handle those separately as well.  You can determine when someone is firing a weapon using the current animation setting for the player.  If you look through the model animations there are animations for firing the weapon when standing, running, crouching, swimming, etc.  You would need to cycle through all players to determine what animations are currently being played by each player and from that you will know which players are producing gunshot noises.  To know how much noise is produced you would have to look at what weapon is currently deployed by each player.  In order to know this you would have to catch the "weapon switch" messages sent from clients to the server and keep track of what weapon each player currently has deployed.
+
+For explosions, you can look for entities being spawned (like "grenade" or "satchel"), then wait until the entity is removed from the server.  The point at which the entity is removed is the time when it exploded.  Again, the amount of noise produced would depend on what type of entity is spawned.
+
+Have at look at the HPB bot Alpha 3 source where I have a function in the util.cpp file called "UpdateSounds" that checks the speed of players and determines if someone close enough to the bot is producing enough noise for the bot to hear it.
+
+As you can see, it's NOT a simple procedure to detect player sounds so not very many Half-Life bots will detect all types of sounds.
+
+botman
+
+--------------------------------------------------
+09/19/00 at 03:08:06  Reply by: William (william@botepidemic.com)
+--------------------------------------------------
+thanks for the correction - I ignored the move to the client side since Q2 doesn't do anything client side at all.
+
+note that the weapon sounds actually are more than the weapon sounds itself. just about as important are the ricochets (probably generated client side as well, assuming HL just sends the shot vector across the net).
+grenades tend to bounce, which cause noise as well. a bounce can be detected by computing the dotproduct of the current and old movement direction. anything < 0.7 suggests a bounce.
+
+except for 'generating' the AI info about the sounds (which becomes more complicated), the remaining part of the event-based design I sketched above (receiving, filtering, and interpreting sounds) should remain 'intact'.
+
+of course there's no need to take care of sounds that the AI cannot reason about. for that reason, most bots are better of without ricochet sounds.
+
+William
+
+--------------------------------------------------
+09/19/00 at 07:27:11  Reply by: Dr.poRKa (drporka666@crosswinds.net)
+--------------------------------------------------
+I think i gonna make the detect system
+because it whil find campers and it is not easy to
+make that hear sytem.
+
+Botman when i am done i whil send you the source...
+
+--------------------------------------------------
+09/19/00 at 11:24:14  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+If you are planning on just cycling through the players to find anyone within range of the bot (even behind their head), this is a bad idea (IMHO).  No one likes to play against an opponent that has an unfair advantage over them (i.e. cheat).  If you allow bots to "see" players with eyes in the the backs of their heads, people will not like playing against such an opponent.  The bots already have the ability to have deadly aim with head shots all the time, don't make things worse by giving them the ability to see things behind them.
+
+botman
+
+--------------------------------------------------
+09/19/00 at 11:42:01  Reply by: Dr.poRKa (drporka666@crosswinds.net)
+--------------------------------------------------
+Hmmm.Oke your richt...
+But how to make the "hear system??"???
+Maybe, we can develop a Hear sytem, botman? or other.....
+if you whil help me....
+
+
+mij e-mail drporka666@crosswinds.net
+
+--------------------------------------------------
+09/19/00 at 14:40:20  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+Like I said above, I've got you started with a UpdateSounds() function in util.cpp.  Right now it only handles detecting players that are moving faster than 220 units per second.  You could add one thing at a time (maybe next adding a check for which animation the player has to see if it's a "shooting" animation).  Don't try to put in everything at once.  Do one thing, do it well, then move on to the other things.
+
+botman
+
+--------------------------------------------------
+09/22/00 at 09:24:11  Reply by: pikachu (emperorstuart@hotmail.com)
+--------------------------------------------------
+Thats how people make mods. Gradually add things, not do it all together.
+

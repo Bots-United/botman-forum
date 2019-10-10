@@ -1,0 +1,193 @@
+--------------------------------------------------
+Subject: char in int
+--------------------------------------------------
+06/08/03 at 08:17:13  Posted by: LeonThePro (sirgalahad@ozgn.com)
+--------------------------------------------------
+I need to store a map's name thats in a char [80] in a int array, could someone help me with this?
+
+--------------------------------------------------
+06/08/03 at 08:30:33  Reply by: RobGP (rob@planetfortress.com)
+--------------------------------------------------
+#define ARRAYSIZE 80
+
+char mychar[ARRAYSIZE];
+int myint[ARRAYSIZE];
+
+...
+
+for(int i = 0; i < ARRAYSIZE; i++)
+    myint[i] = mychar[i];
+
+...
+
+
+--------------------------------------------------
+06/08/03 at 08:36:47  Reply by: @$3.1415rin (johannes@_-removeifnotavirus-_lampel.net)
+--------------------------------------------------
+memcpy(piDestination,szString,sizeof(char)*80);
+
+should work. of course you don't necessarily need to copy all 80 bytes, maybe strlen(szString)+1 is sufficient, I dunno why you need to copy char data into an int field. if you just want to access those chars as if they were ints, you could do something like
+
+int *pi = (int*)szString;
+
+and then do something.
+
+€: ok, RogGP is right as well, if you want each char stored to a correspondant int. maybe you explain what you wanna do.
+
+[modified on 06/08/03 at 08:36:47]
+--------------------------------------------------
+06/08/03 at 08:33:40  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Well for starters, do you want one element of your int array hold ONE character, or as many characters it can contain ?
+
+I mean, let's say the map de_dust
+
+char[8] = 
+{'d', 'e', '_', 'd', 'u', 's', 't', '\0'}
+
+int[] = 
+{'d' | 0x00000000, 'e' | 0x00000000, '_' | 0x00000000, 'd' | 0x00000000, 'u' | 0x00000000, 's' | 0x00000000, 't' | 0x00000000, 0x00000000}
+
+or
+
+int[2] = 
+{'d' | ('e' << 8) | ('_' << 16) | ('d' << 24),
+'u' | ('s' << 8) | ('t' << 16) | 0x00000000}
+
+it's up to you to decide the way you want to store it, also note that it depends on the depth of the integer in bytes (typically platform-dependent). I assumed here an int ~= 4 bytes.
+
+
+--------------------------------------------------
+06/08/03 at 08:34:29  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+lmao, 3 competitors, let's not fight, okay ? ;D
+
+
+--------------------------------------------------
+06/08/03 at 08:36:23  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+hehehe
+
+I was gonna say @$3.1415rin's idea, but I realised it wouldn't work as int and char have different sizes. (int : 4 bytes, char : 1 byte) or whatever.. I think ;D
+
+--------------------------------------------------
+06/08/03 at 08:39:45  Reply by: @$3.1415rin (johannes@_-removeifnotavirus-_lampel.net)
+--------------------------------------------------
+
+QUOTE:
+hehehe
+
+I was gonna say @$3.1415rin's idea, but I realised it wouldn't work as int and char have different sizes. (int : 4 bytes, char : 1 byte) or whatever.. I think ;D
+
+
+
+
+well, maybe he wants to have 4 chars in one int, dunno. maybe LeonThePro explains what he wants to do.
+
+--------------------------------------------------
+06/08/03 at 08:41:42  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+lol
+I feel like on IRC here
+neways RobGP's solution is probably the safest
+
+
+--------------------------------------------------
+06/08/03 at 09:29:24  Reply by: LeonThePro (sirgalahad@ozgn.com)
+--------------------------------------------------
+Well im trying to do a map vote thing and I think that the simplest way of storing the map names would be in an int. Maybe you guys would have a better solution for me?
+
+--------------------------------------------------
+06/08/03 at 09:56:42  Reply by: @$3.1415rin (johannes@_-removeifnotavirus-_lampel.net)
+--------------------------------------------------
+why dont you just let them in the char format ? what would be the use of converting them to ints ? the string routines declared in string.h e.g. work on char*, but not on int*, so that would be some disadvantage, wouldnt it ?
+
+
+QUOTE:
+neways RobGP's solution is probably the safest
+
+
+
+but why should we waste 3 bytes for each of the chars ?
+
+anyway, I think converting to ints wouldnt be needed at all in this situation.
+
+[modified on 06/08/03 at 09:56:42]
+--------------------------------------------------
+06/08/03 at 16:00:21  Reply by: RobGP (rob@planetfortress.com)
+--------------------------------------------------
+"but why should we waste 3 bytes for each of the chars ?"
+
+I think thats rather outside the scope of this persons question, or his knowledge/care. I gave the answer I think would suit him the best (i.e the simplest to understand).
+
+But something just dawned on me.. Is this guy meaning using a string_t to hold his strings? Like:
+
+
+char mychar[80];
+int imystr;
+
+strcpy(mychar,STRING(gpGlobals->mapname));
+imystr = ALLOC_STRING(mychar);
+
+He probably isn't, but it shows how many ways the question could be interpreted =)
+
+
+
+
+--------------------------------------------------
+06/11/03 at 13:40:44  Reply by: LeonThePro (sirgalahad@ozgn.com)
+--------------------------------------------------
+Thanks RobGP that worked. Sorry if I didnt really explain myself very well =\
+
+--------------------------------------------------
+06/11/03 at 16:37:01  Reply by: JohnnyGotHisGun (jonnberg@telia.com)
+--------------------------------------------------
+The entvars_t struct in the sdk stores weapons in an int, but you have to convert it to a string to read it "the human way", then you'll have a long string that can contain about the whole alphabet...
+
+int                  weapons;  // bit mask for available weapons
+
+You use a function to get these "flags", and if you store a string with these flags, you would have to use another function which does the reverse... I hope that makes sense I don't know these functions names but they're in the SDK and I think they're "pretty" basic. Maybe someone can fill in the actual details if I'm way off with this...
+
+update, this are in util.h:
+#define STRING(offset)            (const char *)(gpGlobals->pStringBase + (int)offset)
+#define MAKE_STRING(str)      ((int)str - (int)STRING(0))
+
+Not sure it is of any help. :-I
+
+[modified on 06/11/03 at 16:37:01]
+--------------------------------------------------
+06/11/03 at 20:00:40  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+I frankly don't see why you would cast an integer bitmap into a string_t ???
+
+The weapons field in the entvars was never meant to be a string, ever !
+
+You read it this way:
+code:
+
+   // does my bot pBot have the crowbar?
+   if (pBot->pEdict->v.weapons & (1 << VALVE_WEAPONS_CROWBAR))
+   {
+      // yes, it has
+   }
+   else
+   {
+      // no, it hasn't
+   }
+
+
+VALVE_WEAPONS_CROWBAR being here the bit # corresponding to the crowbar in the weapons field, set to 1 when the player entity owns the crowbar, reset to 0 when not.
+
+
+--------------------------------------------------
+06/12/03 at 02:40:21  Reply by: JohnnyGotHisGun (jonnberg@telia.com)
+--------------------------------------------------
+Ok thx for the info, you're probably right. Just thought it funny cause using that way I described I was able to "translate" all but three guns/grenade items from cstrike to a specific letter. Maybe it's not a coincidence, but it should probably be done through bit checking like you described.
+
+--------------------------------------------------
+06/12/03 at 15:43:47  Reply by: RobGP (rob@planetfortress.com)
+--------------------------------------------------
+jonnys information is misinformative.
+
+The string indecies are not at all related to the weapon masks.
+

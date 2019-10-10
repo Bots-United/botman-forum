@@ -1,0 +1,55 @@
+--------------------------------------------------
+Subject: Recognizing Entities from Radio Commands 
+--------------------------------------------------
+10/05/00 at 14:19:11  Posted by: CountFloyd (countfloyd_1999@yahoo.com)
+--------------------------------------------------
+Hi !
+
+I would like to have radio support in my Bot like NNBot already does. So if you (or a Bot) issue a "Cover Me" something should happen. Capturing the specific Message isn't the problem. But how do I find out from which entity this message came from ? I only can think of the slow way - doing a strcmp for the name in the WriteString Func, but there must be a faster solution for it. Hints or Suggestions, anyone ?  
+
+--------------------------------------------------
+10/05/00 at 14:38:10  Reply by: William (william@botepidemic.com)
+--------------------------------------------------
+Slow string compares shouldn't be the issue...
+
+How many radio traffic can you realistically expect (especially since you basically 'control' 90% of the participants). 
+3 messages a second? 4 of them. Say 10 bots, thus 40 string compares a second. There goes your framerate... :) Not.
+
+William (who understands the preference to have direct access for this kind of info)
+
+
+
+--------------------------------------------------
+10/05/00 at 15:06:46  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+William is right about controlling who they come from (unless most of the players are humans).  But in either case, you ARE intercepting EVERYTHING between the engine and the MOD DLL.  When a player tells the MOD that they want to send a radio message, the use the "menuselect" command right?  You can tell which edict sent this ClientCommand and store that in an array big enough for all 32 players (humans or bots).
+
+When someone issues the radio command in ClientCommand (whatever string that gets bound to, let's just say "radiocommand" for this example), you would store the most recent client edict value (human or bot) whenever someone issued the "radiocommand" command.  They would then get sent the radio command menu and would make a selection.  You would see that "menuselect" command (from the same edict) and know which radio message was sent by which player.
+
+Yes, it gets a little complicated when you have multiple players sending radio messages at the same time, but to the MOD DLL they all happen in sequence (since it only processes one at a time).
+
+Does this help?  It sure does suck having to go around your ass to scratch your elbow!
+
+botman
+
+--------------------------------------------------
+10/05/00 at 16:02:15  Reply by: CountFloyd (countfloyd_1999@yahoo.com)
+--------------------------------------------------
+Wow, you guys are fast in replying, thanks a lot !
+Yes, William is right about the strcmp, but he doesn't know my weird brother going wild on radio commands :). Also, I would have to parse if it's really a radio command and after that cutting the name out of it, then going through the whole playername-list comparing it.
+So I think I will do it the botman way, by capturing the radio message and the menuselect thing. This could be unreliable though if there are multiple players in between selection (if I don't use an Array, like you suggested)...maybe this is irrelevant. Phew, this is the last thing (and ladder climbing) I want to implement so be prepared for a release soon...
+
+Maybe one more question:
+What's the best function to load in an additional File (like your bot_whine.txt) ? StartFrame or GameDLLInit ? 
+
+--------------------------------------------------
+10/05/00 at 16:21:52  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+The GameDLLInit() only happens once just after the DLL loads.  It happens BEFORE the world is spawned.  If you want stuff to happen at the beginning of every map you can put it in the DispatchSpawn() function where it checks for the "worldspawn" entity.  "worldspawn" happens the very first thing for every map.  If you precaching something you MUST do it at this point.
+
+If you want something to happen sometime AFTER the world has been spawned, the only other place that gets called frequently is StartFrame().  You can't create the bots until enough stuff has been created in the world, that's why they are loaded there.
+
+Static stuff that won't change (like bot_names.txt) could be read in during the GameDLLInit() function.
+
+botman
+

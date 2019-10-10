@@ -1,0 +1,340 @@
+--------------------------------------------------
+Subject: Open ideas -- occluder guides
+--------------------------------------------------
+03/06/01 at 07:20:59  Posted by: ExecutionStyle (c_brennan@hotmail.com)
+--------------------------------------------------
+This one's still in development so I'm hoping to get some help on it.
+
+--------------------------
+Occluder guides
+
+Taking cover is something humans understand how to do easily, but how do we get bots to do it?  Considering that 'cover' isn't a stationary place, but something that moves depending on where the enemy is, we're obviously going to have a hard time doing it right.  
+
+Something I thought of that might work is analyzing the walls in a level and making invisible guide lines from the point a wall ends to a few feet away.  I'll try to draw a little diagram to show this cause it's hard to put in words.  
+
+
+
+                        X -threat
+____________________
+                   |
+    SOLID WALL     |
+                   |      occluder guide A        
+___________________|....................... 
+                   :       |       |          
+                   :       V       V
+                   :->
+                   :
+                   :->
+                   :
+                   :    O -bot
+                   :
+                   :
+                   :-occluder guide B
+                  
+
+
+Pretty fancy, eh?  :D  Here's the explanation:
+
+Occluder guide A is an invisible line in the bot's map of the area that represents the location of the wall that is the bottom face of the SOLID WALL on the diagram.  The arrows coming out of the occluder guide tell the bot which direction the cover is applicable from (which way the wall faces).  
+
+O represents the bot.  To find cover from threat at X, the bot first checks for an occluder guide between the two and if it finds one that is pointing the right way (toward it), it can use it to get to the occluder that will hide it.  In the case above, it would follow guide A to the left and choose a spot behind the wall to hide.
+
+
+There's another part to this idea: it might be possible to "colour-code" a room based on how many occluder guides point to a given spot.  Basically, the more occluder guides that are facing you, the more options you have for taking cover.  This information could be used to let the bot navigate smartly accross a dangerous open space.  I think I'll need a better diagram to explain this one if it's not clear.
+
+ -Carl
+
+ps I had written this a few days ago and I've changed my mind about a few things, but the concepts here are still worth talking about.  It might not be too useful to many of you, though, because it requires the bot to have an internal (mental) picture of the level instead of just waypoints.
+
+--------------------------------------------------
+03/06/01 at 13:20:07  Reply by: Avater (avater1@hotmail.com)
+--------------------------------------------------
+I think that 'cover'is a stationary place and a place that is move depending on where the enemy is. 
+
+a stationary place for find cover to reload and navigate smartly. 
+
+a place that is move depending on where the enemy is for combat. 
+ 
+
+
+                 x(A(3,5)B(8,5)) -threat
+                / \_
+___________    /    \_        ______________
+              /       \_             
+solid wall   /          \_      solid wall
+            /             \_   
+_____A(0.0)/                \_B(0.0)________  
+          /                   \_   
+ Save    /      Not save        \_     
+        /                         \_     Save
+       /                            \_
+      /           O -bot              \_       
+     /                                  \_
+    s(A(-3,-5)) -save     save- (B(-8,-5))s 
+
+
+
+This is not so difficult but it's difficult to find the wall FAST. 
+
+I think the fastest way to find the wall is to store each angle(A,B). 
+
+Then the bot search(with a three) for a angle(maybe more) nearby him and use it to find cover. 
+
+
+  x   y   z 
+ 304 234 345  <-- The bot stand here
+
+array with angles                       results  
+B278 210 345  - 305 234 345 =26 24 0   = 50      
+A306 230 345  - 304 234 345 =2 4 0     = 6    
+ 350 240 345  - 305 234 345 =46 6 0    = 52       
+ 390 345 347  - 305 234 345 =86 11 2   = 99      
+ 420 390 360  - 305 234 345 =116 156 15= 287      
+
+
+
+The three will find A ant then it's easy to find B
+
+Then we use the results
+
+code:
+
+if (Results<=50) 
+{
+   if (find_cover(pBot,pEnemy)==true)
+   {
+      //use the cover/strafe      
+   }     
+   else
+   {
+      //shoot and strafe
+   }
+}
+
+
+
+Maybe you idea is better to navigate smartly accross a dangerous open space and to find cover to reload. 
+
+I think this will work to
+
+
+
+     solid wall
+(0,0)A_______________B(0,0)
+     20 19 18 17 16 15    :10
+ s   19 18                :9
+ o   18   16              :8   
+ l   17     14            :7 
+ i   16       12          :6  
+ d   15         10        :5
+     14           8       :4 
+ w   13             6     :3 
+ a   12               4   :2
+ l   11                 2 :1
+ l   10                   :0
+(0.0)C~~~~~~~~~~~~~~~~~~~~~   
+      1 9 8 7 6 5 4 3 2 1 0 
+      0 
+
+
+How larger the number how more cover the bot has
+It's easy to store this in a array.
+
+If the bot must reload/navigate he use this information. 
+
+
+
+You must know where the wall's are but that's not a problem with my data files. :)
+
+
+
+
+--------------------------------------------------
+03/06/01 at 13:11:06  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+You should use the [ fixed ] and [ /fixed ] tags (without spaces) around the ASCII art that you want to display like this...
+
+
+.  ..  .   |
+.  ||  .   |
+. /  \ .   |
+./    \.___|
+
+
+botman
+
+--------------------------------------------------
+03/06/01 at 13:19:09  Reply by: ExecutionStyle (c_brennan@hotmail.com)
+--------------------------------------------------
+Good point, cover is mix of stationary places that are sheltered and dynamically moving places that are out of threat's line of fire.
+
+As I pointed out in my ps, I had changed my mind about some things.. one of the things was that you could analyze a level ahead of time and get values for a given patch of ground saying how many other patches of ground could see it.  That could be considered the stationary cover value and could be stored in a tree.  
+
+Another thought I had is that you could precalculate cover from certain angles for every patch.  Maybe 8 angles around the compass would be enough to get the bot moving in the right direction.  
+
+I'll write more about those two thoughts in another open idea post, but I want to point out that I think the occluder guide concept is separate from this.. I think it could be used in the precalculation phase.  Anyway, good comments and any more are welcome!
+
+By the way, you should use   around text diagrams to stop them from getting messed up in the forum.  You can go back and modify your post at any time.
+
+ -Carl
+
+--------------------------------------------------
+03/06/01 at 14:36:01  Reply by: William (william@botepidemic.com)
+--------------------------------------------------
+Carl, Avater,
+
+the occluders are interesting, but not really necessary. 
+
+You can just precompute all in-coming and out-going visibility / line-of-fire for each pair of  waypoints, and store that for in-game use. 
+You do want to use a number of sectors, and typically as many sectors as fit nicely in a 32 bit word: 32 (less or more isn't really economic).
+Don't forget to deal with horizontal and vertical directions (N,E,S,W but also up and down).
+It also makes sense to compute them for short and long (sniping) distances.
+
+Precomputed incoming/outgoing sectors per waypoint help you finding cover quickly, and enable you to figure out which areas are potentially under fire/observation from threats (though you could also precompute that).
+
+Tactical path finding won't be cheap.
+
+Probably the best way to develop tactical path finding is to take an A* implementation, and add a cost function for travelling across terrain under fire from threats.
+Start with the simplest thing that could work, then start profiling (measuring performance) and optimizing the data structure. Without any measurements, you're basically guessing.
+
+You can measure performance by executing a few 100,000 of tactical path searches for random source and destination waypoints. Just execute a command for that from the console, and measure the time needed.
+You also could try to get the MSVC profiler to work, if you have the expensive edition.
+
+For military simulators, some work has been done in this area:
+http://www.sisostds.org/cgf-br/9th/scripts/user_Paper_info.cfm?&client=9THCGF&Paper_Num=9TH-CGF-045&page=view_papers_by_papernum.cfm&process=Papers
+
+However, by picking a few handy heuristics and intermediate results, you can implement a more advanced version more efficiently.
+
+William
+
+--------------------------------------------------
+03/06/01 at 14:47:48  Reply by: jldailey (jldailey@uchicago.edu)
+--------------------------------------------------
+the prescanning part sounds a lot like the influence maps discussed @ CGF in his terrain analysis section: http://www.botepidemic.com/aid/cgf/design_terrain_ranking.shtml
+
+and in more generally, in this discussion:
+http://www.gameai.com/influ.thread.html
+
+ive been playing around with simply implementing this in a 2d mock up ive been building to test different kinds of hiding AI... i dont really know much about it, so i coded up a little linux app to act as a 2d simulator... as soon as it is more complete, these influence maps are one of the ideas that was destined to be tested...
+
+
+--------------------------------------------------
+03/06/01 at 15:59:35  Reply by: eLiTe (ali@elitegamer.fsnet.co.uk)
+--------------------------------------------------
+Jesse D - William is the person whi made CGF!!! That is why the method 'sounds similar' - it will be the same one!
+
+Sorry if u knew that already, it just doesn't sound like u do... :D
+
+--------------------------------------------------
+03/06/01 at 16:13:33  Reply by: jldailey (jldailey@uchicago.edu)
+--------------------------------------------------
+I did know it... just wanted to point out that there were docs out there that are both longer than, and not mentioned in, Williams post... one of them written by him (and thus, quite illuminating [Props WIlliam!]), the other not... but still of interest... 
+
+Also, if you look in the monster code (i think the Hgrunt does this if memory serves correctly) in the main SDK, it does do a fair job of finding Cover... there are i believe (im not at my box to check, so forgive typos) VaildateCover() or CheckCover() or some such... should be of interest in the short term, since i seem to recall they simply check a few points at angles off the view cone and check the lines of fire from their enemy to those points... something like that, again, im not anywhere near code while writing this...
+
+--------------------------------------------------
+03/06/01 at 16:31:01  Reply by: bigjesus (holybigjesus@hotmail.com)
+--------------------------------------------------
+Weird Ive had this same idea and I have implimented it in my bot how it works is the bot breaks his original path to find cover then gets back on afterwards. I use surface data 2 sides to each cover cause cover is usualy a box in a hallway or a vehicle basicly its like botmans sniper waypoint exept it has 2 ways the bot chooses one of the sides that the enimy isnt on its a verry simple choice scince there is only 2 sides and the enemy would be shooting from one of them :) and if your woundering if its a waypoint your correct hehe it just points at 2 surfaces :P
+
+
+
+
+--------------------------------------------------
+03/06/01 at 17:21:05  Reply by: CountFloyd (countfloyd_1999@yahoo.com)
+--------------------------------------------------
+My techniques to let the Bots know about a good place to cover are these:
+When placing a waypoint I calculate a maximum non-blocked radius for this waypoint by shooting out tracelines from its origin at different heights one full circle around. This radius gets saved together with all the remaining waypoint information.
+
+In the game, if a Bot wants to hide I first check if this Bot is already not seen by his enemy (using an enhanced FVisible Routine). If so, he'll stay right there for some seconds and will try to reach a better cover spot later. If he's currently seen the nearest best waypoint to give cover is searched. This is done by
+a) checking for a minimum distance (read: traveltime) to the Bot
+b) a maximum distance (traveltime)
+c) after sorting out, getting the best 3 waypoints with the smallest non-blocked radius.
+d) choosing one of the above 3 which isn't seen by the enemy
+
+My idea was that most of the time the best (defensive) cover spots are the ones which are very small & narrow and usually are blocked in at least 1 direction. I don't claim that this is as good as for example William's tactical precalculating  method, but for a quick and dirty way it works surprisingly well...
+
+--------------------------------------------------
+03/06/01 at 19:54:46  Reply by: bigjesus (holybigjesus@hotmail.com)
+--------------------------------------------------
+I know this is off topic so here is my wrist for you to slap botman any how count I realy like your idea even beter then mine so Ill share another I was going to use that verry same idea but for acessing the bsp tree only not in a circle in a sphere the trace lines are spread out :P any how I havent implemented it yet but what it is for is general path breaks like for attacks or if one of the bots team needs ammo or other stuff like finding goals I feel so stupid not to use the same idea for breaking path for cover :) thanx count!!! however I was having trouble with 15* triangulated its purdy hard to make it spread in a sphere 
+
+
+--------------------------------------------------
+03/07/01 at 04:29:23  Reply by: theimann (tobias.heimann@cl.cam.ac.uk)
+--------------------------------------------------
+OK, something that just came to my mind reading through all these posts:
+William, the problem with precomputed pair-relatationship of waypoints is the memory consumption which due to its ugly quadratic nature limits you to a certain number of waypoints. Assuming you pack the line of sight information using only 1 bit for visible/not visible you can at a maximum use around 8192 waypoints (-> 8MB lookup). As you like to place waypoints in a regular grid this would mean 2*64*64 waypoints (on two levels). Now it depends on the size of the map how well you can get on with that one. It might be sufficient for the current standard maps, but maybe in the next engine generation maps will get bigger and you get a problem.
+So (maybe this is just a more exact specification of what you just stated above, but to get things clear): You could specify a number of different viewangles (your sectors?), maybe 256 (16 pitch * 16 yaw) and 2 or 4 different distances. You precalculate the visibility information for these 512/1024 points and store them nicely in 64/128 bytes with the waypoint data - getting a linear relationship to the number of waypoints...
+Was that the idea you had in mind?
+
+Tobias
+
+
+
+--------------------------------------------------
+03/07/01 at 06:34:21  Reply by: theimann (tobias.heimann@cl.cam.ac.uk)
+--------------------------------------------------
+New post because of new (better!) idea:
+Forget about the 2 or 4 distances I wrote about. Use 16 for yaw, 8 for pitch, and store the distance to the next wall encoded in one byte (maybe in steps of 16 units). If there isn't any wall within the maximum distance, store 0. You will get an acceptable 128 bytes visibility lookup table for each waypoint. If the bot notices a thread, calculate in which direction (according to your 16/8-scheme) it is. Search the nearby waypoints for a value that is 0 < x < (distance to thread / 16) in that direction and you will find your cover...
+This will work well if the enemy is quite far and the cover waypoint quite near. If not, you will have to look in different "view-sectors" of your table because the angle will change. You don't have to recalculate the angle each time but could use an interpolation which should be pretty fast.
+And the method should give you very accurate results.
+
+Tobias
+
+
+--------------------------------------------------
+03/07/01 at 12:20:30  Reply by: William (william@botepidemic.com)
+--------------------------------------------------
+This get's interesting. I'll dump my thoughts [long], along with some concrete data, so we can (continue to) talk about real solutions.
+
+Problem: we figured out how we get our bot to move around, and aim for threats. We now want to add some tactics. For example:
+- have our AI find cover (to reload, flee from stronger enemies, to regroup)
+- find paths that offer both cover and concealment (to reduce the chances of damage while we move for a stronger position; moving is a disadvantage in CS because of the reduced accuracy)
+- pro-actively occupy strong positions
+
+All these tactics have something to do with cover and concealment. However, cover and concealment aren't that easy to figure out:
+- to make sure you aren't spotted, the opponent should see no part of your body (feet, head, left side, right side). So, multiple tracelines would be required.
+- you don't want to be spotted if the opponent moves 1 inch to the left or right (again, more tracelines to perform)
+- cover is different from concealment in CS: cs_siege has transparent windows that stop bullets, whereas thin walls don't stop all bullets (read: more tracelines).
+
+Basically, if you're in need for cover from one (or more attackers), figuring out on the fly where you could find cover takes a good amount of tracelines (you'd have to check cover for a number of locations in your surroundings).
+That in itself isn't a problem, since tracelines aren't that expensive (but they aren't cheap either). However, the other tactical ambitions (path finding) require a lot of CPU anyway, and would need a lot of tracelines as well. 
+So, if you want to do tactical AI, investing in fast line-of-sight / line-of-fire checks makes a lot of sense. 
+
+By trial and error, I found out that the lines-of-sight/fire between the waypoint, if the waypoints aren't that far from each other, approximate the real lines-of-sight/fire quite well. (You get it wrong sometimes, but so do humans).
+I then started pre-computing all lines-of-fire/sight for each waypoint pair, and stored the results in a matrix. In same the time I used to figure out cover using tracelines, I now check 300x for cover in the look-up table.
+Note that you don't need to be a Nobel prize winner to coe a look-up table.
+
+The average CS map, such as cs_siege, de_dust, requires in the order of 1000 waypoints, using the interwaypoint distance I use for AQ2. If you use a few bits (in 2 bits you can deal with { no LOF, no LOF when not crouched, no LOF but penetration, LOF}, LOF == line of fire), you need 2 x 1000 x 1000 bits for you matrix (assuming you know what bit fields are). 2MB isn't much, and probably less than the memory costs of the new Valve player models (which I happen to like).
+The solution isn't that attractive for Q3A with terrain maps, as now being developed by the Urban Terror mod team. But this is HL and CS. 
+
+Using this matrix has an advantage over the occluder guides that in it is fast. It has an advantage over Count Floyd's (elegant, nevertheless) heuristic in that it deals better with 'rooftop edge cover': if you're on a high rooftop edge, and are being attacked from a lower position, it suffices to step away from the edge to have cover. This is difficult to express using waypoint radii.
+
+I'm using such a matrix in combination with the circle sectors (mentioned earlier in this thread), because circle sectors are a great means to have the AI look in the right direction (instead of into walls). 
+Checking the sectors is cheaper than iterating over all waypoints, and you can use 32 bit word to record all sectors already scanned by the bot. That way, the AI will methodically scan all of the relevant surroundings.
+
+When I first had my AI find cover this way, the result was often correct (except for situations near dynamic entities such as doors). However, the result wasn't terribly impressive from a tactical point of view.
+Going into cover really isn't important. If we see an opponent, we players really don't move that often from the open into cover (how often do you reload during CS?).
+Instead, and what IMO is important: we players already _are_  in cover from (expected, and to some aspect unexpected) threats. In a CS round, we rush 10 seconds to occupy good starting positions, and continue to move across the level while keeping close to cover almost all the time.
+You don't make frags because you can find cover. You make frags because your opponent moved too far away from his cover...
+
+If want to create tactical AI, don't bet on taking cover. Gain some CPU time by precomputing some stuff, so you can spend your time, code and CPU on preventing the AI to move in the open. Experiment with tactical path finding, and avoiding bad locations.
+
+William
+
+- Jesse: I don't like to post lots of reference to myself. There's a better paper on tactical location evaluation coming up, after the Game Developer Conference.
+- Tobias: your first assumptions about the sector data are correct. I primarily use sectors for AI scanning, and to avoid locations susceptible to snipers when taking up defensive positions.
+
+
+
+
+--------------------------------------------------
+03/08/01 at 18:05:29  Reply by: Mercenary (adamc_@hotmail.com)
+--------------------------------------------------
+Whew...good reading.  I am really (REALLY) interested in AI and this is GREAT!  Trying to analyze and generalize things like cover and intelligent movement are (to me) quite hard.  I enjoy a good challenge though.
+
+-----------EDIT-------------
+
+Keeping the bots in cover while moving would probably be cheaper than precacalculating assumed cover from waypoint data.  If the bots can analyze where they need to get to, and find the best route that provides the most cover, then they really shouldn't need the cover data (they are tactically moving to and through cover areas.  Even if unexpected enemies pop up and open fire on the bots, then that data would be good to have.  I lack the experience to know much about this, but there needs to be a meeting point between the precalcualated data and what the bots find on the fly (to optimize CPU usage by the bots)  Cover might not always be necessary at all times either.  (I don't hide EVERY second) If the bots know their butts are covered by team mates then going out into the open to gain a tactical advantage would/could be practical.  The cover is only really necessary when exploring enemy occupied territory and when an enemy is spotted and engaged.  Then again I am frequently wrong.
+

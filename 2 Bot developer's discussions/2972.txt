@@ -1,0 +1,80 @@
+--------------------------------------------------
+Subject: another question to botman
+--------------------------------------------------
+04/09/02 at 10:46:39  Posted by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+Sorry to bother you again, Botman...
+
+While viewing some maps with your excellent BSP viewer, I noticed that the character entities (gman) you use to represent the info_player_deathmatch spawn points all face the same direction. What I want to know is: do your gmans face the same direction players do when they spawn on the map ?
+&& last question: how would you retrieve the value of the spawn angle ?
+
+Again, thanks for your time...
+
+
+--------------------------------------------------
+04/09/02 at 11:17:28  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+No, they all face a yaw of 0 degrees.
+
+Look at the player spawn point entity (it's different for different MODs).  One of the key/value pairs will be the angle (or angles) unless the mapper wants the player to spawn with a yaw of 0 degrees (in which case there probably won't be a angle or angles key/value pair for the player spawnpoint).
+
+botman
+
+--------------------------------------------------
+04/09/02 at 11:45:29  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+Thank you !
+
+--------------------------------------------------
+04/10/02 at 09:07:11  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+Hmmm botman ? What have I wrong ?
+
+code:
+
+   // pent is a info_player_deathmatch entity
+   char *infobuffer;
+   char angle[32], angles[32];
+
+   infobuffer = (*g_engfuncs.pfnGetInfoKeyBuffer) (pent);
+   strcpy (angle, (g_engfuncs.pfnInfoKeyValue (infobuffer, "angle")));
+   strcpy (angles, (g_engfuncs.pfnInfoKeyValue (infobuffer, "angles")));
+
+   sprintf (msg, "SPAWN ANGLES: %s\n", angles);
+   ClientPrint (pEntity, HUD_PRINTCONSOLE, msg);
+   sprintf (msg, "SPAWN YAW: %s\n", angle);
+   ClientPrint (pEntity, HUD_PRINTCONSOLE, msg);
+
+
+
+I tested it with spawn points of de_dust (they DO have spawn angles) but it doesn't display anything, like if the key/value pair didn't exist !!
+
+???
+
+
+
+--------------------------------------------------
+04/10/02 at 10:30:57  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+Tried pent->v.angles ?
+
+--------------------------------------------------
+04/10/02 at 11:13:23  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+The "angle" or "angles" key/value pair is not stored as part of the player's infobuffer.
+
+Like cheesemonster said, you can look at pEdict->v.angles.y as soon as the player spawns if you want to know which direction they are facing.
+
+The alternative is to intercept all of the info_player_deathmatch and info_player_start entities when the DispatchKeyValue() functions are being called for them.  Look at the HPB bot source code where I intercept the team limits information for Team Fortress Classic.  TFC stores the max number of players on a team in the "ammo_medikit", "ammo_detpack", "maxammo_medikit", and "maxammo_detpack" key/value pairs for the "info_tfdetect" entity (parsed in the DispatchKeyValue function).
+
+botman
+
+--------------------------------------------------
+04/10/02 at 13:57:25  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+That's it cheesy! info_player_deathmatch entities have a pev->angles under the form (0, y, 0) where y seems to be the yaw the player faces when he spawns on that point. Thank you!
+
+Btw, did it happen to you? My bots all face the same direction when they respawn, they don't seem to be affected by this spawn angle and often they spawn facing a wall! That's why I needed to retrieve this spawn angle to manually assign it to them...
+
+
+

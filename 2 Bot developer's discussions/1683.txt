@@ -1,0 +1,105 @@
+--------------------------------------------------
+Subject: Distance/Vector weirdness
+--------------------------------------------------
+05/21/01 at 09:37:34  Posted by: jldailey (jldailey@uchicago.edu)
+--------------------------------------------------
+      ok, i am having a really weird problem with the Vector class that comes with the SDK.  I am writing a pathfinder class that uses astar and caching and all the goodies that i want for my setup.  for the heuristic i am using standard euclidean distance to the goal.  the problem is this:
+  sometimes (in no pattern that i can tell) when you subtract two vectors that have EXACTLY the same z component (which is frequent on a flat floor), you get 0 like normal, but sometimes you get what the debugger calls '-1.#IND0', which when looked at in hex is 0x0000...0, which should be zero. great, right, all should still be well.
+  so we subtracted a vector and we got some junk (27.3, 42.0, '-1.#IND0'), and we try to compute the .Length().  so it calls down into length and does the length equation:
+
+  sqrt( x*x + y*y + z*z).
+
+  Now since z is this '-1.#IND0' thing, the z part of this eqn. should just be zero and have no effect.  But INSTEAD, the sqrt() returns '-1.#IND0'!!  Which makes the pathfinder think that random nodes which it encounters have a 0 cost to goal! bad mojo...
+
+anyone know what the hell this '-1.#IND0' thing is and why is fucks up the Length() function?
+
+
+
+
+--------------------------------------------------
+05/22/01 at 01:35:22  Reply by: William (william@botepidemic.com)
+--------------------------------------------------
+MSDN info:
+Indefinite (same as quiet NaN) digit.#INDrandom-digits 
+
+NaN stands for Not a Number. These values are used to represent incorrect results/input.
+
+A floating point computation returns such a value if it receives illegal input. For example, acos(x) for x outside [-1, 1]. 
+Apparently, this 'illegal' value is passed and maintained across computations (so you can figure out something went wrong somewhere).
+Functions that are listed to return IND are: acos, asin (both for input outside [-1, 1], sin, cos, tan (for inputs that are too large), and sqrt, log, log10  (input < 0).
+
+Such a value shouldn't return from a subtract, unless:
+- one of the inputs is incorrect (has an NaN or IND)
+- one of the inputs is overwritten on the stack
+
+You probably should put in the following asserts before and after the subtraction:
+assert( v[z] <  8193 );
+assert( v[z] > -8193 );
+to detect illegal input and output. (If I remember correctly, HL map coords are limited to be within [-8192, 8192]).
+
+William
+p.s. 0x0L (4 bytes) equals 0 in floating point, not IND. Either you didn't look at the value as a long, or the value isn't IND.
+
+--------------------------------------------------
+05/22/01 at 05:17:40  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+...good points.  Also are you SURE you are subtacting 2 vectors and not a vector and and something else.  I.E...
+
+Vector v1;
+Vector v2;
+float length;
+
+length = (v2 - v1).Length();
+
+botman
+
+--------------------------------------------------
+05/22/01 at 07:34:19  Reply by: jldailey (jldailey@uchicago.edu)
+--------------------------------------------------
+i am definitely subtracting vectors, and the input
+is very very similar... all my testing was done on a flat floor, so all the vectors have identical z components...
+
+i have singlestepped through the entire process and it is the vector subtraction that returns a -1.#IND0 as the z component of a vector, which then propagates through the sqrt(), but it is 100%
+ the subtraction that does it.
+
+and all i did to see the 0x00..0 for -1.#IND0 was to tell the watch window in vc++ to display as hex, so for all i know they just throw all zeros up as a default when it cant display the number...
+
+but, in the course of debugging, i backed it up to
+run through the subtraction again, at which point
+the same exact code worked fine and gave a 0 for
+the the z component... so i wrote this into the
+distance checker, and it actually does solve the
+problem, although it is a miserable hack... so its
+not an input problem, because the exact same input
+produces better results the next time around... it must then be a stack issue, but how?
+
+code:
+
+assert( ! (A == B) ); 
+float d = 0;
+while( d == 0 ) {
+  d = (A - B).Length();
+}
+
+
+ 
+
+
+
+--------------------------------------------------
+05/22/01 at 09:08:30  Reply by: William (william@botepidemic.com)
+--------------------------------------------------
+My normal procedure is for 'weird events' is:
+- stop overclocking :)
+- reboot machine
+- do a full recompile (precompiled headers, and 'Edit-and-Continue' sometimes cause problems)
+- put in asserts to catch the problem
+- run the code
+- see whether the problem occurs
+- optionally, check the generated assembly to spot for compiler errors (unlikely in this case)
+
+Since you are able to run most of your algorithm without problems, the code is correct, and you likely screw up your data before the subtraction. 
+Try the asserts on the input (A, B) before the subtracts and .Length computation.
+
+William
+

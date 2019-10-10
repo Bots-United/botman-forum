@@ -1,0 +1,338 @@
+--------------------------------------------------
+Subject: anyone experienced in metamod coding ?
+--------------------------------------------------
+05/03/02 at 13:47:02  Posted by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+Hello
+
+I am currently in the process of porting my bot code to Metamod. Currently I have succeeded in loading the plugin and making it behave as expected (server commands working, etc...) as long no client joins. The problem is that as soon a client joins, the engine crashes on write access to memory address 0x00000000. It seems to be related to ClientCommands, because for Valve Deathmatch for example, where bots don't need to issue any special ClientCommand when they join the game, the bots join the game OK and start to wander (well I think so, I didn't actually saw them because I have to test it on a dedicated server, I can't join the game because as a real client I must issue some ClientCommands, as soon as I join the server crashes). The issue seems to occurs when some bots are already wandering in the level and then I assume they meet each other and must engage a fight, then the problem would be the ClientCommand used to make them change weapons that would make the server crash. Of course this is many would's, but that's the only explanation I see right now.
+
+I know this may not be the appropriate forum, it would certainly have been best to post such a request in Metamod's newsgroup, but 1°) the newsgroup seems not to mind very much about bot plugins and 2°) the newsgroup is much less populated than this forum and I am sure we can find here many people that are already experienced in coding for Metamod (who said Botman? I'm sure he's not the only one ;))
+
+As an additional note to my problem, I will say that I have NOT used Will Day's port of the HPB template 3. I tried, but it is so damn obsolete that the Metamod API has had many changes since and it wouldn't even compile. However I have carefully read through his diff file (patch-mm_hpb_bot.txt) and tried to follow as closely as possible the way he did.
+
+I can't find the error. Since it might also interest other bot authors that are willing to port their code to Metamod, I'm going to post my current source code on http://www.racc-ai.com/mm-racc.zip (170 kb), so that anyone can look at it and tell me where my mistake is (just wait a few minutes for the ZIP to be uploaded). Note that there is a bug in bot's aim, I know but it's not the purpose here so ignore it.
+
+Thanks in advance
+
+
+[modified on 05/03/02 at 13:47:02]
+--------------------------------------------------
+05/03/02 at 14:25:17  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+The FakeClientCommand stuff may not work properly with metamod plugins.  The way the HPB bot FakeClientCommand works is by substituting a command buffer for the ARGV() and ARGS() requests to the engine (the HPB bot code fakes out these requests).  Normally the engine maintains a buffer for each client and when the MOD code tries to get command line arguments it requests this buffer data from the engine.
+
+When using metmod, you don't have the MOD DLL code calling the plugin DLL code directly (like you do with the HPB bot).  The MOD DLL code will call the metamod code which will, in turn, loop through each plugin DLL and duplicate that engine request.  But I don't think that they are chained one after the other like this...
+
+engine->metamod->plugin A->plugin B->plugin C->MOD DLL
+
+...I think it's more like this...
+
+code:
+engine---metamod---+----MOD DLL
+                   |
+                   +----plugin A
+                   |
+                   +----plugin B
+                   |
+                   +----plugin C
+
+...so they are actually not directly in-line with the metamod to game MOD DLL code.
+
+This is one of the reasons that I never tried to port the HPB bot over to metamod format.
+
+Of course I am probably mistaken about the relationship between metamod plugins and the game MOD DLL code.  I know that there is at least one bot that works properly as a metamod plugin, I just can't remember which one it is right now.
+
+botman
+
+--------------------------------------------------
+05/03/02 at 15:10:54  Reply by: RedFox (redfox@nildram.co.uk)
+--------------------------------------------------
+Well, I'd say its mine (foxbot). 
+We've had the thing running weeks, and thrown any commands ya want at it, with no problems.
+That was after months of getting it right/to work with most AM plugins. But valve has fixed that now :p
+Hopefully I can help ya out. If you havn't fixed it already.
+Just so ya know, foxbot (just the 1 dll) can be run as a normal bot plugin, and a MM plugin.
+
+the only time we've had the problem with commands botman was talking about, wasn't with MM, but neotf.
+If neotf loads the bot, any commands (for neotf stuff) seem to miss out being sent to it?! 
+but if its then loaded with MM, it seems to sort its self out. Probably becasue the bots loaded before neotf.
+I've had the bots running AM commands aswell, so that shouldn't be a problem if your thinking of that. 
+Remeber to load the bot as the first MM plugin to make sure they can.
+
+--------------------------------------------------
+05/03/02 at 16:48:56  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+About the Metamod thing itself, according to what I've understood I think it's more like this :
+code:
+
+              +---Plugin A---+
+              I              I
+   Engine ----+---Plugin B---+---- MOD DLL
+              I              I
+              +---Plugin C---+
+              :              :
+              +---Plugin n---+
+
+
+... Metamod being itself the mixer/dispatcher for the function calls.
+
+To answer to your reply, Botman, yes I'm aware of how the FakeClientCommand stuff works (I've even rewrote it a bit in my code), but it can't be the reason for the crashes, because as I said, joining the game as a "normal" client makes it crash as well, even when no bots have joined yet. (offtopic: how the **** do you write the vertical bars ??? mine just disappear when I submit the post !!!)
+
+To Tom Simpson: I'm not using any third-party stuff to load the game and the bot plugin is the only one set up in the metamod.ini file. I would be glad if you took five minutes of your time to have a look at what I did in the code, and btw would you mind explaining me how you did to have a single DLL that can be used both standalone or with metamod ? :)
+
+[modified on 05/03/02 at 16:48:56]
+--------------------------------------------------
+05/04/02 at 03:37:00  Reply by: RedFox (redfox@nildram.co.uk)
+--------------------------------------------------
+from what I know thats how it works, heh
+each plugin has the ability to override the call to the game dll if required, but its not usually needed (was before v1.1.0.9 to fix the sz_sizebuf problems)
+
+ok, to getting it as a stand alone/plugin theirs a nice little function that you can include to tell your code if its being run/loaded by metamod or not (which they kindly put in for me :p )
+
+void Meta_Init(void)
+{
+      mr_meta=true;
+}
+
+thats it.
+then the only problem (took me a few days) is to get every dll/engine call running for both stand alone and plugin.
+ok, its simple, but theirs lots of functions :p
+
+void DispatchUse( edict_t *pentUsed, edict_t *pentOther )
+{
+      if(!mr_meta)
+            (*other_gFunctionTable.pfnUse)(pentUsed, pentOther);
+      else
+            SET_META_RESULT(MRES_HANDLED);
+}
+
+their are a few things that need to be redone, a few engine calls need to be rewrittern so that they get the result back from the engine call
+
+edict_t* pfnCreateEntity_Post(void)
+{
+   edict_t *pent = META_RESULT_ORIG_RET(edict_t *);   
+   RETURN_META_VALUE(MRES_HANDLED, NULL);
+}
+
+Final thing to remeber (as botman said) each engine call from within your code should either goto metamod, or be a base call.
+
+        if(mr_meta)
+        {
+            MDLL_ClientConnect( BotEnt, c_name, "127.0.0.1", ptr );
+            MDLL_ClientPutInServer( BotEnt );
+        }
+        else
+        {
+              ClientConnect( BotEnt, c_name, "127.0.0.1", ptr );        
+              ClientPutInServer( BotEnt );        }
+
+and...
+CREATE_ENTITY()
+instead of 
+pfnCreateEntity()
+
+ok, you command problem.
+the end of my fakeclientcommand looks like this
+
+   if(mr_meta) MDLL_ClientCommand(pBot);
+   else ClientCommand(pBot);
+
+and cmd_args...
+
+const char *Cmd_Args( void )
+{
+      if(!mr_meta)
+      {
+         if (isFakeClientCommand)
+         {
+              return &g_argv[0];
+         }
+         else
+         {
+              return (*g_engfuncs.pfnCmd_Args)();
+         }
+      }
+      else
+      {
+         if (isFakeClientCommand)
+         {
+              RETURN_META_VALUE(MRES_SUPERCEDE, &g_argv[0]);
+         }
+         else
+         {
+              RETURN_META_VALUE(MRES_IGNORED, NULL);
+         }
+      }
+}
+
+Hope that helps ya out :D
+
+--------------------------------------------------
+05/04/02 at 15:55:41  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+Oh sh******t :(
+I was sure, I was certain I'd did something wrong.
+Now the whole stuff is broken (and as always, I change too much things at once so I can't even know where it is. Oh well. Let me get rid of this metamod crap).
+
+OK. Bad idea, change idea. Would this work ?
+code:
+
+                          +---Plugin A---+
+                          I              I
+  Engine ---- Bot DLL ----+---Plugin B---+---- MOD DLL
+                          I              I
+                          +---Plugin C---+
+                          :              :
+                          +---Plugin n---+
+            <- My bot -> <--- Metamod ---->
+
+
+instead of
+code:
+
+             +--- MY BOT ---+
+             I              I
+  Engine ----+---Plugin B---+---- MOD DLL
+             I              I
+             +---Plugin C---+
+             :              :
+             +---Plugin n---+
+            <--- Metamod ---->
+
+
+I.e. I just change the liblist.gam to point to my bot DLL instead of Metamod's, and my bot DLL would load Metamod's DLL instead of the MOD DLL. No more PITA. Much simpler, much cleaner.
+
+Any objections ?
+
+
+
+[modified on 05/04/02 at 15:55:41]
+--------------------------------------------------
+05/05/02 at 05:31:06  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Actually metamod already supports a way to load bot MODs.  Just use something like...
+code:
++localinfo mm_gamedll dlls/HPB_bot.dll
+
+...on the command line and metamod will load the bot DLL code instead of the MOD (and the bot DLL code will load the MOD code).
+
+botman
+
+--------------------------------------------------
+05/05/02 at 10:20:49  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+:) :) :)
+Just what I needed !! So why do people bother then ???
+
+--------------------------------------------------
+05/05/02 at 10:41:56  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+"So why do people bother then ???"
+
+Because you can only have one mm_gamedll passed into metamod.
+
+For example, you can't load both the HPB bot and NeoTF at the same time using metamod.
+
+botman
+
+--------------------------------------------------
+05/05/02 at 11:50:37  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+QUOTE:
+For example, you can't load both the HPB bot and NeoTF at the same time using metamod.
+
+
+
+
+<b>UNLESS</b> I modify my bot itself to make it load a different gamedll ! What's the use of config files, again ? :)
+
+
+[modified on 05/05/02 at 11:50:37]
+--------------------------------------------------
+05/05/02 at 18:24:22  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+hihihi hahaha hohoho ;D ;D ;D
+
+Guess what ? <b>it works fine !!</b>
+
+code:
+
+void DLLEXPORT GiveFnptrsToDll (enginefuncs_t* pengfuncsFromEngine, globalvars_t *pGlobals)
+{
+   // load Half-Life HL.DLL
+   h_Library = LoadLibrary ("valve/dlls/metamod.dll"); // was hl.dll
+   if (!h_Library)
+      ALERT (at_error, "RACC: Fatal - MOD DLL not found");
+
+   // load exported symbol table
+   LoadSymbols ("valve/dlls/hl.dll");
+
+   // get the engine functions from the engine...
+   memcpy (&g_engfuncs, pengfuncsFromEngine, sizeof (enginefuncs_t));
+
+   other_GetEntityAPI = (GETENTITYAPI) GetProcAddress (h_Library, "GetEntityAPI");
+   other_GetNewDLLFunctions = (GETNEWDLLFUNCTIONS) GetProcAddress (h_Library, "GetNewDLLFunctions");
+   other_GiveFnptrsToDll = (GIVEFNPTRSTODLL) GetProcAddress (h_Library, "GiveFnptrsToDll");
+
+   gpGlobals = pGlobals;
+   h_global_argv = GlobalAlloc (GMEM_SHARE, 1024);
+   g_argv = (char *) GlobalLock (h_global_argv);
+
+   // initialize the engine functions list
+   pengfuncsFromEngine->pfnPrecacheModel = pfnPrecacheModel;
+   pengfuncsFromEngine->pfnPrecacheSound = pfnPrecacheSound;
+   [...]
+   pengfuncsFromEngine->pfnVoice_SetClientListening = pfnVoice_SetClientListening;
+   pengfuncsFromEngine->pfnGetPlayerAuthId = pfnGetPlayerAuthId;
+
+   // give the engine functions to the other DLL...
+   (*other_GiveFnptrsToDll) (pengfuncsFromEngine, pGlobals);
+}
+
+
+
+swe<b>ee</b>et :D
+<b>ANY</b> bot author can make his bot Metamod-compatible this way !!!
+
+[modified on 05/05/02 at 18:24:22]
+--------------------------------------------------
+05/06/02 at 16:22:55  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+Even better
+code:
+
+   FILE *fp;
+
+   // test if Metamod DLL exists, attempt to open the file
+   if ((fp = fopen ("cstrike/dlls/metamod.dll", "rb")) != NULL)
+   {
+      fclose (fp); // DLL exists, close it
+      h_Library = LoadLibrary ("cstrike/dlls/metamod.dll");// load Metamod METAMOD.DLL
+   }
+   else
+      h_Library = LoadLibrary ("cstrike/dlls/mp.dll"); // load Counter-Strike MP.DLL
+
+
+
+Okay, Metamod issue solved.
+
+
+[modified on 05/06/02 at 16:22:55]
+--------------------------------------------------
+05/13/02 at 13:43:34  Reply by: Ivan_Drago (JEDI_SITHMAN@hotmail.com)
+--------------------------------------------------
+Where would this code go though?
+
+--------------------------------------------------
+05/13/02 at 13:55:39  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+In h_export.cpp where you open the game DLL file (currently h_export.cpp loads the MOD game DLL based on what the current MOD directory name is).
+
+botman
+
+--------------------------------------------------
+05/13/02 at 14:05:56  Reply by: Ivan_Drago (JEDI_SITHMAN@hotmail.com)
+--------------------------------------------------
+Before I knew what meta mod was It tried to load admin mod and HPB at the same time, big mistake. Now  after I've read more I understand it.
+

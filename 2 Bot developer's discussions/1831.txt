@@ -1,0 +1,133 @@
+--------------------------------------------------
+Subject: Getting bots to shoot monsters....
+--------------------------------------------------
+06/18/01 at 14:59:19  Posted by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+Any tutorials about to get my bots to shoot monsters too???
+
+--------------------------------------------------
+06/18/01 at 15:01:17  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+whoopsie, I finnaly got the search working and I found a relevant post, cya :-p
+
+--------------------------------------------------
+06/18/01 at 15:51:56  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+Oh, I tried it a few times but failed :(
+
+A question... How do u tell what the bots enemy is??? 
+
+code:
+bot_combat.cpp
+pBot->pBotEnemy = pent->v.classname 
+
+
+or whooot??? hehe... I.E what can pBotEnemy be?
+
+Or do u use pBotNewEnemy to tell the bot that its the enemy..????
+
+I tried getting the classname to check if it was a "monster_" entity, but I dont know how you tell the pBotEnemy that the enemy is the "monster_"... entity...
+
+???
+
+Confusing!!!!!
+
+--------------------------------------------------
+06/18/01 at 16:58:09  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+pBotEnemy is a pointer to another edict_t structure (like a player, monster, sentry gun, etc.).  Any entity that you can spawn in Half-Life has an edict_t structure assigned to it.
+
+botman
+
+--------------------------------------------------
+06/19/01 at 02:41:13  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+So what is the actual ID for a monster? i.e. is it the classname, a constant or whatever? Cos I can't actually see the edict_t table in any of the files to find out... :-( I'll check the valve SDK in the mean time. :-)
+
+--------------------------------------------------
+06/19/01 at 02:53:04  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+and i found it in progs.h in the SDK...
+
+code:
+
+typedef struct edict_s
+{
+      qboolean      free;
+      int                  serialnumber;
+      link_t            area;                        // linked to a division node or leaf
+      
+      int                  num_leafs;
+      short            leafnums[MAX_ENT_LEAFS];
+
+      entity_state_t      baseline;
+      
+      float            freetime;                  // sv.time when the object was freed
+
+      void*            pvPrivateData;            // Alloced and freed by engine, used by DLLs
+
+      entvars_t      v;                              // C exported fields from progs
+// other fields from progs come immediately after
+} edict_t;
+
+
+
+--------------------------------------------------
+06/19/01 at 10:53:57  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+whoot...
+
+problem, bots shoot attempt to shoot enemies thorugh walls with explosive weapons (killing themselves) so I added in FInViewCone and FVisible thingies there, heh... But now bots don't seem to shoot monsters, just transformations... :-/ Little help? Am I using the Finviewcone and fvisible functions correctly (I just copied pasted from other parts of the bot_combat.cpp) Cos each time it was always the same too.
+
+code:
+bot_combat.cpp
+
+if (mod_id == RC_DLL)
+   {
+      // search the world for all entities...
+
+         for (i = 1; i <= gpGlobals->maxEntities; i++)
+        {
+         edict_t *pPlayer = INDEXENT(i);
+         pent = UTIL_FindEntityInSphere( pent, pEdict->v.origin, MAX_SEARCH_RANGE); //radius
+      
+         // skip invalid entities, players and skip self (i.e. this bot)
+         if ((pPlayer) && (!pPlayer->free) && (pPlayer != pEdict)&&(pent) && (!pent->free) && (pent != pEdict) )
+         {
+          // skip this monster/entity if not alive (i.e. dead or dying)
+          if (!IsAlive(pent))
+           continue;
+        vecEnd = pPlayer->v.origin + pPlayer->v.view_ofs;             
+
+          strcpy(bMonsterName,STRING(pent->v.classname)); 
+          if (strncmp(bMonsterName, "monster_", 8) == 0) // If a monster_ has been found, it is the enemy
+          {
+           pNewEnemy = NULL;
+           if (FInViewCone( &vecEnd, pEdict ) && FVisible( vecEnd, pEdict )) // Can the bot see the enemy???
+           pNewEnemy = pent;
+          }
+          else if (strncmp(bMonsterName, "drive_", 6) == 0) // If a bot has found a transformation
+        {
+               pNewEnemy = NULL;
+                     // is team play enabled?
+                 if (is_team_play > 0.0)
+               {
+                  int player_team = UTIL_GetTeam(pPlayer); // Team check to see if the transformation is on the bots team
+                   int bot_team = UTIL_GetTeam(pent);
+                 if((player_team != bot_team)&&(FInViewCone( &vecEnd, pEdict )) && (FVisible( vecEnd, pEdict )))
+                 pNewEnemy = pent; // Dont shoot teammate                            
+             }
+             else if (FInViewCone( &vecEnd, pEdict ) && FVisible( vecEnd, pEdict )) // Can the bot see the enemy???
+                  pNewEnemy = pent;               //Transformation is now an enemy               
+           }
+        } //end if
+      } //end FOR
+   } //end if mod_id = RC_DLL
+
+I dunno if i need that for loop...
+any comments? :)
+Hmm I think I need to work on the decision making!!!
+
+
+
+

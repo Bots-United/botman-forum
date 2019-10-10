@@ -1,0 +1,78 @@
+--------------------------------------------------
+Subject: Bots laying tripmines finally
+--------------------------------------------------
+09/30/01 at 06:57:10  Posted by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+I finally saw my bot deploy a tripmine w00t...! This is a simple way code to get bots to lay tripmines I got to work (with botmans HPBBOT Template 3), I only saw one bot deploy it so far! :)
+
+
+this is in bot.cpp at the wall avoid code.
+
+code:
+
+                              if ((pBot->f_dont_avoid_wall_time <= gpGlobals->time) &&
+                                    BotCantMoveForward( pBot, &tr ))
+                              {
+                                    // ADD LATER
+                                    // need to check if bot can jump up or duck under here...
+                                    // ADD LATER
+
+                                    BotDeployTripmine ( pBot );
+
+
+                                    if( pBot->current_weapon.iId != VALVE_WEAPON_TRIPMINE )
+                                          BotTurnAtWall( pBot, &tr );
+                              }
+
+
+
+code:
+
+void BotDeployTripmine ( bot_t *pBot )
+{
+      
+      edict_t *pEdict = pBot->pEdict;
+      
+      
+      if ((pBot->bot_weapons & (1<<VALVE_WEAPON_TRIPMINE)))
+      {
+            if (pBot->current_weapon.iId != VALVE_WEAPON_TRIPMINE)
+                  UTIL_SelectItem(pEdict, "weapon_tripmine");
+
+                  pEdict->v.button |= IN_ATTACK;                               // Deploy tripmine
+      }
+      else
+            return;
+      
+    return;
+}
+
+
+--------------------------------------------------
+09/30/01 at 14:01:26  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+nice. The 'else' part is not nescesary :)
+Anyhow, this is not 100% solid... what if a bot got stuck by another bot? (in hl DM its unlikely i know), or, it got stuck by something it cannot place a tripmine on?
+
+Suggestion:
+- Trace a line forward, 48 units, if blocked, you can place tripmine (check if it is not a player, or any other entity you cannot place it uppon)
+
+
+Also, a timer could help you out. Like, when you want the bot to unstuck itself with jumping and ducking, you should have some function which will:
+
+OR : place tripmine
+OR : unstuck
+
+if place tripmine is choosen, set a timer, so this question is not asked anymore and the tripmine check and placement begins (if invalid check, you unstuck anywayz)
+
+if unstuck is choosen, do botmans unstuck code
+
+phew, lots of typing. Hope this will help ya out a bit.
+
+--------------------------------------------------
+10/01/01 at 07:39:11  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+Yeah I think I had something in my "else" part but I removed it! :) The fact is I onlt saw a bot lay 1 tripmine in so many games (and it just shot it and blew it up again :( !!!) I forgot about the bots hitting of players or whatever, I think a better way to check is to see if tr.pHit is NULL (i think) cos then i think it means that it didn't hit an entity, so it will be able to deploy the tripmine properly.....
+
+I guess there may be more places (or states such as 'stuck') where I could allow the bot to deploy a tripmine... :)
+

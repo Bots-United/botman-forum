@@ -1,0 +1,105 @@
+--------------------------------------------------
+Subject: Automatic waypoint placement
+--------------------------------------------------
+09/26/00 at 06:12:26  Posted by: theimann (theimann@stud.fh-heilbronn.de)
+--------------------------------------------------
+I don't like editing waypoint files. Not that I ever tried it, but the idea of walking through a level placing marks where the bot should go (and maybe not placing anything where it should not go) does not comfort me. But since in another discussion we came to the conclusion that waypoints are inevitable for complex navigation (I came to the same opinion after 6 months of coding navigation without waypoints - which was quite good actually, but not completely satisfying), there must be a solution.
+I got an idea like this one: Initial waypoints are all useful items (weapons, ammo, ladders, buttons etc). A central routine now picks a (human) player and observes every step and every action he does. When the player comes from one waypoint to another, the path is stored in our mapgraph. While the player (unknowingly) sets up the graph, the bot just has to find a linked waypoint to get on his way and recombine the player's paths according to his needs and wishes.
+The problem is that this way we get a LOT of paths which we will have to reduce: So before we add a new path we check if we don't already have a path (or a combination) between the two waypoints that leads there faster. Additionally, we search the graph for path intersections, place a new waypoint at these positions and restructure our paths.
+The big advantage is that the bot learns directly of the player, takes his shortcuts, secrets and maybe even actions(e.g. pressing the red button in crossfire). Has anyone tried a thing like this before? What is your opinion?
+
+Tobias
+
+--------------------------------------------------
+09/26/00 at 13:28:08  Reply by: William (william@botepidemic.com)
+--------------------------------------------------
+This is more or less what the first navigation bot for Quake, the Reaperbot by Steven Polge (later responsible for the AI in Unreal Tournament) does.
+
+It still requires the player to spend time to creating waypoints indirectly.
+
+_The_ most promising approach is the Gladiator/Q3Arena automatic parsing of the BSP file for navigation purposes. See www.botepidemic.com/gladiator or buy Quake3Arena.
+(No source code provided).
+Implementation will take more than 6 manmonths, depending on your talent.
+
+Depending on the AI CPU load, it might not a good idea to combine:
+- way point creation (during which you'll never have a good path look up table since that takes too much time to compute)
+- bot AI movement
+I do them separately (thus no bots during automatic way point dropping), so I can simplify path look up code for the bots.
+
+Combining actions with waypoints is a tricky thing. You probably can derive the same information from the entities (doors, buttons) created when loading the map. There's little need to annotate waypoints with it, unless you want to optimize every little bit of your code.
+
+William
+
+--------------------------------------------------
+09/28/00 at 06:33:46  Reply by: theimann (theimann@stud.fh-heilbronn.de)
+--------------------------------------------------
+I did't know there actually were bots parsing BSP-files - respect to the Gladiator-coders! I don't want to mess with BSPs, far too complicated...
+I planned storing player's actions mainly for jumps: I tried to do some tracing to figure out when the bot should jump to pass a gap, but in special situations this doesn't work well. Maybe that's the reason why I see so few bots jumping from window to window crossing gaps.
+
+Tobias
+
+
+--------------------------------------------------
+09/28/00 at 06:52:56  Reply by: William (william@botepidemic.com)
+--------------------------------------------------
+What's the exact problem you're looking at?
+
+I managed to have the bot (in Q2) do almost any jump with 'just' tracing, and putting in sufficient numbers of way points on all edges the bots are supposed to jump to. 
+
+However, it takes some time to figure out what and where to trace. It's probably beneficial to log the bots decisions wrt. jumps so you can study whe he does (not) jump, and where.
+
+William
+
+p.s. 
+Gladiator coders -> coder: MrElusive. Reportedly John Cash (id) had developed a similar system for Q3A, but that was thrown out in favor of the Gladiator system. Soldier of Fortune is said to have a .bsp parsing system as well.
+All parsing is done before the game starts (parsing takes some time). 
+
+
+--------------------------------------------------
+09/29/00 at 08:15:00  Reply by: theimann (theimann@stud.fh-heilbronn.de)
+--------------------------------------------------
+The exact problem I got was this one: In some maps (e.g. crossfire) you've got these windows facing each other in different buildings. I - as a player - slow down in front of the window, jump up the edge, take a run and jump over to the other window. Th bot approaches the same window, doesn't slow down, jumps up the edge and doesn't have enough space left to take the run he needs. Or he jumps so far that he directly jumps out of the window. Bye, bye. I can imagine more tracing tests to figure out what the bot should do in these special situations, but there are so many special situations that you need a LOT of traces. And I'm afraid that this will slow the bot down too much. 
+
+Tobias
+
+P.S.: How many traces does your bot do per frame?
+
+--------------------------------------------------
+09/29/00 at 09:11:21  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+This is true.  If you are doing more than 5 or 10 traces per frame you will probably notice a drop in framerate (especially on slower machines).  Of course a lot of this depends on the BSP engine (and I would assume the complexity of the BSP tree in a map).  Would it be logical to assume that traces would take longer in areas where high r_speeds are found?
+
+If you can get the bots to place their own waypoints as they play the game you can (hopefully) elimintate some of the repetative tracing by placing a waypoint in areas where you have already determined information you need about the terain.  The game may run slowly for the first 5 or 10 minutes, but once the terain has been explored, and waypoints with terain information have been placed the bots would not need to continue tracing and would use the waypoint information instead (i.e. slow down here when heading in direction X, or make a running jump from here to position Y).
+
+botman
+
+--------------------------------------------------
+09/29/00 at 12:03:16  Reply by: William (william@botepidemic.com)
+--------------------------------------------------
+Hi Tobias,
+
+I recognize the problem. There are a few maps in AQ2 that are 'maximum distance' (you need to jump at the moment your heels still are on the edge to have your toes just make it to the other edge). 
+My bots would fail if they didn't first acquire the proper speed. 
+
+To tackle some of these issues, I have my bots:
+- use more way points
+- improve the jumping precision of the bots to exactly hit the way point, if necessary
+- consider both the upcoming way point and the subsequent way points in planning movement
+
+These three guidelines solve a lot of issues, but not the the problem you mention.
+
+However, you should be able to determine (off-line) that the jump from window to window is a jump requiring maximum speed (because of the gap length). 
+If the previous movement doesn't allow you to build up sufficient speed in the correct direction, you'd need to slow down and hit the previous way point exactly.
+A way to tackle this is:
+- construct a list of 'hard' jumps, together with the requirements for the jump
+- post-process paths after path finding to detect any 'special' moves, and adjust the path accordingly: I'd probably double the entry for the window way point to signal the bot to arrive exactly at that position before continuing.
+
+Regarding tracing. MrElusive explained to me that bsp traces aren't that expensive provided they are for a short distance only. Since I'm still working in Q2, I do have the advantage of lower poly counts / lower r_speeds. Typically, my bot does over 20 trace lines each frame for movement, and a few extra to find the exact 'launch' and 'arrival' edge for jumps.
+(Since I'm doing squad AI, I typically have 10+ bots running at a time, and without problems).
+
+I did profile the AI one year ago, and movement did _not_ show up high among the CPU utilization. 
+I also expect multiple consecutive trace lines in the same area to be rather cheap since most of the relevant bsp data is still in the CPU's cache memory.
+
+William
+
+

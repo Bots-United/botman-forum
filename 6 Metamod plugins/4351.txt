@@ -1,0 +1,119 @@
+--------------------------------------------------
+Subject: Bots via metamod plugin.. 1 more error
+--------------------------------------------------
+04/26/03 at 10:05:25  Posted by: DllMain (wrwrarwa)
+--------------------------------------------------
+I have been trying to modify hullu's fakefull metamod plugin to basically make it more botlike. From my limited knowledge of the SDK I am attempting to setthink when the bots spawn, but it is giving me a messed up typecasting error. This is some of what I have:
+
+typedef void (CBaseEntity::*BASEPTR)(void);
+BASEPTR      ThinkSet( BASEPTR func, char *name ) 
+{ 
+      return func;
+}
+#define SetThink( a ) ThinkSet( static_cast <void (CBaseEntity::*)(void)> (a), #a )
+
+And in my bot spawn:
+
+      SetThink( BotThink );
+
+And my botthink:
+
+void CPlayer::BotThink( void )
+{
+//WIll put stuff here in awhile
+}
+
+However, it is giving me this error:
+error C2440: 'static_cast' : cannot convert from '' to 'void (__thiscall CBaseEntity::*)(void)'
+        None of the functions with this name in scope match the target type
+
+For the line SetThink( BotThink);
+
+I have added simple bots through the SDK before, with no problems. I am probably missing something simple, but cant get my finger on it. Or maybe I am just using something that isnt compatible with the SDK 2.3, who knows. Anyways if anyone sees a problem with what I am doing and would be kind enough to let me know would be cool :D
+
+--------------------------------------------------
+04/26/03 at 10:21:59  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+The engine will not call a Think() function for fake clients (bots).
+
+If you are creating a normal entity (for example and AI character), the engine will call the Think() function for those, but it WILL NOT call the Think() function for anything with the FL_FAKECLIENT bit set.
+
+The problem with AI entities is that they won't show up on the scoreboard as a normal player would (with frags and deaths, etc.).
+
+botman
+
+--------------------------------------------------
+04/26/03 at 10:32:48  Reply by: DllMain (wrwrarwa)
+--------------------------------------------------
+Actually, since I am attempting to add this onto hullus fakeplayers plugin, the "fake players" already go into the game, spawn, can be pushed around, etc. etc. However, if you are correct ( and you probably are ) how would I go about adding the ability for the "bots" to move?
+
+--------------------------------------------------
+04/26/03 at 11:45:22  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Bots move using the pfnRunPlayerMove() engine function.  You pass it the forward move speed and the side move speed (for strafing) and the engine will update the bot's position.
+
+botman
+
+--------------------------------------------------
+04/26/03 at 13:33:26  Reply by: DllMain (wrwrarwa)
+--------------------------------------------------
+Hmm... so in startframe I could do
+
+if(IsFakePlayer)
+{
+MoveForwardCrap
+}
+
+--------------------------------------------------
+04/26/03 at 14:42:41  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Something sort of like that.
+
+Look at the StartFrame() code in the HPB bot source.
+
+botman
+
+--------------------------------------------------
+04/26/03 at 19:49:38  Reply by: DllMain (wrwrarwa)
+--------------------------------------------------
+kk ill take a look. While Im at it, I might as well copy and paste a question I posted on thewavelength forums as well:
+
+--------------------------------------------------
+
+In my serverside addon for bumpercars, I am trying to make it so the view is first person instead of third person. Basically, I need to move the camera down and forward. I can move the camera down using:
+
+pEntity->c.view_ofs.z--;
+
+however when i try view_ofs x or y it doesnt do a thing. Does anyone know another way I can bump the camera forward serverside? 
+
+
+
+
+
+
+
+------------
+
+
+
+ALSO
+
+I looked at the HPB bot source.. Like I said you do all your moving in BotThink, none of it is in StartFrame... And I can get bots into the game, but for some reason you can walk right through them. I dont know whats up with that. I could make bots move in startframe, but I dont know how to go about looping through all players, checking if they are a bot, then making them move..
+
+[modified on 04/26/03 at 19:49:38]
+--------------------------------------------------
+04/26/03 at 19:59:25  Reply by: DllMain (wrwrarwa)
+--------------------------------------------------
+Well, I have the Think function intercepted in metamod. This is what I did:
+
+void Think(edict_t *pEntity)
+{
+      if( pEntity->v.flags == FL_FAKECLIENT )//Its a BOT
+      {
+            g_engfuncs.pfnRunPlayerMove( pEntity, pEntity->v.v_angle, 450, 450, 0, pEntity->v.button, 0, 1);
+      }
+      RETURN_META(MRES_HANDLED);
+}
+
+But, naturally, it does absolutely nothing. Theres lots wrong, hehehe. Bots can be walked through as if they arent solid, they dont move when they are supposed to :)
+

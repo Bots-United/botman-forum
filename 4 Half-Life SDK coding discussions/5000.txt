@@ -1,0 +1,151 @@
+--------------------------------------------------
+Subject: Spawning objects WITHOUT stripper
+--------------------------------------------------
+12/12/03 at 13:40:53  Posted by: FierceRecon (infected2506@hotmail.com)
+--------------------------------------------------
+Ok I'm trying to spawn some walls to make a room and for some reason they don't spawn at all...
+I don't know if my code is right at all, so if any of you will give me a little snippet on how to spawn a wall at ceratin coords, and maybe even apply a texture to it, I would be very greatful
+
+--------------------------------------------------
+12/12/03 at 13:48:03  Reply by: LazyOne (the_lazy_one_09@hotmail.com)
+--------------------------------------------------
+You cannot simply make new walls, they have to be compiled into the map.
+It is possible to clone existing ones though, theres a thread about it at ( link below... )
+
+http://dynamic.gamespy.com/~botman/yabb/YaBB.pl?board=6&action=display&num=2687
+
+You probably could make a wall model and spawn it that way but I'm not sure.
+
+
+--------------------------------------------------
+12/12/03 at 13:50:59  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+QUOTE:
+
+You probably could make a wall model and spawn it that way but I'm not sure.
+
+
+
+Yes, that would IMO be the best way to go.
+
+
+--------------------------------------------------
+12/12/03 at 18:27:03  Reply by: FierceRecon (infected2506@hotmail.com)
+--------------------------------------------------
+I'm not asking to compile it into the map, I'm doing this from inside a metamod plugin...
+
+--------------------------------------------------
+12/13/03 at 09:41:25  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Right, but in order to "create" brush models in a map, you have to clone existing ones.  You can't just make a wall from scratch.
+
+Using a new model would work best.  Take a look at Milkshape (at www.swissquake.ch/chumbalum-soft/chumbalumbsoft) and use that to make models for the walls of your room.
+
+botman
+
+--------------------------------------------------
+12/13/03 at 22:56:18  Reply by: FierceRecon (infected2506@hotmail.com)
+--------------------------------------------------
+Even thorough I didn't knoiw the cloning part, I don't really care about the decals, but doesn't stripper2 not clone them? Doesnt it do CREATE_NAMED_ENTITY()?
+
+All I'm trying to do is create a func_wall
+
+--------------------------------------------------
+12/14/03 at 06:14:19  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Maybe, but what will happen if you run a map which has NO func_wall in it ?
+
+
+--------------------------------------------------
+12/14/03 at 07:20:15  Reply by: FierceRecon (infected2506@hotmail.com)
+--------------------------------------------------
+a map with no walls? what kind of a map is that?
+
+and besides i can always try to find the entity first...
+
+Can i get some example code here?
+
+--------------------------------------------------
+12/14/03 at 07:33:14  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+QUOTE:
+All I'm trying to do is create a func_wall
+
+
+
+You can't "create" a func_wall.  Well, actually, you can't create a func_wall with surfaces (brushes) from scratch (out of thin air).
+
+Every brush model (func_wall for example) has to have a brush associated with it (that's what the "model" key in the entity is for).  You CAN NOT create brushes on the fly using Stripper2, metamod, ripent or even from within MOD code itself.  The engine WILL NOT let you create walls surfaces this way.  The ONLY way brush surfaces can be created is to edit the map source in Worldcraft/Hammer and add brushes then re-compile the map.
+
+You can clone an existing brush to a new location and it will have the same textures as the original.  A problem with this method is that any decals that are sprayed on the original surface also show up on the cloned surface.  It is also VERY difficult to rotate a cloned brush so that it is oriented differently in the world than the original was (see my "How to create brush model" thread above for details on this).
+
+Your ONLY other alternative to cloning a brush is to create a new model (using a program like Milkshape) and assign that model to the "model" key of the func_wall that you create.  This will allow you to place the new model in any orientation that you want and use any textures that you want for the new wall.
+
+If you want to create new walls, you either have to clone existing ones, or create a new model for one.  There are no other options.
+
+botman
+
+--------------------------------------------------
+12/14/03 at 07:56:37  Reply by: FierceRecon (infected2506@hotmail.com)
+--------------------------------------------------
+Ok thanks for clearing that up botman ill have to make myself a new model since i don't want players getting (your blablabla.bsp does not match the servers)
+
+--------------------------------------------------
+12/14/03 at 09:10:38  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+QUOTE:
+a map with no walls? what kind of a map is that?
+
+
+
+You don't seem to realize that the walls you see in maps are NOT func_wall entities. They belong to ONE big entity, entity #0, which is called "worldspawn", which is the map itself.
+
+func_wall's are ADDITIONAL entities that LOOK LIKE a wall, but these walls have been made separate from the world itself for some reason ; mostly for 3D rendering optimization reasons, because entities are not rendered the same way the world is, somehow. Don't ask me more.
+
+You can very well create a simple map with a square room and one light in it, and compile it, and play in it, and this map will not have any func_wall entity in it. The only entities that will be represented in the BSP file will be :
+- Entity #0: worldspawn
+- Entity #1: your light source
+- Entity #2: your spawn point
+Or vice versa for 1 and 2. In any case, there won't be any func_wall in your map. And furthermore, entity #0 is not "bindable" by an edict_t pointer. If you try to do so, the engine will crash. Because worldspawn is not a normal entity ; it's the world itself.
+
+
+--------------------------------------------------
+12/19/03 at 08:11:45  Reply by: FierceRecon (infected2506@hotmail.com)
+--------------------------------------------------
+thx for that, but i already learned that edict_t on worldspawn don't work, and I learned it the hard way...
+
+I'm gonna go make a model now...
+
+Before I set the model, or create any key values, should the name be info_start..
+
+edict_t* mywall = CREATE_NAMED_ENTITY(MAKE_STRING("info_start"));
+mywall->classname = MAKE_STRING("mywall_and_engine_don't_touch_it");
+mywall->model = MAKE_STRING("mywall.mdl");
+
+is that right?
+
+(too lazy 2 think of precache code, but its PRECACHE_MODEL() right? on ServerActivate_Post...)
+
+--------------------------------------------------
+12/19/03 at 08:54:33  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Ummm, no.  If you're trying to spawn a "func_wall", you just spawn a func_wall entity.  See the crossfire_str.cfg file for an example of spawning a "func_wall" entity (I'm using it for one of the buttons).
+
+Just change the "model" key from "*N" (where N is the model index number) to be the name of the model you are spawning...
+
+code:
+classname/func_wall
+model/mymodel
+origin/570 -1320 1625
+
+Just copy your model to the models directory and name it "mymodel.mdl" and you're done.
+
+botman
+
+--------------------------------------------------
+12/19/03 at 11:23:58  Reply by: FierceRecon (infected2506@hotmail.com)
+--------------------------------------------------
+k thx, I guess ill create my own stripper cfg and then try to convert the stripper code to suit myself
+
+Thx every1
+

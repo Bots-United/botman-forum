@@ -1,0 +1,59 @@
+--------------------------------------------------
+Subject: Linux problems...libtools
+--------------------------------------------------
+02/11/03 at 15:22:27  Posted by: RedFox (redfox@nildram.co.uk)
+--------------------------------------------------
+Hey, well I'm having problems getting foxbot to compile ok under linux
+Ok, it compiles and runs fine...the big problem is 
+libstdc++.so.5
+
+I'm using the latest gcc (3.2?)
+Its compiles and runs on that box fine!
+
+But..machines with older libs don't like it :(
+
+So....made sure all the compile options say that the library should be static (does this mean it'll be included in the .so, instead of linking to it?)...no joy
+
+I tried the recommended gcc version....shed loads of compile errors (may not be setup right I suppose)
+
+so...is their anyone who know gcc well enoughf to have any idea how to include a library in a .so so it doesn't say it can't find the lib on startup if the machine hasn't got it?!
+
+ARG
+
+did do some digging and found some docs on libtools... but it makes no sense to me atall :(
+
+so, any help would be greatfully recieved
+
+--------------------------------------------------
+02/11/03 at 15:34:58  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Try changing "gcc" to "g++" in the makefile, do a "make clean", then "make".
+
+botman
+
+--------------------------------------------------
+02/11/03 at 16:04:47  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+There is a major compatibility issue between libc6 and glibc GNU systems. This is not a compiler problem. You'll have to do some porting again. I can't tell you where to look at, but searching on the web or subscribing to some Linux newsgroups should give you rough ideas...
+
+
+--------------------------------------------------
+02/12/03 at 08:24:55  Reply by: daRope (fzschocke@web.de)
+--------------------------------------------------
+I have to disagree. First, libc6 and glibc is the same. 
+Then, using g++ instead of gcc won't help. This will result in the stdc++ library getting linked dynamically by default. 
+
+What you want is to link the stdc++ lib code statically. You want to do so because 
+a) C++ name mangling has been changed between gcc 2.x and 3.x. This means that you cannot compile code linking against libstdc++ on a 3.x system and run that on a 2.5x system.
+b) The standard C++ library under Linux is a constant source of trouble. If you use only few constructs from it, you're most of the time better off linking it statically instead of dynamically.
+
+To link statically, use gcc and explicitly give the libstdc++.something.a file as a target to link with.
+
+--------------------------------------------------
+02/12/03 at 10:54:27  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+You are exact, my bad. I meant libc5 (which is an older version of libc6/glibc). But there is still a compatibility problem between older and newer versions of the glibc.
+
+Thanks for correcting.
+
+

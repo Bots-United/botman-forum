@@ -1,0 +1,208 @@
+--------------------------------------------------
+Subject: pathfinding algo... tell me how crazy I am
+--------------------------------------------------
+02/05/03 at 06:06:22  Posted by: PM (pm@racc-ai.com)
+--------------------------------------------------
+well, okay, I knew already I was crazy, but maybe there are different steps in my disease ; just tell me I am still far from the point of no return.
+
+I was comparing different pathfinding algorithms with this lovely tool: PathDemo
+http://www.programmersheaven.com/file.asp?FileID=1001
+
+and I was thinking about the waste of search space commonly spend by pathfinders, whether A*, Dijkstra, or others.
+
+Of course, you'll say: with intelligently hierarchized wayzones, there's no such waste of search space. But still, I have to admit that's not the way human think about the path they want to follow.
+
+One algorithm that favorably impressed me though, is the Best First Search. All it uses is heuristics, but it is still guaranteed to find the path if one exists. Unless A*, which I've seen failing a good couple of times, especially in narrow paths such as in reaching the center of a spiral, at which it fails miserably after having wasted all the screen in searching through all directions.
+
+My point is, that I find two flaws in such pathfinders.
+1. They return one, and only one, path (the shortest). You'll argue that you can weight nodes for the pathfinder to avoid them so as to return another one ; but still, the pathfinder will return one and only one path, the one which has the lowest cost. What if I wanted to know ALL paths, from a cognitive point of view ?
+2. Apart from BFS (but still quite a little with it too), they waste a HUGE amount of search space in examining every node, and most of them fail miserably in some trivial situations ; when they don't, the computation time is not always worth the pathfinding itself ; I've seen (and done) waypointless bots doing better with a bare sense of orientation and memory.
+
+The problem, in my opinion, is that most of the "advanced" pathfinders, whether attracted towards their goal using whatever heuristic, tend to conduce several searches in parallel ; more accurately, as many searches as there are nodes in that direction, even though these nodes blatantly fall into a dead end. In fact, the pathfinder is "blind" from the date at which it starts searching up to the date at which the search ends.
+
+May I suggest another approach ?
+
+Instead of optimizing the SEARCH, what the pathfinders do, why not optimize the PATH once one is found, what no pathfinders do actually !
+
+I mean, tons of brain matter have been wasted in optimization algorithms for path FINDING, so as to find, and that's quite an oxymoron for me, the MOST NATURAL PATH by the FIRST TIME each time. Come on ! We already have inexpensive algorithms that do way better in terms of time in returning a path, their weakness is that the path they return does not look natural at all. So what ? Wouldn't it be possible to imagine something like this instead :
+
+Step 1. Have a simple and quick algorithm return one (or more) paths, however ugly paths they look.
+Step 2. Optimizing these paths, shortening them when appliable, so as to make them look natural.
+Step 3. Take the desired one according to their respective weights, not omitting that you can have here several TYPES of weight attributed to a path, and choose to take in account either one, or two, or all of them.
+
+I would imagine, for example, a lightning fast BFS returning five paths.
+Then, an algorithm like the following one would optimize them :
+code:
+
+DO
+{
+   FOR (each node in the returned path) UP TO (number of nodes in the path - 2)
+   {
+      FIND A PATH between (this node) AND (two nodes further in the path)
+
+      IF FOUND (new path) AND (new path USES nodes unused yet)
+      {
+         SHORTEN (initial path)
+      }
+   }
+}
+WHILE (you succeeded in shortening the path)
+
+
+Once the five initial paths have been optimized, moreover than it is highly appreciable for the bot's cognition to actually HAVE these five paths for immediate disposition, just select the one you find the lightest according to one of the weight types you want to consider ! (danger, distance, ease to follow, trickness, etc...)
+
+Then you have an A*-quality BFS path. Consider the save in search space and processing time !
+
+
+
+[modified on 02/05/03 at 06:06:22]
+--------------------------------------------------
+02/05/03 at 08:06:42  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+Yeah I've seen that demo before its good :) I don't know about the breadth first search A* type theory, you'd need to make a prototype program I think :P I've been told BFS has a complexity of O(n^depth) exponential time which is massive time :( plug in a few heuristics and your talkin.
+
+I think another way to return more paths is to edit the A* algo in such a way that when it retrieves a path, edit the costs from some nodes that have more than one successor and continue the search, to bring more probability of returning a new different path.
+Maybe that will also work :P
+
+
+[modified on 02/05/03 at 08:06:42]
+--------------------------------------------------
+02/05/03 at 08:12:49  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+no, no, not BREADTH first search
+
+BEST first search
+
+I assure you this one is WAY faster than A* !!!
+Download the demo and you'll see
+
+
+--------------------------------------------------
+02/05/03 at 09:55:45  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+A* can be thought of as an enhancement to Best First Search.
+
+See the Brian Stout article that uses the Path Search Demo application to explain benefits and problems of various search methods...
+
+http://www.gamasutra.com/features/19970801/pathfinding.htm
+
+For comparison of BFS and A*, see www.gamasutra.com/features/19970801/path_08a.htmFigure 8a and www.gamasutra.com/features/19970801/path_09b.htmFigure 9b.  Notice that the grey area is an area that you don't wish to travel through (for terrain, this might be slower movement areas, for combat this might be exposed areas, etc.).  A* can take the total cost of these areas into acount (not just the individual node costs, but total path costs).
+
+Also see www.gamasutra.com/features/19970801/path_08b.htmFigure 8b and www.gamasutra.com/features/19970801/path_09c.htmFigure 9c.  Notice how A* finds a more direct path to the goal.
+
+There are many advantages and disadvantages to each searching or path finding algorithm.  You have to pick the factors that are important to YOU and decide which one you want to use in your code.  No two people will always agree on which algorithm should be used for anything.  :)
+
+botman
+
+--------------------------------------------------
+02/05/03 at 10:12:32  Reply by: theimann (killaruna@nuclearbox.com)
+--------------------------------------------------
+Best First Search may be faster in getting a first possible path, but this path is very rarely an optimal one, depending on the situation it might indeed be very ugly (as you say it). It might be that even the first five paths are complete BS and just miss the one region where the optimal path leads through. All your optimization won't help you there. 
+Plus: How much time are you estimating for this optimization step, hundreds of checks if nodes can or can't be reached?
+You can try your method and see if you get acceptable and fast results, but I doubt it will perform better than A*.
+My point of view is: Graph theory has been studied for decades now in computer science and if nobody has found a faster pathfinding than A* (even approximative), I won't find it either. IMHO modifying A* to return various paths is a better approach. 
+
+Tobias
+
+[modified on 02/05/03 at 10:12:32]
+--------------------------------------------------
+02/05/03 at 21:24:14  Reply by: Extrarius (cprgmsw@rietta.com)
+--------------------------------------------------
+A* has been proven to be the most efficient algorithm for finding the cheapest(shortest) path using any given heuristic, as long as the heuristic meets a few criteria (don't remeber what they are, but I think that one is that it can't overestimate the distance).
+
+As for finding an ugly path and cleaning it up: how do you clean up a path? Lets say you want to get from the front of a building to the back, and your fast pathfinder goes all the way around the building. How are you going to detect that the front door is only a few feet away and it allows you to go straight through the building to the back? You would have to either test every door and then find a path from your location, to the door, to the next door, or you have to use another algorithm to find the shortest path.
+You could speed up A* quite a bit by using some kind of space partition like an octtree and using larger nodes to find a 'rough' path then each time you enter a large node, find the detailed path to the next large node.
+
+Finding every path sounds like an O(n^n) {just a guess} operation, with n = number of nodes. That means it would take WAY too long. Even if you could get the time down, do you want to store data for 587643 different paths for a simple path? Because taking the building example, you could go around it, or through the front and back door, or through the front door, into room A, then to back door, etc. 99% of the paths will be 'stupid' paths, and only 1 or 2 will look at all intelligent.
+To find paths that are actually different is very difficult. I started a thread on here a while ago and nobody could figure out how to do it. The closest I came was to randomly weighting paths and using A* to find a path, then compaing it to other paths generated and testing if they were 'too close', but that only worked for a few simple maps.
+
+--------------------------------------------------
+02/06/03 at 05:50:42  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+"A* has been proven to be the most efficient algorithm for finding the cheapest(shortest) path using any given heuristic"
+
+That depends on what you mean by "efficient".
+
+Floyd-Warshall (all pairs shortest path) is WAY more efficient CPUwise than A*, once you have calculated all the paths.  The shortest path will always be found, but the paths will always be static (the path from A to Z will always go the exact same way).  Floyd-Warshall path look up only requires a single array index and you are done (you can't get much more efficient than that).
+
+A disadvantage to Floyd-Warshall is that it takes up a lot of memory if you have a large number of nodes.  For A*, the more nodes you have the more CPU intensive a path search will be.  For Floyd-Warshall, no matter how many nodes you have, the look up time is always linear.
+
+Like I said above, no two programmers will EVER agree on what the "best" algorithm is for a problem.  You need to pick the factors that are important to YOU and decide on an algorithm (your own or one that somebody else came up with) that you wish to use.
+
+No matter what algorithm you pick, there will always be a trade off between memory and CPU usage, you can never keep minimizing both (it's like some universal law or something).  The best thing to do is to understand as many different ways as possible of solving your problem and know the advantages and disadvantages of each, then apply your knowledge about the specific task you are trying to preform to pick the "best" method to use.
+
+botman
+
+--------------------------------------------------
+02/06/03 at 13:32:42  Reply by: William (william@cgf-ai.com)
+--------------------------------------------------
+>Like I said above, no two programmers will EVER agree on what the "best" algorithm is for a problem.
+
+Nitpicking, but serious:
+
+IMO, two programmers will easily agree on the "best" algorithm, once the problem is _really_ clear. For example:
+- we need about 100 path searches per second
+- most searches are to respawning items, and nearby positions (with 10s distance)
+- we are primarily interested in good "worst-case" behavior
+- we need shortest paths (default, and for travel-time comparisons) and some tactical paths for combat, especially when in view of the player
+- ... (more SMART defined stuff for clarity)
+
+Note that in this case, an A* algorithm with configurable cost function, combined with caches per respawning item and a cache for the last 1000 pairs of from-to travel times would be a viable solution, although the worst-case behavior should be studied (read "measured", not that O(N log N) stuff). A pre-computed table does have great worst-case behavior.
+
+Know thy problem...
+
+William
+
+--------------------------------------------------
+02/06/03 at 15:16:56  Reply by: Extrarius (cprgmsw@rietta.com)
+--------------------------------------------------
+If I remeber properly, the definition of 'efficient' in this case means the least nodes examined to find the cheapest path.
+
+I'm assuming its only proven 'best' among dynamic algorithms, because obviously using precomputing stuff will generally be faster than computing it on the fly. However, if you take the time to precompute the data into account, A* will be a lot faster for a large amount of nodes for finding up to a certain number of paths.
+
+--------------------------------------------------
+02/06/03 at 16:04:56  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+In order to clarify things a bit, the algorithm I'm thinking of has to deal with ~6,000 nodes.
+
+@ William: Can you possibly do 100 searches per second with any pathfinder ??? I find this number really enormous ?
+Also: What do you mean by 'good "worst-case" behaviour' ? Sorry for my bad understanding of english.
+
+~edited:
+Also, don't you "underestimate" the memory consumption with your cache ? 1000 paths cached is quite big too... Well, actually, if I didn't knew you well enough I could ask you such a question but as I'm certain you've already worked out an answer I guess my question would rather be: what's the size of your cache and (assuming it's as surprisingly small as I expect it to be with your methods) how on earth can you make it so small ? :)
+
+
+
+[modified on 02/06/03 at 16:04:56]
+--------------------------------------------------
+02/07/03 at 07:32:50  Reply by: Extrarius (cprgmsw@rietta.com)
+--------------------------------------------------
+I believe by worst case he means what happens when the destination is unreachable. Using a simple lookup table, it would still be an O(1) operation to know you can't get to the destination from where you are. If you used A*, it would have to search every single node to find out the destination can't be reached.
+
+If you don't mind using up ~75MB of RAM*, a lookup table might not be such a bad idea, but it needs to be computed before its used and can take a lot of time. Using a precomputed lookup table, you can do millions of paths a second, but you can only find a single path to any location from the starting point.
+
+The amount of RAM that 1000 paths would take up can be quite small since all you have to store is a pointer(or index into an array) for each node along the way. If every path is approximately 100 nodes long, each path only takes up 400 bytes(or 200 if you use 2 byte indexes), or 400KB (200KB if you use indexes instead of pointers) total. That isn't very much considering that games are starting to require several hundred MB of RAM, and the average machine has at least 128 MB of RAM.
+
+* ~75MB is for a lookup table for 6000 nodes. adding more nodes would take up more ram. amount of ram is (number of nodes^2)*(size of index) in bytes. You can use a 2 byte index for any number of nodes less than 65535.
+
+--------------------------------------------------
+02/20/03 at 14:31:01  Reply by: William (william@cgf-ai.com)
+--------------------------------------------------
+Pierre-Marie (and others):
+here are some recent numbers, measured on an AthlonXP1800 (thus 1.5GHz), DDR333.
+
+Results from a 1500 waypoint (fully connected - no isolated waypoints) large indoor, multi-story map:
+- A*: 17500 calls/s for paths shorter than 16 nodes (8 nodes avg), 2100 calls/s for paths longer than 16 nodes (24 nodes avg)
+- path lookup table: 1600000 calls/s for <16 node paths, 280000 calls/s for >16 node paths
+
+The A* is heavily optimized (as mentioned earlier), but the path lookup table beats it by a factor 90 for short paths and 128 for longer paths.
+Furthermore, the performance for the path lookup table is very predictable, and does not really depend on map size or map design. The performance for A* varies a lot, depending on the source and destination location and nearby geometry. In bad cases, the A* algorithm will have expanded 200+ nodes before returning a 20 node path. In other words, the 'worst case behavior' differs significantly from the average case performance.
+
+Even on a large map, and with 10% of a 200MHz Pentium, you should still expect A* to do 200+ calls/s. A look up table should give you 15000+ path/s in 10% of a 200MHz Pentium.
+
+Wrt. "1000 paths cached is quite big too": I didn't write 1000 _paths_, I wrote 1000 _travel times_.
+
+As mentioned earlier, I'm now able to squeeze a lookup table for 1500 waypoints in <400KB. Doing so, I lose performance compared to the plain lookup table (at 4MB), but I still get a performance that is 10 to 20x better than A*. These kinds of lookup tables scale almost linearily up to 6000 waypoints (read: consume about 1.5MB for 6000 waypoints).
+
+William
+

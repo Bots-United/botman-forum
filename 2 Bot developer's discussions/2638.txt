@@ -1,0 +1,120 @@
+--------------------------------------------------
+Subject: impulse 201 and fakeclients
+--------------------------------------------------
+01/11/02 at 04:08:18  Posted by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+Hello
+
+Now on bots spraying logos.
+
+I get my bots to spray logos on the ground like this :
+code:
+
+   // the "impulse 201" command is actually passed in pfnRunPlayerMove for fake clients...
+   g_engfuncs.pfnRunPlayerMove (pBot->pEdict, pBot->pEdict->v.v_angle, 0, 0, 0, 0, 201, pBot->msecval);
+   return;
+
+
+
+... works fine, but I don't understand how to change the default decal. Bots are always spraying the same lambda decal.
+
+I saw that botman uses DECAL_INDEX() with decals read from valve/decals.wad. I can't believe that's the only way to do this. When real players select their tags from the game menus, the menu displays bitmaps and not WAD decals, right ? Or maybe bitmaps in /logos are compiled at run-time in a temporary WAD file ?
+
+So,
+ - Which one is the truth ?
+ - If players actually select <b>bitmaps</b> there must be a way to do this with bots, right ?
+ - If players select <b>run-time compiled decals</b> there must be a way to index them elsewhere than in valve/decals.wad, right ?
+
+I saw some CBasePlayer::SetCustomSprayFrames() -or something like this- stuff in the SDK related to this, but I didn't understood anything. I could not figure out how things were processed for player custom tag decals.
+
+The only thing I could figure out was that custom structure where 'spray frames' were stored. Dunno what they mean... it's an integer, probably related to a precached decal, but where the hell is it precached ? And how ? If I knew that I could precache decals by their names by myself in the bot DLL... furthermore PRECACHE_GENERIC() does not seem to work with decals, neither PRECACHE_MODEL() (but this one is obvious).
+
+How the hell do they load decals from bitmaps ?
+
+Botman, have you tried to work on the question yet ?
+
+Others, any ideas/notes/infos/advices ?
+
+Thanks in advance
+
+--------------------------------------------------
+01/11/02 at 04:30:27  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+See these posts about spray "logos".  I just searched for "spray"...
+
+http://dynamic.gamespy.com/~botman/yabb/YaBB.pl?board=1&action=display&num=1396
+
+http://dynamic.gamespy.com/~botman/yabb/YaBB.pl?board=1&action=display&num=1089
+
+http://dynamic.gamespy.com/~botman/yabb/YaBB.pl?board=1&action=display&num=1478
+
+http://dynamic.gamespy.com/~botman/yabb/YaBB.pl?board=2&action=display&num=2352
+
+http://dynamic.gamespy.com/~botman/yabb/YaBB.pl?board=2&action=display&num=1784
+
+http://dynamic.gamespy.com/~botman/yabb/YaBB.pl?board=2&action=display&num=746
+
+botman
+
+--------------------------------------------------
+01/11/02 at 23:29:41  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+QUOTE:
+
+4) Client's send their decals to the server when they connect to the server.  This is an internal Half-Life engine thing and the MOD has no access to these network packets. 
+
+5) Bot's don't have a client and therefore can not send the custom spray logo to the engine. 
+
+
+
+
+Thanks Botman. Things are clear now. Fakeclients can only deal with world decals...
+
+So, correct it if I am wrong, I could still make bots spray standard decals (those everyone have in his /logo folder) if I send the TE_PLAYERDECAL packet to engine with a standard decal index when a bots want to spray a decal, with the name of a true client as the 'sender', not the name of the bot. The result would be the same, a decal would be painted, and everyone would think that this decal was sprayed by the bot. Actually the sender of the packet would be the real client, but no one could tell this in game, furthermore I could make the bot emit the spray sound at the same time. Am I right ?
+
+
+
+--------------------------------------------------
+01/11/02 at 23:53:35  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+hmm no
+
+I'll put the question in a clearer way ; Does the playerdecals list that is on the server contain only decals that real players have sent to it, or more than this ? Is this a way to "see" the full list in game as an example to see how things work ?
+
+--------------------------------------------------
+01/12/02 at 00:10:13  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+okay, one last question too...
+
+(btw, I hope you feel not like I am flooding your forum with questions... I like to know *exactly* how things work before attempting to hack a bit. I apologize for any inconvenience)
+
+I don't know C++ very well, but it seems that the CBasePlayer::SetCustomDecalFrames (int nFrames) function of the SDK belongs to a class (CBasePlayer) that can't be accessed by fake clients. So do you think it might be a way to hack the SDK to allow fake clients to set their own decal frames too, and send them to the server ?
+
+(btw, my previous questions still remain unanswered...)
+
+Thanks for your time.
+
+--------------------------------------------------
+01/12/02 at 06:35:36  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+"So, correct it if I am wrong, I could still make bots spray standard decals (those everyone have in his /logo folder)"
+
+The "logo" folder just holds the bitmap files that will be used when the human player selects a spray logo in the Half-Life menus.  The Half-Life executable takes this logo/*.bmp file and converts it to a WAD lump which it then stores in the pldecal.wad file.  The contents of the pldecal.wad file is sent to the server through the network when the player connect connects to the server.  The pldecal.wad file is only used by real clients (not bots).  Changing the pldecal.wad file on a listenserver (the local player) won't do anything since this player has already connected to the server (he was the one that created the server) and his pldecal.wad spray logo has already been transfered and precached in the server.  Also note that a dedicated server has NO pldecal.wad file (since this file is only needed by real clients).
+
+You can send the TE_PLAYERDECAL network message to all of the human players with the index of one of the real clients that is currently connected to the server if you want the bots to spray a logo that was sent to the server by another human client (see item #7 in the list that I gave in the first link of my response in this thread).  I.E. a bot can spray another player's logo by using the index of that player, but using this method, it can ONLY spray logos of players that are currently connected to the server.
+
+"Does the playerdecals list that is on the server contain only decals that real players have sent to it, or more than this?"
+
+The TE_PLAYERDECAL list on the server only contains decals from real clients that are currently connected to the server.  When a player disconnects, his decal is no longer valid.
+
+"So do you think it might be a way to hack the SDK to allow fake clients to set their own decal frames too, and send them to the server?"
+
+Again, you can spray another player's logo just by using the TE_PLAYERDECAL message with the index of that client, however, you can't create a brand new index and send a TE_PLAYERDECAL message for a decal that was not sent to the server by a real client connecting to the server.
+
+botman
+
+--------------------------------------------------
+01/13/02 at 14:13:27  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+Thanks for your reply. I'll keep searching ; if I find something interesting that works, I'll post it here.
+

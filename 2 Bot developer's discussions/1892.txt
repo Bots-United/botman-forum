@@ -1,0 +1,351 @@
+--------------------------------------------------
+Subject: Client Centered Messages on a timer
+--------------------------------------------------
+06/29/01 at 10:47:44  Posted by: ABot-Steve (Steve1219@Yahoo.com)
+--------------------------------------------------
+How would I set things up so that a Message would be put in the center of the sceen every 5 to 10 minutes?  I've tried a thread but it gives me errors.  Anything would do.  All that I couldn't figure out so-far was this and health toggling.. thanks
+
+
+--------------------------------------------------
+06/29/01 at 13:59:44  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+Heres a big long... code for a timer. If it comes in useful... (warning its long and in old smelly C code hehe)
+
+code:
+
+
+--MAKEFILE------------------------------------------------------------------
+# makefile for either Borland's brain-dead make, or Ndmake
+
+OBJS = testtime.obj timer.obj
+MODEL = s
+TCINC = d:\;c:\usr\tc\include
+TCLIB = d:\;c:\usr\tc\lib
+
+testtime.exe: $(OBJS)
+tcc -o$*.exe $(CFLAGS) -m$(MODEL) -I$(TCINC) -L$(TCLIB) $(OBJS)
+
+timer.c: timer.h
+testtime.c: timer.h timer.c
+
+.c.obj:
+tcc -c $(CFLAGS) -m$(MODEL) -I$(TCINC) $<
+
+--TESTIME.C-----------------------------------------------------------------
+#include <stdio.h>
+#include <dos.h>
+#include <conio.h>
+#include "timer.h"
+
+void main()
+{
+long start_time;
+long stop_time;
+double time;
+
+initializetimer();
+/*
+delay(100);
+*/
+
+start_time=readtimer();
+stop_time=readtimer();
+time = elapsedtime(start_time, stop_time);
+printf("time between succesive calls: %f s (%f ms)\n",
+time, time*1000.0);
+
+start_time=readtimer();
+/*
+delay(2);
+*/
+stop_time=readtimer();
+time = elapsedtime(start_time, stop_time);
+printf("time of a 'delay(2)' call : %f s (%f ms)\n",
+time, time*1000.0);
+
+printf("time until you press a key...");
+start_time = readtimer();
+getch();
+stop_time = readtimer();
+time = elapsedtime(start_time, stop_time);
+printf("\b\b\b\b\b\b\b\b\bed a key: %f s (%f ms)\n",
+time, time*1000.0);
+
+restoretimer();
+}
+
+--TIMER.C------------------------------------------------------------------
+#include <dos.h>
+#include "timer.h"
+/*#pragma inline*/
+
+#define TimerResolution 1193181.667
+
+double
+cardinal(long l)
+{
+return((l<0)?4294967296.0 + (long)l : (long)l);
+}
+
+double
+elapsedtime(long start, long stop)
+{
+return(cardinal(stop - start) / TimerResolution);
+}
+
+void
+initializetimer(void)
+{
+
+outp(0x043,0x034);
+_asm\
+{
+jmp short NullJump1
+
+NullJump1:;
+}
+outp(0x040,0x000);
+_asm\
+{
+jmp short NullJump2
+
+NullJump2:;
+}
+outp(0x040,0x000);
+
+}
+
+void
+restoretimer(void)
+{
+outp(0x043,0x036);
+_asm\
+{
+jmp short NullJump1
+
+NullJump1:;
+}
+outp(0x040,0x000);
+_asm\
+{
+jmp short NullJump2
+
+NullJump2:;
+}
+outp(0x040,0x000);
+
+}
+
+/* #pragma warn -rvl*/ /* shut up Turbo C warning about return value */
+long
+readtimer(void)
+{
+_asm\
+{
+cli /* Disable interrupts */
+mov dx,020h /* Address PIC ocw3 */
+mov al,00Ah /* Ask to read irr */
+out dx,al
+mov al,00h /* Latch timer 0 */
+out 043h,al
+in al,dx /* Read irr */
+mov di,ax /* Save it in DI */
+in al,040h /* Counter --> bx*/
+mov bl,al /* LSB in BL */
+in al,040h
+mov bh,al /* MSB in BH */
+not bx /* Need ascending counter */
+in al,021h /* Read PIC imr */
+mov si,ax /* Save it in SI */
+mov al,00FFh /* Mask all interrupts */
+out 021h,al
+mov ax,040h /* read low word of time */
+mov es,ax /* from BIOS data area */
+mov dx,es:[06Ch]
+mov ax,si /* Restore imr from SI */
+out 021h,al
+sti /* Enable interrupts */
+mov ax,di /* Retrieve old irr */
+test al,001h /* Counter hit 0? */
+jz done /* Jump if not */
+cmp bx,0FFh /* Counter > 0x0FF? */
+ja done /* Done if so */
+inc dx /* Else count int req. */
+done:;
+mov ax,bx /* set function result */
+}
+}
+/*#pragma warn .rvl*/ /* reset Turbo C return value warning */
+
+--TIMER.H-------------------------------------------------------------------
+/* timer.h
+* Include file defining the timer routines.
+* Include this file in any program using them.
+*/
+
+/*Calculate time elapsed (in seconds) between Start and Stop*/
+double elapsedtime(long start, long stop);
+
+/*Reprogram the timer chip to allow 1 microsecond resolution*/
+void initializetimer(void);
+
+/*Restore the timer chip to its normal state*/
+void restoretimer(void);
+
+/*Read the timer with 1 microsecond resolution*/
+long readtimer(void);
+
+--TESTIME.MAK---------------------------------------------------------------
+PROJ =TESTTIME
+DEBUG =1
+CC =qcl
+CFLAGS_G = /AS /W1 /Za 
+CFLAGS_D = /Zi /Zr /Gi$(PROJ).mdt /Od 
+CFLAGS_R = /Od /DNDEBUG 
+CFLAGS =$(CFLAGS_G) $(CFLAGS_D)
+LFLAGS_G = /CP:0xffff /NOI /SE:0x80 /ST:0x800 
+LFLAGS_D = /INCR 
+LFLAGS_R = 
+LFLAGS =$(LFLAGS_G) $(LFLAGS_D)
+RUNFLAGS =
+OBJS_EXT = 
+LIBS_EXT = 
+
+all: $(PROJ).exe
+
+testtime.obj: testtime.c
+
+timer.obj: timer.c
+
+$(PROJ).exe: testtime.obj timer.obj $(OBJS_EXT)
+echo >NUL @<<$(PROJ).crf
+testtime.obj +
+timer.obj +
+$(OBJS_EXT)
+$(PROJ).exe
+
+$(LIBS_EXT);
+<<
+ilink -a -e "link $(LFLAGS) @$(PROJ).crf" $(PROJ)
+
+run: $(PROJ).exe
+$(PROJ) $(RUNFLAGS)
+
+
+
+
+
+got the source from: 
+Dean Pentcheff
+Department of Integrative Biology
+University of California at Berkeley
+dean@violet.berkeley.edu
+
+
+
+--------------------------------------------------
+06/29/01 at 15:36:07  Reply by: ABot-Steve (Steve1219@Yahoo.com)
+--------------------------------------------------
+Well, i was thinking about something more simplistic.  But, i'll give this a try.  If i don't reply then it most-likely didn't work.
+thanks
+
+--------------------------------------------------
+06/30/01 at 00:05:20  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+heres another example I got, I stuck in the for loop to make it run 10 times. It's a bit inaccurate though... I would suggest you mess around with this one instead hehe
+
+code:
+
+#include <time.h>
+#include <stdio.h>
+#include <dos.h>
+
+
+int main(void)
+{
+   int i;
+
+   clock_t start, end;
+   start = clock();
+
+   for(i=0; i< 10; i++)
+   {
+     delay(2000);
+
+     end = clock();
+     printf("The time was: %f\n", (end - start) / CLK_TCK);
+   }
+
+   return 0;
+}
+
+
+
+
+
+
+--------------------------------------------------
+06/30/01 at 04:39:53  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+For timers in Half-Life, just create a "float" variable and store gpGlobals->time + the amount of delay you want.  For example...
+code:
+float f_message_timer = 0.0;
+
+float SetTimer(float timeout)
+{
+   return gpGlobals->time + timeout;
+}
+
+...then when you want to set the timer call SetTimer() with the desired timeout...
+code:
+// other stuff here
+.
+.
+.
+   f_message_timer = SetTimer(300.0);  // 300 seconds = 5 minutes
+.
+.
+.
+
+...then to check if the timeout has expired yet, just check to see if your timer is less than or equal to the current time...
+code:
+if (f_message_timer <= gpGlobals->time)
+{
+   // timeout expired, do stuff here...
+   stuff();
+
+   // don't forget to reset the timer for the next timeout
+   f_message_timer = SetTimer(300.0);
+}
+
+botman
+
+--------------------------------------------------
+06/30/01 at 08:31:27  Reply by: daRope (fzschocke@web.de)
+--------------------------------------------------
+I'm just not sure how precise the game time is. CS seems t messing with it. Adminmod uses this method to findout how much time is left on the map:
+
+float flTimeLimit = CVAR_GET_FLOAT("mp_timelimit") * 60; // map timelimit in sec
+float flTimeleft = flTimeLimit - gpGlobals->time;
+
+On CS this may lead to results which may be off by some minutes. I wonder if CS messes with gpGlogals->time somehow.
+
+--------------------------------------------------
+06/30/01 at 09:04:14  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+The Half-Life engine updates gpGlobals->time, MODs can't change it.  Well, actually they can, but the next time the engine starts a video frame the gpGlobals->time value will be overridden by the engine.
+
+botman
+
+--------------------------------------------------
+06/30/01 at 11:24:03  Reply by: daRope (fzschocke@web.de)
+--------------------------------------------------
+So what could be an explanation for the deviations in CS? Isn't the map ended when gpGlobals->time >= mp_timelimit holds?
+
+--------------------------------------------------
+06/30/01 at 13:09:26  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+I don't know.  I would assume that's the case.  Why not e-mail Gooseman and find out for sure.
+
+botman
+

@@ -1,0 +1,179 @@
+--------------------------------------------------
+Subject: HL Translocator
+--------------------------------------------------
+10/19/02 at 23:48:23  Posted by: predatory_kangaroo (predatory_kangaroo@hotmail.com)
+--------------------------------------------------
+Duz anyone know what files the trigger_teleport and info_teleport_target are? i'm trying to make a teleport gun, like from unreal tournament 2003.
+
+--------------------------------------------------
+10/20/02 at 03:44:09  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+You don't need to know any of the trigger teleport stuff. Use the search function to look on how to teleport a player (i.e. set UTIL_SetOrigin() or remove their FL_ONGROUND flag and change their origin.)
+
+If you want to make a teleport gun just make attack1 fire the translocater and store its origin, then when you press attack2 (alt attack) use the UTIL_SetOrigin thing or do it manually and change the player origin to the translocater origin.
+
+Of course you'll need to check if there is enough room for a player to teleport to 8)
+
+--------------------------------------------------
+10/20/02 at 22:58:45  Reply by: predatory_kangaroo (predatory_kangaroo@hotmail.com)
+--------------------------------------------------
+Hmm, interesting, i was going to use the util_setorigin anyway, but i was going to make the secondaryattack the setorigin and the primaryattack be a copy of the crossbow's attack, swapping the model for a tripmine model and slowing it down and doubling the gravity.  But how would i go about doing the check for space? I am pretty much a n00b at this work.  Only done a bit of experimenting :$
+
+[modified on 10/20/02 at 22:58:45]
+--------------------------------------------------
+10/21/02 at 09:02:10  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+Use tracelines to check the space. We're going to try seeing if there is a boxed space which is big enough to hold a player.
+
+Example:
+
+Let's say the Translocater class is called CTranslocater (You should have one class for your weapon and one for the translocater) and We want to check if there is
+
+1) Enough Width.  (x) +- 32 (64) units
+2) Enough Depth.  (y) +- 32 (64) units
+3) Enough Height. (z) + 96 units
+
+These are actually quite big.
+
+code:
+
+
+/* 
+pActivator is the Player who wants to teleport 
+*/
+
+bool CTranslocater :: EnoughRoom ( CBaseEntity *pActivator )
+{
+  int i; // Loop variable
+  TraceResult tr; // All info that the traceline has
+
+  Vector v_origin = pev->origin; // Assuming pev->origin is the origin of the translocater entity.
+  Vector v_start    = Vector(0,0,0);
+  Vector v_end      = Vector(0,0,0);
+  Vector v_offset   = Vector(0,0,0); 
+  Vector v_prev_end = Vector(0,0,0);
+
+  float box_width = 32.0; // Width/Breadth or whatever ;) (x and y) of our invisible box
+  float box_height = 96.0; // Height
+
+  CBaseEntity *pTranslocater = (CBaseEntity*)GET_PRIVATE(pTranslocater->edict());
+
+  for ( i = 0; i < 4; i ++ )
+  {
+    switch(i)
+    {
+      case 0: v_offset = Vector( box_width, box_width,0); break;
+      case 1: v_offset = Vector( box_width,-box_width,0); break;
+      case 2: v_offset = Vector(-box_width, box_width,0); break;
+      case 3: v_offset = Vector(-box_width,-box_width,0); break;
+    }
+
+    v_end = v_origin + v_offset;
+  
+    UTIL_TraceLine(v_start,v_end,dont_ignore_monsters,dont_ignore_glass,pTranslocater,&tr);
+
+    if( tr.flFraction < 1.0 )
+      return FALSE;
+    
+    v_prev_end = v_end; // Store the position for use in the next traceline.
+    
+    v_end.z += box_height; // Let's look up 96 Units.
+
+    UTIL_TraceLine(v_prev_end,v_end,dont_ignore_monsters,dont_ignore_glass,pTranslocater,&tr); 
+
+    if( tr.flFraction < 1.0 )
+      return FALSE;
+  }
+
+  return TRUE;
+}
+
+
+
+
+Hope that should work.. haven't tried it though ;) Just an example but it *should* work!
+
+
+[modified on 10/21/02 at 09:02:10]
+--------------------------------------------------
+10/22/02 at 03:07:28  Reply by: predatory_kangaroo (predatory_kangaroo@hotmail.com)
+--------------------------------------------------
+hey thanx, so the secondary attack should be something like:
+void CTransBow::SecondaryAttack()
+{if ( (EnoughRoom( this ) );
+{
+UTIL_SetOrigin(pev, CTranslocator->origin);
+}
+else;
+{
+EMIT_SOUND_DYN( ENT(m_pPlayer->pev),
+                CHAN_WEAPON,
+                "error.wav",
+                0.25,
+                ATTN_NORM,
+                0, 
+                150 );
+}}
+?
+How would you set a pointer to the translocator target, so you could access it like i put in the UTIL_SetOrigin?
+thanx
+
+--------------------------------------------------
+10/22/02 at 10:09:05  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+correction...
+
+void CTransBow::SecondaryAttack() 
+{
+  if ( (EnoughRoom( m_pPlayer ) ) // the pActivator isn't really used I should have made it just had 0 parameters... doh. but it'll still work this way
+  { 
+    UTIL_SetOrigin(m_pPlayer->pev, (TRANSLOCATER_CBASEENTITY IN HERE!)->pev->origin); // remember its the player->pev and the CTranslocater is a class definition NOT a CBaseEntity. So put the translocater CBaseEntity Handle in there...
+                                                           // you want to set the origin to, if it was just pev 
+                                                           // like you had before you'd be setting the translocaters 
+                                                           // origin with its own origin, thus doing nothing.
+  } 
+  else
+  { 
+    EMIT_SOUND_DYN( ENT(m_pPlayer->pev), 
+               CHAN_WEAPON, 
+               "error.wav", 
+               0.25, 
+               ATTN_NORM, 
+               0, 
+               150 ); 
+    Killed(TRANSLOCATER_CBASEENTITY IN HERE->pev,GIB_NEVER); // should remove the translocater.
+  } 
+}
+
+remember the : (TRANSLOCATER_CBASEENTITY IN HERE) should be replaced by the variable name you gave to the Translocater (I'm assuming that CTransBow is the gun and NOT the actual translocater that has been dropped).. So I'm guessing that somewhere you've probably (OR Should have) wrote something like...
+
+CBaseEntity *pTranslocater; 
+
+in the class of the actual weapon/gun.
+
+Even better, define a class for the actual translocater and give it its own think functions etc. (This is probbably described in the SDK) I.e. Have a look at how the crossbow fires a crossbow bolt, a different class is used for the crossbow bolt and it has its own functions.
+
+[modified on 10/22/02 at 10:09:05]
+--------------------------------------------------
+10/23/02 at 01:07:47  Reply by: predatory_kangaroo (predatory_kangaroo@hotmail.com)
+--------------------------------------------------
+Thanx,
+btw, the new versinon of the SDK is out.  Version 2.3.
+grab it from http://dev.valve-erc.com/projects/hlsdk/documents/103378975326514200/attached/hl_sdk_v23.exe
+again, thanx
+so i just put the CBaseEntity *pTranslocator anywhere in the translocator.cpp? or in the .h?
+
+--------------------------------------------------
+10/23/02 at 08:36:07  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+In the translocater weapon class... (Where ever that is defined... (I think its in weapons.h)
+
+This should be set to NULL on precahce within the weapon AND NULL whenever it doesn't exist (i.e. when the player hasn't pressed the button to eject the translocater. it should also be NULL when you kill it (when there is no room after trying to teleport for example), and it should have a value when it exists somewhere) 
+
+To be honest you should make a new class for the actualt translocater (remember you should have the weapon which is one class, and the translocater which is another, like the crossbow and crossbow bolt) And put relavant functions in with the translocater class, you NEED to make it a new class because you are practically making a new entity because its a new physical object within the game ... it must think/touch function and spawn/precache etc...
+
+--------------------------------------------------
+10/23/02 at 19:27:16  Reply by: predatory_kangaroo (predatory_kangaroo@hotmail.com)
+--------------------------------------------------
+Yeah, i figured that out in the end, ;i took the crossbow cpp and edited all the irrelevant code out, for the pointer, in the class i made it point to the translocator, then in the precache, to the player, then on primaryattack it points to the translocator, then when it's used or there's not enough space for it, kiled... pointer set to player again.  Now i'm just working around a few problems with the borland compiler :@ wish i could get VC working :'(
+

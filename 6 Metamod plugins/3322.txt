@@ -1,0 +1,67 @@
+--------------------------------------------------
+Subject: Spawning models with stripper.
+--------------------------------------------------
+06/22/02 at 22:25:52  Posted by: macgyver (buckroe1@hotmail.com)
+--------------------------------------------------
+What is the syntax for spawning a model that is not in the hl.dll? For example a model of a tree or rock. Also is there anywhere I can get a list of the proper syntax for all the commands that are not in the crossfire_str.cfg file? And finally is there a way to have a weopon or item last for a set amout of time when the player picks it up?
+Thanks
+Mac
+
+--------------------------------------------------
+06/23/02 at 05:10:34  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+When spawning an entity you can specify the model with the "model" key.  Follow this with the directory and filename of the model or sprite you want to use.  For example...
+code:
+model/models/elephant.mdl
+
+...could be used to spawn an elephant if the elephant.mdl file existed in the .pak file or in the MOD's models directory.
+
+If you're just trying to spawn a model that doesn't do anything (like a tree), I would suggest using "func_wall" for the classname.  If you want the model to not block players, you can leave out the "bbox_min" and "bbox_max" stuff and players should be able to pass though the model without blocking.  If you wanted it to be a blockable object you would need to set the "bbox_min" and "bbox_max" values to the size of the bounding box of the model.
+
+I'm not sure what you mean by a weapon "last for a set amount of time".  Do you mean creating a weapon that spawns and stays visible for some amount of time and then dissapears so that no one else can pick it up?  Or do you mean a player picks up a weapon and is only able to use that weapon for some fixed amount of time?
+
+You might be able to do the first one with a trigger_multiple to control whether the weapon is visible or not (using EF_NODRAW), but I'm not sure how to do this since I'm not a mapper.  If you have seen this effect in other maps (on servers not running custom MODs), then you can probably do the same thing using Stripper2.  If you haven't see this effect anywhere else, then it probably isn't possible using the existing MOD code.
+
+botman
+
+--------------------------------------------------
+06/23/02 at 14:42:58  Reply by: macgyver (buckroe1@hotmail.com)
+--------------------------------------------------
+Ok i tried the following and they did not work.
+nothing appeared.:
+{
+   classname/env_model
+   PRECACHE_MODEL(models/GULCH/plant_palm.mdl)
+   frame/1
+   framerate/10
+   rendermode/5
+   renderamt/255
+   scale/0.80
+   spawnflags/1  // SF_SPRITE_STARTON
+   model/GULCH/plant_palm.mdl
+   origin/-934 -211 0
+}
+
+{
+   classname/model  // add a new RPG in the pit area
+   PRECACHE_MODEL(models/GULCH/plant_palm.mdl)
+   angle/45
+   delay/0
+   origin/-934 -211 0
+}  
+
+I looked at the metamod entities list i made and it is very different than the hl.dll entities list. Which one should I use? Also I was talking about making a weopon last a certain amount of time after the player picks it up. I have the gambling plugin which makes the player glow ect for a specified amout of time so Im sure it can be done.
+Please Help
+Mac
+
+--------------------------------------------------
+06/24/02 at 09:08:00  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+"env_model" and "model" are not valid classnames.  You can't create an entity using these classnames.  Try using "env_sprite" as the classname and specify a model instead of a sprite.
+
+You should use the metamod entities that are specificaly for the MOD you are running.  One the metamod website, on the page will all the entities, it has a list of which entities are available for specific MODs (for example Counter-Strike).  You will only be able to spawn entities that are available for that specific MOD.  I would also recommend downloading the .fgd file used by mappers to create maps for that MOD.  It will contain the list of entities than can be created in that MOD.
+
+Don't assume that you can create entities that will work with plugins unless the plugin documentation clearly states that you can do so.  Plugins usually create entities via the plugin code and don't use map entities to spawn things (again, you should stick to what map entities are available in the .fgd file).
+
+botman
+

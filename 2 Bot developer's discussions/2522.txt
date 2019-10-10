@@ -1,0 +1,152 @@
+--------------------------------------------------
+Subject: Could someone give a general idea: Waypoint goals?
+--------------------------------------------------
+12/05/01 at 13:14:04  Posted by: Ghoul (oneeyedghoul@aol.com)
+--------------------------------------------------
+Heh, funny title, couldn't make it all fit :)
+
+Anyways, I was wondering if someone could just give me a general idea on waypoint goals, so I could get my bots to find a certin weapon or track a player.  I know theres a lot of different functions (WaypointFindRandomGoal(), WaypointRouteFromTo(), etc. ) but does someone want to breifly explain how to use 'em?  Thanks, happy coding!
+
+--------------------------------------------------
+12/05/01 at 13:44:34  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+If you use the ....
+
+WaypointFindRandomGoal()
+
+you will need to put in the goal its going to look for, so if you want to look for armor then look for the goal W_FL_ARMOR or something :) It will give you back the index of the found waypoint
+
+The WaypointRouteFromTo() Will give you the next waypoint index the bot should head towards to goto its goal.
+
+
+So the final waypoint the bot will want to head to is something like..
+
+WaypointRouteFromTo(pBot->curr_waypoint_index, WaypointFindRandomGoal(pEdict, pBot->bot_team, W_FL_ARMOR), pBot->bot_team)
+
+of course you need to check if each index is not -1 and less than max_waypoints so this is better...
+
+code:
+
+int found_goal;
+int next_waypoint;
+
+found_goal = WaypointFindRandomGoal(pEdict, pBot->bot_team, W_FL_ARMOR);
+
+if(( found_goal != -1 ) && ( found_goal < MAX_WAYPOINTS)
+{
+  next_waypoint = WaypointRouteFromTo(pBot->curr_waypoint_index, found_goal, pBot->bot_team)}
+}
+
+if(( next_waypoint != -1 ) && ( next_waypoint < MAX_WAYPOINTS)
+{
+  //Bot can head towards this waypoint
+}
+
+
+
+--------------------------------------------------
+12/05/01 at 14:25:14  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+...except that with your solution (the first one, not the one in the code section), each time you try to find the next waypoint to head toward a goal, you keep changing the goal to another random goal.
+
+You should add a variable to the bot_t structure to keep track of what waypoint index is the goal.  Use -1 to indicate that there currently is no goal.  When you want to pick a goal, call the WaypointFindNearestGoal() or WaypointFindRandomGoal() with the type of waypoint you are looking for (W_FL_HEALTH, W_FL_AMMO, W_FL_FLAG, etc.).  This will return the index of the goal waypoint.  Store this index in the new bot_t variable so that you can use it in future calls to WaypointRouteFromTo(), passing the current waypoint index and the goal waypoint index into WaypointRouteFromTo() and it will return the next waypoint that will get you closer to the goal (or it will return WAYPOINT_UNREACHABLE indicating that you can't get there from here and you'd better pick another goal).
+
+botman
+
+[modified on 12/05/01 at 14:25:14]
+--------------------------------------------------
+12/05/01 at 14:50:22  Reply by: redlink (redlink_star@hotmail.com)
+--------------------------------------------------
+One of the easiest way *i think* is to download a bots source code and look at the strucktion of the bot system they use...
+
+Here u got a great open-source bot:
+http://www.planethalflife.com/teambot/
+
+
+...................................
+American X bot
+http://www.clan-warz.com/americanxbot
+
+
+--------------------------------------------------
+12/05/01 at 16:08:24  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+Oh yeah I forgot about that, actually I think thats a prob in my waypointing code in my bot actually!!! I thought about that somethime and forgot about it.
+So its best to store the goal_index in a bots structure and initialise it to -1... and if its -1 then look for a new goal.
+
+okay heres a modified code ;D
+
+I had to put OR in instead of pipes cos the pipes didnt show up :(
+
+code:
+
+int found_goal = -1; 
+int next_waypoint = -1;  
+
+if(( pBot->goal_waypoint == -1 ) OR ( pBot->goal_waypoint >= MAX_WAYPOINTS )) //i.e invalid goal index
+{
+
+found_goal = WaypointFindRandomGoal(pEdict, pBot->bot_team, W_FL_ARMOR);  
+
+if(( found_goal != -1 ) && ( found_goal < MAX_WAYPOINTS))
+{   
+
+next_waypoint = WaypointRouteFromTo(pBot->curr_waypoint_index, found_goal, pBot->bot_team)} 
+
+}  
+
+if(( next_waypoint != -1 ) && ( next_waypoint < MAX_WAYPOINTS))
+{   
+   if( pBot->curr_waypoint_index == next_waypoint )
+{
+   pBot->goal_waypoint = next_waypoint; //Bot can head towards this waypoint 
+}
+else
+   pBot->goal_waypoint = -1;
+} 
+else
+   pBot->goal_waypoint = -1;
+
+
+
+
+gawd ive modified this about six times!
+
+[modified on 12/05/01 at 16:08:24]
+--------------------------------------------------
+12/05/01 at 23:08:09  Reply by: jerry_stoel (jerry_stoel@hotmail.com)
+--------------------------------------------------
+...and you don't have to look for specific goals if you want. You can also look for a normal waypoint and then use that as a goal. You only have to change this in your waypointfindrandomgoal:
+
+code:
+
+Change this:
+
+                  if ((waypoints[index].flags & flags) != flags)
+                        continue;  // skip this waypoint if the flags don't match
+
+
+into this:
+code:
+
+
+if(flags != -1)
+            {
+                  if ((waypoints[index].flags & flags) != flags)
+                        continue;  // skip this waypoint if the flags don't match
+            }
+
+
+
+[edit] Offcourse you have to call the function like this:
+code:
+
+WaypointFindNearestGoal(pEdict, src, -1, -1); //example: the -1 on the end is the change
+
+
+
+And then you can look for a normal waypoint too. And you can exploit this type of finding like I did. You can look for an item in the level randomly and then when you got an item look for a waypoint which is near the item and then use that waypoint as a goal.
+
+good luck,
+
+[modified on 12/05/01 at 23:08:09]

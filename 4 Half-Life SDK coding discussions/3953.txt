@@ -1,0 +1,172 @@
+--------------------------------------------------
+Subject: how can I tell if 2 segments intersect each other?
+--------------------------------------------------
+12/29/02 at 18:38:00  Posted by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Hello
+
+I'm sure there is a simple answer to my question, don't laugh at me.
+I'm very bad at mathemathics. I *HATE* maths. There must be some subconscious psychoanalytic problem with it because when it comes to thinking about math my brain just screws up, sorry I just can't.
+
+Anyway I am facing the following problem:
+I have 4 vertices, each pair bounding a segment.
+code:
+
+Vector seg1_1;
+Vector seg1_2;
+
+Vector seg2_1;
+Vector seg2_2;
+
+
+The x and y components are the only used here, the z component is always zero. I'm doing 2D math only.
+
+And I have to write a function like this:
+code:
+
+bool SegmentsIntersectEachOther (Vector seg1_1, Vector seg1_2, Vector seg2_1, Vector seg2_2)
+{
+   // returns TRUE whether seg1 intersects seg2, FALSE otherwise
+}
+
+
+
+How can I do ? Help me please !
+
+:(/me ashamed to know that a 12-year old kid has to know that and I don't...
+
+
+--------------------------------------------------
+12/30/02 at 05:04:48  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+Try http://www.google.com/search?hl=en&lr=&ie=UTF-8&oe=UTF-8&q=vector+intersection ;)
+
+oh first of all get the component of the vector 1_1, 1_2 together and 2_1 2_2 (i.e. 1_2 - 1_1 ) etc
+
+Any two lines always intersect if they are not parallel if they are of infinite length, although do you have a limit on the length of the segments :p?
+
+[modified on 12/30/02 at 05:04:48]
+--------------------------------------------------
+12/30/02 at 05:16:55  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+I know about the lines intersecting as soon as they are not parallel (that's one of the basis of the Euclidian geometry, not talking about Riemann nor Lobatchevski here unless you want my poor head to bomb to pieces). If I wanted to check intersection of lines, I guess I'll get the 'y=a.x+b' equation for each and compare the 'a'.
+
+Yes, I spelled right SEGMENT. ie, bounded.
+
+In other words, I want to check whether the space on the line that goes from seg1_1 to seg1_2 crosses the space on the line that goes from seg2_1 to seg2_2.
+
+--------------------------------------------------
+12/30/02 at 05:46:14  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Google search on "intersection of line segments"?
+
+botman
+
+--------------------------------------------------
+12/30/02 at 05:56:56  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+hmmm ok
+after a little bit more thinking, I believe my problems can be shrinked to the following :
+
+- How can I tell which side of a line (left, right) a point (vertice) is ?
+
+[modified] thx botman, that's just what I did... but honestly I'm not lying, when I say I'm BAD at mathemathics, that's I just can't understand what 90% of websites that deal with math are talking about
+
+[modified on 12/30/02 at 05:56:56]
+--------------------------------------------------
+12/30/02 at 12:07:34  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+I think I got it. That's not exactly what I wanted to do first but that's barely all I am able to do ;). Feel free to tell me if you find a bug, else I assume it's working.
+code:
+
+bool SegmentIntersectsParallel (Vector v_bound1, Vector v_bound2, float parallel_y)
+{
+   // this function returns TRUE if the *flattened* segment bounded by the v_bound1 and v_bound2
+   // vertices intersects the parallel which offset is parallel_y, FALSE otherwise. The local
+   // variables of this function are defined static in order to speedup recursive calls of this
+   // function (which is extensively used in LookDownOnTheWorld ()).
+
+   static float intersection_x, slope, offset;
+
+   // for speedup: is segment parallel to parallel line ?
+   if (v_bound1.y == v_bound2.y)
+      if (v_bound1.y == parallel_y)
+         return (TRUE); // intersection if and only if segment overlaps the parallel
+      else
+         return (FALSE); // else no intersection possible
+
+   // special case: handle the case when segment is vertical
+   if (v_bound1.x == v_bound2.x)
+   {
+      // is the intersection point inside the segment's bounds ?
+      if ((parallel_y >= min (v_bound1.y, v_bound2.y))
+          && (parallel_y <= max (v_bound1.y, v_bound2.y)))
+         return (TRUE); // if so, there is an intersection
+      else
+         return (FALSE); // else not
+   }
+
+   // compute equation for segment line in the form y = slope * x + offset
+   slope = (v_bound2.y - v_bound1.y) / (v_bound2.x - v_bound1.x);
+   offset = v_bound1.y - slope * v_bound1.x;
+
+   // compute the intersection point between both lines
+   intersection_x = (parallel_y - offset) / slope; // x got using line's equation
+
+   // is the line intersection point inside the segment's bounds ?
+   if ((intersection_x >= min (v_bound1.x, v_bound2.x)) && (intersection_x <= max (v_bound1.x, v_bound2.x))
+       && (parallel_y >= min (v_bound1.y, v_bound2.y)) && (parallel_y <= max (v_bound2.y, v_bound2.y)))
+      return (TRUE); // there is an intersection between segment and parallel
+
+   return (FALSE); // definitely no intersection
+}
+
+
+bool SegmentIntersectsMeridian (Vector v_bound1, Vector v_bound2, float meridian_x)
+{
+   // this function returns TRUE if the *flattened* segment bounded by the v_bound1 and v_bound2
+   // vertices intersects the meridian which offset is meridian_x, FALSE otherwise. The local
+   // variables of this function are defined static in order to speedup recursive calls of this
+   // function (which is extensively used in LookDownOnTheWorld ()).
+
+   static float intersection_y, slope, offset;
+
+   // for speedup: is segment parallel to meridian line ?
+   if (v_bound1.x == v_bound2.x)
+      if (v_bound1.x == meridian_x)
+         return (TRUE); // intersection if and only if segment overlaps the meridian
+      else
+         return (FALSE); // else no intersection possible
+
+   // compute equation for segment line in the form y = slope * x + offset
+   slope = (v_bound2.y - v_bound1.y) / (v_bound2.x - v_bound1.x);
+   offset = v_bound1.y - slope * v_bound1.x;
+
+   // compute the intersection point between both lines
+   intersection_y = slope * meridian_x + offset; // y got using line's equation
+
+   // is the line intersection point inside the segment's bounds ?
+   if ((meridian_x >= min (v_bound1.x, v_bound2.x)) && (meridian_x <= max (v_bound1.x, v_bound2.x))
+       && (intersection_y >= min (v_bound1.y, v_bound2.y)) && (intersection_y <= max (v_bound2.y, v_bound2.y)))
+      return (TRUE); // there is an intersection between segment and meridian
+
+   return (FALSE); // definitely no intersection
+}
+
+
+
+
+--------------------------------------------------
+12/30/02 at 12:14:58  Reply by: @$3.1415rin (johannes@_-removeifnotavirus-_lampel.net)
+--------------------------------------------------
+the way I would do it :
+
+first get the point where 2 lines with the direction of your 2 segments would meet ( if the lines are parallel, no intersection, clear )
+
+Then you put this point into one equation of a line and calculate the factor. If the direction vector was p1'-p1, the factor is [0,1] for an intersection ...
+
+well, just got back to work, i'm hungry ... I'm writing the stuff down shortly, scanning it and post it here. typing all that in some editor is too much work for me now :) hope it helps a bit
+
+http://www.joebot.net/images/scanliis.png
+
+[modified on 12/30/02 at 12:14:58]

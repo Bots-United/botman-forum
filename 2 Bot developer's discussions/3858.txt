@@ -1,0 +1,795 @@
+--------------------------------------------------
+Subject: bot hearing system
+--------------------------------------------------
+11/23/02 at 15:09:25  Posted by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Hello
+
+I've been working my *** off on this and it is beginning to look like something. Have a look, and you may pick up ideas along if you want.
+
+in bot.h (and several other header files):
+code:
+
+// memory-loaded files structure definition
+typedef struct
+{
+   unsigned char *pStartOfFileAddress; // memory address of start of file
+   int file_size; // size in bytes of file in memory
+   int file_pos; // position from start of file where the operations are made
+} MFILE;
+
+
+// texture related structure definition
+typedef struct
+{
+   char name[CBTEXTURENAMEMAX];
+   char type;
+} texture_t;
+
+
+// audible events related structure definitions
+typedef struct
+{
+   char file_path[256]; // relative path to the sound sample
+   float loudness; // violence of the sample (low value for footsteps, high value for gunshot)
+   float duration; // amount of time our hearing capabilities will be occupied by this sound
+} sound_t;
+
+
+typedef struct
+{
+   char file_path[256]; // relative path to the sound sample being heard
+   Vector v_origin; // vector origin of the sound in the virtual world
+   float loudness; // violence of the sample (low value for footsteps, high value for gunshot)
+   float fade_date; // date at which this sound will have faded out
+} noise_t;
+
+
+// player structure for footstep rendering
+typedef struct
+{
+   edict_t *pEdict; // this player's entity the engine knows
+   texture_t *pTextureAtFeet; // the texture this player is walking on
+   float step_sound_time; // date at which this player will make a footstep sound
+} player_t;
+
+
+// bot ear structure
+typedef struct
+{
+   noise_t noises[BOT_EAR_SENSITIVITY]; // sounds the bot distinguishes at a time
+   float average_noise; // average loudness the bot hears (average of sounds.loudness)
+   bool new_sound; // set to TRUE if a new sound has come to the bot's ears
+   int bot_order; // integer representing the current order from a teammate bot is following
+   float f_order_time; // date at which the bot received its last order
+   edict_t *pAskingEntity; // pointer to the bot's current giving order entity
+} bot_ears_t;
+
+
+// the bot
+typedef struct
+{
+   bool is_active; // set to TRUE if this slot in the bots array belongs to a bot currently playing
+   edict_t *pEdict; // the bot entity itself from the engine
+
+   int msecnum; // used in TheFatal's method for calculating the msecval delay
+   float msecdel; // used in TheFatal's method for calculating the msecval delay
+   float msecval; // amount of time the movement of the bot (pfnRunPlayerMove) should extend
+   float f_prev_playermove_time; // date at which the last pfnRunPlayerMove call happened
+   float fall_time; // date at which the bot last felt
+
+   bot_eyes_t BotEyes; // structure describing what the bot sees
+   bot_ears_t BotEars; // structure describing what the bot hears
+   bot_body_t BotBody; // structure describing what the bot touches (or is about to)
+
+   bot_legs_t BotLegs; // structure handling the directions in which the bot will move/jump/duck
+   bot_hand_t BotHand; // structure handling the weapon the bot is holding in its hands
+   bot_chat_t BotChat; // structure handling what the bot has to say and when it will say it
+
+   [...]
+}
+
+
+in (brand new) bot_hearing.cpp:
+code:
+
+void PrecacheSoundForBots (char *s)
+{
+   // this function fills out an information structure about a WAV file pointed to by pMemFile.
+   // WAV files are divided into chunks, respectively the RIFF, WAVE, FORMAT and DATA chunk.
+   // Since there are often extra data added to the end of chunks, or even extra chunks inserted
+   // between the usual order, this function parses through the file intelligently looking for
+   // each chunk and filling the header structure accordingly. Once the header is known, this
+   // function computes the average loudness of the WAV file, which computation is done according
+   // to the rules defined by the wave header. The purpose of this computation is to provide the
+   // bots with an immediate idea of the loudness of a sound being played, since listening to
+   // samples in real-time for them would require quite a lot processing power. Actually the bots
+   // don't hear each bit of a sound sample, they hear the global loudness it gives instead, but,
+   // like us humans, they hear it as long it lasts. One final note, using LoadFileForMe() from
+   // the engine instead of fopen() to open files makes us able to read through the engine's
+   // virtual filesystem: a merge of the "valve" folder with the MOD folder including all the
+   // PAK subsystem contents, both in the valve directory and in the MOD one.
+
+   char file_path[256];
+   unsigned char *pMemFile;
+   wav_header_t wav_header;
+   int index, file_size, file_pos = 0;
+   signed int iSample;
+
+   // look if that sound already exists in our array
+   for (index = 0; index < sound_count; index++)
+      if (strcmp (s, sounds[index].file_path) == 0)
+         return; // if that sound is already precached, return
+
+   // have we reached the max precachable number of sounds ?
+   if (sound_count == MAX_SOUNDS)
+   {
+      UTIL_ServerConsole_printf ("RACC: PrecacheSoundForBots(): max sounds reached!\n", s);
+      return; // return, no room for that one...
+   }
+
+   // ask the engine to locate and open that sound file
+   sprintf (file_path, "sound/%s", s); // build the sound path relative to game directory
+   pMemFile = pfnLoadFileForMe (file_path, &file_size); // load wave file
+   if ((pMemFile == NULL) || (file_size == 0))
+   {
+      UTIL_ServerConsole_printf ("RACC: PrecacheSoundForBots(): wave file %s not found!\n", s);
+      return; // if not found, then give up
+   }
+
+   if (CVAR_GET_FLOAT ("developer") > 1)
+      UTIL_ServerConsole_printf ("RACC: precaching sound %s for bots\n", s);
+
+   // read the RIFF chunk
+   while (strncmp (wav_header.riff_chunk_id, "RIFF", 4) != 0)
+   {
+      if (file_pos + 4 > file_size)
+         break; // avoid buffer overflows
+      memcpy (wav_header.riff_chunk_id, pMemFile + file_pos, 4); // read riff id (4 bytes)
+      file_pos++; // and get ahead one character
+   }
+   file_pos--; // step back again to get back to the start of the chunk
+   if (file_pos + 7 < file_size)
+      memcpy (wav_header.riff_chunk_id, pMemFile + file_pos, 8); // read riff chunk (8 bytes)
+   file_pos += 8; // get out of riff chunk
+
+   // read the WAVE chunk
+   while (strncmp (wav_header.wave_chunk_id, "WAVE", 4) != 0)
+   {
+      if (file_pos + 4 > file_size)
+         break; // avoid buffer overflows
+      memcpy (wav_header.wave_chunk_id, pMemFile + file_pos, 4); // read wave id (4 bytes)
+      file_pos++; // and get ahead one character
+   }
+   file_pos--; // step back again to get back to the start of the chunk
+   if (file_pos + 3 < file_size)
+      memcpy (wav_header.wave_chunk_id, pMemFile + file_pos, 4); // read wave chunk (4 bytes)
+   file_pos += 4; // get out of wave chunk
+
+   // read the FORMAT chunk
+   while (strncmp (wav_header.fmt_chunk_id, "fmt ", 4) != 0)
+   {
+      if (file_pos + 4 > file_size)
+         break; // avoid buffer overflows
+      memcpy (wav_header.fmt_chunk_id, pMemFile + file_pos, 4); // read format id (4 bytes)
+      file_pos++; // and get ahead one character
+   }
+   file_pos--; // step back again to get back to the start of the chunk
+   if (file_pos + 23 < file_size)
+      memcpy (wav_header.fmt_chunk_id, pMemFile + file_pos, 24); // read format chunk (24 bytes)
+   file_pos += 24; // get out of format chunk
+
+   // read the DATA chunk
+   while (strncmp (wav_header.data_chunk_id, "data", 4) != 0)
+   {
+      if (file_pos + 4 > file_size)
+         break; // avoid buffer overflows
+      memcpy (wav_header.data_chunk_id, pMemFile + file_pos, 4); // read data id (4 bytes)
+      file_pos++; // and get ahead one character
+   }
+   file_pos--; // step back again to get back to the start of the chunk
+   if (file_pos + 7 < file_size)
+      memcpy (wav_header.data_chunk_id, pMemFile + file_pos, 8); // read START of data chunk (8 bytes)
+   file_pos += 8; // reach start of data
+
+   // is that file valid ? (avoid infinite loops and buffer overflows)
+   if (((wav_header.bytes_per_sample == 1) || (wav_header.bytes_per_sample == 2))
+       && (file_pos + wav_header.data_chunk_length <= (unsigned int) file_size))
+   {
+      // if so, we can compute its loudness and fill one slot more in the global sounds array
+
+      index = file_pos; // index will point at start of data now
+
+      // read each sample...
+      while ((unsigned int) index < file_pos + wav_header.data_chunk_length)
+      {
+         iSample = 0x0000; // reset the container variable
+         memcpy (&iSample, pMemFile + index, wav_header.bytes_per_sample); // read N-byte sample
+         sounds[sound_count].loudness += (float) abs (iSample - (wav_header.bytes_per_sample == 1 ? 128 : 16384)) * (wav_header.bytes_per_sample == 1 ? 256 : 1) / (float) wav_header.data_chunk_length; // sum it
+         index += wav_header.bytes_per_sample; // get to the next sample, N bytes further
+      }
+
+      // now store the duration and the sound path (relative to the MOD's sound folder)
+      sounds[sound_count].duration = (float) wav_header.data_chunk_length / (float) wav_header.bytes_per_second;
+      strcpy (sounds[sound_count].file_path, s); // store the sound path in the array
+
+      if (CVAR_GET_FLOAT ("developer") > 2)
+         UTIL_ServerConsole_printf ("sound #%d (%s) - length %f - noise %f\n", sound_count, sounds[sound_count].file_path, sounds[sound_count].duration, sounds[sound_count].loudness);
+
+      sound_count++; // increment the number of sounds we know (we know one more now)
+   }
+   else
+      UTIL_ServerConsole_printf ("RACC: PrecacheSoundForBots(): wave file %s damaged!\n", s);
+
+   pfnFreeFile (pMemFile); // don't forget to free the wave file
+   return; // finished
+}
+
+
+void DispatchSound (const char *sample, Vector v_origin, float volume, float attenuation)
+{
+   // this function brings the sound to the ears of the bots. Every time a sound is emitted in
+   // the game somehow, this function has to be called. It cycles through all the bots that are
+   // playing, and does the appropriate checks in order to determine if this bot will hear that
+   // sound or not. In case it can, the function places the sound into the bot's ears structure.
+
+   int i, bot_index;
+   sound_t *sound = NULL;
+   float attenuated_volume = volume;
+
+   if (sample == NULL)
+      return; // reliability check
+
+   // find the sound we want in the global list
+   for (i = 0; i < sound_count; i++)
+      if (strcmp (sounds[i].file_path, sample) == 0)
+         sound = &sounds[i]; // link a pointer to this sound's info slot
+
+   // if debug mode is enabled, tell the developer we are dispatching a sound
+   if (DebugLevel.ears > 0)
+      UTIL_printf ("DISPATCH SOUND %s FROM (%.1f, %.1f, %.1f) - VOL %.1f - ATTN %.1f\n",
+                                 sample, v_origin.x, v_origin.y, v_origin.z, volume, attenuation);
+
+   // didn't we found it ?
+   if (sound == NULL)
+   {
+      if (DebugLevel.ears > 0)
+         UTIL_printf ("ALERT: SOUND %s NOT FOUND IN DATABASE!\n", sample);
+      return; // reliability check; cancel if sound not found
+   }
+
+   // cycle through all bot slots
+   for (bot_index = 0; bot_index < 32; bot_index++)
+   {
+      // is this slot used ?
+      if (bots[bot_index].is_active && (bots[bot_index].pEdict != NULL))
+      {
+         // is this sound NOT attenuated by distance ?
+         if (attenuation == ATTN_NONE)
+            BotFeedEar (&bots[bot_index], sound, v_origin, volume); // if so, this bot will hear it anyway
+
+         // else is that bot within the maximum hearing range of the PAS ?
+         // FIXME: ATM, I can't tell the difference between all the different attenuations !
+         else if ((v_origin - bots[bot_index].pEdict->v.origin).Length () < MAX_HEARING_DISTANCE)
+         {
+            attenuated_volume = volume * ((MAX_HEARING_DISTANCE - (v_origin - bots[bot_index].pEdict->v.origin).Length ()) / MAX_HEARING_DISTANCE);
+            BotFeedEar (&bots[bot_index], sound, v_origin, attenuated_volume); // bot hears attenuated sound
+         }
+      }
+   }
+}
+
+
+void InitTextureSoundsForBots (void)
+{
+   // this function is in charge of opening the materials.txt file, and filling the texture
+   // sounds database accordingly. Each texture in the game produces a different sound if the
+   // player gets walking on it. This is determined by associating a texture type to a texture
+   // name, and this is done in the file "sounds/materials.txt". Such a task should be performed
+   // once and only once, preferably at GameDLLInit(), since textures aren't reloaded between
+   // each map. Note the use of LoadFileForMe(): this function is a heaven's gift for programmers
+   // since it handles perfectly the virtual filesystem of the engine, which rules are as follow:
+   // 1°) if such a file exists in the MOD's directory, open it. Else 2°) if such a file exists
+   // in the PAK file structure of the MOD under the same path, open it. Else 3°) if such a file
+   // exists in the "valve" directory under the same path, open it. Else finally 4°) if such a
+   // file exists in Valve's PAK file structure under the same path, then open it. Obviously this
+   // handy function saves us a lot of PITA, looking for the right path to open the file in.
+   // Thank you guys at Valve Software ! Moreover, instead of just setting a pointer to the file
+   // data somewhere on the hard disk, the file gets loaded *completely* into memory, thus
+   // speeding up the seek & read routines, hence the use of mfgets() instead of fgets(), hence
+   // too the use of FreeFile() instead of fclose(). Yay!
+
+   MFILE fp;
+   char line_buffer[256];
+   int index, fieldstart, length;
+
+   // first prepare the default texture
+   textures[0].name[0] = 0; // this texture has default name (nothing)
+   textures[0].type = CHAR_TEX_CONCRETE; // this texture makes default sound (concrete)
+   texture_count = 1; // we know at least one texture now
+
+   // ask the engine to find and open the file "materials.txt"
+   memset (&fp, 0, sizeof (fp));
+   fp.pStartOfFileAddress = pfnLoadFileForMe ("sound/materials.txt", &fp.file_size);
+   if (fp.pStartOfFileAddress == NULL)
+      return;
+
+   // for each line in the file...
+   while ((mfgets (line_buffer, 256, &fp) != NULL) && (texture_count < MAX_TEXTURES))
+   {
+      length = strlen (line_buffer); // get length of line
+      if ((length > 0) && (line_buffer[length - 1] == '\n'))
+         length--; // remove any final '\n'
+      line_buffer[length] = 0; // terminate the string
+
+      index = 0; // let's now parse the line to get the field value
+
+      if ((line_buffer[0] == 0) || ((length > 1) && (line_buffer[0] == '/') && (line_buffer[1] == '/')))
+         continue; // ignore line if void or commented
+
+      while ((index < length) && ((line_buffer[index] == ' ') || (line_buffer[index] == '\t')))
+         index++; // ignore any tabs or spaces
+
+      // is this line a valid data line ?
+      if (isalpha (line_buffer[index]))
+      {
+         textures[texture_count].type = toupper (line_buffer[index]); // save texture type
+         index++; // get out of field
+
+         while ((index < length) && ((line_buffer[index] == ' ') || (line_buffer[index] == '\t')))
+            index++; // ignore any tabs or spaces
+
+         fieldstart = index; // remember field start position
+
+         // now save texture name (only get the CBTEXTURENAMEMAX first caracters)
+         for (index = fieldstart; index < fieldstart + CBTEXTURENAMEMAX; index++)
+            textures[texture_count].name[index - fieldstart] = line_buffer[index];
+
+         // look if that texture already existed in our array
+         for (index = 0; index < texture_count; index++)
+            if (strcmp (textures[texture_count].name, textures[index].name) == 0)
+               continue; // if that texture was already precached, don't count it
+
+         texture_count++; // else increment the total number of textures we know
+      }
+   }
+
+   pfnFreeFile (fp.pStartOfFileAddress); // don't forget to free the file from memory
+
+   // if debug mode is enabled, print out how many textures we have precached
+   if (DebugLevel.ears > 0)
+      UTIL_ServerConsole_printf ("RACC: Bot sound system precached %d textures\n", texture_count);
+
+   return;
+}
+
+
+static char *mfgets (char *line_buffer, int buffer_size, MFILE *fp)
+{
+   // this function works exactly the same as fgets(), but whereas fgets() reads a line from a
+   // file on disk, mfgets() reads a line from a text file that has been loaded into memory
+   // using LoadFileForMe(). The three first arguments are identical, the line buffer to be
+   // filled, the size of data to read each time, and the file pointer which, here, is not only
+   // an address but a structure, and thus should not be declared as a pointer but as a real
+   // object, i.e. not "MFILE *fp;", but "MFILE fp;". Be aware of that. As a consequence, you
+   // have to call mfgets passing the address of that structure, i.e. not "mfgets (line_buffer,
+   // 256, fp);" but "mfgets (line_buffer, 256, &fp);". See the difference.
+
+   int start_of_line_offset = fp->file_pos, end_of_line_offset, index;
+
+   if (fp->pStartOfFileAddress == NULL)
+      return (NULL); // reliability check
+
+   if (fp->file_pos >= fp->file_size)
+      return (NULL); // return if we've already reached the end of file
+
+   // set the position of the last byte to read not to exceed the buffer size
+   if (fp->file_size - fp->file_pos > buffer_size - 1)
+      end_of_line_offset = fp->file_pos + buffer_size - 1;
+   else
+      end_of_line_offset = fp->file_size - 1;
+
+   // look for the position of the first newline we find, stop anyway if buffer is full
+   while (fp->file_pos < end_of_line_offset)
+   {
+      // do we have a line feed ?
+      if (fp->pStartOfFileAddress[fp->file_pos] == 0x0A)
+         end_of_line_offset = fp->file_pos; // save end of line offset
+
+      fp->file_pos++; // get one character further
+   }
+
+   // have we actually read something ?
+   if (fp->file_pos == start_of_line_offset)
+      return (NULL); // return if nothing was read
+
+   // now we know where we must start the reading and where we must stop it
+
+   // copy the data to the buffer, reading from file_pos to index
+   for (index = start_of_line_offset; index <= end_of_line_offset; index++)
+      line_buffer[index - start_of_line_offset] = fp->pStartOfFileAddress[index];
+
+   // is there a CR+LF sequence at the end of that line ?
+   if (line_buffer[index - start_of_line_offset - 2] == 0x0D)
+   {
+      line_buffer[index - start_of_line_offset - 2] = '\n'; // turn it to a standard end of line
+      index--; // get back one position
+   }
+
+   // is there a carriage return or a line feed at the end of that line ?
+   if ((line_buffer[index - start_of_line_offset - 1] == 0x0D) || (line_buffer[index - start_of_line_offset - 1] == 0x0A))
+      line_buffer[index - start_of_line_offset - 1] = '\n'; // turn it to a standard end of line
+
+   line_buffer[index - start_of_line_offset] = 0; // terminate string
+
+   return (line_buffer); // and return the buffer filled out with what we've read
+}
+
+
+texture_t *FindTextureByName (const char *texture_name)
+{
+   // given a texture name, this function finds the actual texture entry in the global texture
+   // database, so that we get access to its type (metal, wood, concrete, dust, computer etc.)
+   // If texture name is not found in the database, return a void pointer. NOTE: this routine
+   // should ONLY be called if the current texture under a player changes !
+
+   // TODO: pre-sort texture names and perform faster binary search here.
+
+   // for each texture in the global array, compare its name case-insensitively with that one
+   for (int index = 0; index < texture_count; index++)
+      if (strnicmp (texture_name, textures[index].name, CBTEXTURENAMEMAX - 1) == 0)
+         return (&textures[index]); // when found, return a pointer to the texture entry
+
+   return (NULL); // texture not found, return void pointer
+}
+
+
+void PlayFootstepSoundsForBots (void)
+{
+   // this function cycles through all players and determines if a player is walking or running,
+   // and if so if he's likely to emit footstep sounds. Since these types of sounds are predicted
+   // on the client side only, and bots have no client DLL, we have to simulate their perception
+   // in order for the bots to hear them. So in case a player is moving, we bring his footstep
+   // sounds to the ears of the bots around. The step sound is based on the texture the player is
+   // walking on. Using TraceTexture(), we ask the engine for that texture, and we look up in our
+   // step sounds database in order to determine which footstep sound is related to that texture.
+
+   edict_t *pPlayer;
+   const char *texture_name;
+   char sound_name[256], sound_path[256];
+   int player_index, count;
+   float volume;
+
+   if (!footstep_sounds_on)
+      return; // if footstep sounds not enabled, return
+
+   // cycle through all players
+   for (player_index = 0; player_index < gpGlobals->maxClients; player_index++)
+   {
+      pPlayer = INDEXENT (player_index + 1); // note that player edicts start at 1
+
+      if (FNullEnt (pPlayer) || pPlayer->free)
+         continue; // skip invalid players
+
+      if (!IsAlive (pPlayer))
+         continue; // skip this player if not alive (i.e. dead or dying)
+
+      if (b_observer_mode && !(pPlayer->v.flags & FL_FAKECLIENT))
+         continue; // skip real players if in observer mode
+
+      if (pPlayer->v.velocity.Length2D () < 220)
+         continue; // skip players that don't move fast enough to make footstep noises
+
+      if (!pfnEntIsOnFloor (pPlayer))
+         continue; // skip players that are in mid-air (jumping or falling or whatever)
+
+      if (players[player_index].step_sound_time > gpGlobals->time)
+         continue; // skip players that are between two steps (foot hasn't touched the ground yet)
+
+      // assign the player a default texture under the feet in case none specified yet
+      if (players[player_index].pTextureAtFeet == NULL)
+         players[player_index].pTextureAtFeet = &textures[0]; // default texture
+
+      // get texture from under the player's feet
+      texture_name = pfnTraceTexture (pPlayer->v.groundentity, pPlayer->v.origin, pPlayer->v.origin + Vector (0, 0, -9999));
+
+      // has the engine reported a valid pointer (i.e. has it found the texture) ?
+      if (texture_name)
+      {
+         // strip eventual leading '-0' or '+0~' or '{' or '!'
+         if ((*texture_name == '-') || (*texture_name == '+'))
+            texture_name += 2;
+         if ((*texture_name == '{') || (*texture_name == '!') || (*texture_name == '~') || (*texture_name == ' '))
+            texture_name++;
+
+         // has the player started walking on a new texture ?
+         if (strnicmp (texture_name, players[player_index].pTextureAtFeet->name, CBTEXTURENAMEMAX - 1) != 0)
+            players[player_index].pTextureAtFeet = FindTextureByName (texture_name); // link a pointer to this new texture in the textures array
+
+         // don't let the player be attributed a void texture pointer !
+         if (players[player_index].pTextureAtFeet == NULL)
+         {
+            if (DebugLevel.ears > 1)
+               UTIL_ServerConsole_printf ("RACC: PlayFootstepSoundsForBots(): texture \"%s\" not found in database, using default footstep sound\n", texture_name);
+            players[player_index].pTextureAtFeet = &textures[0]; // use default texture
+         }
+
+         // given the type of texture under player's feet, prepare a sound file for being played
+         switch (players[player_index].pTextureAtFeet->type)
+         {
+            default:
+            case CHAR_TEX_CONCRETE:
+               strcpy (sound_name, "player/pl_step%d.wav");
+               count = 4; // there are 4 different step sounds
+               volume = 0.9;
+               break;
+            case CHAR_TEX_METAL:
+               strcpy (sound_name, "player/pl_metal%d.wav");
+               count = 4; // there are 4 different metal sounds
+               volume = 0.9;
+               break;
+            case CHAR_TEX_DIRT:
+               strcpy (sound_name, "player/pl_dirt%d.wav");
+               count = 4; // there are 4 different dirt sounds
+               volume = 0.9;
+               break;
+            case CHAR_TEX_VENT:
+               strcpy (sound_name, "player/pl_duct%d.wav");
+               count = 4; // there are 4 different duct sounds
+               volume = 0.5;
+               break;
+            case CHAR_TEX_GRATE:
+               strcpy (sound_name, "player/pl_grate%d.wav");
+               count = 4; // there are 4 different grate sounds
+               volume = 0.9;
+               break;
+            case CHAR_TEX_TILE:
+               strcpy (sound_name, "player/pl_tile%d.wav");
+               count = 5; // there are 5 different tile sounds
+               volume = 0.8;
+               break;
+            case CHAR_TEX_SLOSH:
+               strcpy (sound_name, "player/pl_slosh%d.wav");
+               count = 4; // there are 4 different slosh sounds
+               volume = 0.9;
+               break;
+            case CHAR_TEX_WOOD:
+               strcpy (sound_name, "debris/wood%d.wav");
+               count = 4; // there are 4 different wood debris sounds
+               volume = 0.9;
+               break;
+            case CHAR_TEX_GLASS:
+            case CHAR_TEX_COMPUTER:
+               strcpy (sound_name, "debris/glass%d.wav");
+               count = 4; // there are 4 different glass debris sounds
+               volume = 0.8;
+               break;
+            case 'N':
+               strcpy (sound_name, "player/pl_snow%d.wav");
+               count = 6; // there are 6 different snow sounds (Counter-Strike specific)
+               volume = 0.8;
+               break;
+         }
+
+         // now build a random sound path amongst the count
+         sprintf (sound_path, sound_name, RANDOM_LONG (1, count));
+
+         // did we hit a breakable?
+         if (strcmp (STRING (pPlayer->v.groundentity->v.classname), "func_breakable") == 0)
+            volume /= 1.5; // drop volume, the object will already play a damaged sound
+
+         // bring footstep sound from this player's feet to bots' ears
+         DispatchSound (sound_path, pPlayer->v.origin + Vector (0, 0, -18), volume, ATTN_NORM);
+         players[player_index].step_sound_time = gpGlobals->time + 0.300; // next step in 300 milliseconds
+      }
+   }
+
+   return;
+}
+
+
+void BotFeedEar (bot_t *pBot, sound_t *sound, Vector v_origin, float volume)
+{
+   // this function is in charge of finding, or freeing if necessary, a slot in the bot's ears
+   // to put the sound pointed to by sound in. If no free slot is available, the sound that is
+   // the most about to finish gets overwritten.
+
+   float next_fade_date = gpGlobals->time + 60.0;
+   int i, selected_index = 0;
+
+   if (FNullEnt (pBot->pEdict) || (sound == NULL))
+      return; // reliability check
+
+   // find a free slot in bot's ears
+   for (i = 0; i < BOT_EAR_SENSITIVITY; i++)
+   {
+      // does one exists ?
+      if (pBot->BotEars.noises[i].fade_date < gpGlobals->time)
+      {
+         // store the sound in that slot of the bot's ear
+         strcpy (pBot->BotEars.noises[i].file_path, sound->file_path);
+         pBot->BotEars.noises[i].v_origin = v_origin; // remember origin
+         pBot->BotEars.noises[i].fade_date = gpGlobals->time + sound->duration;
+         pBot->BotEars.noises[i].loudness = sound->loudness * volume;
+
+         pBot->BotEars.new_sound = TRUE; // mark new sound flag for the bot to check it
+         return;
+      }
+   }
+
+   // no free slot found, so overwrite one, preferably the one most close to fade
+   // FIXME: wrong rule - given several sounds, WHICH ONE are we likely to ignore the most ?
+   for (i = 0; i < BOT_EAR_SENSITIVITY; i++)
+      if (pBot->BotEars.noises[i].fade_date < next_fade_date)
+      {
+         next_fade_date = pBot->BotEars.noises[i].fade_date;
+         selected_index = i; // select the sound which is the most "finished"
+      }
+
+   // store the sound in that slot of the bot's ear
+   strcpy (pBot->BotEars.noises[selected_index].file_path, sound->file_path);
+   pBot->BotEars.noises[selected_index].v_origin = v_origin;
+   pBot->BotEars.noises[selected_index].fade_date = gpGlobals->time + sound->duration;
+   pBot->BotEars.noises[selected_index].loudness = sound->loudness * volume;
+
+   // if debug mode is enabled, tell the developer what we did
+   if (DebugLevel.ears > 0)
+      UTIL_printf ("BOT %s HEARS SOUND: %s - LOUD %.1f - FADD %.1f\n",
+                   STRING (pBot->pEdict->v.netname),
+                   pBot->BotEars.noises[selected_index].file_path,
+                   pBot->BotEars.noises[selected_index].loudness,
+                   pBot->BotEars.noises[selected_index].fade_date);
+
+   pBot->BotEars.new_sound = TRUE; // mark new sound flag for the bot to check it
+   return;
+}
+
+
+void BotHear (bot_t *pBot)
+{
+   // this is the function that makes the bot hear. For every audible sound (i.e. BOTH in
+   // range AND acknowledged by the subconsciousness - not discarded because of too much ambient
+   // noise), checks are made to tell whether this sound represents a threat or not, and if so,
+   // place the bot's ideal angles in the approximate direction for the bot to get an eye on
+   // what's happening. It is based on the following assumptions, 1° that a bot knowing to have
+   // teammates around will less care for the threat potential, and 2° that peaks in the
+   // derivation of the waveform induce a surprise factor that makes the sound a potential
+   // source of danger. Note the waveform is obviously VERY undersampled (the wave is actually
+   // the sum of the average loudnesses of the different sounds each frame).
+
+   int index, noise_count = 0;
+
+   if (FNullEnt (pBot->pEdict))
+      return; // reliability check
+
+   // count the number of sounds being heard, and check if a sound has faded out
+   for (index = 0; index < BOT_EAR_SENSITIVITY; index++)
+      if (pBot->BotEars.noises[index].fade_date > 0)
+         if (pBot->BotEars.noises[index].fade_date < gpGlobals->time)
+            pBot->BotEars.noises[index].fade_date = 0; // that sound has faded now, so delete it
+         else
+            noise_count++; // here we have a valid sound bot is hearing
+
+   // now go for computing the new average noise...
+   pBot->BotEars.average_noise = 0;
+
+   for (index = 0; index < BOT_EAR_SENSITIVITY; index++)
+      if (pBot->BotEars.noises[index].fade_date > gpGlobals->time)
+         pBot->BotEars.average_noise += pBot->BotEars.noises[index].loudness / noise_count;
+
+   // if debug mode is high, print out the average noise just computed
+   if (DebugLevel.ears > 1)
+      UTIL_ServerConsole_printf ("BOT %s HEARS AVERAGE NOISE: %.1f\n", STRING (pBot->pEdict->v.netname), pBot->BotEars.average_noise);
+
+   // TODO: MAKE SOUNDS DIRECTION RELATIVE (LEFT, RIGHT, FRONT, REAR)
+
+   // does the bot hear a new sound ?
+   if (pBot->BotEars.new_sound)
+   {
+      // check it
+
+      pBot->BotEars.new_sound = FALSE; // don't do it twice
+   }
+
+   return;
+}
+
+
+in dll.cpp:
+code:
+
+sound_t sounds[MAX_SOUNDS];
+int sound_count = 0;
+texture_t textures[MAX_TEXTURES];
+int texture_count = 0;
+player_t players[32];
+int player_count = 0;
+bot_t bots[32];
+int bot_count = 0;
+[...]
+
+
+void GameDLLInit (void)
+{
+   InitTextureSoundsForBots (); // build the texture-related footstep sounds database
+   [...]
+}
+
+
+void StartFrame (void)
+{
+   PlayFootstepSoundsForBots (); // bring the players' footstep sounds to the bots' ears
+   [...]
+}
+
+
+in engine.cpp:
+code:
+
+int pfnPrecacheSound (char *s)
+{
+   // the purpose of this function is to precache (load in memory) the sounds that can have to
+   // be played during the game. The precaching of items is done at each loading of a new map.
+   // I hook this function in order to compute at precache time the average loudness of the sound
+   // being precached, for having a quick reference when the bots have to hear one of them.
+
+   PrecacheSoundForBots (s); // precache that sound for the bots too
+
+   return (*g_engfuncs.pfnPrecacheSound) (s); // let the engine precache the sound
+}
+
+
+void pfnChangeLevel (char *s1, char *s2)
+{
+   memset (&sounds, 0, sizeof (sounds)); // reset sound list
+   sound_count = 0; // reset sound count since we're likely to precache new ones
+   [...]
+}
+
+
+void pfnEmitSound (edict_t *entity, int channel, const char *sample, float volume, float attenuation, int fFlags, int pitch)
+{
+   // this function tells the engine that the entity pointed to by "entity", is emitting a sound
+   // which filename is "sample", at level "channel" (CHAN_VOICE, etc...), with "volume" as
+   // loudness multiplicator (normal volume VOL_NORM is 1.0), with a pitch of "pitch" (normal
+   // pitch PITCH_NORM is 100.0), and that this sound has to be attenuated by distance in air
+   // according to the value of "attenuation" (normal attenuation ATTN_NORM is 0.8 ; ATTN_NONE
+   // means no attenuation with distance). Optionally flags "fFlags" can be passed, which I don't
+   // know the heck of the purpose. After we tell the engine to emit the sound, we have to call
+   // DispatchSound() to bring the sound to the ears of the bots. Since bots have no client DLL
+   // to handle this for them, such a job has to be done manually.
+
+   // tell the engine to emit the sound
+   (*g_engfuncs.pfnEmitSound) (entity, channel, sample, volume, attenuation, fFlags, pitch);
+
+   DispatchSound (sample, entity->v.origin, volume, attenuation); // dispatch that sound
+}
+
+
+void pfnEmitAmbientSound (edict_t *entity, float *pos, const char *samp, float vol, float attenuation, int fFlags, int pitch)
+{
+   // this function tells the engine that the entity pointed to by "entity", is emitting a sound
+   // which filename is "samp", at position "pos" (pos must point to a vector), with "vol" as
+   // loudness multiplicator (normal volume VOL_NORM is 1.0), with a pitch of "pitch" (normal
+   // pitch PITCH_NORM is 100.0), and that this sound has to be attenuated by distance in air
+   // according to the value of "attenuation" (normal attenuation ATTN_NORM is 0.8 ; ATTN_NONE
+   // means no attenuation with distance). Optionally flags "fFlags" can be passed, which I don't
+   // know the heck of the purpose. After we tell the engine to emit the sound, we have to call
+   // DispatchSound() to bring the sound to the ears of the bots. Since bots have no client DLL
+   // to handle this for them, such a job has to be done manually.
+
+   // tell the engine to emit the sound
+   (*g_engfuncs.pfnEmitAmbientSound) (entity, pos, samp, vol, attenuation, fFlags, pitch);
+
+   DispatchSound (samp, pos, vol, attenuation); // dispatch that sound for the bots to hear it
+}
+
+
+
+Here it is... tell me if I missed out something ;)
+The great advantage of this system is that the bots hear almost exactly the same way we do : the sounds actually *LAST* in their ears, and they hear *SEVERAL* sounds at a time. Only thing is that the sampling of the bot's ears deal with the sounds' average loudnesses, and not real-time peak data. Obvious reason: CPU power, eh :)
+
+Thanks Tobias, botman and a few others who will probably recognize themselves.
+Feedback welcome!
+
+

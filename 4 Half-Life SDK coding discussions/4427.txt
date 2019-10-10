@@ -1,0 +1,57 @@
+--------------------------------------------------
+Subject: Moving entities in TFC with amx
+--------------------------------------------------
+05/19/03 at 11:10:54  Posted by: flex (parsek@gmx.net)
+--------------------------------------------------
+Hello,
+
+Maybe you know the AMX mod for metamod, similar with adminmod but its more powerfull cause it gives an interface to engine and mini modules. Those modules looking like metamod plugins and someone just made a module that allows to set an origin of an entity.
+The code looks like:
+
+
+static cell AMX_NATIVE_CALL set_entity_origin(AMX *amx, cell *params) /* 2 param */ 
+{ 
+int index = params[1]; 
+cell *Origin = GET_AMXADDR(amx,params[2]); 
+
+edict_t* pEdict = INDEXENT(index); 
+
+//This is the important part how the origin is set
+pEdict->v.origin.x = Origin[0]; 
+pEdict->v.origin.y = Origin[1]; 
+pEdict->v.origin.z = Origin[2]; 
+
+return 1; 
+} 
+
+The problem is that this function moves only the model or sprite of an entity but not itself. I made a grenade bag and moved it to new position, but to get grenades i had to stay on old position. In other words, if i walk to the position where the model appears, i dont get any nade. Also another weird thing is that if i move an entity too far from its old position, their model or sprite disappears till i move some meter back. 
+
+I think the method which sets origin isnt correctly for TFC, but i dont have any idea how to fix it. I hope this post isnt too curios for you.
+
+
+--------------------------------------------------
+05/19/03 at 11:59:49  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+This requires additional code to fix things.
+
+When you move an entity, you MUST call the UTIL_SetOrigin() function (which is in the SDK, not AMX), to inform the engine that the position of this entity has changed.  The engine will update the collision volumes that handle things like "touching" the entity and colliding with it to block player movement (for things that block movement).  Also if you don't call UTIL_SetOrigin after changing the entity's pev->origin values, the rendering code will still be using the old origin to determine if this thing is "out of view" or not (called frustum culling in the rendering world).  Things that you can't see (things that are behind you or outside your field of view) don't need to be render and the are culled (deleted) from the view set and they won't be rendered.
+
+All of the problem you describe are due to not updating the engine with the new position of the moved entity (via the UTIL_SetOrigin() function).  If AMX doesn't have a SetOrigin() function that gives you similar behaviour, then the creators of AMX will need to modify it to support this.
+
+botman
+
+--------------------------------------------------
+05/19/03 at 13:00:09  Reply by: flex (parsek@gmx.net)
+--------------------------------------------------
+Ah, sounds logical. 
+Thanks, do you accept when i quote your posting on the amx forums?
+
+--------------------------------------------------
+05/19/03 at 14:01:01  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Sure, that's fine.
+
+Like I said, there may already be a SetOrigin() function somewhere in AMX.  Search the docs and/or their forum before you post a thread complaining about it not being there.  ;)
+
+botman
+

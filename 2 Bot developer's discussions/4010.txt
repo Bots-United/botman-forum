@@ -1,0 +1,1004 @@
+--------------------------------------------------
+Subject: pfnGetBonePosition ROCKS !!!
+--------------------------------------------------
+01/09/03 at 15:34:33  Posted by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Heya there !
+
+Don't you hate when your bots don't see that player hiding behind some crate where a good half of his ass can be seen from the edge ?
+
+Don't you hate when your bots happily run to death because of an ambushed player of which everyone BUT your bot could have seen the silencer of his M4A1 saying "hello" at the corner ?
+
+Don't you hate when your bots steady their sniper rifle and pretend to aim accurately two centimeters too far of their target's ear, miss it of course, but try back over and over again, because someone named "v.origin + v.offset" told them they have to aim RIGHT THERE ?
+
+Hey !!
+
+I wonder why no one took care about it earlier.
+Your Jesuz Christ calls himself :
+code:
+
+pfnGetBonePosition (pPlayerEntity, bone_index, v_origin, v_angles);
+
+
+
+It gives you the ORIGIN of whatever bone you want to check for (head, right foot, left arm, little finger of the right arm)
+And more than this it gives you its DIRECTION.
+You can make your bots actually SEE whatever fookin' inch of a player hiding around. Watch your asses !
+
+Halleluyah !
+
+
+--------------------------------------------------
+01/09/03 at 16:48:52  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+wahay, I was also wondering how to do this, but I was thinking all this CPU intensive stuff :P :)
+
+EDIT:
+
+How do you actually know how many bones the edict has?
+
+[modified on 01/09/03 at 16:48:52]
+--------------------------------------------------
+01/09/03 at 17:45:18  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+First is obviously you want to do this with player entities only, possibly for monsters too but in this case you would have to know which bones are different.
+
+Second, you have to test :P
+Since you don't have the source code of your MOD, I suggest you run a couple tests with drawing beams and such in order to actually locate the bones on the player model in the game. Fire up one bot, and make it display one of its bones with some DrawBeam function.
+
+Then, all you have to do is something like that:
+#define CS_PLAYER_BONE_PELVIS 0
+#define CS_PLAYER_BONE_BACK1 1
+#define CS_PLAYER_BONE_RIGHT_FOREARM 17
+etc...
+
+
+--------------------------------------------------
+01/10/03 at 05:45:44  Reply by: @$3.1415rin (johannes@_-removeifnotavirus-_lampel.net)
+--------------------------------------------------
+the bones should also be displayed in a .mdl viewer ...
+
+--------------------------------------------------
+01/10/03 at 05:56:50  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Also, don't forget that every traceline you do will cost CPU cycles.  You don't want to trace lines to every single bone in every single player every single frame.  Your frame rate will drop to 2 FPS and you'll only be able to have about 3 bots playing in the game at once.
+
+Since most of the time you aren't going to be able to see/shoot players, you should do simple checks first then get into more complicated checks.  Set up a function something like this...
+
+1) Check to see if the origin is outside the field of view by more than 10 degeees, if so, the player can't possibly be visible, return to caller.
+
+2) Check to see if the origin of the player or any of the 8 corners of the bounding box are visible (within FOV and traceline success), if not, the player probably isn't visible, return to caller.  You can't tell 100% sure that some upper or lower part of the player isn't visible, but it will catch most cases.
+
+3) Check to see if any of the bones of the player model (and/or player's weapon model?) are visible (just tracelines here since you know the origin is already within FOV from the previous check).
+
+You might also only want to do these checks every 1/10th of a second or so, instead of doing them every frame.  This should give you a few more CPU cycles to spend on pathfinding and video rendering.
+
+botman
+
+[modified on 01/10/03 at 05:56:50]
+--------------------------------------------------
+01/10/03 at 06:14:49  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+way ahead of ya botman ;) I only check this for players within fov every 0.2 - 0.5 seconds, anyway to the neat stuff...
+
+Heres how to get number of bones, the stuidhdr also holds lots more neat info on an edict. You'll also need the studiohdr structure defined below here
+
+code:
+
+typedef struct 
+{
+      int                              id;
+      int                              version;
+
+      char                              name[64];
+      int                              length;
+
+      vec3_t                              eyeposition;            // ideal eye position
+      vec3_t                              min;                  // ideal movement hull size
+      vec3_t                              max;                  
+
+      vec3_t                              bbmin;                  // clipping bounding box
+      vec3_t                              bbmax;            
+
+      int                              flags;
+
+      int                              numbones;            // bones
+      int                              boneindex;
+
+      int                              numbonecontrollers;      // bone controllers
+      int                              bonecontrollerindex;
+
+      int                              numhitboxes;            // complex bounding boxes
+      int                              hitboxindex;                  
+      
+      int                              numseq;                  // animation sequences
+      int                              seqindex;
+
+      int                              numseqgroups;            // demand loaded sequences
+      int                              seqgroupindex;
+
+      int                              numtextures;            // raw textures
+      int                              textureindex;
+      int                              texturedataindex;
+
+      int                              numskinref;            // replaceable textures
+      int                              numskinfamilies;
+      int                              skinindex;
+
+      int                              numbodyparts;            
+      int                              bodypartindex;
+
+      int                              numattachments;            // queryable attachable points
+      int                              attachmentindex;
+
+      int                              soundtable;
+      int                              soundindex;
+      int                              soundgroups;
+      int                              soundgroupindex;
+
+      int                              numtransitions;            // animation node to animation node transition graph
+      int                              transitionindex;
+} studiohdr_t;
+
+int GetNumBones ( edict_t *pPlayer )
+{
+
+      void *pmodel = GET_MODEL_PTR( pPlayer );
+
+      studiohdr_t *pstudiohdr = (studiohdr_t *)pmodel; 
+
+      if (! pstudiohdr) 
+         return 0;
+        else
+           return pstudiohdr->numbones;    
+}
+
+
+--------------------------------------------------
+01/10/03 at 12:02:26  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+hey thanks a lot Cheesy, that's a good idea this studiohdr thing.
+
+And to botman: of course, common sense rule here. When it comes to checking for the visibility of a player, I only check for 5 bones, by order of tactical importance: head, then the "standard" origin, left arm, right arm, left foot, right foot.
+
+
+--------------------------------------------------
+01/10/03 at 13:05:07  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+I check the whole 'shebang' as they say here!
+
+code:
+
+bool PlayerIsVisible ( edict_t *pSource, edict_t *pPlayer )
+{
+      Vector v_origin, v_angles;
+      Vector v_src;
+      TraceResult tr;
+
+      int iBoneIndex;
+      int iNumBones;
+
+      bool bVisible;
+
+      v_src = GetGunPosition(pSource); // Get View Pos
+
+      iBoneIndex = 0;
+      iNumBones = GetNumBones(pPlayer); // Get Amount of Bones
+
+      bVisible = FALSE;
+
+      while ( (iBoneIndex < iNumBones) && !bVisible ) // Loop Through Bones
+      {
+            pfnGetBonePosition(pPlayer,iBoneIndex,v_origin,v_angles);
+
+            if ( FInViewCone(&v_origin,pSource) ) // If in FOV
+            {
+                  UTIL_TraceLine(v_src,v_origin,ignore_monsters,ignore_glass,NULL,&tr);
+                  
+                  bVisible = tr.flFraction >= 1.0;
+            }
+            
+            iBoneIndex++;
+      }
+
+      return bVisible;
+}
+
+
+
+and it works! My bots shoot my ass a lot now ;) You know what I mean hehe (Like when I can't see them, they can still shoot me !)
+
+[modified on 01/10/03 at 12:16:30]
+
+[modified on 01/10/03 at 13:05:07]
+--------------------------------------------------
+01/10/03 at 13:51:10  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+you may better return the actual vector where the bot should aim at, else it will still aim for the center of your body only even if what it sees is just the hand. And you know, a player has ~50 bones, aren't 50 tracelines way too much ? I am however famous amongst bot coders for my personal love story with them, but really here I think you abuse ! ;)
+
+
+--------------------------------------------------
+01/10/03 at 16:51:20  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+there are 32 with the mod I use. which yeah are a bit many tracelines, but then I do them when all the visibles are being found. And yea I was gonna return the position for the bot to aim at, but I thought I'd better not, because I've got bots to shoot me anyway without it, plus, I want to give the bots a less perfect aiming system so they miss a bit more often rather than just hit the position when they see it :P
+
+--------------------------------------------------
+01/10/03 at 19:01:08  Reply by: Ghoul (calebd@catt.biz)
+--------------------------------------------------
+Awwww, don't want bots shooting your left index finger's upper thumbnail?  ;)
+
+--------------------------------------------------
+01/11/03 at 05:19:51  Reply by: RedFox (redfox@nildram.co.uk)
+--------------------------------------------------
+hey, that really kewl PM
+somthing else to add
+
+cheese, what you mean by 'but then I do them when all the visibles are being found'?
+cus it sounds interesting
+
+--------------------------------------------------
+01/11/03 at 05:42:31  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+I add all the entities the bot can see into a linked list and update it every "gpGlobals->Time + reaction_time), so then when I'm looking for things that are visible, I cans search through the list instead of using mores tracelines per frame. I hope it cuts done my CPU anyway, although when you look for things to add, I use FindEntityInSphere, and the distance is big, but those are cut down by checking if things are drawn (effects & EF_NODRAW etc) and making sure its in FOV first before doing tracelines.
+
+I also only do the GetBonePosition check for players only.
+
+I update them like this :S
+code:
+
+if( (last_update_visibles + reaction_time) < gpGlobals->time )
+{
+...
+      visible_list = DestroyList(visible_list);       
+...
+
+      while( (entity = UTIL_FindEntityInSphere(entity,pEdict->v.origin + pEdict->v.view_ofs,f_view_distance)) != NULL )
+      {   
+            origin = VecBModelOrigin(entity);
+            
+            if( pEdict->v.effects & EF_NODRAW ) // not visible
+                  continue;
+            else if( pEdict->v.flags & FL_KILLME )
+                  continue;
+            ...
+            else if ( entity == pEdict )
+                  continue;
+            else if ( (is_player = (entity->v.flags & FL_CLIENT)) == FL_CLIENT )
+            {
+                  if ( !PlayerIsVisible(pEdict,entity) )
+                        continue;
+            }
+            else if( !FInViewCone(&origin,pEdict) )//UTIL_AnglesBetweenEdicts(pEdict, entity) > 55.0 )
+                  continue;
+            else if( !EntityIsVisible(this,entity) )
+                  continue;
+            
+            distance = DistanceFrom(origin);            
+            
+            ...
+            
+            if ( entity == pBotEnemy )
+                  bEnemyVisible = TRUE;
+            
+            ...
+
+            visible_list = AddToBotList(visible_list, entity);
+      }
+      
+      last_update_visibles = gpGlobals->time;            
+}
+
+
+--------------------------------------------------
+01/11/03 at 13:00:39  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+It seems to me that your reaction time implementation is kinda weird...
+Let's say you have a reaction time of 0.3 second
+Let's say the last bot scan was at global time = 20 second
+Let's say a player actually appears in the bot's FOV at global time = 20.299 second
+At 20.3 second, your bot will already have noticed it ???
+
+Yeah I'm an integrist ;D
+
+
+--------------------------------------------------
+01/11/03 at 13:23:15  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+yeah that's how its meant to be done ;)
+
+although I'm still a bit worried about the amount of tracelines getting used when I update the visibles because of the amount of entities in such a distance (typically around 2048 units - 3000 units in FOV) :/
+
+--------------------------------------------------
+01/12/03 at 05:45:10  Reply by: RedFox (redfox@nildram.co.uk)
+--------------------------------------------------
+ah, well if you want less trace lines being called, theirs always one more check you can use
+
+code:
+
+//v_origin is the origin of the entity we want to check..
+//might want to check the 4 corners of bounding hulls though
+
+unsigned char *pvs,*pas;
+pvs=NULL;
+pas=NULL;
+SetupVisibility(NULL,bots[bot_index].pEdict,&pvs,&pas);
+if(ENGINE_CHECK_VISIBILITY( (const struct edict_s *)bots[bot_index].pEdict, ENGINE_SET_PVS ( (float *)&v_origin ) ))
+{
+//in the game engines visibility set
+}
+
+
+
+I asume its quicker than a traceline, so it should save some cpu time, getting rid of redundant checks :D
+prolly best to call after the FOV check
+
+another thought might be to limit the number of tracelines per frame...load balancing I think
+
+a traceline wants to be called...so its posted on a list, with its post time..
+only some of the list is processed per frame.
+and the results get posted back to wherever
+
+the only problem arrises when the system has a low fps, or their are hundreds of tracelines.
+so you have to check the trace line was called within 0.1/0.25 seconds, so things don't get backed up
+
+you can have it go adaptive aswell. if it starts backing up, adjust the number of traces per frame allowed :)
+
+I love optomising stuff :D
+
+[modified on 01/12/03 at 05:45:10]
+--------------------------------------------------
+01/12/03 at 06:33:29  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+I already tried to "load-balance" tracelines, only allowing a certain number to be done per frame, so as "filtering" the function call...
+Curiously it dropped my fps so much that the game was less playable than without any load-balancing at all.
+
+€dited :
+
+Also, I remember having read something about the PVS...
+The PVS is only declared "valid" by the engine if the target entity has been actually SEEN by a REAL player. The engine used this in order for the monsters to start fighting (for example scenes with aliens vs grunts) when and only when the player was around (else the player would only have found corpses during his progression). I think it's the same for bots, in the sense that bots are not real clients, and thus they won't behave right UNTIL a real player "sees" them (either by spectator camera, or in the game). That's why I don't use it.
+
+[modified on 01/12/03 at 06:33:29]
+--------------------------------------------------
+01/12/03 at 06:50:29  Reply by: RedFox (redfox@nildram.co.uk)
+--------------------------------------------------
+hmmm, better check these things out then
+
+you may be right about the PVS, as the dam light level was never set unless a real player could see the bot, so it may be the same with the PVS
+
+alternativly, the SetupVisibility may fix the lgihting problem :p
+
+so I'll check that aswell
+
+hmmm, wonder if they've fixed this for CS:CZ, as if the bots don't check lighting levels, it'll suck
+heh
+
+
+I have used this for the PAS though, and it seemed to work pretty well...better do some testing with only a bot on the server
+
+
+interesting about the load balancing.
+perhaps try it with less traces per frame?
+hmm, wonder if theirs some querks we don't know about that makes it faster to call lots at once?
+
+[modified on 01/12/03 at 06:50:29]
+--------------------------------------------------
+01/12/03 at 08:05:03  Reply by: RedFox (redfox@nildram.co.uk)
+--------------------------------------------------
+nope, the PVS check seems fine!
+havn't tested it extencivly...i.e. how well it works in all situations
+
+but it seems to work fine with the tests I've run, so should work well as a traceline filter :D
+
+--------------------------------------------------
+01/12/03 at 08:41:03  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+nice idea tom, I've used it instead of the traceline check, although I've seen some situations were bots tried to shoot thorugh some things, but they were nearby which meant they bumped into each other anyway ;)
+
+I'll keep testing it too ;)
+
+--------------------------------------------------
+01/12/03 at 15:29:59  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+For those who are interested, here's my implementation:
+
+code:
+
+Vector WhatBotSeesOfEntity (bot_t *pBot, entity_t *pEntity)
+{
+   // this function returns the best vector the bot pointed to by pBot can see of entity pEntity,
+   // and in case pEntity is definitely not visible from the bot's point of view, it returns a
+   // NULL vector. Either the entity is a player, or a bounded entity, or a point-based entity.
+   // if it's a player, checks are made on different points of the player's body, starting from
+   // the most tactically important one (the head) to the less tactically important ones, in
+   // order to determine if the player is visible and WHAT is visible of this player ; if it's
+   // an entity which has a bounding box, we check whether either the center of it, or any of
+   // its four corners on a flattened referential, are visible, and if none of these points are,
+   // we assume that the entity isn't visible at all. Else if it's a point-based entity, all we
+   // can check is the visibility of the center (origin) of this entity. In case some part of
+   // pEntity is visible from the bot's point of view, the vector position of the best visible
+   // point of pEntity is returned.
+
+   static TraceResult tr;
+   static Vector v_source, v_targetorigin, v_targetside, v_targetangles;
+
+   if (IsNull (pBot->pEntity)  IsNull (pEntity))
+      return (VecNULL); // reliability check
+
+   v_source = EyeOriginOf (pBot->pEntity); // compute source vector location
+
+   // is the target entity a player ?
+   if (IsAPlayer (pEntity))
+   {
+      // always look for the player's head first
+      v_targetorigin = EyeOriginOf (pEntity); // compute target head vector location
+      pfnTraceLine (v_source, v_targetorigin, 0x101, pEntity, &tr);
+      if ((tr.flFraction == 1.0) && IsInFOV (pBot->pEntity, v_targetorigin))
+         return (v_targetorigin); // head of target player is visible
+
+      // else look for the player's waist
+      pfnGetBonePosition (pEntity, PLAYERBONE_PELVIS, v_targetside, v_targetangles);
+      pfnTraceLine (v_source, v_targetside, 0x101, pEntity, &tr);
+      if ((tr.flFraction == 1.0) && IsInFOV (pBot->pEntity, v_targetside))
+         return (v_targetside); // body of target player is visible
+
+      // else look for the player's left arm
+      pfnGetBonePosition (pEntity, PLAYERBONE_L_FOREARM, v_targetside, v_targetangles);
+      pfnTraceLine (v_source, v_targetside, 0x101, pEntity, &tr);
+      if ((tr.flFraction == 1.0) && IsInFOV (pBot->pEntity, v_targetside))
+         return (v_targetside); // left arm of target player is visible
+
+      // else look for the player's right arm
+      pfnGetBonePosition (pEntity, PLAYERBONE_R_FOREARM, v_targetside, v_targetangles);
+      pfnTraceLine (v_source, v_targetside, 0x101, pEntity, &tr);
+      if ((tr.flFraction == 1.0) && IsInFOV (pBot->pEntity, v_targetside))
+         return (v_targetside); // right arm of target player is visible
+
+      // else look for the player's left foot
+      pfnGetBonePosition (pEntity, PLAYERBONE_L_FOOT, v_targetside, v_targetangles);
+      pfnTraceLine (v_source, v_targetside, 0x101, pEntity, &tr);
+      if ((tr.flFraction == 1.0) && IsInFOV (pBot->pEntity, v_targetside))
+         return (v_targetside); // left foot of target player is visible
+
+      // else look for the player's right foot
+      pfnGetBonePosition (pEntity, PLAYERBONE_R_FOOT, v_targetside, v_targetangles);
+      pfnTraceLine (v_source, v_targetside, 0x101, pEntity, &tr);
+      if ((tr.flFraction == 1.0) && IsInFOV (pBot->pEntity, v_targetside))
+         return (v_targetside); // right foot of target player is visible
+
+      return (VecNULL); // none of these player's body parts are visible, assume player isn't
+   }
+
+   // else has the target entity got a bounding box ?
+   else if ((pEntity->v.absmin != VecNULL) && (pEntity->v.absmax != VecNULL))
+   {
+      // do some checks for determining which part of the bounding box is visible
+      v_targetorigin = OriginOf (pEntity); // compute target center vector location
+      pfnTraceLine (v_source, v_targetorigin, 0x101, pEntity, &tr);
+      if ((tr.flFraction == 1.0) && IsInFOV (pBot->pEntity, v_targetorigin))
+         return (v_targetorigin); // center of entity is visible
+
+      v_targetside = Vector (pEntity->v.absmin.x, pEntity->v.absmin.y, v_targetorigin.z);
+      pfnTraceLine (v_source, v_targetside, 0x101, pEntity, &tr);
+      if ((tr.flFraction == 1.0) && IsInFOV (pBot->pEntity, v_targetside))
+         return (v_targetside); // this side of entity is visible
+
+      v_targetside = Vector (pEntity->v.absmin.x, pEntity->v.absmax.y, v_targetorigin.z);
+      pfnTraceLine (v_source, v_targetside, 0x101, pEntity, &tr);
+      if ((tr.flFraction == 1.0) && IsInFOV (pBot->pEntity, v_targetside))
+         return (v_targetside); // this side of entity is visible
+
+      v_targetside = Vector (pEntity->v.absmax.x, pEntity->v.absmin.y, v_targetorigin.z);
+      pfnTraceLine (v_source, v_targetside, 0x101, pEntity, &tr);
+      if ((tr.flFraction == 1.0) && IsInFOV (pBot->pEntity, v_targetside))
+         return (v_targetside); // this side of entity is visible
+
+      v_targetside = Vector (pEntity->v.absmax.x, pEntity->v.absmax.y, v_targetorigin.z);
+      pfnTraceLine (v_source, v_targetside, 0x101, pEntity, &tr);
+      if ((tr.flFraction == 1.0) && IsInFOV (pBot->pEntity, v_targetside))
+         return (v_targetside); // this side of entity is visible
+
+      return (VecNULL); // neither the center nor any of the sides of pEntity is visible
+   }
+
+   // else it's a point-based entity, check for its visibility
+   v_targetorigin = OriginOf (pEntity);
+   pfnTraceLine (v_source, v_targetorigin, 0x101, pEntity, &tr);
+      if ((tr.flFraction == 1.0) && IsInFOV (pBot->pEntity, v_targetorigin))
+      return (v_targetorigin); // if visible, return the origin the engine knows
+
+   return (VecNULL); // else assume entity is not visible
+}
+
+
+bool IsInFOV (edict_t *pPlayer, Vector v_location)
+{
+   // this function returns TRUE if the spatial vector location v_location is located inside
+   // the player whose entity is pPlayer's field of view cone, FALSE otherwise.
+
+   static referential_t referential;
+   static Vector v_deviation;
+
+   if (IsNull (pPlayer))
+      return; // reliability check
+
+   // compute deviation angles (angles between pPlayer's forward direction and v_location)
+   v_deviation = WrapAngles (AnglesOfVector (v_location - EyeOriginOf (pPlayer)) - ViewAnglesOf (pPlayer));
+
+   // is v_location outside pPlayer's FOV width (90 degree) ?
+   if (abs (v_deviation.x) > MAX_PLAYER_FOV / 2)
+      return (FALSE); // then v_location is not visible
+
+   // is v_location outside pPlayer's FOV height (consider the 4:3 screen ratio) ?
+   if (abs (v_deviation.y) > (4 * MAX_PLAYER_FOV) / (3 * 2))
+      return (FALSE); // then v_location is not visible
+
+   return (TRUE); // else v_location has to be in pPlayer's field of view cone
+}
+
+
+
+I don't use EngineSetPVS and EngineCheckVisibility because I've found strictly no documentation on it and thus don't know reliably what it does *exactly*, when it is supposed to work and when it is not. If you know it, please tell me.
+
+Hint: in order to get all the bones index numbers for a model in a specific MOD and their names, there's a simple trick. Open Milkshape3D, use Tools->Half-Life->Decompile Normal HL MDL file, select a player model, and decompile the References and QC files. Then open the generated files with Notepad... 8)
+
+
+[modified on 01/12/03 at 15:29:59]
+--------------------------------------------------
+01/12/03 at 15:37:34  Reply by: RedFox (redfox@nildram.co.uk)
+--------------------------------------------------
+well, have you ever looked at halflife in software mode with the faces being displayed in reverse order?..showing the faces around corners
+
+basically, if your stood somewhere, this tells you what may possible be visible...
+so, it should help reduce the amount of tracelines you need todo
+
+obviously, it can't be used instead of a traceline, as its inacurate...it'll say stuffs visible thats hidden round a corner
+basically everything that the renderer shows
+
+their are some cases (very rare) where it may fail..
+have you seen maps with wholes in them before? where the face isn't shown..that may screw stuff up, as stuff in plane view may not be seen in that case..heh
+have to test that
+
+--------------------------------------------------
+01/12/03 at 18:56:54  Reply by: CountFloyd (countfloyd@botepidemic.com)
+--------------------------------------------------
+Just when I thought everybody would already use  ENGINE_CHECK_VISIBILITY since years. Sorry couldn't resist ;)
+As Tom said using the PAS & PVS is a good way to filter out players so you can skip a lot of slow traceline checks. I'd think it walks the BSP Leafs to do so and it's really fast (but unreliable as well). Remember that you can also use the PAS (Player Audible Set) to skip player checks when listening for sounds.
+@ PM: Shouldn't your FOV test go before the traceline check ? :)
+
+[modified on 01/12/03 at 18:56:54]
+--------------------------------------------------
+01/12/03 at 20:18:45  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+QUOTE:
+Just when I thought everybody would already use  ENGINE_CHECK_VISIBILITY since years. Sorry couldn't resist ;)
+
+
+uhhhh... who is supposed to feel concerned here ? ;D
+
+QUOTE:
+@ PM: Shouldn't your FOV test go before the traceline check ? :)
+
+
+(singing) no no no..........
+code:
+
+.................................
+: bounded entity                :
+:                               :
+:           center              :
+:              x                :
+:        (outside FOV)          :      ..--°°
+:                               :..--°°
+:                          ..--°:
+°°°°°°°°°°°°°°°°°°°°°°°::°°°°°°°° <-- corner of entity *INSIDE* FOV
+                 ..--°°
+                O          Player's FOV
+                 °°..         Entity is definitely *VISIBLE*
+           Player    °°--..
+                           °°--..
+                                 °°--..
+                                       °°--..
+
+
+8)
+
+
+
+[modified on 01/12/03 at 20:18:45]
+--------------------------------------------------
+01/13/03 at 05:42:04  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+If you widen the FOV by about 10 degrees, you can check if an entity is within the wider FOV before doing the traceline.  Calculating the Dot Product of 2 vectors to check if an entity is within the field of view is MUCH more CPU friendly than doing the traceline first.
+
+botman
+
+--------------------------------------------------
+01/13/03 at 05:49:45  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+You're right, but since I can't tell how large the so-said entity is, it can't be much reliable.
+
+For example, large bounded entities such as bomb sites, rescue zones, capture points, won't be necessarily caught by your method. You can thus have the bot pass 2 meters aside of a capture point and don't even notice it.
+
+
+--------------------------------------------------
+01/13/03 at 06:35:50  Reply by: RedFox (redfox@nildram.co.uk)
+--------------------------------------------------
+This should be simple...
+As your checking bone positions...check that the line for the traceline is in the FOV _before_ doing a traceline to it :p
+
+as to other entities....
+check their 8corners with FOV first :p
+if atleast 1 is in the FOV, then its prolly visible
+
+just outa curiosity, does any one know how much CPU the DotProduct takes up, and how much, UTIL_VectorToAngle does... (is it as expensive as SqrRt?)
+was going to replace the FOV test with a square FOV test (not a cone)..using the vec to angle
+so its more similar to the players screen :p
+hehe
+
+
+Hey Count, had any problems with PVS before? just wondering
+I did use the PAS test for audio checks, works well..unless your testing the center of a door, that just opened and left the map
+hehe
+better check its corners really
+
+[modified on 01/13/03 at 06:35:50]
+--------------------------------------------------
+01/13/03 at 07:31:52  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+QUOTE:
+This should be simple...
+As your checking bone positions...check that the line for the traceline is in the FOV _before_ doing a traceline to it :p
+
+
+
+aaaaarrrgh
+/me dies of shame...
+
+
+well, shall I temporarily resurrect myself to ask whether one of you already succeeded in getting the bone of the player corresponding to its weapon, because I don't know how to get it yet (although it must be definitely possible, that's just that I didn't work out how yet).
+ok, /me gets back to death now
+
+
+--------------------------------------------------
+01/13/03 at 19:27:19  Reply by: CountFloyd (countfloyd@botepidemic.com)
+--------------------------------------------------
+QUOTE:
+
+As your checking bone positions...check that the line for the traceline is in the FOV _before_ doing a traceline to it :p
+
+
+
+That's what I meant, now please stop singing PM ;)
+
+QUOTE:
+
+had any problems with PVS before? just wondering
+
+
+
+No problems but sometimes it's odd what the engine believes to be in your PVS/PAS
+BTW. setting correct Vis Stuff doesn't change anything about the broken lightning :(
+
+QUOTE:
+
+I did use the PAS test for audio checks, works well..unless your testing the center of a door, that just opened and left the map hehe
+better check its corners really
+
+
+
+
+Yes indeed.
+
+QUOTE:
+
+to ask whether one of you already succeeded in getting the bone of the player corresponding to its weapon, because I don't know how to get it yet
+
+
+
+Sorry "the bone of the player corresponding to its weapon"...what do you mean with that ? The arm holding the weapon ? The weapon bone ?
+
+--------------------------------------------------
+01/14/03 at 01:57:30  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+The weapon bone, actually, i.e the point that is at the extremity of the weapon (and that the engine uses as the player's GetGunPosition())
+
+Currently it sucks that our GetGunPosition() returns the view offset, because it's plain wrong and unsynchronized with what the MOD DLL itself returns.
+
+
+--------------------------------------------------
+01/14/03 at 18:08:11  Reply by: CountFloyd (countfloyd@botepidemic.com)
+--------------------------------------------------
+QUOTE:
+...(and that the engine uses as the player's GetGunPosition())
+Currently it sucks that our GetGunPosition() returns the view offset, because it's plain wrong and unsynchronized with what the MOD DLL itself returns.
+
+
+
+Like it or not but the engine actually uses the view offset just as we do. HL and derieved MODs lets players shoot bullets "with their nose", the animation at the end of the weapon barrel is just an illusion. The first position of a 'virtual' bullet in the world could look like:
+code:
+
+UTIL_MakeVectors( m_pPlayer->pev->v_angle );
+
+Vector vecSrc = m_pPlayer->GetGunPosition( ) + gpGlobals->v_forward * 16 + gpGlobals->v_right * ( m_pPlayer->m_bLeftHanded ? -8 : 8 ) + gpGlobals->v_up;      // up * -8
+
+
+
+Note that this is just for the illusion, the real traceline for the bullet would go from the inside of your players head to the target just as we do now.
+  
+Did you notice that there is a totally different setup of bones for every weapon ? Some having just 1 bone in the center, some do have a huge count of bones but most of them don't have a bone at the barrel (and why should they in first place?). I'd think that if you desire to have a visibility check for weapons (if that's what you want), you'd either check if the bounding box of the weapon is visible or get the attachment positions of the player and check if those are visible.
+
+--------------------------------------------------
+01/14/03 at 18:49:37  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Ah, I just can't believe that !
+
+Countless times I was ducking behind a crate and my crosshair was pointing ABOVE the crate, and when I fired my gun it would put bullet hole decals ON the crate... and of course I missed my target.
+
+And believe it or not, but I am prolly unable to get the bounding box of an entity which has none :D
+
+
+--------------------------------------------------
+01/15/03 at 00:34:50  Reply by: CountFloyd (countfloyd@botepidemic.com)
+--------------------------------------------------
+QUOTE:
+Ah, I just can't believe that !
+
+Countless times I was ducking behind a crate and my crosshair was pointing ABOVE the crate, and when I fired my gun it would put bullet hole decals ON the crate... and of course I missed my target.
+
+
+
+You're just visually challenged :)
+No seriously, I think you forgot about the punchangle added to the aiming direction AND the random gaussian spread AND current accuracy modifier applied to each bullets position so it can (read: it will) easily happen that a bullet starts from a different position. 
+Btw. you can lookup how decals of gunshots are created in the regular HL SDK, it's not like it is low-level engine stuff or something.
+
+QUOTE:
+
+And believe it or not, but I am prolly unable to get the bounding box of an entity which has none
+
+
+
+Sorry for being misleading. Weapons have correct size infos though, haven't they ? You could just use these as offsets to simulate the BB.
+
+--------------------------------------------------
+01/15/03 at 05:44:26  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+"Weapons hold correct size infos" - where do you take this from ?
+
+
+--------------------------------------------------
+01/15/03 at 05:55:28  Reply by: RedFox (redfox@nildram.co.uk)
+--------------------------------------------------
+ent->v.absmin
+ent->v.absmax
+
+I'd assume..
+
+the problem comes with then having to transform the co-ordinates...heh
+
+--------------------------------------------------
+01/15/03 at 07:02:32  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+The bounding box of a player is always the same (and always axial), regardless the enormity of the weapon the player is holding in his hands. And the weapons themselves, as being carried by the player, have no bounding box defined in their entvars... your idea won't work.
+
+
+--------------------------------------------------
+01/15/03 at 08:17:28  Reply by: RedFox (redfox@nildram.co.uk)
+--------------------------------------------------
+k, hadn't checked :)
+
+well, I'd go for counts solution at the top of this page
+
+--------------------------------------------------
+01/15/03 at 08:38:37  Reply by: CountFloyd (countfloyd@botepidemic.com)
+--------------------------------------------------
+What about this (if pev-size is reliable for weapons, you could use that instead of the hardcoded Size Table):
+
+code:
+
+edict_t *pPlayer  // the player entity
+float fMaxWeaponSize = fParamSize // fed from Table with Weapon Sizes  
+UTIL_MakeVectors(pPlayer->v.v_angle);
+Vector vecView = GetGunPosition(pPlayer);
+Vector vecBarrelEnd = vecView + gpGlobals->v_forward * 16.0f  // to get assumed weapon pos start
+vecBarrelEnd = vecBarrelEnd + gpGlobals->v_forward * fMaxWeaponSize;
+...
+Check if vecBarrelEnd is visible
+...
+
+
+
+[modified on 01/15/03 at 08:38:37]
+--------------------------------------------------
+01/15/03 at 08:43:57  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Might work...
+OK, since there seems not to be a more efficient solution, I'll stick with some weapon size lookup table.
+Lookup tables, lookup tables.
+All the way.
+Damn.
+
+
+--------------------------------------------------
+04/20/03 at 03:35:33  Reply by: Steve++ (zerto@comcast.net)
+--------------------------------------------------
+QUOTE:
+Awwww, don't want bots shooting your left index finger's upper thumbnail?  ;)
+
+
+
+Ghoul, you have an upper... thumbnail... on your left index finger? I'm not sure how exactly you got a thumbnail on your index finger; let alone more than one.
+
+Anyways, I was wondering, if you use the eye location from the model is that the same as the viewing offsets?
+
+--------------------------------------------------
+04/20/03 at 17:48:36  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+There is no such bone as "eye" in a model. The pent->v.offset *IS* the origin of the monster/player's view point. Using it can also save you a pfn function call since you just have to add two vectors.
+
+
+
+--------------------------------------------------
+04/20/03 at 21:44:43  Reply by: BlackJ@CK (mypcpost@usa.net)
+--------------------------------------------------
+does that cover oso the exposed weapons holded by the bots/ players at the edge as well?
+
+yep! as we know, awp snipers their(long) weapons are easily exposed compared with other weapons.
+
+--------------------------------------------------
+04/21/03 at 06:18:16  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+This has been already discussed here in this thread.
+A working solution is to use a weapon size lookup table ; the weapons DO have bones, but they are not merged with the player's bones. In short, there is no such bone as 'end of weapon rifle' in a *player's* model.
+
+
+--------------------------------------------------
+04/24/03 at 04:35:00  Reply by: Sweeper (Mercenary_aim_@hotmail.com)
+--------------------------------------------------
+
+QUOTE:
+This has been already discussed here in this thread.
+A working solution is to use a weapon size lookup table ; the weapons DO have bones, but they are not merged with the player's bones. In short, there is no such bone as 'end of weapon rifle' in a *player's* model.
+
+
+
+
+
+In the P_x model there are just 1 bone from what I have seen when modelling.
+It is only there to make the Idle animation work, nothing else.
+
+--------------------------------------------------
+06/04/03 at 15:43:52  Reply by: botmeister (meister@telus.net)
+--------------------------------------------------
+What I'd like to do, is get a bot to aim for a particular hitbox rather than try and estimate where the hitbox is.
+
+With a bone to hitbox mapping (or visa versa) you can tell your bot to aim for a specific hitbox. You can of course do the same thing by aiming at a specific bone but it would be more natural to have a bot aim at a hitbox location decided on by selecting the correct bone. If there is more than one bone for a hitbox than it would randomly select one of the bones in the hitbox.
+
+Note that the trace_line function will tell you what hitbox group has been located. This way you can tell if your bot is aiming correctly before firing the weapon.
+
+If anyone has the bone indexes mapped out for cstrike player models please post them.
+
+Here's some info on bones and hitboxes that I found which may be of interest http://www.summerblue.net/games/cs_report/1_1_introduction.html
+
+
+[modified on 06/04/03 at 15:43:52]
+--------------------------------------------------
+06/04/03 at 15:40:17  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+from my ever-in-development bot source code, here's for you:
+code:
+
+// player model bone numbers for Counter-Strike
+#define PLAYERBONE_PELVIS 1
+#define PLAYERBONE_SPINE 2
+#define PLAYERBONE_SPINE1 3
+#define PLAYERBONE_SPINE2 4
+#define PLAYERBONE_SPINE3 5
+#define PLAYERBONE_NECK 6
+#define PLAYERBONE_HEAD 7
+#define PLAYERBONE_L_CLAVICLE 9
+#define PLAYERBONE_L_UPPERARM 10
+#define PLAYERBONE_L_FOREARM 11
+#define PLAYERBONE_L_HAND 12
+#define PLAYERBONE_L_FINGER0 13
+#define PLAYERBONE_L_FINGER01 14
+#define PLAYERBONE_L_FINGER1 15
+#define PLAYERBONE_L_FINGER11 16
+#define PLAYERBONE_L_THIGH 40
+#define PLAYERBONE_L_CALF 41
+#define PLAYERBONE_L_FOOT 42
+#define PLAYERBONE_R_CLAVICLE 23
+#define PLAYERBONE_R_UPPERARM 24
+#define PLAYERBONE_R_FOREARM 25
+#define PLAYERBONE_R_HAND 26
+#define PLAYERBONE_R_FINGER0 27
+#define PLAYERBONE_R_FINGER01 28
+#define PLAYERBONE_R_FINGER1 29
+#define PLAYERBONE_R_FINGER11 30
+#define PLAYERBONE_R_THIGH 46
+#define PLAYERBONE_R_CALF 47
+#define PLAYERBONE_R_FOOT 48
+
+
+This is just eye-based retrieval, but it seems accurate enough. To be used with pfnGetBonePosition() of course.
+
+[...]
+
+you're welcome ;D
+
+
+--------------------------------------------------
+06/04/03 at 15:47:48  Reply by: botmeister (meister@telus.net)
+--------------------------------------------------
+Holy shit that was fast! Thanks PMB!
+
+I modified my initial post to mention that the trace_line function will tell you what hitbox has been located, this should be a very fast way to decide when your bot is actually aiming where you want it to aim.
+
+If everything works, then hopefully I can have bots aim accurately. Using current methods I get cases where the bot will seem to get confused and aim incorrectly at the target, or it will actually point at the target but the aiming system tells the bot there's nothing to shoot at.
+
+
+
+--------------------------------------------------
+06/04/03 at 19:09:30  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+QUOTE:
+Note that the trace_line function will tell you what hitbox group has been located. This way you can tell if your bot is aiming correctly before firing the weapon.
+
+
+This is a very interesting hint indeed! To my shame I must say that I completely forgot it, but now here's the time to change a couple of things in my aiming code then :D
+
+Is there already a bot out there that has such a control in its aiming system ? Wild guess: none (who will tell me I am mistaken ?)
+
+
+--------------------------------------------------
+06/04/03 at 21:22:00  Reply by: botmeister (meister@telus.net)
+--------------------------------------------------
+QUOTE:
+Is there already a bot out there that has such a control in its aiming system ?
+
+
+
+There will soon enough! I'm working on it tonight. You should check out my sniping system. I've managed to get the bots to reliably zoom in and out, along with delays to wait for the zoom to fully complete before firing. Using FOV was a problem, because for weapons like scout and AWP after firing a round, the zoom goes out but the FOV does not change, so a delay was needed to wait for the zoom to come back. You can check it out on my bot server. I also have some nice combat going on now.
+
+One question, what about the missing bone indexes, such as index 8? Are these invalid or just redundant?
+
+[modified on 06/04/03 at 21:17:42]
+
+[modified on 06/04/03 at 21:22:00]
+--------------------------------------------------
+06/04/03 at 23:01:39  Reply by: botmeister (meister@telus.net)
+--------------------------------------------------
+Works like a charm :)
+
+Vector BotBodyTarget( edict_t *pBotEnemy, int pBoneIndex )
+{
+   Vector target;
+
+      if ( pBoneIndex < 1 )
+      {
+            target = pBotEnemy->v.origin + pBotEnemy->v.view_ofs * RANDOM_FLOAT( 0.5, 1.1 );
+      }
+      else
+      {
+            // aim exactly at the specified bone!
+            Vector v_angles;
+            fvoGetBonePosition( pBotEnemy, pBoneIndex, target, v_angles );
+      }
+
+      return target;
+
+}
+
+All you need is a traceline to determine if the gun is pointing at the desired bone before firing. Why waste a good shot?
+
+
+[modified on 06/04/03 at 23:01:39]
+--------------------------------------------------
+06/05/03 at 15:14:57  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+QUOTE:
+One question, what about the missing bone indexes, such as index 8? Are these invalid or just redundant?
+
+
+As far as I can tell, yes. I don't understand their use though. There's almost 67~70 bones where 20 would have sufficed. Maybe it's to match those of monsters that have a greater number of bones, for example. Dunno. I guess we would need to ask the Valve guys.
+
+

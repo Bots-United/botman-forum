@@ -1,0 +1,255 @@
+--------------------------------------------------
+Subject: FakeClientCommand bug (fix)
+--------------------------------------------------
+01/09/01 at 05:46:29  Posted by: RedFox (redfox@nildram.co.uk)
+--------------------------------------------------
+Hi peeps, been having a few probs with your templete v2 botman, i.e. crashing if the number of bots was above about 10. Then I remebered looking at the bot.txt thats generated when you debug the engine. The client commands for the bot had a load of squidge(technical term) at the end of them (random caracters), which ment the string wearnt being terminated properly.
+I changed 2 things that fixed it. The line which terminates the end of the string I changed from 0 to NULL (may have made a difference). But what definately fixed it was at the begining of the function I set the entire string to NULL.
+
+Hope this helps (I can now play against 31bots...WOOHOO, carnage!)
+
+\/code\/ (dll.cpp)
+
+void FakeClientCommand(edict_t *pBot, char *arg1, char *arg2, char *arg3)
+{
+   int length,i;
+
+   i=0;
+   while(i<256)
+   {
+         g_argv[i] = NULL;
+         i++;
+   }
+
+   isFakeClientCommand = 1;
+
+   if ((arg1 == NULL) || (*arg1 == 0))
+      return;
+
+   if ((arg2 == NULL) || (*arg2 == 0))
+   {
+      length = sprintf(&g_argv[0], "%s", arg1);
+      fake_arg_count = 1;
+   }
+   else if ((arg3 == NULL) || (*arg3 == 0))
+   {
+      length = sprintf(&g_argv[0], "%s %s", arg1, arg2);
+      fake_arg_count = 2;
+   }
+   else
+   {
+      length = sprintf(&g_argv[0], "%s %s %s", arg1, arg2, arg3);
+      fake_arg_count = 3;
+   }
+
+   strcpy(&g_argv[64], arg1);
+
+   if (arg2)
+      strcpy(&g_argv[128], arg2);
+
+   if (arg3)
+      strcpy(&g_argv[192], arg3);
+
+   g_argv[length] = NULL;  // null terminate just in case
+   
+   // allow the MOD DLL to execute the ClientCommand...
+   ClientCommand(pBot);
+
+   isFakeClientCommand = 0;
+}
+
+
+
+RedFox
+
+--------------------------------------------------
+01/09/01 at 06:59:35  Reply by: eLiTe (ali@elitegamer.fsnet.co.uk)
+--------------------------------------------------
+What sort of programming experience have you had Tom? You seem to be pretty good at all this, after only a few days!! I think I'm getting jealous... wish I'd worked a bit harder at learning C/C++ when I was 14!!! :P
+
+I could have been an amazing C++ Genius by now!
+
+--------------------------------------------------
+01/09/01 at 12:48:48  Reply by: RedFox (redfox@nildram.co.uk)
+--------------------------------------------------
+Hey dude.
+I've had a stupid amount of programming experience, and up until a few years ago lived and breathed coding (wow, I actually have a life now!). Hmmm, lets see, I've been programming for about 15years now :) (from the age of 7, oops you can work out how old I am now) hehe (kewl, didn't realize it had been that long, hmm fealing old now). 
+I can code proficiently in C/C++, Visual Basic, Pascal, HTML and BASIC 5, WIMP and Asembler for the Acorn (ooo see if anyone knows that computer).
+I can also do a reasonable amount of Java/JavaScript, Pearl, Access (just vb script), Delphi, and even some PC Assembler... hehe and just to show my roots I can program in BASIC and Assembler on spectrums (ok, who had/still has a spectrum).
+All this and I should have a BSc in computer science by the end of this year. :)) WOOHOO!
+
+Ahhhh, nostalger mode.
+
+Ok, I'm supprising even my self now... please don't take this as showing off/ get jellous, I was a complete nerd so programmings is second nature to me. If you need any tips/help (anyone) just ask :))
+I love to help if I can.
+
+Just a few tips: Take a break if your getting wound up as to 'why its not working right/wheres the error'
+Most errors are simple mistakes (missing ; for example... or the worst is getting < and > the wrong way round)
+
+Have fun.
+
+RedFox
+
+--------------------------------------------------
+01/09/01 at 14:07:02  Reply by: Spyro (theoddbot@hotmail.com)
+--------------------------------------------------
+Hi,
+
+having the experience doesn't make you error proof.
+
+spot the error:
+code:
+
+bool IsValidTeam(int team) {
+      if (mod_id == VALVE_DLL) return FALSE;
+      if (mod_id == FLF_DLL || SI_DLL) {
+            if (team < 1 || team > 2) return FALSE;
+      }
+      if (mod_id == TFC_DLL) {
+            if (team < 1 || team > 4) return FALSE;
+            int i = team -1, index, t;
+            int used[4] = {0,0,0,0};
+            if (tf_data[i].available_teams == 0) {
+                  return FALSE;
+            }
+            
+            //count the number of players on each team
+            for (index = 1; index <= gpGlobals->maxClients; index++) {
+              edict_t *pPlayer = INDEXENT(index);
+              // skip invalid players and skip self (i.e. this bot)
+              if ((pPlayer) && (!pPlayer->free)) {
+                        t = UTIL_GetTeam(pPlayer);
+                        if (t > -1 && t < 4) used[t]++;
+                  }
+            }
+            
+            if (tf_data[i].max_players) {
+                  if (used[i] >= tf_data[i].max_players) {
+                        return FALSE;
+                  }
+            }
+            if (used[i] == 1 && tf_data[i].available_classes == -1) {
+                  return FALSE;
+            }
+      }
+      return TRUE;
+}
+
+
+
+It only took about half an hour until i noticed that it should look like this:
+code:
+
+      if (mod_id == FLF_DLL || mod_id==SI_DLL) {
+            if (team < 1 || team > 2) return FALSE;
+
+
+
+nnnnngghghhghh
+
+happy coding,
+-Spyro
+
+--------------------------------------------------
+01/09/01 at 16:15:24  Reply by: eLiTe (ali@elitegamer.fsnet.co.uk)
+--------------------------------------------------
+I'm pretty much a computer nerd too, and I was programming on my Commodore 100 when I was 4/5!!! Hehe, actually I was just copying programs out of the manual, but my dad taught me about if statements and negative numbers and stuff while I was still at primary school. I wrote some BASIC games when 12/13 and tried to learn C over the past few years, but I've not been devoting any proper time to it...
+
+I'm still getting errors in my bot - it is definitely not a 'simple problem' with my code!! The compiler spots stuff like a missing ; (I use MSCV++ 6). I actually tried compiling the basic template 2 and it gave the same error (even on my other more stable PC). When I add in more than one bot HL usually crashes after a few seconds. I've still to implement your bugfix Tom (I couldn't remember what it was properly and just came here to check on it). I don't know if it will make a difference, but I hope it will.
+
+BTW, is the Floyd Algo actually any good? I thought my old waypoint system was rubbish, but by the sounds of it this Floyd algorithm is very predictable, whereas my old system chose a 'towardgoal' waypoint at random to decide which way to go. I thought that this system was very clucnky compared to POB/NNbot but some ppl seem to think it is good (just bcoz they need my open source I think, hehe)???
+
+--------------------------------------------------
+01/09/01 at 17:59:32  Reply by: RedFox (redfox@nildram.co.uk)
+--------------------------------------------------
+LOL Brendan, I know what u mean :)
+I have loads of errors like that, I'm just reasonabal at finding them/testing that it works :)
+
+Alistair, floyds algorithms quite good, but your right, its predictable. What I've done is make sure he bots choose a goal at random, than put it into floyds algo to find the next waypoint from where they are. 
+What I will do at some point though is make floyds algorithm more flexible (more than one path), but that will probably be the last thing I do to my bot :)
+
+RedFox
+
+--------------------------------------------------
+01/09/01 at 19:30:59  Reply by: dannywent (dannywent@hotmail.com)
+--------------------------------------------------
+oh don't worry Tom, I would never be jealous of someone who instead spells it like "jellous"  (wink wink)  i'm just kidding around
+
+well.. It seems i'm just a bit out gunned by most of you guys here, i've only been programming about a year.  But don't worry... I'm working on the geekiness.  like when I"m at a party on friday night, i can't help but think i'd rather be at home programming my bot :)  what can I say, I"ll be a full-fledged geek soon enough.  But i'd also like to take a minute to thank all you "geeks" who have helped me and other new bot programmers out, this stuff rocks! :)
+
+also, we're you going to school Tom?  Hopefully it will only be a couple years till i get a BS in computer science :)
+
+Dan
+
+--------------------------------------------------
+01/10/01 at 07:16:50  Reply by: eLiTe (ali@elitegamer.fsnet.co.uk)
+--------------------------------------------------
+I'm going to do a BSc (with honours) on Computer Science this year at uni. Jopefully I'll have learned more about C++ by then... I'm so geeky that I don't even go to parties :(
+
+--------------------------------------------------
+01/10/01 at 09:11:54  Reply by: RedFox (redfox@nildram.co.uk)
+--------------------------------------------------
+I'm going to Leisecter Uni, which is nice. But I only got exams in July and no other work (long story). A good tip is not to go from geek to party animal to quickly ;P lol
+If you can be a geek that goes down the pub your onto a winner. (mmm beer)
+
+RedFox
+
+--------------------------------------------------
+01/10/01 at 13:56:20  Reply by: eLiTe (ali@elitegamer.fsnet.co.uk)
+--------------------------------------------------
+I think you mean you were so good at your work that you only have to take the exams? I think that happened to my dad... :)
+
+--------------------------------------------------
+01/10/01 at 15:24:35  Reply by: William (william@botepidemic.com)
+--------------------------------------------------
+Tom,
+
+65C02, running at 1Mhz during screen refresh, 2Mhz otherwise, isn't? (The Acorn, I mean). Was a step back for me coming from the Z80/ZXSpectrum (who had "plenty" of registers and 16bit addition in assembly, and no zero-page concept).
+
+Seriously:
+QUOTE:
+What I will do at some point though is make floyds algorithm more flexible (more than one path), 
+
+
+
+Floyd/Warshall algorithm and the related data structure don't lend itself for that. There are other ways to get less predictable paths:
+- use A* with specific costs functions other than just travel time
+
+- use deviations from paths read from the Floyd table. Since retrieving a path from the Floyd table is darn fast, you could, for example:
+1. retrieve the (shortest) Floyd path from A to C
+2. pick a random location on the map (R)
+3. select the node on the A-C path that is  halfway (H)
+4. retrieve the (shortest) Floyd path from H to R
+5. go a few nodes along that path and pick a node B
+6. now create path A-B-C by retrieving A-B and B-C from the Floyd table
+
+Note that A-B-C is a pretty silly path if the shortest path from A to B _and_ from B to C is via H. You can quickly test for that condition, and pick another R and C, or do with the shortest path.
+This may sound like a good amount of code, but it's pretty fast (compared to A*).
+
+William
+
+
+
+--------------------------------------------------
+01/10/01 at 17:00:08  Reply by: RedFox (redfox@nildram.co.uk)
+--------------------------------------------------
+Thats kinda what I was going to do. Basically my idea was to use let floyds algorithm work out the shortest paths, then generate a table of alternative routes (so all you had to do was choose between them).
+The table of alternative were gonna be worked out for the goals, so you should be able to get to the goals in more than one way. It would all be worked out before (when the floyed alg creates the wp1 etc files). Not exactly shure how yet, I'll sit down and brain storm at some point, but it should be pretty simple. 
+hehe, had a lot of experience with optimizing programs. 
+It basically started with writing a texture mapping program on the acorn.. I had to squeeze out as much processing power as possible (by writing the most efficient code).. ah those were the days. Ahem. :)
+
+hmmm, the other idea was to do somthing similar but you would tell the function which waypoints you wanted to avoid... we shall see. 
+
+Currently working on battle tackticks. The bots aernt too bad now :)
+
+Oh, if anyone knows the answer to my other post (skin colour,...) Please let me know as I can't do the spy stuff without it!! 
+
+Laterz ppl
+
+RedFox
+
+--------------------------------------------------
+01/11/01 at 02:00:42  Reply by: eLiTe (ali@elitegamer.fsnet.co.uk)
+--------------------------------------------------
+You could make a secondary set of flags for main path routes. That would possibly seem like a step back from the automation of the Floyd system (having to specify routes instead of just letting the algorithm work them out) - but then you could use the FindRandomGoal function with a TOWARD_GOAL flag or something like that, and then you'd know that that waypoint was on the way to the flag, but would give you a random path each time :)
+

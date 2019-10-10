@@ -1,0 +1,67 @@
+--------------------------------------------------
+Subject: N e 1 knows what FindClientInPVS does?
+--------------------------------------------------
+05/22/01 at 07:22:36  Posted by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+When i look into my bot.txt , its called a LOT of times. And just keeps on repeating. I even got kicked out of the server, because of a flood error. Anyone knows what this function does? and why it could possibly be called so often?
+
+
+--------------------------------------------------
+05/22/01 at 07:49:31  Reply by: CountFloyd (countfloyd_1999@yahoo.com)
+--------------------------------------------------
+It does what it says, finding Clients (Players) in the 'Potentially Visible Set'. I believe the engine uses this for rendering purposes and to figure out which Clients to send messages (e.g. MSG_PVS).
+Damn, I would like to have a FindClientInPAS ;)
+
+
+--------------------------------------------------
+05/22/01 at 08:21:25  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+that makes sense! So its logically that it is called so often. But now the big question again. How come that i get disconnected , with, or without, flood error message when trying to use the Botmenu after a few mins of play? 
+
+I even get kicked out of the server because of flood errors , when i play normally with showing my routes. And that never happened before. 
+
+--------------------------------------------------
+05/22/01 at 09:14:04  Reply by: William (william@botepidemic.com)
+--------------------------------------------------
+isn't CS doing some checking to help newbie players: "you've spotted a friend", "you've spotted an enemy", etc.
+
+for this kind of check, FindClientInPVS is exactly the right kind of call.
+
+William
+
+--------------------------------------------------
+05/22/01 at 09:27:37  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+actually, both make sense. But that doesnt solve my problem :(
+
+--------------------------------------------------
+05/22/01 at 18:18:50  Reply by: CountFloyd (countfloyd_1999@yahoo.com)
+--------------------------------------------------
+O.k. then back to your problem. I don't think that functions/messages like this cause your DLL to exit (if so wouldn't it happen to all of us?). I also don't believe it's reasoned by a too high number of chars in your botmenu. When I had that mistake (botmenu) once myself the system was frozen but didn't exit HL/CS. After reading your previous threads about your prob I've got 3 guesses:
+1. You've overseen that CS 1.0 - 1.1 immediately exits if you set a breakpoint in your DLL or if you do step-by-step debugging (if not debugging using the dedicated Server method Botman pointed out earlier).
+2. The .rbl File you're loading overwrites important data or instructions in your DLL. Also make sure that the filehandles are all properly initialised (for writing to the debug file too).
+3. You get a serious exception which isn't fully handled by the HL Exception Handler and it's breaking out (might also be caused by 2)
+
+I would try point 2...let us know what was going wrong.
+
+
+
+
+--------------------------------------------------
+05/27/01 at 13:06:46  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+CF, you wont believe this. Somewhere in my code, i saw some useless (i mean, REALLY useless) code i probably added months ago, but since the code changes so many times it got useless. Anyways, it was in the COMBAT code. I had a temp edict_t to put in some player or bot which is 'heard' but cant be seen. Erm, dont ask me why i added this , cause i dont know either. 
+
+The code actually was something like
+
+- start of function, edict_t = NULL;
+- do the for thingy to search for enemies, and set the edict_t to NULL (which is already a stupid error).
+- end for, do nothing with this edict_t (due many code changes i think..
+
+
+Anyhow, i removed the code, and suddendly EVERYTHING WORKS FINE! wohoo! i dont know what the heck happened... 
+
+The RBL loading always worked, and i didnt change it. The RBR file format either. So it couldnt be the file loader/saver function(s). 
+
+I think nr 3 was the problem, i think somehow i caused an exception due messing up with that variable?
+

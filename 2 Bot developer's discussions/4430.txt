@@ -1,0 +1,101 @@
+--------------------------------------------------
+Subject: List and entity
+--------------------------------------------------
+05/20/03 at 02:57:54  Posted by: bayobot (bayobot@hotmail.com)
+--------------------------------------------------
+
+
+Hello,
+
+I would like to create a list of entity for
+each bot.
+
+
+but i don't know one think
+when client disconect, his entity are destroyed ?
+
+my list : (for exemple)
+
+p_edict entitylist[10];
+
+or
+
+p_edict* entitylist[10];
+and when a client disconnect, i update the list
+in creating NULL pointer.
+
+thankS a lot
+
+--------------------------------------------------
+05/20/03 at 05:24:14  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+The ClientDisconnect() function will be called by the engine whenever a bot is disconnected (kicked) from the server.
+
+If you allocate any local memory when you spawn your bot, you can remove it in the ClientDisconnect() function.
+
+If you have a static array allocated (for 32 players), you can clear out a flag in this array that indicates whether this slot is used or not.
+
+botman
+
+--------------------------------------------------
+05/20/03 at 05:33:16  Reply by: bayobot (bayobot@hotmail.com)
+--------------------------------------------------
+Sorry, i don't have explained correctely
+
+I have a list of entity.
+I would like to know :
+If an entity IN THE LIST whise have player disconnect,
+
+entity are destroyed by the engine ?
+
+if no, what engine do in the entity ?
+
+if i use the list (with an entity element disconnected), it's crash ?
+
+thats all. Thanks a lot
+
+--------------------------------------------------
+05/20/03 at 08:13:22  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+I'm still not sure I understand your question.
+
+If your question is... "I have items that are owned by a player and I want to remove them when the player disconnects.  How do I do this?"
+
+The engine will call ClientDisconnect() when the player disconnects from the server.  ClientDisconnect (in the SDK client.cpp file) will call ClientDisconnected() (in multiplay_gamerules.cpp for multiplayer games).  ClientDisconnected will call pPlayer->RemoveAllItems() which will remove all items from a player (for example removing tripmines from the world that the player spawned).
+
+You would need to put your code in RemoveAllItems() if you are modifying the SDK.  If you are doing this for a bot, you will need to create your own version of RemoveAllItems() and call it from your ClientDisconnect() function.
+
+botman
+
+--------------------------------------------------
+05/20/03 at 08:32:44  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+I think he's trying to talk about the whole HL entity list, and especially the player ones.
+
+bayobot, there is a dedicated function to test the validity of an entity pointer in Half-Life. It's called FNullEnt(). It returns TRUE if the entity is invalid, and FALSE if the entity is still alive and the pointer points correctly to it.
+
+Checking for the pointer validity (like pEdict == NULL) is not enough because some entities can be removed by the engine but their pointers may not have been dereferenced. So you'll have a valid pointer still, but a pointer that points to nowhere.
+
+I suppose your question about the engine messing around with players data come that you heard somewhere that the engine does not free the player entity's PRIVATE DATA (which is right) upon disconnection and you confused it with the entity itself.
+
+In Half-Life, entity #0 is the world, and entities #1 to #n (N being the capacity of your server) are players. They CAN NOT be anything else. When a player connects, one entity slot is taken. When a player disconnects, this entity slot is ready for being reused. The pointer may still point to somewhere, but beware of using FNullEnt() to check for its nullity so as to avoid problems.
+
+Sinon, pose ta question en français...
+
+
+--------------------------------------------------
+05/21/03 at 09:37:07  Reply by: bayobot (bayobot@hotmail.com)
+--------------------------------------------------
+Thanks a lot,
+
+i'm so stupid ... 
+i don't know why i speek about list.
+
+Engine "never unallocate" memory for entities, when one entity are connecting to the world ... the engine pick a free entity (or null) to an existant list and do some initialisation. (like the bot list).
+
+For exemple in structure of bot there are BotEnemy.
+If BotEnemy is pointed an entity, and this entity disconect to the world. The entity are free but not deallocated. and then we can know if it's a right entity.
+
+Ok , i think i understand.
+
+[modified on 05/21/03 at 09:37:07]

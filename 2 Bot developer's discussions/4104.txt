@@ -1,0 +1,174 @@
+--------------------------------------------------
+Subject: ISAAC/EINSTein 
+--------------------------------------------------
+02/04/03 at 00:11:01  Posted by: MrE (ezamudin@tm.net.my)
+--------------------------------------------------
+Have anybody give any thought of creating a bot using ISAAC/EINSTein concept ( http://www.cna.org/isaac ) ? There are a downloadable beta version + online help file and a pdf file explaining the concept and theory.
+
+It uses A-Life concept. Basically, it determines its next move base on its desires and rules
+(for example advancing,retreating, etc). The concept could easily be adapted for bots (especially CS and TFC..i never play other mod) since this ISAAC/EINSTein project is base upon land combat. It should very interesting especially if the GA stuff is implemented. 
+
+Truth is, I've tried to implement it in my bot but it still isn't working perfectly yet( and it have been a few month now :( ).
+
+[modified on 02/04/03 at 00:11:01]
+--------------------------------------------------
+02/04/03 at 03:36:04  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+I don't see well how this could be of any use in short range fire battles. Could you elaborate on it ?
+
+
+--------------------------------------------------
+02/04/03 at 21:06:03  Reply by: MrE (ezamudin@tm.net.my)
+--------------------------------------------------
+Elaborate... okay..happy reading..I'm copy from my notepad...sorry if it not indented.
+Let say that we give the bot some desire.... to keep it simple 
+      1) desire to enemy (aka d1)
+      2) desire to teammate (aka d2)
+      3) desire to goal (aka d3)
+      4) desire to item (aka d4)
+
+and also some rules
+      1) advance 
+      2) cluster
+      3) combat
+      4) distance to enemy
+      5) distance to teammate
+
+Now, every desire is simply a value..an int is sufficient. it can be +ve or -ve to indicate the desire to move closer or away to.
+the desire I think speak for themself...for the rules:
+      1)advance : if a bot is surrounded with a sufficient teammates, he will advance to his goal, else he will wait or look for teammates.
+      2)cluster : given a number of teammates around, if the bot feels that it is sufficient, he will no longer seek for teammates.
+      3)combat  : the different between number of teammates and number of enemy. this can be -ve too.
+      4)distance to enemy : distance a bot seek to keep between him and his enemy.
+      5)distance to teammate : distance a bot seek to keep between him and his teammate.
+
+That the explaination in words. Here is the mathematical/technical stuff. On every frame or interval we scan the environment( which is easy with your code, Pierre btw) to find enemies, teammates, item, whatever the bot desire is. Base on this information, adapt its behaviour according to the rules. I'll give an example ( I'm not very good at explaining thing )
+
+Given after a scan, the bot gather this information
+      1) Number of enemy seen
+      2) Number of teammate around him 
+      3) some weapons / bomb /grenades
+
+Base on this info, he can now able to adapt his desires according to his rules..
+      1) advance : if (Number of teammates >= advance)
+                  go to goal (d3 = + abs(d3)
+                 else
+                  ignore goal (d3 = 0)
+                   look for more teammates (d2 = + abs(d2)
+      2) cluster : if (Number of teammates >= cluster)
+                  don't look for teammates anymore (d2 = 0)
+      3) combat : if (Number of teammates - Number of enemy >= combat)
+                  fight ( /pursuit d1 = abs(d1))
+                else
+                    seek cover / retreat                  
+            a -ve combat value indicate an aggresive bot.
+      4) distance to enemy : if (enemy distance < distance to enemy) 
+                        d1 = - abs(d1)
+      5) distance to teammate : if (teammate distance < distance to teammate) 
+                                 d2 = - abs(d2)
+
+According to ISAAC/EINSTein implementation, once desires have been adapted, a penalty is calculate for each available move. It uses coordinate system, so every neighbouring square is an available move. 
+the penalty is calculated using 
+
+      Penalty = (d1/total desire) * (total enemy distance/number of enemy)
+              + (d2/total desire) * (total teammate distance/number of teammate)
+              + (d3/total desire) * (distance to goal)
+              + (d4/total desire) * (total distance to item(s)/number of item)
+      
+      *total desire = abs(d1) + abs(d2) + abs(d3) + abs(d4)
+       the desire sign( +ve / -ve ) represent moving toward/away from (ignore when calculating total desire but is included in calculating the penalty
+
+This penalty is called for every available move, with the move that has the lowest penalty is the bot next destination. 
+Do you want an example ? oh dear, here goes ..
+
+      let say a bot have this set of desire & rule
+            d1 = -3
+            d2 = +4
+            d3 = +2
+            d4 = +1
+
+         advance =  3
+         cluster =  3
+         combat  =  2
+      
+      this is his result of scan
+            = number of enemy = 2
+            = number of teammate = 4
+            = a HE grenade
+
+      by applying the rules, 
+            advance :>
+
+                  number of teammate(4) >= advance(3) ?
+                        d3 = + abs(d3)
+            cluster :>
+
+                  number of teammate(4) >= cluster(3) ?
+                        d2 = 0
+            combat :>
+
+                  number of teammate - number of enemy (4-2) >= combat(2) ?
+                        d1 = + abs(d1)
+
+      O o, we have a grenade coming our bot's way
+                  d4 = - abs(d4) , this are not rules explain above, but rather some internal reflexes for the bot...
+                              of course we could test for other item as well and adapt accordingly...
+
+      We've finish adapt our bot's desire, time to calculate the penalty.
+
+      total desire = 3 + 4 + 2 + 1 = 10 
+
+      for each candidate move
+            Penalty = (3/10) * (total enemy distance/2)
+                    + (0/10) * (total teammate distance/4)
+                    + (2/10) * goal distance
+                    + (-1/10) * ( total item distance/1)
+
+      All distance is calculate not on the bot origin but the location origin. Once the lowest penalty is found, the bot have a new location to go. Also, we could just calculate the relative distance and avoid that costly length function. 
+
+      That is the concept. for a waypoint bot, it is very simple to select the candidate move, just choose some waypoint within the bot move range and calculate the penalty for each waypoint. You don't have to code pathfinding too. As long you have a Floyd table(or fromto table), you can check whether you are getting nearer or farther away from your goal. Mine, for example, generate check point for short term goal, using the checkpoint as my intermediate goal. 
+      For a waypointless bot( not many I know), a simpler system could be adopt. Just determine which desire affect the bot the most, and move it accordingly. For example, let say desire to enemy has the most affect on this bot, simply face the enemy and according to desire move toward or away from it.  
+
+      There is also the advantage of communication between real players via radio commands. Some such as #Storm the front, #Regroup Team could easily be implement by modifying the bot's desire. #Storm the front increases the desire to enemy and/or goal, #Fallback turn desire to enemy -ve, and so on. 
+
+      From the bot's desires and rules we can determine the weapon of choice too. given a bot with a very big value in       distance to enemy, we could set him to buy (or prefer) a sniper rifle. There you have it... bots personality. 
+
+      But what most interest me is the GA system to evolve the bot. Want bots that rush to the goal? How about bots that       interested in getting a high frag? ISAAC/EINSTein explain how their agents's fitness is calculated via the mission. There are 10 missions in ISAAC/EINSTein , i'll explain 3 of them :
+            1) minimise time to goal (aka m1)
+            2) maximize frag (aka m2)
+            3) minimize death (aka m3)
+      
+      to calculate m1 = 1 - (total time taken to goal/maximum time allowed)
+                   m2 = total kill per round/total enemies per round
+                 m3 = death (die = 0, survive = 1)
+      
+
+      by assigning priority to mission we can determine the bot fitness. Example(again) 
+            priority 1 (p1) = 3
+            priority 2 (p2) = 1
+            priority 3 (p3) = 1; 
+
+      then,
+      bot fitness = (p1/total priority)* m1 + (p2/total priority)* m2 + (p3/total priority)* m3
+      
+      What happened from here is basic GA stuff...go figure.btw, In ISAAC/EINSTein each desire is 2 genes (for sign and       value),      1 gene for each rules, plus other for a total of 45.
+
+      Wheww... I do hope I explain enough... nemore question?       
+
+[modified on 02/04/03 at 20:55:22]
+again to correct the indentation...
+
+[modified on 02/04/03 at 21:06:03]
+--------------------------------------------------
+02/05/03 at 06:14:37  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Looks pretty interesting...
+
+Did you rewrite your own code in your bot according to the ISAAC discretization theory or do you use that kind of tool they provide (their "API") ? Is it proprietary ? I haven't found any sort of clear license on their site...
+
+
+--------------------------------------------------
+02/06/03 at 18:34:10  Reply by: MrE (ezamudin@tm.net.my)
+--------------------------------------------------
+I'm just using their theory... :) There are no API that I'm aware of.... the download beta version is a working program... the PDF file have included some of the function prototypes and the main code that my code based upon (function is not included other then the prototypes). there is a single license stating for the program itself allowing for non profitable distribution of the program in it original form. This license also stated that this program should not be post on a website for a direct distribution..Not a single line stating that the idea or theory is a proprietary. there are thesis (on agent based simulation) which refer to this theory too if you follow the links in the site.
+

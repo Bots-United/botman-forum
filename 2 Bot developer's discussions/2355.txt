@@ -1,0 +1,31 @@
+--------------------------------------------------
+Subject: Did you forget this for the new HL build?
+--------------------------------------------------
+10/04/01 at 13:42:38  Posted by: PlasticWarrior (tigerstorm023@netscape.net)
+--------------------------------------------------
+qboolean pfnVoice_GetClientListening(int iReceiver, int iSender) {
+      return (*g_engfuncs.pfnVoice_GetClientListening)(iReceiver, iSender);
+}
+qboolean pfnVoice_SetClientListening(int iReceiver, int iSender, qboolean bListen) {
+      return (*g_engfuncs.pfnVoice_SetClientListening)(iReceiver, iSender, bListen);
+}
+
+
+Becasue it does not appear at first to haev an effect but non including it will preven several things on a server, most of which pretain to the scoreboard and noteably the voice system
+
+You guys should add this if you forgot, and tell me if you have. I am looking for a compatible bot.
+
+
+--------------------------------------------------
+10/04/01 at 14:43:39  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+From what I can tell, the bot code doesn't need access to these functions and they don't need to intercept this between the MOD DLL code and the engine.  The code in h_export.cpp only passes a pointer to a structure.  The bot code only knows the size of the structure as of the previous SDK 2.1 engine\eiface.h file (down to pfnAddServerCommand).  The bot code will copy the original enginefuncs_t structure into local memory (using the size of the SDK 2.1 enginefuncs_t structure, leaving out the 2 newest functions) then it will override the engine functions for the pfn functions that it wants to intercept (by overwriting the engine's enginefuncs_t structure fields) and then pass the ORIGINAL enginefuncs_t pointer to the MOD DLL code.
+
+Since the MOD DLL codes knows that this structure is actually a little bit bigger (by 2 functions), it will copy more into it's local table than the bot code did.  The 2 original new engine functions for voice communication will NOT have been overwritten by the bot code and will thus be available to the MOD DLL code and will be uninterceptable by the bot code.
+
+No changes to existing bot code should need to be make to have the MOD code make use of these new functions.
+
+Whether or not the engine correctly handles trying to enable voice communication on fake clients, I can't tell you, since I don't have access to the Half-Life engine code.  My bet is that the engine makes no special cases for fake clients as far as the voice communication enable/disable feature goes and trying to turn voice communication on or off for a fake client make or may not cause the engine to crash.
+
+botman
+

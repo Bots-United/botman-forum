@@ -1,0 +1,480 @@
+--------------------------------------------------
+Subject: Problems in Linux compiling
+--------------------------------------------------
+06/28/03 at 06:25:45  Posted by: desNotes (desTubes@tampabay.rr.com)
+--------------------------------------------------
+I have read all the posts I can here on compiling the SDK in Linux and also in the hlcoders list. I am new to Linux but am coming along, albeit slowly.
+
+I am running gcc-2.95.2 with a glibc-2.2.patch
+
+In my first compile attempt I am getting errors like:
+
+util.h:51: parse error before `.'
+util.h: In function `void MethodName()':
+util.h:95 : parse error before string cconstant
+util.h:95 : stray '\' in program
+<more errors similar>
+
+To me they look like they could be CR/LF pairs 
+from bringing the code over from windows, although I did it using an ASCII ftp program. 
+
+My current question is if I open each file using the KDE 'text editor,' KWrite or Kate and save it, will the CR/LF pairs be removed?
+
+If it isn't an issue with the CR/LF pairs, does anyone have any ideas what is causing it?
+
+Thanks,
+
+desNotes
+desTubes@tampabay.rr.com
+
+
+
+--------------------------------------------------
+06/28/03 at 07:11:58  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+What do the lines around line 51 in util.h look like (post 10 or 12 lines above and below it)?
+
+botman
+
+--------------------------------------------------
+06/28/03 at 07:19:51  Reply by: desNotes (desTubes@tampabay.rr.com)
+--------------------------------------------------
+They looked fine when I opened them with the text editor. I did go ahead and save it and the error went away. I am now resaving the other files and then will try to compile again.
+
+I am documenting everything I do so once I am successful I will provide step-by-step instructions for compiling in Linux that even a windows-only coder could understand....well, hopefully anyway.
+
+--------------------------------------------------
+06/28/03 at 08:30:47  Reply by: desNotes (desTubes@tampabay.rr.com)
+--------------------------------------------------
+I am attempting to compile the nominal source code from Ricochet, a mod of HL. The source does compile on windows. I am now getting the following error message when trying to compile:
+
+gcc -Dstricmp=strcasecmp -D_strnicmp=strncasecmp -Dstrnicmp=strncasecmp -D_vsnprintf=vsnprintf -w -m486 -O1 -fPIC -I. -I../../engine -I../../common -I../pm_shared -I../../game_shared -o obj/airtank.o -c airtank.cpp
+airtank.cpp: In method `void CAirtank::Spawn()':
+airtank.cpp:61: static_cast from `{unknown type}' to `void (CBaseEntity::*)(CBaseEntity *)'
+airtank.cpp:62: static_cast from `{unknown type}' to `void (CBaseEntity::*)()'
+make: *** [obj/airtank.o] Error 1
+
+Here is the area of the error:
+
+void CAirtank :: Spawn( void )
+{
+      Precache( );
+      // motor
+      pev->movetype = MOVETYPE_FLY;
+      pev->solid = SOLID_BBOX;
+
+      SET_MODEL(ENT(pev), "models/w_oxygen.mdl");
+      UTIL_SetSize(pev, Vector( -16, -16, 0), Vector(16, 16, 36));
+      UTIL_SetOrigin( pev, pev->origin );
+
+      SetTouch( TankTouch ); <===Line 61
+      SetThink( TankThink ); <===Line 62
+
+      pev->flags |= FL_MONSTER;
+
+Here is the Makefile:
+
+#
+# Half-Life Ricochet SDK 2.3 ricochet_i386.so Makefile for x86 Linux
+#
+# October 2002 by Leon Hartwig (hartwig@valvesoftware.com)
+#
+
+DLLNAME=ricochet
+
+ARCH=i386
+
+#make sure this is the correct compiler for your system
+CC=gcc
+
+DLL_SRCDIR=.
+ENGINE_SRCDIR=../../engine
+COMMON_SRCDIR=../../common
+PM_SHARED_SRCDIR=../pm_shared
+GAME_SHARED_SRCDIR=../../game_shared
+WPN_SRC_DIR=$(DLL_SRCDIR)/wpn_shared
+
+DLL_OBJDIR=$(DLL_SRCDIR)/obj
+PM_SHARED_OBJDIR=$(DLL_OBJDIR)/pm_shared
+GAME_SHARED_OBJDIR=$(DLL_OBJDIR)/game_shared
+WPN_OBJ_DIR=$(DLL_OBJDIR)/wpn_shared
+
+BASE_CFLAGS=-Dstricmp=strcasecmp -D_strnicmp=strncasecmp -Dstrnicmp=strncasecmp -D_vsnprintf=vsnprintf
+
+#safe optimization
+CFLAGS=$(BASE_CFLAGS) -w -m486 -O1
+
+#full optimization
+#CFLAGS=$(BASE_CFLAGS) -w -O2 -m486 -ffast-math -funroll-loops \
+      -fomit-frame-pointer -fexpensive-optimizations \
+      -malign-loops=2 -malign-jumps=2 -malign-functions=2
+
+#use these when debugging 
+#CFLAGS=$(BASE_CFLAGS) -g
+
+INCLUDEDIRS=-I. -I$(ENGINE_SRCDIR) -I$(COMMON_SRCDIR) -I$(PM_SHARED_SRCDIR) -I$(GAME_SHARED_SRCDIR)
+
+LDFLAGS=-lm
+
+SHLIBEXT=so
+SHLIBCFLAGS=-fPIC
+SHLIBLDFLAGS=-shared
+
+DO_CC=$(CC) $(CFLAGS) $(SHLIBCFLAGS) $(INCLUDEDIRS) -o $@ -c $<
+
+#############################################################################
+# SETUP AND BUILD
+# GAME
+#############################################################################
+
+$(DLL_OBJDIR)/%.o: $(DLL_SRCDIR)/%.cpp
+      $(DO_CC)
+
+$(GAME_SHARED_OBJDIR)/%.o: $(GAME_SHARED_SRCDIR)/%.cpp
+      $(DO_CC)
+
+$(PM_SHARED_OBJDIR)/%.o: $(PM_SHARED_SRCDIR)/%.c
+      $(DO_CC)
+
+$(WPN_OBJ_DIR)/%.o : $(WPN_SRC_DIR)/%.cpp
+      $(DO_CC)
+
+OBJ = \
+      $(DLL_OBJDIR)/airtank.o \
+      $(DLL_OBJDIR)/animating.o \
+      $(DLL_OBJDIR)/animation.o \
+      $(DLL_OBJDIR)/bmodels.o \
+      $(DLL_OBJDIR)/buttons.o \
+      $(DLL_OBJDIR)/cbase.o \
+      $(DLL_OBJDIR)/client.o \
+      $(DLL_OBJDIR)/combat.o \
+      $(DLL_OBJDIR)/disc_arena.o \
+      $(DLL_OBJDIR)/disc_powerups.o \
+      $(DLL_OBJDIR)/doors.o \
+      $(DLL_OBJDIR)/effects.o \
+      $(DLL_OBJDIR)/explode.o \
+      $(DLL_OBJDIR)/func_break.o \
+      $(DLL_OBJDIR)/func_tank.o \
+      $(DLL_OBJDIR)/game.o \
+      $(DLL_OBJDIR)/gamerules.o \
+      $(DLL_OBJDIR)/ggrenade.o \
+      $(DLL_OBJDIR)/globals.o \
+      $(DLL_OBJDIR)/h_ai.o \
+      $(DLL_OBJDIR)/h_battery.o \
+      $(DLL_OBJDIR)/h_cycler.o \
+      $(DLL_OBJDIR)/h_export.o \
+      $(DLL_OBJDIR)/healthkit.o \
+      $(DLL_OBJDIR)/items.o \
+      $(DLL_OBJDIR)/lights.o \
+      $(DLL_OBJDIR)/maprules.o \
+      $(DLL_OBJDIR)/mortar.o \
+      $(DLL_OBJDIR)/mpstubb.o \
+      $(DLL_OBJDIR)/multiplay_gamerules.o \
+      $(DLL_OBJDIR)/observer.o \
+      $(DLL_OBJDIR)/pathcorner.o \
+      $(DLL_OBJDIR)/plane.o \
+      $(DLL_OBJDIR)/plats.o \
+      $(DLL_OBJDIR)/player.o \
+      $(DLL_OBJDIR)/singleplay_gamerules.o \
+      $(DLL_OBJDIR)/skill.o \
+      $(DLL_OBJDIR)/sound.o \
+      $(DLL_OBJDIR)/soundent.o \
+      $(DLL_OBJDIR)/spectator.o \
+      $(DLL_OBJDIR)/subs.o \
+      $(DLL_OBJDIR)/teamplay_gamerules.o \
+      $(DLL_OBJDIR)/triggers.o \
+      $(DLL_OBJDIR)/util.o \
+      $(DLL_OBJDIR)/weapons.o \
+      $(DLL_OBJDIR)/world.o \
+      $(DLL_OBJDIR)/xen.o \
+      $(WPN_OBJ_DIR)/disc_weapon_disc.o \
+      $(PM_SHARED_OBJDIR)/pm_shared.o \
+      $(PM_SHARED_OBJDIR)/pm_math.o \
+      $(PM_SHARED_OBJDIR)/pm_debug.o \
+      $(GAME_SHARED_OBJDIR)/voice_gamemgr.o
+
+$(DLLNAME)_$(ARCH).$(SHLIBEXT) : neat $(OBJ)
+      $(CC) $(CFLAGS) $(SHLIBLDFLAGS) $(LDFLAGS) -o $@ $(OBJ)
+
+neat:
+      -mkdir $(DLL_OBJDIR)
+      -mkdir $(GAME_SHARED_OBJDIR)
+      -mkdir $(PM_SHARED_OBJDIR)
+      -mkdir $(WPN_OBJ_DIR)
+clean:
+      -rm -f $(OBJ)
+      -rm -f $(DLLNAME)_$(ARCH).$(SHLIBEXT)
+spotless: clean
+      -rm -r $(WPN_OBJ_DIR)
+      -rm -r $(GAME_SHARED_OBJDIR)
+      -rm -r $(PM_SHARED_OBJDIR)
+      -rm -r $(DLL_OBJDIR)
+
+
+
+--------------------------------------------------
+06/28/03 at 09:16:38  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Change all of the SetTouch(), SetThink() and SetUse() functions so that they have the C++ class before the function name like this...
+code:
+SetTouch( TankTouch );
+
+...becomes...
+code:
+SetTouch(&CAirtank::TankTouch);
+
+This problem occurs because C++ compilers that are more ANSI compliant will complain about C++ class functions pointers that aren't in the scope of a C++ class (i.e. you can't use TankTouch, you have to use CAirtank::TankTouch instead).
+
+Don't forget to put the '&' in front of the C++ classname so that you take the address of this thing.
+
+You have to go through ALL the .cpp files and change all references of SetTouch, SetThink, and SetUse this way.
+
+botman
+
+--------------------------------------------------
+06/28/03 at 09:59:36  Reply by: desNotes (desTubes@tampabay.rr.com)
+--------------------------------------------------
+Thank you botman...it worked.
+
+Next error:
+
+animation.cpp: In function `float SetController(void *, entvars_t *, int, float)':
+animation.cpp:335: name lookup of `i' changed for new ANSI `for' scoping
+animation.cpp:330:   using obsolete binding at `i'
+
+Here is the area of the error:
+
+float SetController( void *pmodel, entvars_t *pev, int iController, float flValue )
+{
+      studiohdr_t *pstudiohdr;
+      
+      pstudiohdr = (studiohdr_t *)pmodel;
+      if (! pstudiohdr)
+            return flValue;
+
+      mstudiobonecontroller_t      *pbonecontroller = (mstudiobonecontroller_t *)((byte *)pstudiohdr + pstudiohdr->bonecontrollerindex);
+
+      // find first controller that matches the index
+      for (int i = 0; i < pstudiohdr->numbonecontrollers; i++, pbonecontroller++) <=== Line 330
+      {
+            if (pbonecontroller->index == iController)
+                  break;
+      }
+      if (i >= pstudiohdr->numbonecontrollers)
+            return flValue;  <== Line 335
+
+      // wrap 0..360 if it's a rotational controller
+
+      if (pbonecontroller->type & (STUDIO_XR | STUDIO_YR | STUDIO_ZR))
+      {
+            // ugly hack, invert value if end < start
+            if (pbonecontroller->end < pbonecontroller->start)
+                  flValue = -flValue;
+
+            // does the controller not wrap?
+            if (pbonecontroller->start + 359.0 >= pbonecontroller->end)
+            {
+                  if (flValue > ((pbonecontroller->start + pbonecontroller->end) / 2.0) + 180)
+                        flValue = flValue - 360;
+                  if (flValue < ((pbonecontroller->start + pbonecontroller->end) / 2.0) - 180)
+                        flValue = flValue + 360;
+            }
+            else
+            {
+                  if (flValue > 360)
+                        flValue = flValue - (int)(flValue / 360.0) * 360.0;
+                  else if (flValue < 0)
+                        flValue = flValue + (int)((flValue / -360.0) + 1) * 360.0;
+            }
+      }
+
+      int setting = 255 * (flValue - pbonecontroller->start) / (pbonecontroller->end - pbonecontroller->start);
+
+      if (setting < 0) setting = 0;
+      if (setting > 255) setting = 255;
+      pev->controller[iController] = setting;
+
+      return setting * (1.0 / 255.0) * (pbonecontroller->end - pbonecontroller->start) + pbonecontroller->start;
+}
+
+
+--------------------------------------------------
+06/28/03 at 10:27:16  Reply by: Cheesemonster!!! (cheeseh@houstondod.com)
+--------------------------------------------------
+try:
+code:
+
+     int i;
+
+     for (i = 0; i < pstudiohdr->numbonecontrollers; i++, pbonecontroller++)
+     { 
+        ...
+
+
+
+next! 8)
+
+--------------------------------------------------
+06/28/03 at 16:06:39  Reply by: desNotes (desTubes@tampabay.rr.com)
+--------------------------------------------------
+Thanks Cheesy! I'm learning as I go...
+
+Next error:
+
+buttons.cpp: In method `void CMultiSource::Register()':
+buttons.cpp:242: implicit declaration of function `int memset(...)'
+
+Area of error:
+
+void CMultiSource::Register(void)
+{ 
+      edict_t *pentTarget      = NULL;
+
+      m_iTotal = 0;
+      
+      memset( m_rgEntities, 0, MS_MAX_TARGETS * sizeof(EHANDLE) ); <== Line242
+
+      SetThink(&CMultiSource::SUB_DoNothing);
+
+      // search for all entities which target this multisource (pev->targetname)
+
+      pentTarget = FIND_ENTITY_BY_STRING(NULL, "target", STRING(pev->targetname));
+
+      while (!FNullEnt(pentTarget) && (m_iTotal < MS_MAX_TARGETS))
+      {
+            CBaseEntity *pTarget = CBaseEntity::Instance(pentTarget);
+            if ( pTarget )
+                  m_rgEntities[m_iTotal++] = pTarget;
+
+            pentTarget = FIND_ENTITY_BY_STRING( pentTarget, "target", STRING(pev->targetname));
+      }
+
+--------------------------------------------------
+06/28/03 at 16:15:57  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Try adding...
+
+#include <mem.h>
+
+after the other include files in buttons.cpp
+
+botman
+
+--------------------------------------------------
+06/28/03 at 17:38:30  Reply by: desNotes (desTubes@tampabay.rr.com)
+--------------------------------------------------
+I don't have a mem.h file anywhere...either
+on the windows or linux side. Could the 
+declaration reside in another file?
+
+
+
+[modified on 06/28/03 at 17:38:30]
+--------------------------------------------------
+06/29/03 at 06:22:46  Reply by: desNotes (desTubes@tampabay.rr.com)
+--------------------------------------------------
+I found my old C compiler source and built a declarations for file for some of the functions that were not declared anywhere so that is coming along.
+
+My latest error is declaring a char inside a For function:
+
+for (char *pc = p; pc != NULL && *pc != 0; pc++ )...
+
+However, if I change it to:
+
+char *pc;
+for ( *pc = p; pc != NULL && *pc != 0; pc++ )
+
+I get the following error:
+
+client.cpp:357: assignment to `char' from `char *' lacks a cast
+
+
+Again, thatnks for everyone's help so far...it is greatly appreciated.
+
+desNotes
+
+
+--------------------------------------------------
+06/29/03 at 06:27:25  Reply by: Cheesemonster!!! (cheeseh@houstondod.com)
+--------------------------------------------------
+
+QUOTE:
+
+
+char *pc;
+
+for ( *pc = p; pc != NULL && *pc != 0; pc++ )
+
+
+
+
+
+what is "p"? is it a char, or char*, etc.?
+
+
+--------------------------------------------------
+06/29/03 at 06:35:19  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+I smell it could be code:
+char *pc;
+
+for ( pc = p; pc != NULL && *pc != 0; pc++ )
+instead...
+
+
+--------------------------------------------------
+06/29/03 at 07:25:21  Reply by: desNotes (desTubes@tampabay.rr.com)
+--------------------------------------------------
+You were correct Pierre-Marie Baty...on to more compiling.
+
+Later,
+
+desNotes
+
+--------------------------------------------------
+06/29/03 at 11:08:47  Reply by: desNotes (desTubes@tampabay.rr.com)
+--------------------------------------------------
+Ok, the compiler went through all the files...well maybe.
+
+It sees it will not compile the .c files in the pm_shared directory. Here is the error:
+
+make: *** No rule to make target `obj/pm_shared/pm_shared.o', needed by `ricochet_i386.so'.  Stop.
+
+And here is the part of the Makefile I think is telling the compiler to compile (complete Makefile listed in previous post:
+
+$(PM_SHARED_OBJDIR)/%.o: $(PM_SHARED_SRCDIR)/%.c
+      $(DO_CC)
+
+The only difference I see is that the files in pm_shared are .c and not .cpp files. Should there be a different command to compile?
+
+Continuing thanks,
+
+desNotes
+
+[modified on 06/29/03 at 11:08:47]
+--------------------------------------------------
+06/29/03 at 12:06:44  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Make sure there is a single TAB character before the $(DO_CC) and not spaces (spaces won't work with make).
+
+botman
+
+--------------------------------------------------
+06/29/03 at 13:36:50  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+...or the lazy man's way, just rename the .c files to .cpp :)
+
+
+--------------------------------------------------
+06/29/03 at 13:47:15  Reply by: desNotes (desTubes@tampabay.rr.com)
+--------------------------------------------------
+I got it! The designation for the pm_shared directory was incorrect. All the files compiled and I have a dll (ricochet_i386.so). Next, I am setting up a Linux server to ensure it works.
+
+Thanks to all who helped. I will keep you all posted and when I am sure it is working, I will turn my notes into instructions. I know I will be wanting to compile my changes in the HLDM dll also.
+
+desNotes
+
+
+
+
+

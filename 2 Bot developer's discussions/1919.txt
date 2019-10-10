@@ -1,0 +1,77 @@
+--------------------------------------------------
+Subject: how do i determine what gun a player has?
+--------------------------------------------------
+07/05/01 at 16:23:45  Posted by: noskill (ownz0r@hotmail.com)
+--------------------------------------------------
+Actually ignore that question and answer this one:  How can i set a players gun to knife when he spawns. I know i have to call CLIENT_COMMAND(pent,"weapon_knife\n") but i dont know where to call it :(
+
+--------------------------------------------------
+07/06/01 at 04:12:48  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+You can call it from anywhere you want as long as the bot has spawned into the level (and isn't in observer mode waiting to pick a team or class or weapon).
+
+Stick it in the BotThink() function or put it in the bot_combat.cpp code somewhere.  It really doesn't matter.  You can put it anywhere that makes sense to you.
+
+botman
+
+--------------------------------------------------
+07/06/01 at 08:24:26  Reply by: noskill (ownz0r@hotmail.com)
+--------------------------------------------------
+im using your stripper addon, im not writing a bot.  I mean which function from the stripper addon do i put the CLIENT_COMMAND call in?
+
+--------------------------------------------------
+07/06/01 at 08:56:11  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+You can't call ClientCommand() that way.  The engine stores the strings that were sent by a real client and are only accessed using the argv parameters.
+
+Look at how the HPB bot code creates a FakeClientCommand() so that bots can send client commands.  You will have to do something similar if you want to inject commands that didn't really come from a client.
+
+botman
+
+--------------------------------------------------
+07/06/01 at 09:15:48  Reply by: noskill (ownz0r@hotmail.com)
+--------------------------------------------------
+im not calling ClientComand, im calling CLIENT_COMMAND(...).  
+in enginecallback theres
+#define CLIENT_COMMAND      (*g_engfuncs.pfnClientCommand)
+I need to know where to call this from, i know it works the way i called it, i hace tested it
+
+
+--------------------------------------------------
+07/06/01 at 12:18:16  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+You typing in a command on the console is not the same thing as getting the engine to send this command to a client (which is what the pfnClientCommand does).
+
+You can put the CLIENT_COMMAND() call anywhere you want.  If you are using some other command to trigger it then you can put it in the ClientCommand() function.  Otherwise you should probably put it in StartFrame() and set some flag that triggers the command when the next video frame is rendered.
+
+botman
+
+--------------------------------------------------
+07/06/01 at 15:24:40  Reply by: noskill (ownz0r@hotmail.com)
+--------------------------------------------------
+yes, my whole question is what that flag is.  I need to know how to figure out when a player respawns.  Thats my whole question i asked above, how do i know when a player spawns?
+
+--------------------------------------------------
+07/07/01 at 05:51:01  Reply by: daRope (fzschocke@web.de)
+--------------------------------------------------
+I'd like to know it myself. If it was CS you could try ClientPutInServer().
+
+--------------------------------------------------
+07/07/01 at 06:07:13  Reply by: noskill (ownz0r@hotmail.com)
+--------------------------------------------------
+But isnt PutClientInServer only called when the player actually chooses a team? that would mean its only called once.  I fixed my respawn problem(pent->v.weapons is 0 while dead) so that doiesnt really matter.  i have another problem.  If i add a command in the ClientCommand() function, and call CLIENT_COMMAND() from there, it works, but it wont work from StartFrame().  If put 
+if(strcmp(pcmd,"mycommand")==0){
+   CLIENT_COMMAND(pEntity,"weapon_knife\n");
+   return;
+}
+in ClientCommand, when i type mycommand in console, my weapon gets switched, but if i put
+CLIENT_COMMAND(INDEXENT(1),"weapon_knife\n");
+in StartFrame(), it doesnt work(should lock my weapon onto knife).  I have tried setting INDEXENT(1) to other things(like listenserver_edict) and it still doesnt work.  My final problem is that when i tried to use your FakeClientCommand function instead it crashed the game.  I copied all the g_argv and h_global_argv and the Cmd_Arg functions and set them in GiveFnPtrsToDll.
+
+
+
+--------------------------------------------------
+07/07/01 at 13:39:24  Reply by: noskill (ownz0r@hotmail.com)
+--------------------------------------------------
+heh, now i dont think its a problem wih clientcommand, because if i try UTIL_ClientPrintAll(HUD_PRINTCONSOLE,"hi",NULL,NULL,NULL,NULL) unconditionally in startframe, i get NOTHING
+

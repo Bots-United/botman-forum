@@ -1,0 +1,124 @@
+--------------------------------------------------
+Subject: Might be a newb question...
+--------------------------------------------------
+02/28/03 at 14:38:25  Posted by: SynSniStev (stevlski@ccs.neu.edu)
+--------------------------------------------------
+To preface the follwoing problem, I'm stating that I just downloaded HPB_bot today, and I have read the readme file. That said...
+
+I'm creating a map for TFC. It's a hunted style map, with the Assasins as team 1 (blue), Bodyguards as team 2 (red), and the hunted as team 3 (yellow) I modified the .cfg file in the the Half-Life/HPB_bot/TFC folder such that seven bots should join according to the parameters I set, and it didn't quite work the way it seems it should have.
+
+Here's the non-commented part of the modified .cgf:
+
+bot_chat_percent 10
+bot_taunt_percent 60
+bot_whine_percent 70
+
+bot_chat_tag_percent 80
+bot_chat_drop_percent 10
+bot_chat_swap_percent 10
+bot_chat_lower_percent 50
+
+bot_logo_percent 40
+bot_reaction_time 2
+
+# add 7 bots using the default skill level (a random skin will be chosen)
+
+bot_strafe_percent 10
+bot_grenade_time 20
+addbot 1 1 ScoutBot 1
+
+bot_strafe_percent 15
+addbot 1 2 SniperBot 3
+
+bot_strafe_percent 20
+bot_grenade_time 30
+addbot 1 9 EngBot 2
+addbot 2 3 SoldierBot 3
+addbot 2 4 DemoBot 2
+addbot 2 5 MedBot 4
+addbot 2 7 FireBot 1
+addbot 2 8 SpyBot 3
+
+It seems that I should get one bot of each class I allow (not including the hunted) to join with their respective names. However, when I compiled my map from Worldcraft (runs hl w/ parameters: -game tfc -dev -console +deathmatch 1 +sv_lan 1 -maxplayers 8 +map $file), 7 bots joined and they were random class with random names, so I had 3 hunted's running around, although it was kinda funny, it's not what I need for testing purposes. Although I can fix the 3 Hunted problem within the map, I want total control over the bots that join i.e. team, class, name, skill level.
+
+Is there something I did wrong in the .cfg?
+
+Or do I need another parameter when I run hl?
+
+Or is it a problem with the .cfg or HPB_bot and three team maps?
+
+[modified on 02/28/03 at 14:38:25]
+--------------------------------------------------
+02/28/03 at 18:32:17  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+As long as you are editing the HPB_bot.cfg file in the Half-Life\tfc folder (and not in the Half-Life\HPB_bot folder), your changes should work like you expected them to (except you've got 8 "addbot" commands in the .cfg file and you've only got 8 slots on your server, you plus 7 bots).
+
+I would try commenting out the 'addbot' commands in the .cfg file and try adding them manually from the console to see if you get the expected results.
+
+botman
+
+--------------------------------------------------
+02/28/03 at 19:41:21  Reply by: SynSniStev (stevlski@ccs.neu.edu)
+--------------------------------------------------
+DOH! I must have misread the readme. I said I read it, but I never said I read it right! :p Anyways, yeah, I copied the .cfg file from HPB_bot/TFC to TFC and now I get the desired results. Except I guess my map isn't bot-proof. I know it isn't bot friendly, but somehow bots manage to get themselves outside the map into the void, so I kick them. then I try to addbot another bot, but it stays as a spectator, even though my maxplayers is now set to 10 and there's only 8 players (me + (8 bots - 1 kicked bot)) = 8... I think I saw a post on bots staying as spectators, I'll check it out. Thanks for your help and your bots botman!
+
+EDIT: well, the post about bots joining as spectators is about a different bot... Does anyone know why my HPB_bot will join as spectator when I "addbot 2 3 SoldierBot 1"? The problem with this is that it could be a map problem as well / instead of a bot problem... eh, it doesn't bother me too much, I can live with a missing bot here and there... Well, I can't say enough how much I apreciate the free bots and support for bots. Thanks.
+
+[modified on 02/28/03 at 19:39:34]
+
+[modified on 02/28/03 at 19:41:21]
+--------------------------------------------------
+03/01/03 at 05:57:34  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+If the bots try to join a map and pick a class that has a limit on it and there is already the allowed number of players for that class (like The Hunted), then the bots will wind up in observer mode.  They aren't smart enough to check how many players are currently connected using a specific class and pick something else.
+
+Unless you manually force them to select a class that you know doesn't have limits, you can wind up with bots in observer mode.
+
+botman
+
+--------------------------------------------------
+03/01/03 at 06:41:36  Reply by: Siborg (sgb001@cwcom.net)
+--------------------------------------------------
+----------------------
+If the bots try to join a map and pick a class that has a limit on it and there is already the allowed number of players for that class (like The Hunted), then the bots will wind up in observer mode.
+---------------------
+
+Well you learn something everyday, I have bots go on spec mode and the only restriction I have is 1 hw per team. Good job though or else I'd have 8 hw's running around lol.
+
+On a side note, I have a problem with the HPB_bot.cfg. The bots seem to ignore parts of it, like the chat percentages i.e. zero, no chatting but there never quiet, they just seem to ignore that part. I have map specific configs for the amount of bots needed on any particular map but shouldn't they use the HPB_bot.cfg for all the other cvars within, like bot chat.
+
+--------------------------------------------------
+03/01/03 at 08:59:54  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+The HPB bot will read the HPB_bot.cfg file ONCE (when the first map is loaded).
+
+When a new map is switched to, they will read and execute a map specific .cfg file (in the 'maps' folder) if it exists.
+
+If no map specific .cfg file exists for the new maps, the bots will spawn with the same settings they had from the previous map (not from what's in the HPB_bot.cfg file).  For example, if you start with a map called 'X' and there is no X_HPB_bot.cfg file in the 'maps' folder, the HPB_bot.cfg file will be used to spawn the bots.  If you then switch to map 'Y' and there is a Y_HPB_bot.cfg file, the commands in it will be executed.  If you then switch to map Z and there is no Z_HPB_bot.cfg file, the bots will spawn with whatever settings were used from the Y_HPB_bot.cfg file (the settings from the previous map).  So if you changed the chat percentage in map Y and didn't want them to chat in map Z, you will have to create a map specific .cfg file for map Z.
+
+In general, if you have ANY map specific .cfg files, it's best to create a map specific .cfg file for ALL the maps that you use.
+
+botman
+
+--------------------------------------------------
+03/02/03 at 12:01:50  Reply by: Siborg (sgb001@cwcom.net)
+--------------------------------------------------
+I must not be understanding properly because I have map specific configs for all maps and I just have the max and min listed. The HPB_bot.cfg file in my TFC folder has all the chat percentages at zero, yet they still chat.
+Should I put ALL the cvars I wish to change in ALL the map specific configs aswell?
+
+--------------------------------------------------
+03/02/03 at 13:34:41  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+The HPB_bot.cfg won't be executed at all if you have map specific .cfg files for each map.  It's ONLY used when there is no map specific .cfg file for the first map.
+
+If you are attempting to turn of chatting in the HPB_bot.cfg file and you have map specific .cfg files for each map on your server then that is why is isn't getting turned off.
+
+Yes, you should put the bot settings that you wish to change in all .cfg files.
+
+botman
+
+--------------------------------------------------
+03/05/03 at 06:57:56  Reply by: Siborg (sgb001@cwcom.net)
+--------------------------------------------------
+Thanks mate.
+

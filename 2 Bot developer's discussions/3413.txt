@@ -1,0 +1,95 @@
+--------------------------------------------------
+Subject: v_angles : W.da.F ????
+--------------------------------------------------
+07/12/02 at 11:26:53  Posted by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+Well, I thought I understood everything about the v_angle thingy, and uh I'm definitely missing something here.
+Look.
+code:
+
+void BotPointGun (bot_t *pBot)
+{
+   // offset target angle at some time interval
+   if (pBot->f_aim_adjust_time < gpGlobals->time)
+   {
+      Vector v_ideal_angles = Vector (pBot->pEdict->v.idealpitch, pBot->pEdict->v.ideal_yaw, 0);
+      Vector v_deviation = v_ideal_angles - pBot->pEdict->v.v_angle;
+
+      v_deviation.y = v_deviation.y * 0.20; // offset yaw at 20 percent of the angle
+      v_deviation.x = v_deviation.x * 0.10; // offset pitch at half the yaw deviation
+
+      // move the aim cursor
+      pBot->pEdict->v.v_angle = UTIL_WrapAngles (pBot->pEdict->v.v_angle + v_deviation);
+
+      // set the body angles to point the gun correctly
+      pBot->pEdict->v.angles.x = UTIL_WrapAngle (pBot->pEdict->v.v_angle.x / 3);
+      pBot->pEdict->v.angles.y = UTIL_WrapAngle (pBot->pEdict->v.v_angle.y);
+      pBot->pEdict->v.angles.z = 0;
+
+      // adjust the view angles to aim correctly (MUST be after body v.angles stuff)
+      pBot->pEdict->v.v_angle.x = UTIL_WrapAngle (-pBot->pEdict->v.v_angle.x);
+
+      // next aim adjustment in fraction second (based on skill)
+      pBot->f_aim_adjust_time = gpGlobals->time + (6 - pBot->bot_skill) / 50;
+   }
+}
+
+
+The purpose of this is basically to make the bot's aiming more human-like (since I'm now jealous of JoeBot's aiming grrr). I have stripped it to the bare minimum since I got my problem but it didn't change anything, expect the explanation of it below.
+
+I am calling that crap every frame for every bot, once per bot, at the beginning of their Think(). Their ideal_yaw and ideal_pitch are never reset to zero, so that they should always look at the point where they are heading to (well, at least, move their crosshair into that direction).
+
+so WHY da F*** aren't they ever lowering or raising their pitch ??? They always look at flat! I don't understand anything ???
+
+O great guru Botman, might thou look down on me with your immense wisdom...
+
+
+[modified on 07/12/02 at 11:26:53]
+--------------------------------------------------
+07/12/02 at 14:39:07  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+Got it, thanks Aspirin (he didn't told me what was wrong, but that's when I tried his aiming stuff I finally understood the bug).
+
+THIS
+code:
+
+     // adjust the view angles to aim correctly (MUST be after body v.angles stuff)
+     pBot->pEdict->v.v_angle.x = UTIL_WrapAngle (-pBot->pEdict->v.v_angle.x);
+
+
+...is Paulo-La-Frite's well-known aimbug fix.
+
+It IS actually a bug. This fix is a bug.
+There is NO need to invert the view pitch after setting the body angles. If that worked with the HPB template (and almost all bots derived from it), that was because of another bug somewhere, that either TheFatal or you botman, didn't fix in your aim code. The two cancelled each other so that the pitch was finally reverted to normal.
+
+I got rid of your BotChangePitch () function for a while so I can't tell if the original bug was inside it, but anyway there was definitely a bug. You can prove it by calling UTIL_MakeVectors (pBot->pEdict->v.v_angle) and drawing a beam from pBot->pEdict->v.origin + pBot->pEdict->v.view_ofs in the gpGlobals->v_forward direction BEFORE and AFTER each place where you alter the pitch. You will see that in your template, you get the beam going ONCE in front of the bot (normal), and ALTERNATIVELY in its back (bug). It should not.
+
+This aiming code, derived from Aspirin's (which is derived from Killaruna's), work:
+code:
+
+void BotPointGun (bot_t *pBot)
+{
+   Vector v_deviation = Vector (pBot->pEdict->v.idealpitch, pBot->pEdict->v.ideal_yaw, 0)
+                        - pBot->pEdict->v.v_angle;
+
+   pBot->v_aim_speed.y = pBot->v_aim_speed.y * exp (log (0.7) * pBot->msecval / 50)
+                         + v_deviation.y * 0.1 * (1 - exp (log (0.35) * pBot->msecval / 50));
+   pBot->v_aim_speed.x = pBot->v_aim_speed.x * exp (log (0.7) * pBot->msecval / 50)
+                         + v_deviation.x * 0.1 * (1 - exp (log (0.35) * pBot->msecval / 50));
+
+   // move the aim cursor
+   pBot->pEdict->v.v_angle = pBot->pEdict->v.v_angle
+                             + Vector (pBot->v_aim_speed.x * (pBot->msecval / 50),
+                                       pBot->v_aim_speed.y * (pBot->msecval / 50),
+                                       0); 
+
+   // set the body angles to point the gun correctly
+   pBot->pEdict->v.angles.x = UTIL_WrapAngle (pBot->pEdict->v.v_angle.x / 3);
+   pBot->pEdict->v.angles.y = UTIL_WrapAngle (pBot->pEdict->v.v_angle.y);
+   pBot->pEdict->v.angles.z = 0;
+}
+
+
+You don't need the logarithmic stuff to see it, you just can make the bots turn at constant speed like in your template, it's the same. No need to revert the pitch.
+
+[modified on 07/12/02 at 14:39:07]

@@ -1,0 +1,43 @@
+--------------------------------------------------
+Subject: Tripmines
+--------------------------------------------------
+02/09/03 at 17:42:38  Posted by: LeonThePro (sirgalahad@ozgn.com)
+--------------------------------------------------
+How exactly does halflife place tripmines so that they're always on the angle of the world they're against, I couldent really tell how it was done by looking at the code, could anyone tell me?
+
+--------------------------------------------------
+02/10/03 at 02:27:48  Reply by: RobGP (rob@planetfortress.com)
+--------------------------------------------------
+The SDK uses the following line to generate the angles for the tripmine
+
+Vector angles = UTIL_VecToAngles( tr.vecPlaneNormal );
+
+where "tr" is the result of a trace that hits the wall at the point the tripmine is to be placed at.
+
+--------------------------------------------------
+02/10/03 at 05:31:58  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+The PlaneNormal is a normal vector that is perpendicular to the surface that was hit by the traceline, so using the normal vector you are able to tell what angles you would need to set an entity to so that it is parallel to that surface.
+
+botman
+
+--------------------------------------------------
+02/10/03 at 18:59:29  Reply by: LeonThePro (sirgalahad@ozgn.com)
+--------------------------------------------------
+One more question, how does it make sure that you're placing it on a surface and not in the middle of no where?
+Thanks for your help.
+
+--------------------------------------------------
+02/11/03 at 05:21:32  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+When you call the UTIL_TraceLine function, the "Fraction" part will be 1.0 if the line didn't hit anything between the starting point and ending point.  If the line did hit something (like a wall, ceiling or floor), the fraction part will be less than 1.0 (indicating the percent of the way from start to end where the line hit something).  The point where the line hit is in the 'vecEndPos' field of the trace result structure.  Also, you can look at the "classname" field of the entity that was hit (from the pHit part of the trace result structure) to see what type of entity was hit (like "player", "monster_snark", etc.)
+
+You can also use POINT_CONTENTS() to determine whether a point is space is inside a solid surface, under water, or out in open air.  Search the SDK source code for "POINT_CONTENTS" for examples of it being used.
+
+botman
+
+--------------------------------------------------
+02/12/03 at 14:56:04  Reply by: LeonThePro (sirgalahad@ozgn.com)
+--------------------------------------------------
+Thanks alot guys.
+

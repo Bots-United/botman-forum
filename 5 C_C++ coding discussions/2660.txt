@@ -1,0 +1,140 @@
+--------------------------------------------------
+Subject: _asm
+--------------------------------------------------
+01/22/02 at 09:32:01  Posted by: Cecil (philip.nilsson@chello.se)
+--------------------------------------------------
+      __asm {
+            mov ah, 00h
+            mov al, 00h
+            int 10h
+      };
+
+For some reason that won't work in msvcpp6.0(pro?), no int's will work, they just do a bsod, not even 21h :( I don't know what that up there is supposed to to, but I think it is suposed to move the text cursor to 0,0. Does this happen to anyone else??? Try this it should be right(?):
+__asm {
+       mov ax, 0000h
+       int 21h
+}
+(I know it should be something else than 0000, but it will change that automatically :/) <- that is supposed to do the same as exit();
+
+Any ideas?
+
+--------------------------------------------------
+01/22/02 at 10:33:53  Reply by: theimann (killaruna@botepidemic.com)
+--------------------------------------------------
+QUOTE:
+<- that is supposed to do the same as exit();
+
+
+If I remember it right function 4Ch of int 21h is the program exit, not function 00h. Be careful which values you pass to interrupt functions: an unlucky combination will format your HD, so it's definitely no field for experimenting.
+I remember having problems with text-output (setting cursor positions, textcolors etc) as well. I suppose that happens because you are only working in a dos window (which is handled differently than full-screen I imagine).
+Other interrupts should work fine.
+
+Tobias
+
+--------------------------------------------------
+01/23/02 at 08:51:37  Reply by: Cecil (philip.nilsson@chello.se)
+--------------------------------------------------
+When I look at the stack dump it is 4Ch 00h was the old one, but it still works...but :( no interrupts work, the same error all the time.. better check it out once again ;) .. .. ... hmm BSOD :(
+
+just mov, and all the other commands work well... but not int X.x
+not even int 03h (breakpoint) works... i guess it is a problem with the compiler... I'll try another one, I'm just asking to see if anyone knows a solution to this right now ;)
+
+
+[modified on 01/23/02 at 08:51:37]
+--------------------------------------------------
+01/23/02 at 00:28:28  Reply by: Spikeles (spikeles_@hotmail.com)
+--------------------------------------------------
+
+QUOTE:
+<- that is supposed to do the same as exit();
+If I remember it right function 4Ch of int 21h is the program exit, not function 00h. Be careful which values you pass to interrupt functions: an unlucky combination will format your HD, so it's definitely no field for experimenting.
+I remember having problems with text-output (setting cursor positions, textcolors etc) as well. I suppose that happens because you are only working in a dos window (which is handled differently than full-screen I imagine).
+Other interrupts should work fine.
+Tobias
+
+
+
+
+Actually 00 is the function for terminate. However Microsoft "recommends" the use of 4ch.
+
+Oh and theah=0, al=0 int 10h command will set the video mode to text.
+
+If the codr don't work. try turning off optimizations.. try using a debugger and see if  the same code is created after its compiled.
+
+--------------------------------------------------
+01/23/02 at 08:50:59  Reply by: Cecil (philip.nilsson@chello.se)
+--------------------------------------------------
+hehe lol, ... hmmm didn't you use int 13h for video modes... oh well... I'm downloading the latest service pack, if I'm luck it might solve it ;) I'll try some other stuff if it doesn't work.
+
+--------------------------------------------------
+01/25/02 at 01:57:02  Reply by: Spikeles (spikeles_@hotmail.com)
+--------------------------------------------------
+
+QUOTE:
+hehe lol, ... hmmm didn't you use int 13h for video modes... oh well... I'm downloading the latest service pack, if I'm luck it might solve it ;) I'll try some other stuff if it doesn't work.
+
+
+
+
+Sorry... :D int 10h is keyboard. int 13h is video.. oops. :)
+
+--------------------------------------------------
+01/25/02 at 04:39:08  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+http://developer.grup.com.tr/misc/dosref33/
+
+botman
+
+--------------------------------------------------
+01/25/02 at 05:35:52  Reply by: Spikeles (spikeles_@hotmail.com)
+--------------------------------------------------
+
+QUOTE:
+http://developer.grup.com.tr/misc/dosref33/
+
+botman
+
+
+
+i havn't done asm in such a long time. :D
+( I do have the PC interrupts book though! 3000pages of that link basically!)
+
+--------------------------------------------------
+01/30/02 at 08:49:02  Reply by: Extrarius (cprgmsw@rietta.com)
+--------------------------------------------------
+Unless you are compiling a true dos application I don't think you have access to interrupts. I dont know much about windows programming, but I dont believe you have any access to the interrupt table from the mode it uses . Also, VC++ 6.0 doesn't make true dos applications anymore. I don't believe version 5 did either. The 'console applications' you can make are windows programs that have a console instead of a window (to prove this, include windows.h and you can use anything from the standard windows API like create another window or get the thread/process ID, etc). You need an old compiler to make true DOS programs. I have Borland C++ 4, 4.5, and 5.0 and they all make real MS-DOS programs. Note that Borland C++ IS NOT the same as Borland C++ Builder. It is much older and has an interface similar to VC++ and imo is better in some ways worse in others. About equal.
+
+[modified on 01/30/02 at 08:48:32]
+
+[modified on 01/30/02 at 08:49:02]
+--------------------------------------------------
+02/13/02 at 02:20:57  Reply by: Spikeles (spikeles_@hotmail.com)
+--------------------------------------------------
+Not true. You do have access to interrupts and in fact there are a few Int 2Fh functions that you can use to access/modify WindowZ info.
+
+eg. ( Straight from the Win32 Docs )
+"Enable or Disable Close Command"
+Enables or disables the Close command in the system menu.
+
+mov ah, 16h    ; Windows multiplex function 
+mov al, 8Fh    ; VM Close 
+mov dh, 0      ; Enable or Disable Close Command 
+mov dl, Flags  ; see below 
+int 2Fh 
+or ax, ax 
+jz success 
+ 
+
+Parameters
+
+Flags
+
+Close flags. This parameter can be one of these values:
+
+00h      Disables the Close command.
+01h      Enables the Close command.
+Return Value
+
+Returns zero in the AX register if successful.
+
+[modified on 02/13/02 at 02:20:57]

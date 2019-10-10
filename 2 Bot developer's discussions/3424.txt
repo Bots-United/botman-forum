@@ -1,0 +1,446 @@
+--------------------------------------------------
+Subject: Questions and challenges
+--------------------------------------------------
+07/15/02 at 05:40:32  Posted by: zenureo (startux@hotmail.com)
+--------------------------------------------------
+Hi all,
+
+I'm new to metamod plugin programming but i had went thru all the docs, the stub, the trace and stuff. But of course my understanding of the subject is not really comprehensive compared to you guys. Thats why i need advice and help here ;)
+
+Firstly, i have an idea. I wanted to write a metamod plugin that will maybe control the hostages in CS map and make then more "lively". Meaning, when theres a fire fight or grenade explosion, these hostages is suppose to flee or squat down in fear or something.
+
+Due to my lack of understanding of the HL engine, i need to ask your guys whether this is possible at all or not? Is it possible to cycle thru all the entities within a map, then attach controls to all the hostages entities identified. Then from there, control how these hostages behave.
+
+Is this possible?
+If it is, what is a good approach to create such a plugin?
+Had anyone done a similar plugin or maybe a plugin that moves entities around a map?
+I hope i could start work from a similar plugin and "extend" it to achieve the above objective. Thats probably faster than coding from scratch or from mm_stub ;)
+
+Any links, code, ideas and advice will be GREAT!
+
+Thanks for all the help you guys can render!
+
+P.S Botman, i finally managed to register and thanks for the great readme.txt about HPB Bot, its great.
+
+
+--------------------------------------------------
+07/16/02 at 01:14:20  Reply by: zenureo (startux@hotmail.com)
+--------------------------------------------------
+hi guys,
+
+i started coding my mm_passerby plugin.
+I figure i must find out all the hostages entities on the map during startup. So i wrote the metamod plugin by listening to DispatchSpawn(..) first. The problem now is how do i differentiate the hostages entities to other entities? Compare the names of the entities? How can i get the name of the entities??
+
+Please help!!!
+
+
+
+--------------------------------------------------
+07/16/02 at 02:28:20  Reply by: zenureo (startux@hotmail.com)
+--------------------------------------------------
+Hi all,
+
+I managed to get the entity number and classname. For example in cs_assault, there are 4 hostages. Hence with the following code:
+
+int DispatchSpawn( edict_t *pent ) {
+  int numEnt = NUMBER_OF_ENTITIES();
+  LOG_CONSOLE(PLID, ">>Entity number : %d,  ClassName : %s",numEnt, STRING(pent->v.classname));
+  RETURN_META_VALUE(MRES_IGNORED, 0);
+}
+
+I get a print out on the console all the entity number and class name.
+
+I get like 4 lines for the "hostage_entity" which i guess is correct for cs_assault.
+
+Now the next question is how to differentiate between the 4 different hostages??!? How to alter their behavior???
+
+BOTMAN!! help!
+
+
+
+--------------------------------------------------
+07/16/02 at 08:48:31  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+for entity number, have you trried ENTINDEX(pent) ?
+
+How do you mean by altering their behaviour? What do u want them to do?
+
+--------------------------------------------------
+07/16/02 at 14:59:56  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+For "individualizing" the hostages, I would think of keeping track of their entity index. Anyway I think a safe way to make what you want would be to actually make the hostages "behave" when and ONLY WHEN the CS code itself does not make them have a behaviour. I.e. when you fire a weapon next to a hostage, the hostage is likely to crouch and put his hands on his head in the bare Counter-Strike. You could possibly get trouble if you make your hostages move in a certain manner and CS itself makes them simultaneously move in another manner.
+
+
+--------------------------------------------------
+07/16/02 at 18:02:33  Reply by: zenureo (startux@hotmail.com)
+--------------------------------------------------
+hi cheese,
+  nope, i haven't tried that yet. Will do it immediately.
+
+I also tried to log some messages to the console whenever the "use" button is pressed. I tried by putting in the code at the "DispatchUse" function. However when i press the "use" button, nothing happens, whats wrong?
+
+Which function do i make use of in the function table if i want to alter the behavior of the hostage? Not RunPlayerMove i guess since the hostage is not really a player... HELP!
+
+Also, can someone give me some code sniplets on how to make a hostage squat or walk. Thanks !!!
+
+
+--------------------------------------------------
+07/16/02 at 18:12:38  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+DispatchUse() is called when some entity is actually triggered (i.e. a button, a hostage...) This does not means it is called when you push your IN_USE button.
+
+If you want to check for the use of the IN_USE button, you should check the player entities pev->button state with a "AND" mask on IN_USE (since the pev->button is a bitmap). If you get >0, then the entity (the player) is pressing his "use" key. You have to do this check each frame, so the best places IMO would be StartFrame(), or PlayerPostThink().
+
+If you want to check for the triggering of some button/hostage, you do it in DispatchUse() and you check if one of your entities is the player, and the other one is the triggerable thing. If you get entity1 = player and entity2 = hostage, then your player has started using the hostage.
+
+[modified on 07/16/02 at 18:12:38]
+--------------------------------------------------
+07/16/02 at 19:58:19  Reply by: zenureo (startux@hotmail.com)
+--------------------------------------------------
+Thanks Pierre-Marie Baty!
+
+i just wanted to override the "use" function of the hostages so that they cannot be used at all. I'm now trying to save a vector list of all the hostage_entity i found during DispatchSpawn.
+
+I need a way to refer back to these hostages later on in other functions, thats why i keep a record of them in a vector or array or something.
+I'm just using std vector to store the value returned by ENTINDEX(pent). Do you think i should store the pEntity pointer in my vector? Can i get back the pEntity with the ENTINDEX(pent) value alone??
+
+Also, i believe the hostages should have a Think() function as well. So i was thinking about implementing the DispatchThink() in my plugin and then check whether the pent is hostages or not by using the vector list i had previously created. Do you guys think this is a good way or are there any better way of doing this??
+
+Thanks guys!
+
+
+--------------------------------------------------
+07/16/02 at 21:00:34  Reply by: zenureo (startux@hotmail.com)
+--------------------------------------------------
+:Pierre-Marie Baty
+
+I tried to disable the USE on the hostages but didn't really succeeded. The code is below:
+
+void PlayerPreThink( edict_t *pEntity ) {
+  if ((pEntity->v.button&IN_USE))
+    if (strcmp(STRING(pEntity->v.targetname), "hostage_entity")==0)
+    {
+          LOG_CONSOLE(PLID, "<USE> Ignore hostage use");
+      RETURN_META(MRES_SUPERCEDE);
+    }
+    RETURN_META(MRES_IGNORED);
+}
+
+I guess if i could detect the Button IN_USE targetted at a hostage_entity, i could supercede the think() for that player. However i think pEntity->v.targetname is not "hostage_entity". My question is, since PlayerPreThink and PlayerPostThink only gives the *pEntity to the player, how do i detect what his "target" is???
+
+
+--------------------------------------------------
+07/16/02 at 22:26:51  Reply by: zenureo (startux@hotmail.com)
+--------------------------------------------------
+How do i make the hostage move or duck???
+
+HELP!
+
+--------------------------------------------------
+07/16/02 at 22:46:07  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+About your problem of disabling hostage usage :
+Intercept in DispatchUse() the use of a hostage, and IF a hostage is being used, just RETURN the function, ELSE, LET the engine's DispatchUse() being called.
+
+About your problem of keeping track of the hostages :
+The entities all have an index, which does not change during the life of that entity. So instead of storing the vector locations of your hostages, just remember which indexes their entities have. ENTINDEX (entity) will give you the index of entity. INDEXENT (index) will give you a pointer to the entity which has the 'index' index.
+
+
+[modified on 07/16/02 at 22:46:07]
+--------------------------------------------------
+07/16/02 at 23:01:32  Reply by: zenureo (startux@hotmail.com)
+--------------------------------------------------
+Pierre-Marie Baty, Thanks a lot !!!
+Check your mail!
+
+I'll try out your disabling USE method now.
+
+--------------------------------------------------
+07/16/02 at 23:30:04  Reply by: zenureo (startux@hotmail.com)
+--------------------------------------------------
+The DispatchUse() doesn't seem to be called at all. i put in the following that does nothing but prints some stuff to console. Nothing came out at all even when i press my use button on the hostages and all of them are following me. What could be wrong???
+
+void DispatchUse( edict_t *pentUsed, edict_t *pentOther ) {
+  LOG_CONSOLE(PLID, "<USE> A : %s %d,  B : %s %d", STRING(pentUsed->v.classname), ENTINDEX(pentUsed), STRING(pentOther->v.classname), ENTINDEX(pentOther));
+  RETURN_META(MRES_IGNORED);
+}
+
+--------------------------------------------------
+07/17/02 at 01:22:51  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+All I can say is that I can't see why it doesn't work ! A higher-skilled programmer's help would be welcome here... :)
+
+
+--------------------------------------------------
+07/17/02 at 21:09:39  Reply by: zenureo (startux@hotmail.com)
+--------------------------------------------------
+I got the following link from an other forum. The plugin actually managed to make the hostage crouch a little when theres gun fire nearby. So this proves that it is possible to make non-player entities move with animation. But theres no source, so we'll have to find out some other way.
+
+http://daedalus.austin2600.org/features.html
+
+
+--------------------------------------------------
+07/18/02 at 06:07:53  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+I would assume that all they are doing is setting the animation for the hostage model to the animation that they want.  You still can't make it "duck" like a normal player does, since the hostages don't really have a "duck" animation, just a "cower" animation.
+
+botman
+
+--------------------------------------------------
+07/18/02 at 07:17:16  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Ideally a good way for such a plugin would be to get rid of all the hostages themselves, and replace them with bots.
+
+Just an idea ;D
+
+
+--------------------------------------------------
+07/18/02 at 19:52:06  Reply by: zenureo (startux@hotmail.com)
+--------------------------------------------------
+Using bots is definitely possible, but it takes up player slots and is way too heavy for such a simple objective. For a crowded shopping mall for example, you might have like 30-40 passerby. You dun wan all of them to be bots heh heh ;)
+
+Yes botman, u r right, the hostage.mdl only has animation for "cower". But i dun even know how to make them cower in the first place. I could also change the hostage models to include the "ducking" animation and stuff, then offer it for download with the plugin.
+
+--------------------------------------------------
+07/18/02 at 21:10:03  Reply by: zenureo (startux@hotmail.com)
+--------------------------------------------------
+I used the CENTER_SAY macro define in metamod mutil.h but its not print text to the hud/screen.
+
+What could be wrong???
+
+--------------------------------------------------
+07/18/02 at 21:24:33  Reply by: zenureo (startux@hotmail.com)
+--------------------------------------------------
+wow! 
+I solved the problem like 5mins after posting on this forum. It got magick in here i tell you. 
+
+Anyway, heres the plug:
+
+The metamod.dll the comes with AdminMod seems to be dated back to april. So i decided to just recompile my metamod source and replace the .dll that comes with AdminMod. Wah la, works like voodoo charm! 
+
+--------------------------------------------------
+07/19/02 at 00:11:24  Reply by: zenureo (startux@hotmail.com)
+--------------------------------------------------
+Hey guys, need more advice here.
+
+I was trying to detect the player setting off a trigger in the map. Where do i do it? I'm currently detecting the trigger in playerPostThink_Post. But i felt that its kinda expensive to do that cos 99% of the time, the player would not be triggering the trigger.
+
+Any other better functions to put in this kinda detection code??? No No startFrame ok, no way!
+
+
+--------------------------------------------------
+07/19/02 at 06:39:29  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Triggers are usually fired by the DispatchTouch() function (if the player touches a trigger to activate it).  Hook into the DispatchTouch() function and examine the edict to see if it is the player (or entity) that is being touched that you want.
+
+botman
+
+--------------------------------------------------
+07/20/02 at 04:22:36  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+There must be exceptions, though. I tried for ages to activate a player_weaponstrip by firing my own DispatchTouch() on its trigger_multiple, no way !! My player HAS to actually touch it.
+
+If you have a clue on why this can't work, botman, I'm all ears. ???
+
+
+
+--------------------------------------------------
+07/21/02 at 19:31:27  Reply by: zenureo (startux@hotmail.com)
+--------------------------------------------------
+Hey botman,
+I tried printing all the edict whenever a DispatchTouch() is called. For touching triggers, its the same as touching the floor by jumping. Somehow, the triggers are merged into the entity call "worldspawn". So when u touch a trigger, well, u touch a worldspawn. heheheh
+
+But now, i will do my trigger detection check only when i have a "player"/"worldspawn" pair during a DispatchTouch().
+
+I did the trigger detection this way:
+For the trigger_once type, i found out from the sdk code that the trigger_once is actually deleted when it is triggered. So i just use the entindex that i had stored for the trigger, call a INDEXENT(trigger entindex). If it returns a NULL edict*, then i presume it had been triggered. Note: this might not work for trigger_multiple or other triggers.
+
+How i wish there is a DispatchTriggered()!!!!!
+
+[modified on 07/21/02 at 19:31:27]
+--------------------------------------------------
+07/21/02 at 19:35:13  Reply by: zenureo (startux@hotmail.com)
+--------------------------------------------------
+Hi all,
+
+Do you guys know how to teleport a player from one trigger location to another trigger location???
+
+I need to do this so that if a player tried to disrupt the game flow by activating a trigger he should not be touching, he will be sent flying back to the last trigger he should be at. Any ideas??? Code snipplets would be best!!!
+
+
+--------------------------------------------------
+07/22/02 at 01:22:13  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+Tried having a look at the teleport code in the SDK? :)
+
+--------------------------------------------------
+07/22/02 at 17:48:21  Reply by: zenureo (startux@hotmail.com)
+--------------------------------------------------
+Ok i did, now i know how to teleport. Well...was just looking for some fast answers to my questions ;)
+
+--------------------------------------------------
+07/22/02 at 17:49:56  Reply by: zenureo (startux@hotmail.com)
+--------------------------------------------------
+Advice needed again, are there any macros in the SDK that executes client commands?? i saw one marco yesterday called CLIENT_COMMANDS, din really have time to check it out. Anyone wanna offer me a quick ans??
+
+--------------------------------------------------
+07/22/02 at 17:55:06  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+CLIENT_COMMAND(edict_t *pPlayer, char *cmd)
+
+e.g.
+
+CLIENT_COMMAND(pPlayer,"+jump");
+
+hehe
+
+--------------------------------------------------
+07/23/02 at 01:40:54  Reply by: zenureo (startux@hotmail.com)
+--------------------------------------------------
+hmm...
+
+let me try it out. I'm just afraid that i can't call it from a metamod plugin, its not list in the enginecallback.h. Will try it once i get to my programming comp.
+
+There are three interesting macros:
+#define SERVER_COMMAND      (*g_engfuncs.pfnServerCommand)
+#define SERVER_EXECUTE      (*g_engfuncs.pfnServerExecute)
+#define CLIENT_COMMAND      (*g_engfuncs.pfnClientCommand)
+
+Any experts care to explain how they work or what they do??
+
+--------------------------------------------------
+07/23/02 at 02:45:09  Reply by: zenureo (startux@hotmail.com)
+--------------------------------------------------
+sorry, skip the CLIENT_COMMAND, cheese already explained it. I tried and it works.
+
+Thanks cheese.
+
+--------------------------------------------------
+07/23/02 at 02:46:06  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+All of these are server_side. The first one executes a server command (such as "kick", "restart", and whatever). The second one executes a script on the server (such as "server.cfg" or whatever), and the third one forces a specific client to issue a client command.
+
+Normally the client commands are executed by the client side (obviously), but with this function you can force a client to execute one of them. That's why ClientCommand has 2 implementations : the client side (normal one, in which the command is stored in the g_argv global string variable, hard to access from the server), and one another which is server side, in which you supply directly the command as a parameter of ClientCommand().
+
+
+--------------------------------------------------
+07/23/02 at 04:13:11  Reply by: zenureo (startux@hotmail.com)
+--------------------------------------------------
+I tried to use CLIENT_COMMAND to sorta freeze a player when he activates a trigger. I do it by executing "unbindall" so that watever key the player pressed is ignore. After a period of time, i'll execute "exec config.cfg" again to bind back all the keys so that the user can move.
+
+BUT, theres a problem. When i activate a trigger by walking over it, my forward key is usually pressed down. Then the "unbindall" command is executed, but my player keeps walking forward !!!! Even when i do not press down the key anymore, it still marches forward. Somehow, when i call unbindall with my key pressed down, that key gets pressed virtually!!!!
+
+Anyone can help me??? Or are there any better way to "freeze" a player in one place?? I can't do a "pause", the freeze should only affect the player on the trigger, not everyone!
+
+--------------------------------------------------
+07/23/02 at 04:28:23  Reply by: zenureo (startux@hotmail.com)
+--------------------------------------------------
+Let me rephrase my question. I just wanna trap the player on the spot where he activated the trigger. Its sorta like a mouse trap kind of thing, but of course it releases the player after sometime. How can this be done?
+
+--------------------------------------------------
+07/23/02 at 05:59:24  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+There are quite a few differences between how "instant commands" and push keys are handled in terms of client commands.
+Commands that are effective only at a certain instant of time (e.g spraying a logo, selecting a weapon...) just need one actual command for the engine to know what to do. That is, "impulse 201", "weapon_crowbar".
+Keypresses are commands that "last" during a certain time. For such actions, TWO commands are sent. ONE when the key is pressed down (e.g "move forward"), and ONE when it is released. That is, "+forward" and "-forward".
+Basically, every command starting with a "+" represents the signal of a key being pressed down. Instead of repeating the same command each frame (that would slow down the network), the server is notified only ONCE, and ONCE again when you release it. Identically, every command starting with a "-" represents the signal of a key being released.
+So if you want your player to stop, make him send a "-forward", heh 8)
+
+
+
+--------------------------------------------------
+07/23/02 at 18:29:29  Reply by: zenureo (startux@hotmail.com)
+--------------------------------------------------
+PMB, thanks a bunch. Will try it immediately.
+
+Also, until now, i had been trying my plugin only on one comp which happens to be the listenserver cum player.
+
+Say, i want to run a server with no metamod, then connect another user running metamod and my plugin. Will my plugin still work?? I'm not executing any special server commands and stuff, just basic trigger detecting and text printing.
+
+Need to ask, cos i dun have 2 comps with me now to test. Thanks.
+
+
+--------------------------------------------------
+07/23/02 at 19:31:01  Reply by: zenureo (startux@hotmail.com)
+--------------------------------------------------
+Hi guys,
+I tested my plugin with a few comps in a network game. Can't run it on thel client side. Can only run it at the server side. So when one guy steps on a trigger, the resulting consequences(like text printing) is kinda shown to all the players.
+
+--------------------------------------------------
+07/23/02 at 20:14:05  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Normal, Metamod is a server-side tool. You can't write a plugin for just one client, unless you do some checks in the plugin code to determine which client you are dealing with. Anyway, your plugin will still have to run on the server.
+
+
+--------------------------------------------------
+07/24/02 at 03:24:14  Reply by: zenureo (startux@hotmail.com)
+--------------------------------------------------
+
+QUOTE:
+Normally the client commands are executed by the client side (obviously), but with this function you can force a client to execute one of them. That's why ClientCommand has 2 implementations : the client side (normal one, in which the command is stored in the g_argv global string variable, hard to access from the server), and one another which is server side, in which you supply directly the command as a parameter of ClientCommand().
+
+
+
+
+
+Hi, i need help here, i can't seem to call ClientCommand(...). I get link errors. I had included engine_api.h but it still does not work.
+help.
+
+
+--------------------------------------------------
+07/24/02 at 10:28:19  Reply by: zenureo (startux@hotmail.com)
+--------------------------------------------------
+I got it.
+
+g_engfuncs.pfnClientCommand(pEntity, "xxxxx\n");
+
+stupid me.
+
+--------------------------------------------------
+07/24/02 at 20:39:29  Reply by: zenureo (startux@hotmail.com)
+--------------------------------------------------
+hey guys,
+
+anyone heard about development of MODs for the unreal engine?? Are there any good sites and places to learn?
+
+--------------------------------------------------
+07/25/02 at 18:17:56  Reply by: zenureo (startux@hotmail.com)
+--------------------------------------------------
+Hi guys,
+
+anyone know how to do the following in metamod plugin?? Give me all you ideas, will come back and see if i implemented the same ideas or not :)
+
+1. Detect map changing
+2. Activate/Use scene objects such as a spy tv terminal.
+3. Differentiate between a server player and client players. Now i check the .netname which means that the server have to reserved a special name for the plugin to detect him/her properly. Is there any other better way to do this?
+4. Spawn an entity onto the scene on-the-fly. IS THIS POSSIBLE AT ALL?? I read somewhere that you can spawn an entity on-the-fly as long as that entity was precached. How can this be done?
+
+Thanks for any help/ideas/suggestions/warnings you can give.
+Help me learn ;)
+
+
+--------------------------------------------------
+07/26/02 at 06:07:02  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+1. See the HPB bot source code.
+
+2. ???
+
+3. See the HPB bot source code.
+
+4. See the Monster source code.  (Yes, the models, sprites and sounds for entities must be precached before the entity can be spawned).
+
+P.S. You should post a NEW thread when you have a question, not reply to an existing thread.
+
+botman
+
+[modified on 07/26/02 at 06:07:02]
+--------------------------------------------------
+07/29/02 at 18:31:15  Reply by: zenureo (startux@hotmail.com)
+--------------------------------------------------
+The second question:
+
+Say i had four spycam in the map. I want to activate them without going over to the spycam on the map and then press "use" on the spycam. I want to be able to activate them using just a key pressed.
+So is it possible to like record the entindex of these spycam and then "activate"/"use" them whenever i want??? This is much like what Pierre had wanted to do with a trigger_multiple, to trigger it without touching it.
+
+

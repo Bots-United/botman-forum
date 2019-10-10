@@ -1,0 +1,149 @@
+--------------------------------------------------
+Subject: How can I check if a bot has a flag?
+--------------------------------------------------
+01/03/01 at 16:04:32  Posted by: RedFox (redfox@nildram.co.uk)
+--------------------------------------------------
+Well the title speaks for its self. version 1 of my bots nearly done, but I can't figure out how to tell if a bot has picked up a flag or not?
+
+Oh, just as a reference I've found a bug that you should probably know about. The waypointroutefromto function somtimes returns a spurious value (65536 etc) so anyone using the HPB_Bot templete should be aware of this. Did you know botman? If not I hope it helps.
+To solve it I just checked that the return value was less than the number of waypoints that exist.
+
+Anyway if someone knows the answer to this I may have my bot up by next week (it'll use botmans waypoint files). If I can be asked to write a webpage as well :)
+
+RedFox
+
+--------------------------------------------------
+01/03/01 at 16:25:29  Reply by: Spyro (theoddbot@hotmail.com)
+--------------------------------------------------
+Hi,
+
+You get status icon message when you pick up the flag.
+
+You have to be careful, as it seems there are 3 different types of status icon messages, each with a different(!!) number and type of parameters.
+
+
+
+
+--------------------------------------------------
+01/04/01 at 05:03:12  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+I just check to see who the owner of the flag is (that's the guy that's carrying it) like so...
+code:
+   pent = NULL;
+
+   while ((pent = UTIL_FindEntityByClassname( pent, "item_tfgoal" )) != NULL)
+   {
+      if (pent->v.owner == pEdict)  // is this bot carrying the item?
+      {
+         // we are carrying the flag/card/ball
+
+         bot_has_flag = TRUE;
+
+         break;  // break out of while loop
+      }
+      else if (FInViewCone( &pent->v.origin, pEdict ) &&  // can bot see it?
+               FVisible( pent->v.origin, pEdict))
+      {
+         // check if the flag has an owner...
+         if (pent->v.owner != NULL)
+         {
+            // get the team for the owner of the flag...
+            int player_team = UTIL_GetTeam(pent->v.owner);
+
+            // attack if not our team and not allies team...
+            if ((player_team != team) &&
+                !(team_allies[team] & (1<<player_team)))
+            {
+               // kill the man with the flag!
+               pBot->pBotEnemy = pent->v.owner;
+
+               pBot->waypoint_goal = -1;  // forget the goal (if there is one)
+
+               return TRUE;
+            }
+         }
+
+         // otherwise head for the flag...
+
+         // ADD YOUR CODE HEAR TO HEAD TOWARD FLAG
+
+      }
+   }
+
+botman
+
+--------------------------------------------------
+01/04/01 at 09:28:38  Reply by: RedFox (redfox@nildram.co.uk)
+--------------------------------------------------
+Cheers botman, thats gonna help loads :)
+
+I've just tried to intersept the StatusIcon message with no success, this will make it much simpler.
+One bot comming up :)
+
+Laters
+
+RedFox
+
+--------------------------------------------------
+01/04/01 at 09:35:07  Reply by: RedFox (redfox@nildram.co.uk)
+--------------------------------------------------
+Oh, one last question, what are the vertual key values that I need to set for the bot to shout for medic, throw a grenade, drop flag and drop excess ammo???
+
+Not that important, but I would like to know.
+Did try using the values from the tf_defs.h
+but TF_MEDIC_HELPME wouldn't work.. Its probably just me doing somthing wrong somewhere :) (that happens a lot)
+Anyway thanks.
+
+RedFox
+
+--------------------------------------------------
+01/04/01 at 09:56:39  Reply by: BrianL (halfkiller@hotmail.com)
+--------------------------------------------------
+You can let the bot use the FakeClientCommand: (Observe),
+
+code:
+
+edict_t *pEdict = pBot->pEdict;
+
+ // Fake Command to make the bots yell for help!
+ FakeClientCommand(pEdict, "saveme", NULL, NULL);
+
+ // Make something for grenade throwing! using FakeClientCommand
+ 
+
+
+
+That's all there is to it.  (Hope this helps!)
+:)_
+
+Haven't tried grenade throwing yet in mine maybe some-one else can help with that.
+
+--------------------------------------------------
+01/04/01 at 14:59:16  Reply by: Spyro (theoddbot@hotmail.com)
+--------------------------------------------------
+Grenades:
+to start 1:
+FakeClientCommand("+gren1", "101");
+to throw 1:
+FakeClientCommand("-gren1", "101");
+
+to start 2:
+FakeClientCommand("+gren2", "102");
+to throw 2:
+FakeClientCommand("-gren2", "102");
+
+"drop" is excess ammo i think
+
+don't know about the flag.
+
+-Spyro
+
+--------------------------------------------------
+01/04/01 at 17:18:10  Reply by: RedFox (redfox@nildram.co.uk)
+--------------------------------------------------
+Cheers muchly, youve been most helpful :)
+
+If you lot ever need help with anything (well I do know about some stuff :) ) then let us know.
+
+RedFox
+

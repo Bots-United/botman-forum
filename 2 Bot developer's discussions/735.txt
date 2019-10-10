@@ -1,0 +1,235 @@
+--------------------------------------------------
+Subject: How to good kill bot :-)
+--------------------------------------------------
+11/30/00 at 10:09:08  Posted by: OLO (olo@counter-strike.pl)
+--------------------------------------------------
+I'm trying to kill bot in cs but...
+When I set health to 0 or -1 bot just gets killed (dying animation doesn't appear). But the game dont even notice it!!!
+I'm trying to make newround command (by killing all bots the game will drows round and starts new round).
+Enybody have idea??? (I setted and remove all flags typically for death and no changes)
+
+--------------------------------------------------
+11/30/00 at 16:49:31  Reply by: Spyro (theoddbot@hotmail.com)
+--------------------------------------------------
+hi,
+
+you could try emulating the damage message to deal out 1000 damage, but i don't know if it would work.
+
+bye,
+
+
+--------------------------------------------------
+12/01/00 at 01:04:28  Reply by: Paulo-La-Frite (Paul.George@wanadoo.fr)
+--------------------------------------------------
+It is very easy :)
+
+To kill you in CS, you use the command 'kill'...
+So you just need to use this command for the bot you wanna kill using the command :
+FakeClientCommand(pEdict, "kill", NULL, NULL);
+
+
+--------------------------------------------------
+12/01/00 at 09:10:36  Reply by: OLO (olo@counter-strike.pl)
+--------------------------------------------------
+Thanks for reply.
+But Paulo-La-Frite your idea of
+FakeClientCommand(pEdict, "kill", NULL, NULL);
+doesn't work. I have check it as first when i came on with killing idea.
+
+BTW. How to drop weapons. Coz by FakeClientCommand
+it also doesn't work...
+
+--------------------------------------------------
+12/03/00 at 09:23:48  Reply by: MKlimstra (mklimstra@zonnet.nl)
+--------------------------------------------------
+I can't get it the "FakeClientCommand(pEdict, "kill", NULL, NULL);"-method working either. Anyone got an idea???
+
+--------------------------------------------------
+12/03/00 at 12:49:14  Reply by: Swartz45 (angry_madnow@yahoo.com)
+--------------------------------------------------
+I might be able to help if you would speak English for a moment or two.
+
+--------------------------------------------------
+12/03/00 at 13:24:44  Reply by: MKlimstra (mklimstra@zonnet.nl)
+--------------------------------------------------
+QUOTE:
+My bot isnt turning out very well at the moment. Its not the bot itslef, the bot is good, the only problem is I DONT REALLY KNOW C++ SO I CANT GET THE WAYPOINT SYSTEM TO WORK!!!!!!!!!!! ARGH!!!!!
+
+
+
+QUOTE:
+I might be able to help if you would speak English for a moment or two.
+
+
+
+
+sure.
+
+--------------------------------------------------
+12/03/00 at 14:46:14  Reply by: Swartz45 (angry_madnow@yahoo.com)
+--------------------------------------------------
+Shutup. Mind your own business.
+
+
+--------------------------------------------------
+12/04/00 at 01:50:29  Reply by: eLiTe (ali@elitegamer.fsnet.co.uk)
+--------------------------------------------------
+Hehe :P, better just not to insult ppl in the first place!
+
+--------------------------------------------------
+12/04/00 at 11:18:38  Reply by: DarkYouth (darkyouth@thegraze.freeserve.co.uk)
+--------------------------------------------------
+What about getting the buggers to simultainiously jump and set the gravity to 20000 in the next frame?
+
+it will kill them in a jiffy. :)
+
+--------------------------------------------------
+12/04/00 at 13:27:44  Reply by: swoop (jab@swoop.2y.net)
+--------------------------------------------------
+The following code is what I did to kill off the bots between map changes and to only add them back if the new map contains waypoints. These changes were made in dll.cpp.
+
+
+      if (strcmp(pClassname, "worldspawn") == 0)
+      {
+         // do level initialization stuff here...
+         
+       wpt_loaded = FALSE;
+         // kick off the bots
+         for (int i=0; i < 32; i++)
+         {
+            char cmd[80];
+            if (bots[i].is_used)  // is this slot used?
+            {
+
+               sprintf(cmd, "kick \"%s\"\n", bots[i].name);
+
+               SERVER_COMMAND(cmd);  // kick the bot using (kick "name")
+               bots[i].is_used = FALSE;
+            }
+         }
+
+         WaypointInit();
+         WaypointLoad(NULL);
+
+       ......
+       ......
+
+         g_GameRules = TRUE;
+         if (wpt_loaded)
+            file_opened = FALSE;
+      }
+
+
+
+
+void StartFrame( void )  .... Section
+
+      if (g_GameRules)
+      {
+         if (!file_opened)  // have we open bot.cfg file yet?
+         {
+
+          ......
+          ......
+       }
+
+       // Clear bots array
+         for (int i = 0; i < 32; i++)
+            memset(&bots[i], 0, sizeof(bot_t));
+
+
+       ......
+      }
+
+
+--------------------------------------------------
+12/04/00 at 13:51:53  Reply by: OLO (olo@counter-strike.pl)
+--------------------------------------------------
+No. It's not this what I'm looking for.
+Because you kick bots and respawn them again. They lost their money, frags and change their names - just spawn a new bots.
+
+--------------------------------------------------
+12/04/00 at 15:15:31  Reply by: CountFloyd (countfloyd_1999@yahoo.com)
+--------------------------------------------------
+If you want to kill some Clients (Bots) you could use ClientKill(). Here's a code snippet from my source which kills all players (even humans) in that round:
+code:
+
+void UserNewroundAll(edict_t *pEntity)
+{
+edict_t *pPlayer;
+for (int ind = 1; ind <= gpGlobals->maxClients; ind++)
+{
+pPlayer = INDEXENT(ind);
+// is this player slot is valid and it's not this bot...
+if ((pPlayer) && (!pPlayer->free))
+{
+
+if (FBitSet(pPlayer->v.flags, FL_CLIENT) 
+FBitSet(pPlayer->v.flags, FL_FAKECLIENT))
+{
+if(IsAlive(pPlayer))
+      ClientKill(pPlayer);
+}
+}
+}
+ClientPrint( VARS(pEntity), HUD_PRINTNOTIFY,"Round Restarted !\n");
+}
+
+
+
+Hope this helps...
+
+
+
+--------------------------------------------------
+12/05/00 at 03:08:32  Reply by: OLO (olo@counter-strike.pl)
+--------------------------------------------------
+Doh...
+It's so easy..
+Thanks a lot.
+BTW. From where you know about this func (ClientKill). LOL...
+
+--------------------------------------------------
+12/05/00 at 03:12:26  Reply by: MKlimstra (mklimstra@zonnet.nl)
+--------------------------------------------------
+Thanks a lot!
+
+
+--------------------------------------------------
+12/05/00 at 15:09:56  Reply by: DarkYouth (darkyouth@thegraze.freeserve.co.uk)
+--------------------------------------------------
+Thanks Floyd.....
+
+
+
+--------------------------------------------------
+12/06/00 at 13:35:58  Reply by: CountFloyd (countfloyd_1999@yahoo.com)
+--------------------------------------------------
+To say it with your own words:
+"I'm here to serve!"
+
+;)
+
+--------------------------------------------------
+12/08/00 at 06:12:33  Reply by: Gen[X]Cops (lastride87@hotmail.com)
+--------------------------------------------------
+But can i bind this kill function to a key? How will i do that?
+
+--------------------------------------------------
+12/08/00 at 06:19:43  Reply by: eLiTe (ali@elitegamer.fsnet.co.uk)
+--------------------------------------------------
+bind k "kill"
+
+This would bind the 'k' key to the command 'kill'. Just put this in you bot.cfg file (or type it in at the console)
+
+--------------------------------------------------
+12/08/00 at 14:27:01  Reply by: DarkYouth (darkyouth@thegraze.freeserve.co.uk)
+--------------------------------------------------
+Whose words were they????
+
+Some wise stuff.
+
+I re-wrote it however so it kills off all the bots if all the players in the server are dead (only works if players are in there)
+
+It doesnt always give the teams the right scores after, but its damn useful. In version 4 im gonna make it an option. Instead of mandatory.
+

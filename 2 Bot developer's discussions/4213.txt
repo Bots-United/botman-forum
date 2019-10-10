@@ -1,0 +1,282 @@
+--------------------------------------------------
+Subject: Clipping Hull
+--------------------------------------------------
+03/12/03 at 09:32:53  Posted by: RedFox (redfox@nildram.co.uk)
+--------------------------------------------------
+Hey all
+I have a lill bit of a complex problem..
+Need some guidence in the right direction.
+
+I'm starting to think along the same lines as PM for extracting information driectly from the BSP for navigation (instead of scanning it like I have been doing)
+Going back over the quake 3 arena bots notes, I re-read the section on its area awareness system
+It appears to be created from the clipping hull of the map..
+So...dug over the halflife bsp tools, sure enoughf, the info you needs in their, as the clipping hulls compiled in such a way that it would be perfect for navigation information.
+(I did consider just faces like PM, but clip brushes aern't included as faces)
+
+Only problem is, its stored as just planes.
+
+So....the things I'd like to ask about...
+What exactly is a plane? (ok,ok I've searched here and the net and I'm still not sure...)
+I'm kind of getting the impression its a flat object, that is infinate in size (appart from its flatness), as all the info u have is its origin and pitch/angle etc
+I can see how this would work...in theory...for ingame clipping..as the way its linked to nodes
+
+Ok, second thing is...I'm a little stumped when it comes to trying to turn them into something more useable..like faces, where the edges are defined
+I'd assume it'd involve lots of plane intersections tests to determine the edge of the clipping planes
+
+The main reasons I want to do this is the results would be quite optimal..i.e. close to the smallest number of areas to cover the walkable spaces (well, I want walls n stuff aswell...hehe)
+It'd be more acurate than my compiler (including hidden ledges etc), and should take less time to run (hopefully only a few seconds, compared to minutes/hours)
+
+Hope you guys can suggest a few ideas :D
+And is my definition of a plane correct?! heh
+
+hmmm, an after thought would be to have a more abstract navigation system...that used the clipping planes as they where (as planes), and nodes to link them together/give them some order
+hmmm
+wonder what that'd be like
+hehe
+
+--------------------------------------------------
+03/12/03 at 10:18:56  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Yes, planes are infinite surfaces.  In Worldcraft, you denotate a plane by specifying 3 points in space (3 points in 3D space define a plane).  In the Half-Life engine (and Quake), a plane is defined as a surface normal (a vector) and an offset from the origin of the world (0,0,0).  So if you have a surface normal and an offset from the origin of the world, you have a plane.
+
+To find edges of faces, you can check to see where 2 planes intersect each other (do a google search for "plane intersect").  Now you have a list of all the edges in the world.  When 2 or more edges intersect each other, you have a vertex.  3 or more vertexes will form a polygon (commonly called a face).
+
+The BSP compile tools already do much of this for you.  The Half-Life .bsp file contains a list of faces that you can walk through to gain information about polygons in the world.
+
+botman
+
+--------------------------------------------------
+03/12/03 at 11:07:30  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+A plane is like a line in math (don't know if "line" is the right term in English, in French it's "droite") : it means a surface for which any point that conforms to its equation belongs to. For example, a line is defined by the whole sum of the points that verify the equation y = ax + b; a plane is thus the same but in 3D math instead of 2D, by adding a dimension: any point that verifies its equation belongs to it.
+
+You may want to talk about faces instead. Faces are basically, polygons. They're the triangles, squares, trapezes, parallelograms, that are used for building the map walls, and on which are applied the textures.
+
+If you take as a basis the BSP code from my bot template, all you need to do is to remove the check for the "walkability" of the faces in the LookDownOnTheWorld() function to get ALL the faces from the BSP data. Currently the code cycles through all the faces, and makes a check in order to determine if the inclination of the normal vector (the vector perpendicular to the plane, thus to the face it belongs to) is superior to a certain value which corresponds to a 45 degree angle with the horizontal. Players in Half-Life can walk on faces that are less (or equal) than 45° from the horizontal, hence why.
+
+If you want to rebuild the Area Awareness System of Jean Paul in your bot, you'll have to :
+
+1/. Get all the faces of the BSP world
+2/. Raise their coordinates from a value depending on the size of the minimal bounding box of a player ; i.e : 
+    - Raise horizontal floors by 36 units (since a player's origin being 36 units high from the ground)
+    - Lower ceilings by 36 units (since a player's origin being also 36 units low from the top of his head - a player bounding box being 72 units high)
+    - Thicken walls by 16 units (since a player's origin is 16 units far from a wall when its bounding box collides with it - a player bounding box being 32 units width).
+3./ You'll have to run ANOTHER bsp algorithm on the resulting volumes, in order to split them in "navigable" data. It will be a different BSP algorithm from the original BSP file. Then, you may use the volumes from this BSP data as navigable nodes in your AAS.
+
+In short, you have to recompile a "thickened" map for your bots, where the walls are thickened, the floors raised, and the ceilings lowered.
+
+Good luck :)
+
+
+
+[modified on 03/12/03 at 11:07:30]
+--------------------------------------------------
+03/12/03 at 13:25:29  Reply by: RedFox (redfox@nildram.co.uk)
+--------------------------------------------------
+Thx, thats one less mistery! :D
+Atleast I was close with my understanding of planes.
+
+So, when checking for intersections, would you count all the closest ones to its origin as a way to define the edges, as I feel planes will intersect each other several times, being infinate n all :p
+
+Thx PM...yeah knew that one, used similar stuff in my compiler, checks tracehull normals
+
+Ah, now heres the interesting bit, I did think I was going to have todo all that myself...( rebuilding the Area Awareness System)
+But, the halflife compiler builds in all the info you need into the bsp.
+the cliping hull is built by applying all those rules to the faces....qcsg does it!!
+Have a look in the brush.c for 'BEVELED CLIPPING HULL GENERATION'
+So I just wanted to get the data from the BSP (its all in the form of planes), that way, no need to redo whats already been done :)
+
+Always assumed (since reading it) that this info was their and used to clip the player to the map :)
+
+I'm also hopeful that generating the data from the planes will be more efficient than just taking all the walkable faces, as their should alot less areas in the end...compared to just taking the faces
+it'll be like merging the faces, but without a time constraint, as its already in a merged form
+I hope :p
+
+My compiler did a dam good job at this, it just took a few mins 
+hehe
+
+This will hopefully skip several of these steps, seing as its all been done for you by the map compiler when building the bsp file!!
+
+Gonna post up what I come up with, as it should be useful to everyone
+
+[modified on 03/12/03 at 13:25:29]
+--------------------------------------------------
+03/12/03 at 20:52:28  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+There is still an important consideration that discouraged me from using a volumetric AAS instead of a navmesh.
+
+The clipping hull compiler (QCSG or any other compiler of yours) slices the world in volumes and stores them in a BSP tree. But depending on HOW the world is sliced, the navigable areas will be well-fitted, or less than acceptable. Consider the following situation :
+code:
+
+Here are two vertical cuts of the same hallway
+
+     _____________           ____________
+    :             :         :            :
+ ___: _ _ _O_ _ _ :      ___:     O      :
+:         -:-     :     :   .    -:-     :
+:          :      :     :   .     :      :
+:_________/_\_____:     :___.____/_\_____:
+Situation 1                 Situation 2
+
+
+In situation 1, the BSP tree defines two zones ; these zones are sliced horizontally. In situation 2, these two zones are sliced vertically, being put aside one from the other.
+
+One of these zones, will have some FL_DUCK navigation flag associated to it in order for the AI character to know it has to duck to get there, because of the low ceiling part on the left of the hallway.
+
+Here's the problem: if the BSP compiler decides to make horizontal slices, your bot will be ducking all along the hallway, no matter if it is standing right in the middle of it, where there's no need to. If it decides to make vertical slices instead, the navigation will be correct and the bot will have the correct behaviour when walking into this hallway, only ducking when it wants to reach the left side of it.
+
+There are countless unpredictable situations where this way of slicing the world will have to be choosen by the BSP algorithm. The navigation of your bot in such an AAS will be good-looking 95% of time, but for the remaining 5% maybe, you may see your bot doing stupid things, because of this intrinsic nature of the AAS.
+
+It's a matter of tastes, but I definitely prefer navmeshes :)
+
+
+[modified on 03/12/03 at 20:51:00]
+
+[modified on 03/12/03 at 20:52:28]
+--------------------------------------------------
+03/13/03 at 05:42:03  Reply by: RedFox (redfox@nildram.co.uk)
+--------------------------------------------------
+Interesting, that rules out using it directly then.
+But all I was thinking of doing was turning it into a nav mesh
+well, hopefully
+
+The asumption being that it would have less areas than just using the faces.
+But dunno
+
+Still a little lost about determining edges...ok, I've got some nice code for intersects, but does any one know how to slice the planes up?
+The rules for slicing them that is...
+
+:) Just trying to make the whole thing more optimised
+Should have known it'd be a pain
+lol
+
+--------------------------------------------------
+03/13/03 at 12:59:48  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+QUOTE:
+Should have known it'd be a pain
+lol
+
+
+
+
+lol
+yes, as usuals ;D
+
+
+--------------------------------------------------
+03/17/03 at 14:26:57  Reply by: RedFox (redfox@nildram.co.uk)
+--------------------------------------------------
+Uhm, ok, I'm strugling quite badly with this
+
+I have learnt alot...about how planes are built, and it even rings  abell with stuff we did at school way back when :p
+
+What I'm strugling with is using a plane normal and distance to get some sort of origin and angle
+
+If I had that info, I may stand a slightly better chance of getting this to work, although who knows
+
+So, does anyone have any clue as to how I do this?!?!
+Possibly a peice of code that converts the origin/angle to the normal/distance?
+I could then try reverse engineering it
+
+Alternativly, if theirs an easier way just to get clip brush info from the BSP, that'd be perfect :D
+As they don't show up as faces :(
+
+If they did, I could just merge/expand every face
+
+[modified on 03/17/03 at 14:26:57]
+--------------------------------------------------
+03/17/03 at 14:55:07  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+No, you don't get the idea I think.
+
+Of course if you consider just the bare dplane_t structure you don't know the faces that belong to it.
+
+You will *HAVE* to extract the dfaces_t lump from the BSP data together with the planes info you already extracted, then cycle through all the faces in order to know which one belongs to which plane. That's what botman does almost everywhere in his BSP tools.
+
+I don't think it would be faster to recursively parse the BSP tree up and down instead of doing this, since you would need to know exactly what to find, and this is not quite the case if I understood right.
+
+A viable method for speeding things up, may be a hashtable. In my bot template, I'm using a 2D hashtable to sort all the [walk]faces.
+
+I don't think you will go very far with only the plane data. IMO, you do need more than it.
+
+
+--------------------------------------------------
+03/18/03 at 03:33:06  Reply by: RedFox (redfox@nildram.co.uk)
+--------------------------------------------------
+Ah, now that helps a little bit :D
+Heh, didn't understand obviously..
+
+Ok, PM....how does you bot deal with clip brushes?
+Not the whole map thing, but if theirs a fence thats a func illusionary (i.e. you can walk thru it) but it has a clip brush placed around it?
+
+I've checked the faces in the BSP and their not included :(
+As far as I can tell..
+
+I'm just after them now, as if I can get hold of that info, I can just build what I need from the faces and the clip brush info (if their is any on a map :p )
+
+Kinda given up on getting all the info from the BSP...just gonna make it myself...its just the occasional clip brush thats the big problem now.
+
+--------------------------------------------------
+03/18/03 at 05:16:14  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+"I've checked the faces in the BSP and their not included :("
+
+Actually, they are.  The are going to be the brush models (seen as entities with '*N' for the model key where N is an integer from 1 to, well, N).  The world can be though of as brush model 0.  All of the world brush surfaces (and planes and faces) will belong to the BSP structure for brush model 0.  If you look at each of the brush models (func_wall, func_illusionary, etc.) they will each have a set of planes as well.  Just walk through all the entities in the .bsp file and search for the ones that you care about (func_wall, func_ladder, func_illusionary, etc.) and grab the plane information for each of those.  You can use that to construct geometry that would block the player (or in the case of func_ladder, would create a portal between areas).
+
+botman
+
+--------------------------------------------------
+03/18/03 at 07:15:46  Reply by: RedFox (redfox@nildram.co.uk)
+--------------------------------------------------
+Really? woohoo!
+Would have missed that one
+
+Sweet, well I can build all the stuff I want from that now :D
+
+Actually starting to get the hand of the planes aswell
+
+Just to clarify (if anyone knows this)
+a plane will be contained by other planes, that define a node (or somthing similar)
+
+Created a test map (cube with 2 clip brushes in)..just multiplying the plane normals by the plane distance seems to line up exactly with where I expect the planes to be 
+Just gotta sort out their bounds and that should be it :)
+
+--------------------------------------------------
+03/18/03 at 09:30:55  Reply by: RedFox (redfox@nildram.co.uk)
+--------------------------------------------------
+Well, clip brushes don't appear to be stored as ents (tho I could have missed it)
+When mapping, their just normal burshes with just a clip texture on it. So unless the compiler turns them into ents, its still just looking like clip brushes just get plane info stored and thats it :(
+
+Oh well..heh
+
+Will be good for getting more eccurate ladders n stuff tho :D
+
+Hey PM, just outa curiosity, how are you dealing with water? heh
+
+--------------------------------------------------
+03/18/03 at 11:47:48  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+QUOTE:
+
+Hey PM, just outa curiosity, how are you dealing with water? heh
+
+
+
+Geez, you were not supposed to ask me the question ! ;D
+
+
+--------------------------------------------------
+03/27/03 at 10:43:59  Reply by: RedFox (redfox@nildram.co.uk)
+--------------------------------------------------
+Not touched this for a while, just got back to it.
+Discovered that it appears to use the mins/maxs of nodes to clip the planes 
+Which is great! means I can extract half the info really easily
+
+But I'm still at a loss as to how the clipnodes are clipped...wonder if anyone has any thoughts on that? heh, prolly not
+going to extract all the base plane info, and see if I can just use that to clip the clipnodes...but I have a feeling its not that easy
+
+are the clipnodes children or parents of nodes?
+if they are, I could probably come up with some final code pretty quickly :)
+if their unrelated, then its gonna take me a while..hehe
+

@@ -1,0 +1,259 @@
+--------------------------------------------------
+Subject: AdminMOD type authentication
+--------------------------------------------------
+04/16/03 at 00:01:37  Posted by: Phreak (dead_sexy_simon@hotmail.com)
+--------------------------------------------------
+Howdy all,
+
+This may go on from one of my previous posts...
+
+I am trying to create a small adminMOD type feature into my bot, and have come up with a small problem. In ClientCommand() i am checking for the command "admin_login". If this command is executed it looks for "admins\\password.txt" and compares it with arg1. After this i want to authenticate the new admin by having something like this:
+
+code:
+
+
+pEntity->isAdmin = TRUE;
+
+
+
+
+Botman said i should place isAdmin in CBaseEntity however in the ClientCommand() function, pEntity is declared as edict_t. This lead me to try and have an array of admins (admin_names). If the password entered for admin was correct i would add the admin like so: (be nice..first attempt at this)
+
+code:
+
+
+result = strcmp( arg1, admin_password ); // strcmp returns < 0 if string1 is less than string2 0 if string1 is equal to string2 and > 0 if string1 is greater than string2
+                  
+                          if ( result == 0 ) //admin entered admin password
+                          {
+                                admin_names[admin_index] = STRING( pEntity->v.netname ); //add this person to admins
+                                admin_index += 1;
+                          }
+
+
+
+That is used for "admin_login". When they try another command i use this:
+
+code:
+
+
+else if (FStrEq(pcmd, "endround"))
+{
+    for (int i = 0; i < admin_index; i++)
+    {
+        if (admin_names[i] == STRING( pEntity->v.netname )
+        {
+            KillAllClients();
+        }
+    }
+    return;
+}
+
+
+
+
+This doesn't work, and i would like to know how i could do this another way. I would check in ClientDisconnect if the client disconnecting is an admin, and obviously remove it.
+
+
+Any help on this would be HUGELY appreciated.
+
+Thanks in advance
+
+Phreak
+
+--------------------------------------------------
+04/16/03 at 05:32:44  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+This...
+code:
+if (admin_names[i] == STRING( pEntity->v.netname)
+
+...is not the way to compare character strings in C or C++.  Use this instead...
+code:
+if (stricmp(admin_names[i], STRING(pEntity->v.netname)) == 0)
+
+This will compare the strings without case sensitivity.
+
+botman
+
+[modified on 04/16/03 at 05:32:44]
+--------------------------------------------------
+04/16/03 at 06:58:00  Reply by: Phreak (dead_sexy_simon@hotmail.com)
+--------------------------------------------------
+
+I think i know what it is...
+
+When i try and open the file, I don't think I am doing it properly. This is starting to annoy me..I can't remember alot of things (I'm starting a backlog of things i've learnt). I need to know how to open a file and get the first line out of it (and store it in admin_password)
+
+*cries*
+
+
+Phreak
+
+--------------------------------------------------
+04/16/03 at 09:03:36  Reply by: BAStumm (bs@bs-linux.com)
+--------------------------------------------------
+I've built some commands into the bot as well for admin duties, I did so with wonids. such as
+
+code:
+
+
+   for (j = 0; j < 7; j++) // num admins hardcoded == bad
+   {
+     // IS THIS PLAYER AN ADMIN?
+     if (pfnGetPlayerWONId(pEntity) == stf_admin_wonids[j])
+     {
+       // JUST A TEST COMMAND
+       if (FStrEq(pcmd, "admin_test"))
+       {
+          printf("RECEIVED CLIENT TEST COMMAND from %s\n",
+                  STRING(pEntity->v.netname)
+                );
+          SERVER_COMMAND("say Your WISH is my command...\n");
+          return;
+       }  // END TEST COMMAND
+     }
+   }
+
+
+
+
+Is there some reason that authenticating by wonid would be bad?
+
+[modified on 04/16/03 at 09:03:36]
+--------------------------------------------------
+04/16/03 at 19:24:34  Reply by: Phreak (dead_sexy_simon@hotmail.com)
+--------------------------------------------------
+
+I shall take this into consideration...keep your eye on this post please :)
+
+
+
+Thanks
+
+Phreak
+
+
+--------------------------------------------------
+04/16/03 at 19:49:56  Reply by: BAStumm (bs@bs-linux.com)
+--------------------------------------------------
+my eye is on this post.
+
+--------------------------------------------------
+04/16/03 at 21:38:08  Reply by: BrianL (halfkiller@hotmail.com)
+--------------------------------------------------
+code:
+
+char *getAdminPassword (const char *file)
+{
+  char pInfo[200];
+  FILE *fp = fopen(file, "r"); // open the file for reading
+  if (!fp) { return NULL; } // if the file is not found...
+  
+  // get a line thats not greater then the sizeof pInfo
+  fgets(pInfo, sizeof(pInfo), fp);
+  fclose(fp);
+
+  // return the text...
+  return &pInfo[0];
+}
+
+// example
+  char *adPsswd = getAdminPassword("./adminPassword.txt");
+
+
+--------------------------------------------------
+04/16/03 at 22:23:02  Reply by: Phreak (dead_sexy_simon@hotmail.com)
+--------------------------------------------------
+
+
+I have looked at your code Brian L. I am using the "admin_login" command with arg1 as the password that supposed to be given. I would like to know how i can compare a char (adPsswd) with a const char (arg1)...
+
+
+Thanks in advance
+
+Phreak
+
+--------------------------------------------------
+04/16/03 at 22:28:15  Reply by: BAStumm (bs@bs-linux.com)
+--------------------------------------------------
+strcmp(password, arg1) == 0
+
+oops thats not the question is it, i should read betterer LOL
+
+[modified on 04/16/03 at 22:28:15]
+--------------------------------------------------
+04/16/03 at 22:40:22  Reply by: Phreak (dead_sexy_simon@hotmail.com)
+--------------------------------------------------
+
+I wanted to compare char and const char, strcmp only allows const char for both arguments :(
+
+Phreak
+
+--------------------------------------------------
+04/16/03 at 23:00:59  Reply by: BAStumm (bs@bs-linux.com)
+--------------------------------------------------
+well this is why i took the wonid approach, i can check it with every command they pass rather than auth'ing them a single time. But perhaps there is some flaw in that thinking, and if so I'd like to hear about it... 
+
+--------------------------------------------------
+04/17/03 at 00:01:51  Reply by: Phreak (dead_sexy_simon@hotmail.com)
+--------------------------------------------------
+Teehee got it :D
+
+
+I didn't end up comparing const char and char...
+Here it is.. (credited of course)
+
+code:
+
+<font color="green">// - Brian L
+<font color="blue">const char<font color="black"> *GetAdminPassword(<font color="blue">const char <font color="black">*file) 
+{  
+      <font color="blue">char<font color="black"> pInfo[200]; 
+      
+      FILE *fp = fopen(file, "r"); <font color="green">// open the file for reading<font color="black">   
+      <font color="blue">if<font color="black"> (!fp) 
+      {
+            <font color="blue">return<font color="black"> NULL; 
+      } <font color="green">// if the file is not found...  
+
+      // get a line thats not greater then the sizeof pInfo <font color="black"> 
+      fgets(pInfo, <font color="blue">sizeof<font color="black">(pInfo), fp); 
+      fclose(fp); 
+
+      <font color="green">// return the text...   
+      <font color="blue">return<font color="black"> (<font color="blue">const char <font color="black">*)&pInfo[0]; 
+} 
+<font color="green">// - Brian L </font></font></font></font></font></font></font></font></font></font></font></font></font></font></font></font></font></font></font></font></font></font></font>
+
+
+NOTE: return &pInfo[0]; now is return (const char *)&pInfo[0]; and the declaration of the function is const char *
+
+
+Thanks a heap :D
+
+
+Phreak
+
+[modified on 04/17/03 at 00:01:51]
+--------------------------------------------------
+04/17/03 at 03:37:57  Reply by: BrianL (halfkiller@hotmail.com)
+--------------------------------------------------
+Phreak here's alittle insight on strcmp:
+ Yes both arguments are const char *, BUT you can use an array char string[100], or char *string;  Those will both work.  ;)  I know enough about this, been programming for 4 years.
+
+I'll see if I can dig up my made from scratch admin mod source...
+
+[modified on 04/17/03 at 03:37:57]
+--------------------------------------------------
+04/17/03 at 03:53:07  Reply by: Phreak (dead_sexy_simon@hotmail.com)
+--------------------------------------------------
+:)
+
+Thanks Brian, if you can give me just a little bit to get me started on this admin_login business that would be helpful. So far i have made it so admins can login. They are then checked by WONiD which is stored when they log in. :D
+
+But please, if you can spare some source...
+
+
+Phreak
+

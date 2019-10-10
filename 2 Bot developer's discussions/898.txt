@@ -1,0 +1,180 @@
+--------------------------------------------------
+Subject: Bot whine.
+--------------------------------------------------
+12/18/00 at 02:46:32  Posted by: Gen[X]Cops (lastride87@hotmail.com)
+--------------------------------------------------
+Hi there.
+
+I have downloaded the new template and it rocks!!
+Okok, get to the main point. I understand whatever you want your bot to say, u put it in bot_whine.txt. I put the bot_whine in C:\SIERRA\Half-life\cstirke. But the bot rarely do speak. I have spent half an hour with them but they only speak once. What am i doing wrong? Help plz!
+
+--------------------------------------------------
+12/18/00 at 08:29:20  Reply by: @$3.1415rin (as3.1415rin@gmx.de)
+--------------------------------------------------
+try \Half-life\( without cstrike )
+
+--------------------------------------------------
+12/18/00 at 15:20:56  Reply by: cooldude (Cooldude158@excite.com)
+--------------------------------------------------
+ya, i want my bots to whine more.
+
+--------------------------------------------------
+12/19/00 at 01:14:16  Reply by: eLiTe (ali@elitegamer.fsnet.co.uk)
+--------------------------------------------------
+I didn't think that BotWhine was in the template... don't you have to add it all in yourself?
+
+--------------------------------------------------
+12/19/00 at 03:14:25  Reply by: Gen[X]Cops (lastride87@hotmail.com)
+--------------------------------------------------
+No, the new version has it all. Anyway, back to my problem. Putting it in the Half-Life directory wont work. More help plz.
+
+--------------------------------------------------
+12/19/00 at 07:09:53  Reply by: eLiTe (ali@elitegamer.fsnet.co.uk)
+--------------------------------------------------
+Oops - didn't realise there was a new template. Don't need it much anyways, but I'll have a look at the chat maybe...
+
+--------------------------------------------------
+12/21/00 at 00:20:35  Reply by: Gen[X]Cops (lastride87@hotmail.com)
+--------------------------------------------------
+Has someone found out a way to make my bots whine more??
+
+--------------------------------------------------
+12/21/00 at 07:30:53  Reply by: [RB]LeeCA (leeca@stargatesg-1.com)
+--------------------------------------------------
+Hey, i didn't know the new templates was released... :D
+
+--------------------------------------------------
+12/28/00 at 07:40:00  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+find this...
+
+code:
+   if ((RANDOM_LONG(1,100) <= 10))
+   {
+      pBot->b_bot_say_killed = TRUE;
+      pBot->f_bot_say_killed = gpGlobals->time + 10.0 + RANDOM_FLOAT(0.0, 5.0);
+   }
+
+
+...the code inside the "if" statement will only be executed about 10% of the time (a random number between 1 and 100 is less than or equal to 10).  To change this to 50% of the time change the "<= 10" to "<= 50".  It will whine 5 times a much (basically spamming the console with messages).
+
+To change the amount of time between when the kill occured and when the message appears change the f_bot_say_killed line.  It will currently wait 10.0 seconds plus randomly between 0 and 5.0 seconds.  This simulates someone having to type out the message after they have been killed.  If you wanted to simulate these messages being bound to a key and just send them as soon as the bot is killed, just change it to "pBot->f_bot_say_killed = gpGlobals->time;"
+
+botman
+
+--------------------------------------------------
+12/28/00 at 18:50:29  Reply by: Gen[X]Cops (lastride87@hotmail.com)
+--------------------------------------------------
+Cool Botman Thanks.
+
+--------------------------------------------------
+12/29/00 at 01:58:26  Reply by: Gen[X]Cops (lastride87@hotmail.com)
+--------------------------------------------------
+Hey botman...did u realise that your template source code 2 has some errors? Its in the welcome message. There will always be a "Beta 2" sticking at the back of the message. Got it? No? Ok, an example, if i change the welcome message to "WELCOME TO MY BOT" ( without the quotes ). In the game, it will show as WELCOME TO MY BOT Beta 2. Well, i hope u will post a solution very soon!
+
+--------------------------------------------------
+12/29/00 at 05:35:00  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+That's not an error, hence no "solution" is required.
+
+There is a generic welcome message (called appropriately enough "welcome_msg") for the name of the bot.  There is an sprintf statement to add additional information to the welcome message string...
+code:
+   sprintf(version," Beta %d.%d\n", VER_MAJOR, VER_MINOR);
+   strcat(welcome_msg, version);
+
+The code then prints out the welcome message string to the player's HUD.  You can change the VER_MAJOR and VER_MINOR constants when you modify the major or minor version number.  When you change from a Beta release to an non-Beta release, you can remove the word "Beta" from the version string.
+
+There is a bug here however (but not the one you mentioned).  The sprintf is followed by a strcat that appends the version string to the welcome_msg string.  However, not enough space has been allocated for this new string.  What I should have done instead is this...
+code:
+   char new_welcome_msg[80];
+ 
+   strcpy(new_welcome_msg, welcome_msg);
+   sprintf(version," Beta %d.%d\n", VER_MAJOR, VER_MINOR);
+   strcat(new_welcome_msg, version);
+ 
+   // let's send a welcome message to this client...
+   UTIL_SayText(new_welcome_msg, clients[welcome_index]);
+
+
+This prevents the strcat from overwriting other variables that follow the welcome_msg buffer in the global memory space.
+
+I don't have this bug in my released code because the welcome message is handled in a slightly different fashion (the real welcome message is encrypted to keep people from re-releasing my binaries as there own original work).
+
+botman
+
+--------------------------------------------------
+12/29/00 at 07:07:54  Reply by: Gen[X]Cops (lastride87@hotmail.com)
+--------------------------------------------------
+By the way...back to the first question...do u mean that bots cant whine when they are alive??
+
+
+--------------------------------------------------
+12/29/00 at 09:09:24  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+No, you can use the UTIL_HostSay() function at any  time (not just when the bots are dead) to send messages to other clients.
+
+botman
+
+--------------------------------------------------
+12/30/00 at 05:36:06  Reply by: Gen[X]Cops (lastride87@hotmail.com)
+--------------------------------------------------
+USE? How do i use it? Do i set it to 1?
+
+--------------------------------------------------
+01/02/01 at 17:12:39  Reply by: RedFox (redfox@nildram.co.uk)
+--------------------------------------------------
+Use as in Call the function.
+Try searching through your code for how the function is Used/Called. :)
+
+Try UTIL_HostSay(pEdict, 0, "Hello");
+in bot think somewhere, just to learn how things work.
+Depending on where you put it you'll notice that the bot will continually send the message. Try putting it in the bot_whine section, and everytime the bot dies it will say 'Hello'
+
+RedFox
+
+--------------------------------------------------
+01/13/01 at 17:36:26  Reply by: Gen[X]Cops (lastride87@hotmail.com)
+--------------------------------------------------
+ok...everything is working fine. Now...my bots whine right after they die, but only once. Is there any way to make my bot whine more than 1 during its death??
+
+
+-Yuri
+
+--------------------------------------------------
+01/13/01 at 22:04:44  Reply by: dannywent (dannywent@hotmail.com)
+--------------------------------------------------
+a good way to make a bot do something every so many seconds is to use the gpGlobals->time variable.
+give the bot a variable in the pBot structure called bot_whine_time (or whatever).
+when the bot dies, assign 
+pBot->bot_whine_time = gpGlobals->time;
+then use this code:
+if(pBot->bot_whine_time < gpGlobals->time)
+{
+//whining code here
+pBot->bot_whine_time = gpGlobals->time + 15;
+
+}
+this example would have it whine every fifteen seconds.  But be sure to only have it check this if the bot is dead, otherwise if you just have it in botthink() it will whine the whole time (and naturally get very annoying like :) )
+
+Dan
+
+
+--------------------------------------------------
+01/14/01 at 23:27:46  Reply by: Gen[X]Cops (lastride87@hotmail.com)
+--------------------------------------------------
+Works for you?? Crazy...it compiles but dont work...how do you give the bot a variable in the pBot structure called bot_whine_time?? Maybe i did it wrongly....PLZ HELP!!
+
+--------------------------------------------------
+01/15/01 at 16:32:51  Reply by: eLiTe (ali@elitegamer.fsnet.co.uk)
+--------------------------------------------------
+In bot.h, just add:
+
+float bot_whine_time;
+
+Then set it to 0 in BotInit (or wherever you initialise your variables)
+
+--------------------------------------------------
+01/15/01 at 16:33:46  Reply by: eLiTe (ali@elitegamer.fsnet.co.uk)
+--------------------------------------------------
+Oh yeah, u can't just add it ANYWHERE in bot.h!! Make sure it is in the same block as the rest of the pBot variables!!!
+

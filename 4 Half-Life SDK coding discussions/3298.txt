@@ -1,0 +1,76 @@
+--------------------------------------------------
+Subject: Starting a message via a command in client.cpp
+--------------------------------------------------
+06/17/02 at 11:15:50  Posted by: kippie (da_matt@hotmail.com)
+--------------------------------------------------
+Ok, so I made a command that starts a TE_BEAMCYLINDER message whenever a client executes the command.
+But for that I need to create a spriteindex for the sprite in the message.
+atm I have this:
+
+code:
+
+//somewhere in client.cpp...
+int BeamCylinderSprite = PRECACHE_MODEL ("sprites/white.spr");
+
+//the at the commands:
+else if (FStrEq(pcmd, "start_teh_cylinder" ))
+      {
+            MESSAGE_BEGIN( MSG_PVS, SVC_TEMPENTITY, pev->origin );
+                  WRITE_BYTE( TE_BEAMCYLINDER );
+                  WRITE_COORD( pev->origin.x);
+                  WRITE_COORD( pev->origin.y);
+                  WRITE_COORD( pev->origin.z);
+                  WRITE_COORD( pev->origin.x);
+                  WRITE_COORD( pev->origin.y);
+                  WRITE_COORD( pev->origin.z + 2000 ); // reach damage radius over .2 seconds
+                  WRITE_SHORT( BeamCylinderSprite );
+                  WRITE_BYTE( 0 ); // startframe
+                  WRITE_BYTE( 0 ); // framerate
+                  WRITE_BYTE( 4 ); // life
+                  WRITE_BYTE( 32 );  // width
+                  WRITE_BYTE( 0 );   // noise
+                  WRITE_BYTE( 255 );   // r, g, b
+                  WRITE_BYTE( 255 );   // r, g, b
+                  WRITE_BYTE( 192 );   // r, g, b
+                  WRITE_BYTE( 128 ); // brightness
+                  WRITE_BYTE( 0 );            // speed
+            MESSAGE_END();
+      }
+
+
+so everything compiles perfectly, but then when I launch the game, I get an error saying
+Loadlibrary failed on (path)\hl.dll (998)
+Host Error: Couldn't get DLL API from (path)\hl.dll!
+
+I spoke to somebody about it, and he says I must define it somewhere else. Where then? or isn't that the real problem here?
+
+--------------------------------------------------
+06/17/02 at 16:28:20  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+I'm not sure why that DLL error has occured...
+
+but whatever you do... 
+
+dont put "PRECACHE_MODEL" anywhere excpet precache functions, trry putting it in Dispatchspawn() when worldspawn has spawned.
+
+If that doesn't work, then I'd guess its probably nothing do do with your message. I sometimes get problems like these when I try to get a CVAR (using CVAR_GET_FLOAT for e.g.) gloabally or when it has not been initialised, just check if your not doing that either.
+
+--------------------------------------------------
+06/18/02 at 03:56:07  Reply by: kippie (da_matt@hotmail.com)
+--------------------------------------------------
+yeah, but where do I declare int BeamCylinderSprite then?
+
+--------------------------------------------------
+06/18/02 at 04:03:45  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+The "Couldn't get DLL API" problem is due to the Half-Life engine not being able to find your MOD .dll file.
+
+Check the liblist.gam file in your MOD directory to make sure the "gamedll" entry points to your hl.dll file.
+
+botman
+
+--------------------------------------------------
+06/18/02 at 05:38:51  Reply by: kippie (da_matt@hotmail.com)
+--------------------------------------------------
+I just compiled via the sdk and overwrote the original hl.dll, and if I comment everything that has to do with the command out, it works fine
+

@@ -1,0 +1,56 @@
+--------------------------------------------------
+Subject: is it necessary to free() at DLL detaching ?
+--------------------------------------------------
+01/22/03 at 05:26:37  Posted by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Hello all
+
+I'm not very aware on how the malloc() and free() stuff is handled by the OS process side.
+
+Is it *necessary* to free() all the stuff we m'allocated at DLL detaching ?
+
+I see botman does it only for Windows in his HPB_bot, when DllMain() is called with the DLL_PROCESS_DETACH reason. But he doesn't do it with the Linux flavor of his HPB_bot, since the equivalence would be to have somewhere a _fini() function declared, and this function is inexistent in his code.
+
+Is this a leak in the HPB_bot ? or can I safely assume the OS automatically free()s the memory allocated for a process when this process terminates ? The reason is that I'm experiencing a crash in DLLMain() when I close the server and I free all my stuff, and the debugger just fails to show up, because I assume the process is already terminated.
+
+
+--------------------------------------------------
+01/22/03 at 06:04:27  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+I don't dynamically allocate memory in the Linux version.  The Windows version dynamically allocated memory for the h_global_argv buffer, but on the Linux version, this buffer (of the same name) is allocated statically...
+code:
+#ifndef __linux__
+
+HINSTANCE h_Library = NULL;
+HGLOBAL h_global_argv = NULL;
+void FreeNameFuncGlobals(void);
+void LoadSymbols(char *filename);
+
+#else
+
+void *h_Library = NULL;
+char h_global_argv[1024];
+
+#endif
+
+You should ALWAYS free up any memory that you have allocated and not depend on the operating system to do this for you.  Some versions of Windows may free up memory that you have allocated and close files that you have opened automatically for you on your behalf.  Some versions of Windows may not do this for you.  Linux will definitely NOT free up any memory that you have allocated in your application.
+
+You should be able to set a break point inside DLLMain and trace through your free() function call to see if it is freeing up memory properly (you might have a bad pointer at this point in the code).
+
+botman
+
+--------------------------------------------------
+01/22/03 at 07:32:44  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+QUOTE:
+You should ALWAYS free up any memory that you have allocated and not depend on the operating system to do this for you.
+
+
+
+Aye aye sir, got it 5/5.
+
+Also I should have checked better good 'ole HPB_bot source code. You were right, I was trying to free a never allocated pointer.
+
+Thanks !
+
+

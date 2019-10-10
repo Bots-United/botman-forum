@@ -1,0 +1,59 @@
+--------------------------------------------------
+Subject: Admin Mod's ClientPrintAll bug?
+--------------------------------------------------
+04/17/01 at 16:29:27  Posted by: Clean (botmans@divinegods.net)
+--------------------------------------------------
+I was rewriting some printing to players' console window for HLREF and I noticed the piece of code I ripped from admin mod that is this:
+
+
+
+int gmsgTextMsg;
+
+void UTIL_ClientPrintAll( int msg_dest, const char *msg_name, const char *param1, const char *param2, const char *param3, const char *param4 )
+{
+  gmsgTextMsg = REG_USER_MSG( "TextMsg", -1 ); 
+
+        MESSAGE_BEGIN( MSG_ALL, gmsgTextMsg );
+                WRITE_BYTE( msg_dest );
+                WRITE_STRING( msg_name );
+
+                if ( param1 )
+                        WRITE_STRING( param1 );
+                if ( param2 )
+                        WRITE_STRING( param2 );
+                if ( param3 )
+                        WRITE_STRING( param3 );
+                if ( param4 )
+                        WRITE_STRING( param4 );
+
+        MESSAGE_END();
+}
+
+
+
+Suprising how similar people rip or modify other people's code without giving due credit eh? Anyway, if I'm assuming correct, each time
+
+  gmsgTextMsg = REG_USER_MSG( "TextMsg", -1 ); 
+
+is called, the game server/engine allocates memory for "TextMsg" into the global variables data structure since I haven't recalled any functions to free memory--and it looked like everytime a string is "allocated," it's appended to the global variable space and each terminated with a NULL character. Anyway, in this piece of code, it really looks like the string "TextMsg" is getting allocated everytime you call ClientPrintAll. I'm just wondering if I'm on par or not. Or maybe the game engine searches for a string that matches "TextMsg" or any other string before actually allocating any memory. I haven't confirmed this theory yet. Anyone up for takes? Eh, I'm too lazy. Mebbe I should just check the returned integer value since it's a relative pointer anyway. Uuuuuuuuugh :)
+
+
+--------------------------------------------------
+04/18/01 at 05:23:32  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+Registering messages (like precaching entities) doesn't use up more memory if you do it more than once.  It would be more efficient, CPU wise, to check if the message had already been registered before calling the engine to register it again.  Like so...
+code:
+
+   static int gmsgTextMsg = 0;
+ 
+   if (gmsgTextMsg == 0)
+      gmsgTextMsg = REG_USER_MSG("TextMsg", -1);
+
+
+botman
+
+--------------------------------------------------
+04/18/01 at 20:40:47  Reply by: Clean (botmans@divinegods.net)
+--------------------------------------------------
+ah, okay. i wasn't sure if text messages were processed the same way as entities. thanks :)
+

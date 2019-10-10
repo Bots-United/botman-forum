@@ -1,0 +1,56 @@
+--------------------------------------------------
+Subject: Player-respawn-detection?
+--------------------------------------------------
+02/28/02 at 00:39:21  Posted by: hullu (hullu@jussikivilinna.cjb.net)
+--------------------------------------------------
+How I can detect if player have just respawned?
+
+with DispatchSpawn?
+
+--------------------------------------------------
+02/28/02 at 04:20:02  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+No, DispatchSpawn() is only called when the engine wants to create an entity.  The player only gets created once, when they join the server.
+
+There are many ways to do this, one simple way is to keep an array of all the player edicts.  Keep track of the previous health of a player.  When the health goes from zero to a non-zero value, you can assume that they have respawned.
+
+botman
+
+--------------------------------------------------
+02/28/02 at 12:44:27  Reply by: hullu (hullu@jussikivilinna.cjb.net)
+--------------------------------------------------
+Ok.. thx.. I try with deadflag first.
+
+--------------------------------------------------
+03/03/02 at 11:40:33  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+I wonder if checking DispatchTouch() to see if an "item_suit" touched a player might mean the player (re)spawned... Although this may happen when the player is also alive!
+
+Maybe you can find something from this...
+
+code:
+
+void CHalfLifeMultiplay :: PlayerSpawn( CBasePlayer *pPlayer )
+{
+      BOOL            addDefault;
+      CBaseEntity      *pWeaponEntity = NULL;
+
+      pPlayer->pev->weapons |= (1<<WEAPON_SUIT);
+      
+      addDefault = TRUE;
+
+      while ( pWeaponEntity = UTIL_FindEntityByClassname( pWeaponEntity, "game_player_equip" ))
+      {
+            pWeaponEntity->Touch( pPlayer );
+            addDefault = FALSE;
+      }
+
+      if ( addDefault )
+      {
+            pPlayer->GiveNamedItem( "weapon_crowbar" );
+            pPlayer->GiveNamedItem( "weapon_9mmhandgun" );
+            pPlayer->GiveAmmo( 68, "9mm", _9MM_MAX_CARRY );// 4 full reloads
+      }
+}
+
+

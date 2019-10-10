@@ -1,0 +1,531 @@
+--------------------------------------------------
+Subject: tfc style grenade
+--------------------------------------------------
+02/13/03 at 10:13:22  Posted by: chmmr213 (chmmr213@arczip.com)
+--------------------------------------------------
+Does any one know how to do a tfc style grenade?  Perhaps someone is aware of a tutorial?
+
+--------------------------------------------------
+02/13/03 at 10:20:59  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+What do you mean by "TFC style grenade".
+
+Are you talking about the frag grenade itself?  That's pretty similar to the hand grenades in Half-Life deathmatch.
+
+Are you talking about the way that you create/throw a grenade (without having to select it as a weapon).  That's pretty straight forward, you just create a "grenade" command (or whatever you want to call it) and when "+grenade" is sent to ClientCommand(), you start a timer and when "-grenade" is sent to ClientCommand(), you toss the grenade (after Spawn()ing it) and set the explode time equal to the current time minus the time that "+grenade" was called.
+
+botman
+
+--------------------------------------------------
+02/13/03 at 10:26:34  Reply by: chmmr213 (chmmr213@arczip.com)
+--------------------------------------------------
+Does it actually count as one of the 32 stored weapons?
+
+--------------------------------------------------
+02/13/03 at 10:36:07  Reply by: chmmr213 (chmmr213@arczip.com)
+--------------------------------------------------
+Or better yet would you know of the way to implement something like the ranged attack of the rpg into a command that does not require the use of a weapon?  I  can do the stuff that will call the actual attack, but i dont know how to make the actual weapon-like ranged attack.
+
+I want to use this weapon-like attack for menu spells like heal, fireball, and so on.
+
+
+
+[modified on 02/13/03 at 10:36:07]
+--------------------------------------------------
+02/13/03 at 11:20:05  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+You don't have to make your effect use a weapon bit if you don't want to.
+
+The purpose of keeping a bit for each weapon is to keep track of which weapons a player is carrying.
+
+If you always want players of a particular class to always be able to use a weapon (or effect), just let them bind a key to the "weapon" that you want and then in ClientCommand() when the weapon attack command is issued, just check to make sure that the player giving this command is of the proper class.
+
+So you could have a "fireball" command, a "healburst" command, etc.  Then just spawn the appropriate entity (like the way the RPG launcher fires a rocket) when that command is used.
+
+botman
+
+--------------------------------------------------
+02/13/03 at 11:47:08  Reply by: chmmr213 (chmmr213@arczip.com)
+--------------------------------------------------
+if (FStrEq(pcmd, "fireball" ))
+{
+What would this look like to spawn the rpgrocket?;
+}
+Do i need a pointer of some sort to make the command spawn the rpgrocket from my teamplay_gamerules.cpp?
+
+--------------------------------------------------
+02/13/03 at 13:22:43  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+See some of the tutorials on Half-Life coding web sites (see my MOD FAQ for links to those).
+
+I'm not going to just give you the code.  You need to learn that stuff on your own.
+
+botman
+
+--------------------------------------------------
+02/13/03 at 14:21:04  Reply by: chmmr213 (chmmr213@arczip.com)
+--------------------------------------------------
+lol Yeah i know that one thank you.  Is there a particular tutorial that has info on how to spawn a rpg rocket or one that would apply?  
+
+--------------------------------------------------
+02/13/03 at 15:10:31  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Look at CRpgRocket::CreateRpgRocket() in rpg.cpp of the Half-Life SDK.
+
+botman
+
+--------------------------------------------------
+02/14/03 at 08:22:41  Reply by: chmmr213 (chmmr213@arczip.com)
+--------------------------------------------------
+Could you tell me how this gets called.CRpgRocket *CRpgRocket::CreateRpgRocket( Vector vecOrigin, Vector vecAngles, CBaseEntity *pOwner, CRpg *pLauncher )
+{
+      CRpgRocket *pRocket = GetClassPtr( (CRpgRocket *)NULL );
+
+
+      UTIL_SetOrigin( pRocket->pev, vecOrigin );
+      pRocket->pev->angles = vecAngles;
+      pRocket->Spawn();
+      pRocket->SetTouch( CRpgRocket::RocketTouch );
+      pRocket->m_pLauncher = pLauncher;// remember what RPG fired me. 
+      pRocket->m_pLauncher->m_cActiveRockets++;// register this missile as active for the launcher
+      pRocket->pev->owner = pOwner->edict();
+
+      return pRocket;
+}
+I am trying to come up with some kind of argument to call the rocket but need to find the place where i can call it?
+Also is this 
+CBasePlayer *pcmd;
+      if (pcmd, "firemode" )
+inside of the "weapons" cpp file actually getting noticed?
+
+
+
+[modified on 02/14/03 at 08:22:41]
+--------------------------------------------------
+02/14/03 at 08:52:13  Reply by: chmmr213 (chmmr213@arczip.com)
+--------------------------------------------------
+I was just experimenting with CREATE_NAMED_ENTITY.  Is this a way i can accomplish what i want?
+
+--------------------------------------------------
+02/14/03 at 09:35:39  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Search the SDK source code for "CreateRpgRocket" to see where it gets called from.
+
+botman
+
+--------------------------------------------------
+02/14/03 at 12:39:10  Reply by: chmmr213 (chmmr213@arczip.com)
+--------------------------------------------------
+does it get called when pRocket is returned?
+
+--------------------------------------------------
+02/14/03 at 13:26:52  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+pRocket is a pointer to the RPG rocket object that CreateRpgRocket() just created.
+
+You can use this pointer to access member variables from within the CRpgRocket class (for example, if you wanted to change the angles or the speed of the rocket, etc.).
+
+botman
+
+--------------------------------------------------
+02/14/03 at 13:35:30  Reply by: chmmr213 (chmmr213@arczip.com)
+--------------------------------------------------
+is CRpgRocket *pRocket = CRpgRocket::CreateRpgRocket( vecSrc, m_pPlayer->pev->v_angle, m_pPlayer, this );  
+in the primary attack function the actual calling of 
+
+CRpgRocket *CRpgRocket::CreateRpgRocket( Vector vecOrigin, Vector vecAngles, CBaseEntity *pOwner, CRpg *pLauncher )
+{
+     CRpgRocket *pRocket = GetClassPtr( (CRpgRocket *)NULL );
+
+
+     UTIL_SetOrigin( pRocket->pev, vecOrigin );
+     pRocket->pev->angles = vecAngles;
+     pRocket->Spawn();
+     pRocket->SetTouch( CRpgRocket::RocketTouch );
+     pRocket->m_pLauncher = pLauncher;// remember what RPG fired me. 
+     pRocket->m_pLauncher->m_cActiveRockets++;// register this missile as active for the launcher
+     pRocket->pev->owner = pOwner->edict();
+
+     return pRocket;
+}
+?
+
+
+
+--------------------------------------------------
+02/14/03 at 13:38:39  Reply by: LeonThePro (sirgalahad@ozgn.com)
+--------------------------------------------------
+The primary attack part is under the primary attack part of the file.
+
+--------------------------------------------------
+02/14/03 at 13:49:44  Reply by: chmmr213 (chmmr213@arczip.com)
+--------------------------------------------------
+What you mean?  Basically the primary attack function is what calls the rocket?  looks like it calls more than that.  
+
+      UTIL_MakeVectors( m_pPlayer->pev->v_angle );
+            Vector vecSrc = m_pPlayer->GetGunPosition( ) + gpGlobals->v_forward * 16 + gpGlobals->v_right * 8 + gpGlobals->v_up * -8;
+            
+            CRpgRocket *pRocket = CRpgRocket::CreateRpgRocket( vecSrc, m_pPlayer->pev->v_angle, m_pPlayer, this );
+
+            UTIL_MakeVectors( m_pPlayer->pev->v_angle );// RpgRocket::Create stomps on globals, so remake.
+            pRocket->pev->velocity = pRocket->pev->velocity + gpGlobals->v_forward * DotProduct( m_pPlayer->pev->velocity, gpGlobals->v_forward );
+
+I am guessing is the actuall calling of the rocket and its varibles?
+
+
+
+[modified on 02/14/03 at 13:49:44]
+--------------------------------------------------
+02/14/03 at 14:01:08  Reply by: LeonThePro (sirgalahad@ozgn.com)
+--------------------------------------------------
+That basicly tells the rocket where it is going.
+
+--------------------------------------------------
+02/14/03 at 14:07:47  Reply by: chmmr213 (chmmr213@arczip.com)
+--------------------------------------------------
+This is so funny because i have figured out how to do all the stuff we want for the player to manipulate with him/herself, like healing,disguise,buying stuff, so on and so on, but i cant manage to figure out out to get them to "shoot" without having a weapon so they may affect other people with thier spells.  i originally had the concept ,(which i have enough of), to make a ton of weapons and have each spell like a weapon, but that tricky bit mask screwed me.  So now with our 31 melee weapons in hand, lol, had to change the suit postion and reinvent the silly suit arguments because for some reason when it was not in the 31 postion it killed the hud.  All of this is neither here nor there just trying to call a weapon-like attack with a menu.  I do have all the useless knowledge to make it work except what to call when i call it,(the main part).  I shall keep entertaining you all with my idiotic attemps.
+
+--------------------------------------------------
+02/14/03 at 14:22:24  Reply by: chmmr213 (chmmr213@arczip.com)
+--------------------------------------------------
+Botman told me to search for CreateRpgRocket.  It is in only 3 places its declaration, the primary attack of the rpg and in
+ CRpgRocket *CRpgRocket::CreateRpgRocket( Vector vecOrigin, Vector vecAngles, CBaseEntity *pOwner, CRpg *pLauncher )
+{
+      CRpgRocket *pRocket = GetClassPtr( (CRpgRocket *)NULL );
+
+      UTIL_SetOrigin( pRocket->pev, vecOrigin );
+      pRocket->pev->angles = vecAngles;
+      pRocket->Spawn();
+      pRocket->SetTouch( CRpgRocket::RocketTouch );
+      pRocket->m_pLauncher = pLauncher;// remember what RPG fired me. 
+      pRocket->m_pLauncher->m_cActiveRockets++;// register this missile as active for the launcher
+      pRocket->pev->owner = pOwner->edict();
+
+      return pRocket;
+}
+
+I tried to call the pRocket->Spawn(); by using a pointer to pRocket and putting pRocket->Spawn(); in teamplay_gamerules.cpp and it compiled fine but nothing occured in the game. i also brought everything else in that part except i could not bring the return pRocket;  because i was trying to put it in the client command part. 
+
+--------------------------------------------------
+02/14/03 at 14:43:17  Reply by: chmmr213 (chmmr213@arczip.com)
+--------------------------------------------------
+oh how nice it would be if i could just call the CreateRpgRocket function to create the rpg rocket lololol.
+
+
+--------------------------------------------------
+02/14/03 at 15:24:20  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+It will take more than just a few lines of code to show you what you need to do this.  Here's the steps...
+
+1. Modify ClientCommand() to intercept the command of your choice (there's plenty of examples in there of it checking for specific commands).
+
+2. In the ClientCommand code that you added to check for your command, do the exact same sort of things that CreateRpgRocket() does.  You WILL NOT be able to reference the CRpgRocket class from within the client.cpp file since the CRpgRocket class definition is only in the rpg.cpp file (you can't reference things that are declared in other .cpp files).  You can either remove the CRpgRocket class declaration from the rpg.cpp file and put it in one of the .h header files used by client.cpp (so that it will know about CRpgRocket class) and make sure this modified .h files is also included in rpg.cpp (so it will know about the CRpgRocket class).  OR, you can create your own brand new class in the client.cpp file (for ClientCommand) and call it something else (perhaps CFireball or something).
+
+3. You won't have an m_pPlayer member variable, so you can't use the exact same code as in the CreateRpgRocket() function.  You will have to use GetClassPtr() to convert the edict_t pointer passed into ClientCommand() into a CBasePlayer pointer (see the "give" command for an example of this).
+
+You are really starting with something that is a bit more complicated than the usual newbie Half-Life coding tutorial.  I STRONGLY suggest you spend a few week just following some of the Introductory coding tutorials until you begin to understand how some of the classes and functions work in the SDK.  You are jumping in with both feet into water over your head and you don't seem to understand why you are drowning.
+
+botman
+
+--------------------------------------------------
+02/14/03 at 23:17:14  Reply by: chmmr213 (chmmr213@arczip.com)
+--------------------------------------------------
+Thank you, i know it was difficult to decipher what my question was.  I think you gave me what i needed to figure it out.  I do learn everyday bout this stuff. Infact I just got through coming up with certain melee weapons attacking more than one way,like diff animations speed damage length and so on while fighting.  So along with the mouse movements you can add the different attacks mid fight.  I have been tinkering on this non stop pretty much.  "You WILL NOT be able to reference the CRpgRocket class from within the client.cpp file since the CRpgRocket class definition is only in the rpg.cpp file (you can't reference things that are declared in other .cpp files). "  that one thing has got to be around 70% of the errors i get when i try to figure stuff out on my own.  i was really confused. I thought if you included the appropriate header file ,like weapons.h in this example, which i believe is already included, ah never mind, like i said i was confused about that and thank you i will follow up if i have any luck or not.
+
+[modified on 02/14/03 at 23:17:14]
+--------------------------------------------------
+02/16/03 at 11:04:52  Reply by: chmmr213 (chmmr213@arczip.com)
+--------------------------------------------------
+For what ever it is worth you are getting credit in the mod and site for the mod.  I went through all you said, (new class one), and it all compiles fine.  still cannot call the new primaryattack function?  I was before trying to call the actual rpg primaryattack function from within the rpg using a bool.  Now following your instructions I find myself at the same place, any thoughts?
+
+[modified on 02/16/03 at 11:04:52]
+--------------------------------------------------
+02/16/03 at 13:47:23  Reply by: chmmr213 (chmmr213@arczip.com)
+--------------------------------------------------
+I just had another thought as well, in TFC when you plant the detpack it places the model and effect at your feet infront of you.  Now do you think i could use that with a different distance to give me a long ranged like attack for my spells instead?  
+
+--------------------------------------------------
+02/16/03 at 16:21:00  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+You could make a vector from the direction the player is facing...
+
+Vector v_direction = UTIL_MakeVectors(pPlayer->pev->v_angle);
+
+...then multiply that vector by a distance...
+
+v_direction = v_direction * fDistance;
+
+...then add that to the location of the player issuing the command...
+
+Vector v_location = v_direction + pPlayer->pev->origin;
+
+...and that would give you a location some distance away from the player who gave the command.
+
+botman
+
+--------------------------------------------------
+02/16/03 at 23:51:46  Reply by: chmmr213 (chmmr213@arczip.com)
+--------------------------------------------------
+I was looking at what you last put and decided to try to work with it based off the crowbar attack So here is what i did.  
+In the teamplay_gamerules.cpp i put this;
+
+void CHalfLifeTeamplay :: FindHullIntersectionMage( const Vector &vecSrc, TraceResult &tr, float *mins, float *maxs, edict_t *pEntity )
+{
+      int                  i, j, k;
+      float            distance;
+      float            *minmaxs[2] = {mins, maxs};
+      TraceResult tmpTrace;
+      Vector            vecHullEnd = tr.vecEndPos;
+      Vector            vecEnd;
+
+      distance = 1e6f;
+
+      vecHullEnd = vecSrc + ((vecHullEnd - vecSrc)*2);
+      UTIL_TraceLine( vecSrc, vecHullEnd, dont_ignore_monsters, pEntity, &tmpTrace );
+      if ( tmpTrace.flFraction < 1.0 )
+      {
+            tr = tmpTrace;
+            return;
+      }
+
+      for ( i = 0; i < 2; i++ )
+      {
+            for ( j = 0; j < 2; j++ )
+            {
+                  for ( k = 0; k < 2; k++ )
+                  {
+                        vecEnd.x = vecHullEnd.x + minmaxs[i][0];
+                        vecEnd.y = vecHullEnd.y + minmaxs[j][1];
+                        vecEnd.z = vecHullEnd.z + minmaxs[k][2];
+
+                        UTIL_TraceLine( vecSrc, vecEnd, dont_ignore_monsters, pEntity, &tmpTrace );
+                        if ( tmpTrace.flFraction < 1.0 )
+                        {
+                              float thisDistance = (tmpTrace.vecEndPos - vecSrc).Length();
+                              if ( thisDistance < distance )
+                              {
+                                    tr = tmpTrace;
+                                    distance = thisDistance;
+                              }
+                        }
+                  }
+            }
+      }
+}
+
+#include  "skill.h"
+void  CHalfLifeTeamplay :: Attack( CBaseEntity *pEntity,CBasePlayer *m_pPlayer)
+{ 
+      int fDidHit = FALSE;
+       TraceResult tr;
+
+      UTIL_MakeVectors (m_pPlayer->pev->v_angle);
+      Vector vecSrc      = m_pPlayer->GetGunPosition( )+10;
+      //here
+      Vector vecEnd      = vecSrc + gpGlobals->v_forward * 40;
+
+      UTIL_TraceLine( vecSrc, vecEnd, dont_ignore_monsters, ENT( m_pPlayer->pev ), &tr );
+
+#ifndef CLIENT_DLL
+      if ( tr.flFraction >= 1.0 )
+      {
+            UTIL_TraceHull( vecSrc, vecEnd, dont_ignore_monsters, head_hull, ENT( m_pPlayer->pev ), &tr );
+            if ( tr.flFraction < 1.0 )
+            {
+                  // Calculate the point of intersection of the line (or hull) and the object we hit
+                  // This is and approximation of the "best" intersection
+                  CBaseEntity *pHit = CBaseEntity::Instance( tr.pHit );
+                  
+                        //here
+                        FindHullIntersectionMage( vecSrc, tr, VEC_DUCK_HULL_MIN, VEC_DUCK_HULL_MAX, m_pPlayer->edict() );
+                  vecEnd = tr.vecEndPos;      // This is the point on the actual surface (the hull could have hit space)
+      
+            
+            }
+      }
+#endif
+
+
+if ( tr.flFraction < 1)
+{
+#ifndef CLIENT_DLL
+
+ClearMultiDamage( );
+
+      pEntity->TraceAttack(m_pPlayer->pev, GetSkillCvar( "sk_plr_crowbar") , gpGlobals->v_forward, &tr, DMG_CLUB ); 
+      ApplyMultiDamage( m_pPlayer->pev, m_pPlayer->pev );
+
+}
+#endif
+
+And under
+BOOL CHalfLifeTeamplay :: ClientCommand( CBasePlayer *pPlayer, const char *pcmd)
+
+I put 
+if (FStrEq(pcmd, "fireball" ))
+{
+
+        Attack;
+ }
+
+Lastly I put in teamplay_gamerules.h under
+class CHalfLifeTeamplay : public CHalfLifeMultiplay
+
+void FindHullIntersectionMage( const Vector &vecSrc, TraceResult &tr, float *mins, float *maxs, edict_t *pEntity );
+void  Attack( CBaseEntity *pEntity,CBasePlayer *m_pPlayer);
+
+}
+
+
+
+Prob very funny to you but any pointers to what i am missing would be much appreciated.  there are atleast unimportant things in it, but this is the just a snapshot of the end of my experimental tests for tonight.
+
+[modified on 02/16/03 at 23:51:46]
+--------------------------------------------------
+02/17/03 at 10:36:11  Reply by: chmmr213 (chmmr213@arczip.com)
+--------------------------------------------------
+Well i have changed it around a bit and atleast get it to work on the guy who does it but i think because i used pPlayer it is affecting them.  Well anyhow here is what i have .
+
+
+//In the teamplay_gamerules.cpp Under;
+BOOL CHalfLifeTeamplay :: ClientCommand( CBasePlayer *pPlayer, const char *pcmd)
+
+//I put;
+ if (FStrEq(pcmd, "fireball" ))
+{
+int Attack;
+       
+ Attack;
+{ 
+      int fDidHit = FALSE;
+       TraceResult tr;
+//CBaseEntity pEntity;
+
+      UTIL_MakeVectors (pPlayer->pev->v_angle);
+      Vector vecSrc      = pPlayer->GetGunPosition( );
+      //here
+      Vector vecEnd      = vecSrc + gpGlobals->v_forward * 40;
+
+      UTIL_TraceLine( vecSrc, vecEnd, dont_ignore_monsters, ENT( pPlayer->pev ), &tr );
+
+
+      if ( tr.flFraction >= 1.0 )
+      {
+            UTIL_TraceHull( vecSrc, vecEnd, dont_ignore_monsters, head_hull, ENT( pPlayer->pev ), &tr );
+            
+                  // Calculate the point of intersection of the line (or hull) and the object we hit
+                  // This is and approximation of the "best" intersection
+                  CBaseEntity *pHit = CBaseEntity::Instance( tr.pHit );
+                  
+                        //here
+                        FindHullIntersectionMage( vecSrc, tr, VEC_DUCK_HULL_MIN, VEC_DUCK_HULL_MAX, pPlayer->edict() );
+                  vecEnd = tr.vecEndPos;      // This is the point on the actual surface (the hull could have hit space)
+      
+            ClearMultiDamage( );
+
+      pPlayer->TraceAttack(pPlayer->pev, 1000 , gpGlobals->v_forward, &tr, DMG_CLUB ); 
+ApplyMultiDamage( pPlayer->pev, pPlayer->pev );
+
+            
+      }
+}
+//elsewhere in the teamplay_gamerules.cpp i put;
+void CHalfLifeTeamplay :: FindHullIntersectionMage( const Vector &vecSrc, TraceResult &tr, float *mins, float *maxs, edict_t *pEntity )
+{
+      int                  i, j, k;
+      float            distance;
+      float            *minmaxs[2] = {mins, maxs};
+      TraceResult tmpTrace;
+      Vector            vecHullEnd = tr.vecEndPos;
+      Vector            vecEnd;
+
+      distance = 1e6f;
+
+      vecHullEnd = vecSrc + ((vecHullEnd - vecSrc)*2);
+      UTIL_TraceLine( vecSrc, vecHullEnd, dont_ignore_monsters, pEntity, &tmpTrace );
+      if ( tmpTrace.flFraction < 1.0 )
+      {
+            tr = tmpTrace;
+            return;
+      }
+
+      for ( i = 0; i < 2; i++ )
+      {
+            for ( j = 0; j < 2; j++ )
+            {
+                  for ( k = 0; k < 2; k++ )
+                  {
+                        vecEnd.x = vecHullEnd.x + minmaxs[i][0];
+                        vecEnd.y = vecHullEnd.y + minmaxs[j][1];
+                        vecEnd.z = vecHullEnd.z + minmaxs[k][2];
+
+                        UTIL_TraceLine( vecSrc, vecEnd, dont_ignore_monsters, pEntity, &tmpTrace );
+                        if ( tmpTrace.flFraction < 1.0 )
+                        {
+                              float thisDistance = (tmpTrace.vecEndPos - vecSrc).Length();
+                              if ( thisDistance < distance )
+                              {
+                                    tr = tmpTrace;
+                                    distance = thisDistance;
+                              }
+                        }
+                  }
+            }
+      }
+}
+ 
+//And lastly in the teamplay_gamerules.h
+//under ;
+virtual void JoinTeam( CBasePlayer *pPlayer, const char *pTeamName );
+      
+
+//I put;
+void FindHullIntersectionMage( const Vector &vecSrc, TraceResult &tr, float *mins, float *maxs, edict_t *pEntity );
+Anyone got any usefull pointers for me, thank you?
+
+
+
+
+--------------------------------------------------
+02/17/03 at 14:33:04  Reply by: chmmr213 (chmmr213@arczip.com)
+--------------------------------------------------
+The door has been opened.  i changed the actual attack to this;
+
+
+int Attack;
+       
+ Attack;
+{ 
+      int fDidHit = FALSE;
+       TraceResult tr;
+//CBaseEntity pEntity;
+
+      UTIL_MakeVectors (pPlayer->pev->v_angle);
+      Vector vecSrc      = pPlayer->GetGunPosition( );
+      //here
+      Vector vecEnd      = vecSrc + gpGlobals->v_forward * 40;
+
+      UTIL_TraceLine( vecSrc, vecEnd, dont_ignore_monsters, ENT( pPlayer->pev ), &tr );
+
+
+      if ( tr.flFraction < 1.0 )
+      {
+            UTIL_TraceHull( vecSrc, vecEnd, dont_ignore_monsters, head_hull, ENT( pPlayer->pev ), &tr );
+            
+                  // Calculate the point of intersection of the line (or hull) and the object we hit
+                  // This is and approximation of the "best" intersection
+                  CBaseEntity *pHit = CBaseEntity::Instance( tr.pHit );
+                  
+                        //here
+                        FindHullIntersectionMage( vecSrc, tr, VEC_DUCK_HULL_MIN, VEC_DUCK_HULL_MAX, pPlayer->edict() );
+                  vecEnd = tr.vecEndPos;      // This is the point on the actual surface (the hull could have hit space)
+      
+            ClearMultiDamage( );
+      CBaseEntity *pEntity = CBaseEntity::Instance( tr.pHit );
+      pEntity->TraceAttack(pEntity->pev, 1000 , gpGlobals->v_forward, &tr, DMG_CLUB ); 
+ApplyMultiDamage( pEntity->pev, pPlayer->pev );
+
+            
+      }
+
+

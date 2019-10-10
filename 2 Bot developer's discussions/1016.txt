@@ -1,0 +1,148 @@
+--------------------------------------------------
+Subject: more ??????s
+--------------------------------------------------
+01/07/01 at 19:33:34  Posted by: dannywent (dannywent@hotmail.com)
+--------------------------------------------------
+1.  botman, how do you tell if a capture point in FLF still needs to be captured?  and also... what was the bug involved with it?
+
+2.  I can no longer load the map flf_bier without having half-life crash, i've reinstalled everything... rebuilt the dll... i don't get it. any ideas?
+
+3.  this may seem like an insanely dumb question, but what kind of an error can make only one or two bots freeze while the rest are fine?  could it be that i'm acessing a value beyond the bounds of an array?  but wouldn't that make all the bots freeze?  Or is there anyway that a bot could get stuck in a while loop that has this conditions:
+code:
+
+while ((pent = UTIL_FindEntityInSphere( pent, origin, radius )) != NULL)
+
+
+or could it possibly be just a stray pointer?
+This is is a very strange bug, any ideas?
+
+4. and finally, what do you guys know about the hlfusion site?  I was offered to be hosted there... and i really don't know what to say cuz i don't know how good of a site it is? any comments are appreciated
+
+Dan
+
+--------------------------------------------------
+01/08/01 at 01:33:21  Reply by: eLiTe (ali@elitegamer.fsnet.co.uk)
+--------------------------------------------------
+Obviously the bot could get stuck in that loop if it was near and entity, and u didn't issue and exit command anywhere in the loop...
+
+--------------------------------------------------
+01/08/01 at 02:23:39  Reply by: MKlimstra (mklimstra@zonnet.nl)
+--------------------------------------------------
+QUOTE:
+Obviously the bot could get stuck in that loop if it was near and entity, and u didn't issue and exit command anywhere in the loop...
+
+
+That's not true, since the UTIL_FindEntityInSphere function would automaticly return a pointer to the next entity or NULL (in which case the loop exits)
+
+--------------------------------------------------
+01/08/01 at 03:20:13  Reply by: eLiTe (ali@elitegamer.fsnet.co.uk)
+--------------------------------------------------
+But if the bot stays still while this code is executing then the bot would not find a different entity... this code would pause the game until a bot no longer has an entity within a certain radius, woudln't it?
+
+If the problem was an infinite loop, the WHOLE ENGINE would stop, not just individual bots... there is probably a problem with your navigational code. Maybe you are not detecting the new round for all the bots, so they think they are going to a waypoint halfway across the level, but since they can't see it they don't move? I don't know what your waypoint code is like, but that could be the problem.
+
+--------------------------------------------------
+01/08/01 at 05:09:39  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+"But if the bot stays still while this code is executing then the bot would not find a different entity... this code would pause the game until a bot no longer has an entity within a certain radius, woudln't it?"
+
+No, it wouldn't.  The Half-Life engine keeps a list of all entities.  When you initialize the pent variable to NULL (and call the FindEntityInSphere function) you are telling the Half-Life "start at the first entity in the list and return a pointer to the next entity in the list that is within the specified radius".  The engine returns a pointer (or NULL if there are no entities close enough).  You then call the FindEntityInSphere function again with the previously returned entity so that the engine knows where to start from to search for the next one in the list.  It will either return the next entity or NULL indicating it was done.
+
+Notice that because you aren't returning to the engine during this while loop, no new entities can be created and no entities can be deleted, thus the engine's version of the entity list will not change during this time.  You will eventually get a NULL pointer when the engine reaches the end of it's list.
+
+If you continuosly reset the pent pointer to NULL before calling the FindEntityInSphere function, you will notice that Half-Life locks up and you will need to do a CTRL-ALT-DELETE to kill that process.
+
+Now on to dan's questions...
+
+1. You can do one of two things.  You'll notice that players can use the key bound to the command to display the list of capture and free points.  You could have the bots send this command then intercept the text message response from the MOD to see which points are captured and which are free.  A better alternative is to look at the pent->v.skin field of each of the capture points to see what color the terminal screen is.  It should be blue for one team when free and it should be red for the other team when free.  Just loop through all of these entities and find the ones that are still blue (or red), then have the bots head toward those points.
+
+The bug here was that Pink changed code for the skin on the capture points when the player models got changed.  If you download FLF 1.1 and look at the capture points for the first round you will notice that they are RED.  They are supposed to be BLUE.  After the teams switch sides.  They start out RED (like they should).  When the teams switch sides again, they start out BLUE (like they should).  Only the first round of each map is affected because once the teams switch sides the colors get set correctly.  People probably never even noticed that the colors were wrong in the first round, but the bots noticed it right away.
+
+2. Uninstall Half-Life, delete the Half-Life folder, reinstall Half-Life, patch up to version 1.1.0.4, install FLF, then install your bot.  You would be surprized at how many problems this will clear up.  I done this SO many times that I can almost do it in my sleep now.  Also make sure you have the latest drivers for your video card.
+
+3. If you are using the "pause_time" variable you might want to check that it hasn't been set to something very far into the future.  If you are running with Microsoft Visual C++, you should use the debugger to set a breakpoint in the BotThink() function and check the variables being used by each bot when this happens to make sure something isn't getting set to the wrong values.
+
+4. Are you able to download pages from hlfusion fairly quickly?  Have you sent an e-mail to other sites that are hosted by them to see what they think of the host?  Ask hosted sites about the reliability of hlfusion and whether they've had any problems with the tech support of the host.
+
+botman
+
+
+
+--------------------------------------------------
+01/08/01 at 05:24:45  Reply by: ReDucTor[FGW] (sjdtmv@globalfreeway,com.au)
+--------------------------------------------------
+/me falls asleep trying to read the whole page :)
+
+--------------------------------------------------
+01/08/01 at 05:36:07  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+You shouldn't stay up so late / get up so early.
+
+botman
+
+--------------------------------------------------
+01/08/01 at 09:01:16  Reply by: dannywent (dannywent@hotmail.com)
+--------------------------------------------------
+thanks for everone who answered
+
+1.  I see, but what can the value of pent->v.skin  be stored as?  as an int?
+also on cp's...
+I have the bots paused right in front of the cp, then have them press IN_USE but it doesn't seem like they are capturing the point.  A couple times it seemed like they started to, then stopped.  
+
+2. I've tried all that, a couple times :(  now even my old dll's that used to work with it don't
+ah!!!!!!!!
+
+3.I think this may have to do with me trying to access an array outside of its bounds.. could that be doing it?  See I have this global array ( I have a whole global stuct that so far has been working fine) that scans each new map and stores the vector values of each door, then every two seconds the bot uses a for loop to find the closest door, which i store as pBot->door.  I use a while loop like the one above to scan the whole map (using radius 10000)at the beginning of each map.  Is it possible that this stores values that make the bot freeze when they access it?  Would it be better if i used a different function,like findentitybyclassname or something?  this is very frustrating... please help.
+
+4.  Hey, Brenden, aren't you hosted by hlfusion?  what do you think about it?  I don't know, I don't really have time to worry about my webpage right now, i don't even have much time to program.
+
+
+
+--------------------------------------------------
+01/08/01 at 11:46:34  Reply by: ARES (j.sdubbelboer@freeler.nl)
+--------------------------------------------------
+Can't it be so that you use this:
+memset(bots, 0, sizeof(bots));
+more than one time. If you use this after a bot is created the bot will freese because it doesn't call the g_engfuncs.pfnRunPlayerMove anymore.
+
+--------------------------------------------------
+01/08/01 at 13:20:02  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+"but what can the value of pent->v.skin  be stored as?  as an int?"
+
+Look in engine\progdefs.h at the entvars_t structure.  You'll find the skin field in there.
+
+"I have the bots paused right in front of the cp, then have them press IN_USE but it doesn't seem like they are capturing the point.  A couple times it seemed like they started to, then stopped."
+
+What code are you using to tell the bots when the point has been successfully captured?  Do you just have them hold the USE key for some fixed length of time?  Make SURE that you are setting pEdict->v.button |= IN_USE on EVERY BotThink() function call (to keep the USE button pressed down).
+
+botman
+
+--------------------------------------------------
+01/08/01 at 21:14:25  Reply by: Spyro (theoddbot@hotmail.com)
+--------------------------------------------------
+Hi,
+
+yeah, i'm hosted by hlfusion, i just haven't seen this thread yet :). They seem fine, i'm in Australia and the server is in england. ftp and pages seem to load vary quickly and everything. I don't think they get much traffic.
+
+I use the skin for my capture points.
+
+I had a similar problem with bots freezing in tfc, after i mucked around with some of the code in pfnStartFrame(), but their animation was frozen in place and you could walk through them :)
+
+Botman uses the client-side entity that appears around the point too keep a capture timer alive.
+
+I capture for 15 secs or until it's captured, or a message that says 'capture stopped' appears on the bot's screen.
+
+you also have to set all the angles to face the point properly.
+
+-Spyro
+
+--------------------------------------------------
+01/09/01 at 05:00:43  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+"Botman uses the client-side entity that appears around the point too keep a capture timer alive."
+
+Close, but I actually use the "Capturing" text that gets sent to the client when they are capturing a point.  If the bot doesn't get a "Capturing" messsage for 2 seconds it assumes that the point was captured and stops USEing it.  You can see an example of this in the HPB bot source template in a function called "BotClient_FLF_TempEntity" in the bot_client.cpp file.
+
+botman
+

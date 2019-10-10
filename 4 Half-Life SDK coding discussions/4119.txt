@@ -1,0 +1,98 @@
+--------------------------------------------------
+Subject: Couple of entitty questions
+--------------------------------------------------
+02/08/03 at 21:20:57  Posted by: LazyOne (the_lazy_one_09@hotmail.com)
+--------------------------------------------------
+Just a few questions that I have...
+
+Is there a way to list or find which entities are already precached on a certain map? I made a metamod plugin that can spawn entities on the fly but I'm not sure what I have to precache beforehand or at all.
+
+Is there a way to check if an entity actually exists? I made a mistake by typing mnster_whatever and It crashes, is it possible to check wether the entity is in the game dll to begin with?
+
+Last one, I got bored and started some entity moving code. Whenever something gets moved, it is no longer solid and cannot be selected again from certain sides.
+
+Any help is appreciated.
+
+
+--------------------------------------------------
+02/09/03 at 06:39:36  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+1. There's no way to determine which models have already been precached by the engine (unless you hook the pfnPrecacheModel, pfnPrecacheSound, pfnPrecacheGeneric functions and store this information yourself).  You won't hurt anything by precaching something that has already been precached.  It won't use up any more memory since the engine checks to see if has already been precached before precaching it again.
+
+2. Yes.  Load the Game DLL and (using the Windows LoadLibrary function) and call GetProcAddress() with the name of the entity you want to check for.  If the entity exists, it will return the pointer to that function.  If GetProcAddress() returns NULL, then that entity doesn't exist.  See the HPB bot h_export.cpp code for and example.
+
+3. You may have to use UTIL_SetOrigin() and UTIL_SetSize() to tell the engine about the new location and to update it's bounding box data for that entity.
+
+botman
+
+--------------------------------------------------
+02/09/03 at 11:43:02  Reply by: LazyOne (the_lazy_one_09@hotmail.com)
+--------------------------------------------------
+Thanks for the info, looks like i've got alot of work ahead.
+
+
+--------------------------------------------------
+02/10/03 at 08:08:59  Reply by: LazyOne (the_lazy_one_09@hotmail.com)
+--------------------------------------------------
+One more quick one, set_view makes the camera go at the entities feet instead of their head.
+This is fine for snarks but not if I want to watch myself killing a scientist.
+
+
+--------------------------------------------------
+02/10/03 at 11:33:00  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+UTIL_SetView() sets the view point to whatever the view_ofs (view offset) is for that entity.  If the view offset is zero (0,0,0), then the view will be from the feet of the entity.
+
+You may need to set the view_ofs value for the entity that you are assigning the player to view from.
+
+botman
+
+--------------------------------------------------
+02/10/03 at 15:41:35  Reply by: LazyOne (the_lazy_one_09@hotmail.com)
+--------------------------------------------------
+I checked util.cpp and could find nothing like that. Could you give me and example of this?
+
+
+--------------------------------------------------
+02/10/03 at 16:13:09  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Sorry, SET_VIEW(), (or pfnSetView), not UTIL_SetView.
+
+You call SET_VIEW() using the edict_t pointer of the entity you want to set it to and the edict_t pointer of the entity who's view you are changing (you use the player's edict_t pointer for both parameters to set it back to the player).
+
+Again, the view offset will be based on the entity that you are setting it to (for example, the view offset of the snark, or the view offset of the scientist).  So if the view_ofs field for that entity has not been initialized, it will be ZERO (0,0,0) which will set the view at floor level.  You may need to change the view_ofs of the entity you are "possessing".
+
+Also, you will need an entity to "possess".  You can't just SET_VIEW() to an arbitrary point in space (there has to be an entity there for you to view from it's eyes).
+
+botman
+
+
+
+--------------------------------------------------
+02/10/03 at 16:40:51  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+You might to look at the botcam code in my Bot Number 10 source.
+
+You also might want to check out Pink's old chasecam code...
+
+http://www.thewavelength.net/oldsite/coding/files/chasecam.cpp
+
+...which I used to develop the botcam from.
+
+botman
+
+--------------------------------------------------
+02/10/03 at 19:13:49  Reply by: LazyOne (the_lazy_one_09@hotmail.com)
+--------------------------------------------------
+I took a look at them both, is it really necissary to create an entity? Could pfn.GetBonePosition be used to put the camera at the head of the entity?
+
+
+--------------------------------------------------
+02/11/03 at 05:23:28  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+pfnGetBonePosition() could be used to get a point in space, but the SET_VIEW() function doesn't take a point in space as a parameter, it takes a edict_t pointer.
+
+You could use a point in space to set the view_ofs of an entity so that it had that location as it's eye position.  You'd have to subtract the entity's origin from the point in space to result in a vector that you can assign to view_ofs.
+
+botman
+

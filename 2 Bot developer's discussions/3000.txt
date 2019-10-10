@@ -1,0 +1,79 @@
+--------------------------------------------------
+Subject: I fixed the ghost bots bug, but...
+--------------------------------------------------
+04/18/02 at 15:22:30  Posted by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+Hello.
+
+I fixed my "ghost bots" bug. I was doing this in ClientDisconnect():
+code:
+
+void ClientDisconnect (edict_t *pEntity)
+{
+   // only process bots if we are in multiplayer mode
+   if (is_multiplayer_game)
+   {
+      int index = UTIL_GetBotIndex (pEntity);
+
+      // is the just disconnected client one of our bots ?
+      if (index != -1)
+         bots[index].is_active = FALSE; // free the slot
+   }
+
+   (*other_gFunctionTable.pfnClientDisconnect) (pEntity);
+
+   REMOVE_ENTITY (pEntity); // don't forget to destroy old bot entity
+   playerCount--;
+}
+
+
+
+The REMOVE_ENTITY() stuff was added because I noticed that when my bots were leaving the server and were replaced by others, the newly connected ones inheritated from the frags and deaths count of their predecessor. Having their entity to be forcibly destroyed like this seemed to fix the problem but was also the cause of this strange behaviour. I guess the engine is just reusing the same entity for successive bots and does not even reset it.
+
+So in order to still have my new bot's frag count zeroed I am doing this instead of REMOVE_ENTITY():
+code:
+
+   if (pEntity != NULL)
+   {
+      pEntity->v.frags = 0; // don't forget to reset entity's frag count
+      /*pEntity->v.??? = 0; // hell what about the death count ??? */
+   }
+
+
+It works well for resetting the frags count however I have strictly no idea on how to reset the deaths count. It would be cleaner to fully reset his entity when a bot disconnects, but I don't know how without destroying it.
+
+Ideas ?
+
+
+[modified on 04/18/02 at 15:22:30]
+--------------------------------------------------
+04/19/02 at 13:22:45  Reply by: Ghoul (oneeyedghoul@aol.com)
+--------------------------------------------------
+From what I know, death counts is handled by a varible in the CBasePlayer class..
+
+[modified on 04/19/02 at 13:22:45]
+--------------------------------------------------
+04/19/02 at 17:42:26  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+Yes, I figured that out today (pPlayer->m_iDeaths) while grepping in the SDK. ummm... my question might sound stupid, but how can I have access to this variable knowing only the "edict_t *pEntity" the ClientDisconnect() function has for argument ? Remember I don't understand much all that C++ classes stuff...
+
+Edited: and YES, I've read Botman's tutorial...
+
+
+[modified on 04/19/02 at 17:42:26]
+--------------------------------------------------
+04/19/02 at 20:28:59  Reply by: CountFloyd (countfloyd@botepidemic.com)
+--------------------------------------------------
+Player edicts are reused and this may crash Bots at some point. Please see my post here (the Leon Hartwig Bit):
+http://dynamic.gamespy.com/~botman/yabb/YaBB.pl?board=4&action=display&num=2700
+
+It's possible to access class variables by using the GET_PRIVATE Macro but you would have know the offsets, the thread here has some more infos:
+http://dynamic.gamespy.com/~botman/yabb/YaBB.pl?board=2&action=display&num=1649
+
+[modified on 04/19/02 at 20:28:59]
+--------------------------------------------------
+04/19/02 at 21:24:45  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+Thank you Count! I was just about to ask you directly :-) (I knew you had some kind of "online mode" in your POD bots too) but I rather prefer figuring things out on my own (more instructive). Let me have a look at that. Thanks for the links!
+
+

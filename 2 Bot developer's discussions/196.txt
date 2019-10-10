@@ -1,0 +1,91 @@
+--------------------------------------------------
+Subject: Ladders, the neverending story continued...
+--------------------------------------------------
+10/05/00 at 14:34:07  Posted by: CountFloyd (countfloyd_1999@yahoo.com)
+--------------------------------------------------
+Hi again !
+
+Did anybody already solve the Bots-approach-ladders-much-too-fast-so-that-they-will-hurt-themselves-bad problem ? I don't have probs with going up a ladder since they orientate at the VecBModelOrigin of the ladder and the waypoint itself. But going down a ladder is even difficult for some human players. Most of the time my Bots will reach the top of the ladder and then they have so much speed, they really prove Newtons Law of Gravity :)
+I already let them (virtually) brake when approaching a ladder, but this doesn't help. The least I can think of is a specific Pre-Ladder-Going-Down Waypoint Flag to prepare the Bot for going down (fixing his angles and reducing the speed). But this is lame and really not an option ! Botman: you do it by catching the ladder in flying and then "forgetting" about the last waypoint, right ? Does it work for you ? And how do I tell if a Bot is on the "wrong" side of a ladder ? When using a Traceline one could use the Planenormal for it, I guess. But ladders aren't detected by TraceLines which makes it somehow much more difficult...
+
+Thanks for any idea...
+
+--------------------------------------------------
+10/05/00 at 14:59:11  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+I never did get the going down a ladder thing working very well.  I do have the bot slow WAY down as it is approaching the ladder.  The closer it gets the slower it goes (starting at about 100 units away from the top ladder waypoint).
+
+What I do is check if it sees a ladder waypoint (W_FL_LADDER) that has an origin lower than the bots origin.  At this point the bot assumes that it is a ladder that it needs to go down.  When it gets 100 units away it slows to 50 units per frame, then when it's 40 units away it slows to 20 units per frame.  It REALLY moves slowly approaching the ladder.  Moving at this slow speed it is able to touch the ladder about 25% of the time.  The rest of the time it misses it entirely and begins falling.  At this point (movetype == FLY) I start making the bot go backwards in an attempt to touch the ladder.  This only seems to work about 10% of the time.
+
+The best hope of getting on a downward ladder is to square up to it as much as possible (and get centered on it if you can) then move forward as slowly as possible.  You might also try crouching to see if that helps them get on ladders any easier.
+
+botman
+
+--------------------------------------------------
+10/05/00 at 16:16:22  Reply by: CountFloyd (countfloyd_1999@yahoo.com)
+--------------------------------------------------
+Isn't the move=MOVETYPE_FLY also if a bot is correctly climbing a ladder ? Do you detect it through the distance to the ladder if the bot is already falling then ? And how do you detect to stop moving backwards when falling then ? By reading your post I assume you only have 2 waypoints for each ladder, one on the top, one at the bottom ? If so, wouldn't the bot also slow down when already climbing down to the bottom (since you compare his origin to the next waypoint origin) ? What do you do without waypoints (for example a Bot following a User on a ladder), or do you rely on them now ? To center the bot on the ladder btw. I had good results using the VecBModelOrigin.y coordinate to direct the bot. To let the bot crouch sounds interesting since the bot will slow down automatically then. I'll try this tonight. Thanks !
+
+--------------------------------------------------
+10/06/00 at 04:00:37  Reply by: theimann (theimann@stud.fh-heilbronn.de)
+--------------------------------------------------
+"And how do I tell if a bot is on the wrong side of a ladder?"
+
+You are right: the side of the ladder where the bot should climb can be detected by tracing. You can't detect the ladders themselves but the walls they are leaned on and the ceilings/floors they pass. There are several possibilities to trace, I got the best results with something like that (I'll try it in ASCII-"graphics"):
+
+xxxxxxxI \       xxxx
+xxxxxxxI  \      xxxx
+    /  I   \  
+   /   I    \
+  /    I     \
+ /     I      \
+xxxxxxxxxxxxxxxxxxxxxxxx
+
+So x means solid, I is ladder and \ the tracing. Since you already got the ladder orientation you will only have to chose one of the sides. So you do two tracings like the ones above: The left one is blocked, the right one free -> bot should climb from the right. When the two are blocked, check the traceResult.startSolid flag to determine which of the traces started in a wall -> bot shouldn't go there...
+Hope that helps you, Tobias
+
+--------------------------------------------------
+10/06/00 at 04:04:21  Reply by: theimann (theimann@stud.fh-heilbronn.de)
+--------------------------------------------------
+Ooops, YaBB screwed up my graphics :-o
+Of course the ladder must continue where it began, the Is have to be straight under/above each other...
+
+Tobias
+
+--------------------------------------------------
+10/06/00 at 05:18:53  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+QUOTE:
+Isn't the move=MOVETYPE_FLY also if a bot is correctly climbing a ladder ?
+
+
+
+Doooooh!  I meant if the (movetype != FLY) && ((flags & FL_ONGROUND) != FL_ONGROUND).  In otherwords, not on a ladder AND not on the ground.  (so they must be in the air).
+
+If the bot winds up in air when attempting to get to the top ladder waypoint, I just forget about that waypoint and keep moving the bot backwards until it either touches a ladder or lands on the ground.  If it touches a ladder, it looks for a waypoint BELOW itself and heads that way.  If it touches the ground it looks for a waypoint NOT on a ladder and heads that way (so it won't go back up again).
+
+For my bot to "see" a waypoint it must be within 400 units of another waypoint.  So if the ladder is longer than 400 units then you have to have multiple (more than 2) waypoints on the ladder.
+
+Tobias, I think Count Floyd was talking about ladders that are "free standing" in the middle of a room going up to something like a loft area.  Where the bot can approach the ladder from either side to climb up, but usually only 1 side is climbable (although I have seen maps where BOTH sides are climbable, like Valve's bootcamp).  You can't easily detect whether the bot should climb one side of the ladder or the other unless you do LOTS of tracelines perpendicular to the ladder and various points along the ladder surface.  You might also be able to trace parrallel to the ladder from the bottom of the ladder all the way to the top of the ladder to see if that is blocked, if so, the bot can't climb all the way to the top and it probably on the wrong side.  But I'm sure there are examples where this would fail also (like the ladders in datacore and lambda bunker).
+
+Ladders SUCK!
+
+botman
+
+
+--------------------------------------------------
+10/06/00 at 14:27:12  Reply by: CountFloyd (countfloyd_1999@yahoo.com)
+--------------------------------------------------
+Yes botman, I meant a ladder which is standing "free" and to make it a bit harder, a ladder which doesn't directly face the player (that doesn't mean I'm not thankful to you Tobias, nice Ansi-Art!). Take for example the ladders in cs_militia (in the sewers). If you're approaching them, you'll only see the right side of them. This is fun with Realbot since the bots try to climb on ladders at the side. This is not a problem for a bot using waypoints since the user making the waypoints can take care of this. But what about a bot blindly following a User ? Then I would have to look for existing "LADDER FLAG" waypoints to approach the ladder correctly. Now I really know why there are no ladders in Unreal and Quake. And the Valve Developers did well, when they didn't implement ladder climbing for Monster Entities (did they?). Ladders suck hard :) ! Botman, do you still rely on "WaypointReachable" for a Bot using that waypoint ? Couldn't this be deleted for a Bot following Pathnodes, since you know when you manually assign the Paths that these waypoint connections are valid ? Could it be that the Bots sometimes "don't see" a waypoint which is on a ladder then (since they might look in open space) ?
+
+--------------------------------------------------
+10/07/00 at 04:39:48  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+The WaypointReachable() function is no longer used during path finding (since as you pointed out all the paths are pre-calculated when the map loads).
+
+The bots don't have any problems detecting where ladders are (going up or down).  They just have problems squaring up properly and slowing down enough so that they grab the ladder when attempting to go down.  Even when I'm playing the game, I can't seem to grab ladders going down 100% of the time (unless I can jump from somewhere and land on the ladder, then it's much easier).
+
+If bots tend to fall to their death a lot trying to climb down ladders, you should either find another route off of the high up area, or prevent the bots from getting up there in the first place.
+
+botman
+

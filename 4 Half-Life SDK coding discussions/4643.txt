@@ -1,0 +1,261 @@
+--------------------------------------------------
+Subject: func_illusionaries
+--------------------------------------------------
+07/14/03 at 11:11:42  Posted by: PM (pm@racc-ai.com)
+--------------------------------------------------
+When you fire a TraceLine at a func_illusionary, it just passes through.
+When you fire a TraceHull at a func_illusionary, it stops right before it, and the entity that is hit is "worldspawn" instead of the func_illusionary.
+
+However TraceHull is expensive.
+
+Hence I would like to know your thoughts about the following :
+Is there a way to "embed" func_illusionaries at spawn time in bounded entities we would create on the fly, that would be made transparent, entities that would actually BLOCK TraceLines ?
+
+Ideas, thoughts, advices, etc.
+
+
+--------------------------------------------------
+07/14/03 at 13:41:00  Reply by: Cheesemonster!!! (cheeseh@houstondod.com)
+--------------------------------------------------
+Hopefully the worldspawn entity that tracehull gets might have a SOLID_NOT solid, which may point to an illusionary object. Although it's probably not the case (do a check anyway!) and probably making up your own traceline function somehow in line with your BSP stuff might be able to pick it up, but thats a tricky job 8)
+
+--------------------------------------------------
+07/14/03 at 14:50:51  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+No, cheesy, there is one and only one worldspawn entity, it's entity #0 and it's the world.
+
+I would have to extend my "BSP stuff" beyond the acceptable limit of mental sanity to be able to do this !!! Currently my BSP code interprets the data of the first model of the map file, which is worldspawn itself. It does not interprets entities. If I were to, whala, I wish I'd be paid :(
+
+I was thinking of creating a new entity and spawning it OVER the func_illusionary so that it "embeds" it. And we could then use full-scaled alpha transparency together with a valid SOLID_* flag for TraceLines to actually be stopped by it.
+
+The point is that I suspect setting that entity's bounding box manually won't be enough ; the entity must be given a model to fill that bounding box, I suppose. And the problem is here.
+
+
+--------------------------------------------------
+07/14/03 at 15:43:31  Reply by: Cheesemonster!!! (cheeseh@houstondod.com)
+--------------------------------------------------
+what about from your tracehull stop point look for the nearest func_illusionary at that point.
+
+Or make up a trace_for_illusionary function :D which:
+
+[]looks for func_illusionarys entities (by using UTIL_FindEntityByClassname for example to gather a list of possible intersections) that are visible within the view cone of the line you want to trace,
+
+[]checks to see if that line will intersect with a plane on the func_illusionary, i think there are varaiables in the edict_t structure which defines its area (not sure). You can do this also by looking at that section intersect code we spent a lot of time on :D
+
+pretty tough again in practice ;)
+
+--------------------------------------------------
+07/14/03 at 16:07:33  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Indeed, good idea... I just hope the func_illusionaries are always axial ? I.e, they can't be put by the level designer like, for example, this ?
+code:
+
+          /:\ Y
+           :
+           :/\   this block is not axial
+           /  \
+          /:  /
+<......../.:./........> X
+        /  :/
+       /   /
+       \  /:
+        \/ :
+          \:/
+
+
+If func_illusionaries always need to be axial, sure I can use the VectorIntersectPlane() function you helped me to write (it works very well btw, thanks alot :)) to check if the TraceLine will collide with either side of the func_illusionary's bounding box. Because bounding boxes, them at least, are always axial.
+
+But if func_illusionaries can be placed in a non-axial way, their bounding box will not reflect the faces of the func_illusionary itself, but instead will look like this :
+code:
+
+   ............
+   :      /\  :
+   :     /  \func_illusionary
+   :    /    \:
+   :   /     /:
+   :  /     / :
+   : /     /  :
+   :/     /   :
+   :\    /    : bounding box
+   : \  /     :
+   :  \/      :
+   같같같같같같
+
+
+w00t, I'm ready for the ASCII art world contest !
+
+...but anyways, you see the problem here.
+Someone to confirm/infirm func_illusionaries are always axial ? I bet they aren't.
+
+
+--------------------------------------------------
+07/14/03 at 16:30:55  Reply by: Cheesemonster!!! (cheeseh@houstondod.com)
+--------------------------------------------------
+Probably not axial...
+
+I think you could even get the point of intersection from the tracehull, gather the list of potential func_illusionaries it could be in ,and do the 360 degree check to see if the point lies within a plane on/inside that func_illusionary.
+
+I thought maybe you could also check this while tracing, but that will require much more cpu etc :P
+
+[modified on 07/14/03 at 16:30:55]
+--------------------------------------------------
+07/14/03 at 17:45:34  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+The problem is that there is no way to know a func_illusionary's faces (or planes) unless exploiting the BSP data again. The entvars let us know the bounding box only.
+
+You seem not to be fully aware of what's in an entity's entvars. Do you know my PMTools plugin for monitoring entities ? it can display live on your screen ALL the entvars of any entity in the game, while you play, and draw its bounding box. Point an entity, fire a command, and watch the result on the console. It can do a lot of things, searching for visible/invisible entities, searching for entities which have a certain string in their classname, printing all the entities with their ID number, classname, origin, dump an entity's state, translate the octal values to human-readable ones (for example instead of printing 0x12345678 it will print "DAMAGE_NO", "FL_SPECTATOR", etc.), log extra stuff to file, etc. I guess you're not using it yet. Get it from my site, I assure you it's more than handy for HL coders. It will teach you a lot about entities, and you'll be able to use them much better in your bot code.
+http://www.racc-ai.com/pmtools_plugin.exe
+code:
+
+*******************
+* PM Tools Plugin *
+*******************
+by Pierre-Marie Baty <pm@racc-ai.com>
+
+
+This metamod plugin provides developers with useful console tools for
+monitoring, probing and various diagnosis measurements during the game.
+Still incomplete, easily extendable.
+
+
+Currently featured CVARs are:
+
+hook_dispatch [0 - 1, 0 by default]
+      Controls the hooking of any entity-related game API function (like
+      Spawn, Touch, Use, etc...). If set to 1, prints on the caller's HUD a
+      line telling which function has just been called together with the
+      essential arguments that were passed to it. Set to 0 by default.
+
+hook_network [0 - 1, 0 by default]
+      Controls the hooking of some network code-related engine API function
+      (like ClientConnect, and MessageBegin). If set to 1, prints on the
+      caller's HUD a line telling which function has just been called together
+      with its essential arguments. Set to 0 by default.
+
+use_bsp_code [0 - 1, 0 by default]
+      Controls the running of RACC's BSP analysis code (for debugging). This
+      CVAR has to be set BEFORE the server boots, for example by setting a
+      record of it in the "game.cfg" file. Attempting to change its value
+      during the game may result in server crash. Set to 0 by default.
+
+logfile : [string, "" (void) by default]
+      Controls the ability to log every message this plugin prints to a log
+      file if set to a non-void value. This value will be used as the name
+      of the log file. The logging is done at human-readable ASCII text
+      characters. Set to a void value (meaning no logging) by default.
+
+
+Currently featured console commands are:
+
+listent [match pattern, default = all]
+      List all the entities found in the game matching the given pattern (dump
+      all entities if no pattern specified). Prints the classname, eventually
+      the netname, the model, the absmin, the size of the bounding box and the
+      absolute distance from the caller's view point. If any of the entities
+      parsed is visible and has a valid size, draw the bounding boxes around
+      it for a short while.
+
+printent [entity number]
+      Dump the state of all the entity's variables (pev), with their name,
+      value, how they are combinated or bitmasked if necessary, together with
+      the name of the enum declarations giving the actual values, resolving
+      arrays, strings and edict target for pointers. If it is visible and has
+      a valid size, draw the bounding boxes around that entity for a while.
+
+search [search radius, default = 500]
+      Perform a relative search of all visible entities within a given search
+      radius from the location of the caller, using his view angles. Prints the
+      classname, eventually the netname, the model, the absmin, the size of the
+      bounding box and the absolute distance from the caller's view point. If
+      it is visible and has a valid size, draw the bounding boxes around that
+      entity for a short while.
+
+asearch [search radius, default = 500]
+      Perform an absolute search of all entities within a given search radius
+      from the location of the caller. The same as the above, but without any
+      checks for visibility. Prints the classname, eventually the netname, the
+      model, the absmin, the size of the bounding box and the absolute distance
+      from the caller's view point. If it is visible and has a valid size, draw
+      the bounding boxes around that entity for a short while.
+
+traceline [fire distance, default = 500]
+      Fire a test line upto a given distance from the caller's location in the
+      direction of his view angles, tracing the results and returning some
+      information about the state of the process. Prints out the distance
+      traced until either the destination or the first obstacle on the way, if
+      so print the hit plane's classname and its normal vector. If the hit
+      point belongs to a box-bounded entity, draw the bounding boxes around it
+      for a short while.
+
+tracehull [fire distance, default = 500]
+      Fire a test hull upto a given distance from the caller's location in the
+      direction of his view angles, tracing the results and returning some
+      information about the state of the process. Prints out the distance
+      traced until either the destination or the first obstacle on the way,
+      including func_illusionaries. If the trace didn't completed successfully,
+      print the hit plane's classname and its normal vector. If the hit point
+      belongs to a box-bounded entity, draw the bounding boxes around it for
+      a short while.
+
+tracetexture
+      Fire a texture trace line from the caller's location in the direction of
+      his view angles, and print out the texture name from the engine of the
+      world brush pointed to by his crosshair.
+
+printglobals
+      Displays on the console the global server variables contained in the
+      internal globalvars_t structure pGlobals together with their values.
+
+
+(sorry for advertising, but wait, he NEEDS to know this one ;D)
+
+
+[modified on 07/14/03 at 17:45:34]
+--------------------------------------------------
+07/14/03 at 17:55:23  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Ah wait, if I understand right...
+
+1�) fire a TraceHull
+2�) get tr->vecEndPos
+3�) loop through all func_illusionaries and check whether (tr->vecEndPos >= func_illusionary->absmin) && (tr->vecEndPos <= func_illusionary->absmax) ?
+
+Nice, but... I'm still firing a TraceHull here...
+My problem is not to get a pointer to the func_illusionary, but to fire something that is faster than a TraceHull, and that func_illusionaries still block.
+
+[modified on 07/14/03 at 17:55:23]
+--------------------------------------------------
+07/15/03 at 05:35:47  Reply by: Cheesemonster!!! (cheeseh@houstondod.com)
+--------------------------------------------------
+I was interested in what the "headnode" is in the edict_s structure, thinking it was a list to leafs on the entity I thought it might be possible to get its leafs from this...
+
+code:
+
+3�) loop through all func_illusionaries and check whether (tr->vecEndPos >= func_illusionary->absmin) && (tr->vecEndPos <= func_illusionary->absmax) ?
+
+
+
+
+again only if axial, because the illusionary could be shaped etc. :D That's why you should probably use the 360 degree check (If point lies on a leaf/plane)
+
+I'd rather do it this way, since I couldn't be bothered to write a function to do it!
+
+--------------------------------------------------
+07/31/03 at 03:49:32  Reply by: WorldCraftsman (amnestymachine@hotmail.com)
+--------------------------------------------------
+Sounds like what you're trying to acomplish is create an entity that players (or other solid things) don't clip to, but that DOES block a linetrace. For that you could take an entity that DOES block a traceline, like a func_breakable or func_wall, and give it a new touchtype that ignores players (or whatever it needs to ignore). 
+I don't even know if this would work... but figured I'd throw in my 2 cents. 
+
+--------------------------------------------------
+08/05/03 at 06:20:24  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+I feel the need to sum up the discussion now... I recently figured out that TraceHulls were just as fast as TraceLines ; they just don't use the same BSP representation of the world. Actually, the map file is divided in several representations, one for each hull. And given the size of the hull, the walls are thickened or shrinked, so that the engine just has to fire a normal TraceLine in either of these representations to have the result a TraceHull would get in the "normal" world representation.
+
+Use TraceHulls, it's safe! :)
+
+
+--------------------------------------------------
+08/05/03 at 09:49:23  Reply by: rick (rick_helmus8@hotmail.com)
+--------------------------------------------------
+cool :) tracehulls also get blocked by skyboxes btw, i think i change some lines from "line" to "hull" now :P
+

@@ -1,0 +1,50 @@
+--------------------------------------------------
+Subject: Message Security
+--------------------------------------------------
+09/19/03 at 11:43:19  Posted by: Dummy (kevinkori@sbcglobal.net)
+--------------------------------------------------
+It seems to me that it is very difficult to guarantee the authenticity of messages or even function calls.
+
+If I build a plugin (be it a bot program or otherwise) that sits between the engine and a mod, I have control over which function calls and messages (which are function calls) get from the engine to the game dll and vice versa.  Is there anyway to guarantee that I am getting the accurate information?  What I mean is, someone else could write a plugin that sat between the engine and my plugin and I would be none the wiser.
+
+Is there anyway I can guarantee that my plugin is 'talking' directly to the engine and game dll?
+
+--------------------------------------------------
+09/19/03 at 13:35:42  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+The only way you can do this is to not use metamod and create your own hook DLL (similar to the HPB bot).
+
+botman
+
+--------------------------------------------------
+09/19/03 at 15:19:45  Reply by: Dummy (kevinkori@sbcglobal.net)
+--------------------------------------------------
+Yes, clearly metamod is out.
+
+As for hooking the dll, are you talking about in GiveFnptrsToDll?  Because I thought of this as well.  Here, I get to determine which dll I load.  However, thinking as a hacker, what is to stop someone from renaming the dll, say mp.dll to mp2.dll and then building their own plugin and calling it mp.dll which then may or may not load mp2.dll (the original)?
+
+Also, how can I guarantee that it was the engine or hl.exe/hlds.exe that loaded my plugin and not some other plugin?
+
+--------------------------------------------------
+09/19/03 at 17:53:04  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+You can check the size of the DLL file that you load (mp.dll) and you can do an MD5 checksum or simple CRC checksum to verify that the file you are loading is the original MOD DLL file (of course, you have to update your code to change the CRC each time the MOD releases a new version).
+
+It's more difficult to determine which application loaded your DLL.  You can check the liblist.gam file (what the engine uses to figure out which DLL to load) to see if your DLL is the one in the "gamedll" entry.  Of course, another hook DLL could modify the liblist.gam file just before your DLL is loaded and then modify it back again after your DLL is loaded.  To prevent this you can check the modification time on the liblist.gam file to see if it was modified recently.  You can also periodically read the liblist.gam file to see if something changed it sometime after your hook DLL was loaded (maybe check it once a minute or so at semi-random intervals).
+
+botman
+
+--------------------------------------------------
+09/19/03 at 19:45:40  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+The "renaming the DLL" trick is one of the things we thought about as metamod coders to give us the chance to hook all the messages that are exchanged beyond metamod, especially when it is loaded with the mm_gamedll argument. We thought about this particularly to provide us with a method to hook on bots ClientCommands, for example in the very common case where people run a dedicated server with metamod AND a hook bot DLL (e.g, podbot). In this case, plugins have no possibility to hook anything that pass between the bot DLL and the game DLL since the bot DLL is loaded AFTER the metamod DLL, and the DLL that is loaded after it is the game DLL.
+
+If you want to ensure the DLL validity, clearly you should discard metamod and its plugins UNLESS you ensure your plugin is either the first, or the last one, called in the plugin list, depending on the interface you want to hook on, either the engine interface, or the game DLL interface. Also, in this case, you have to figure out a method to prevent the mm_gamedll argument of metamod to be effective. Else you go the normal way, i.e. a hook DLL, and then you have to ensure 2 things :
+
+1°) that your hook DLL was the FIRST library called by the engine (to do this ensure that nobody modified the liblist.gam entry)
+
+2°) that your hook DLL will load the RIGHT game library (to do this, run a CRC or MD5 sum or whatever algo that can ensure you are loading the right DLL and not a fake one).
+
+I suggest you write to the guys at Valve software, to ask them how they did their 'anti-cheat' technology and what's behind. Perhaps there are some ideas to borrow there.
+
+

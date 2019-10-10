@@ -1,0 +1,58 @@
+--------------------------------------------------
+Subject: problem with linux & c++
+--------------------------------------------------
+02/10/02 at 18:32:04  Posted by: OLO (olo@counter-strike.pl)
+--------------------------------------------------
+I have compiled some metamod plugin under msvc++ and it runs fine on hlds... But when I compiled it with no error msg under linux with gcc and when wanted to run it on hlds_l I got error:
+undefined symbol "cerr" and "_out_of_range_". I know that it's related to c++ code inlucded in this plugin, but I would like to know how/or with what stuff I should compile it to run it with success.
+
+makefile looks:
+
+# makefile for Linux
+
+# the following specifies the path to your MOD...
+MOD_DIR = /home/hlds_l/cstrike/dlls
+
+CPP = gcc
+
+BASEFLAGS = -Dstricmp=strcasecmp -Dstrcmpi=strcasecmp
+
+CPPFLAGS = ${BASEFLAGS} -m386 -O2 -w -I../metamod -I../sourcecode/engine -I../sourcecode/common -I../sourcecode/pm_shared -I../sourcecode/dlls
+
+OBJ = dllapi.o engine_api.o h_export.o meta_api.o sdk_util.o
+
+funmode_mm_i386.so: ${OBJ}
+      ${CPP} -fPIC -shared -o $@ ${OBJ} -ldl
+      cp -f funmode_mm_i386.so ${MOD_DIR}
+
+clean:
+      -rm -f *.o
+      -rm -f *.so
+
+%.o:      %.cpp
+      ${CPP} ${CPPFLAGS} -c $< -o $@
+
+%.o:      %.c
+      ${CPP} ${CPPFLAGS} -c $< -o $@
+
+
+BTW. Do you know why *.o files aren't deleted after compilation?
+
+Sorry for being newbie and thanks in advice...
+
+
+
+--------------------------------------------------
+02/11/02 at 04:22:57  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+The "cerr" is because you are missing the C++ iostream library.  Try adding "-lstdc++" to the end of your list of libraries when linking (i.e. after the "-ldl").
+
+The object files aren't deleted because the compiler can't delete them until after everything is linked into an executable.  MSVC doesn't delete them either (look in the the "Debug" or "Release" folder to see the object files).  You can either place the object files in a separate subdirectory (similar to what MSVC does) or just remove them after everything links).  Read your man pages on "make" or search the internet for documentation on makefiles to learn how to do this.
+
+botman
+
+--------------------------------------------------
+02/11/02 at 19:45:56  Reply by: OLO (olo@counter-strike.pl)
+--------------------------------------------------
+Thank you. All now works fine :D
+

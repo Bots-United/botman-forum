@@ -1,0 +1,132 @@
+--------------------------------------------------
+Subject: pfnGetPlayerAuthId()
+--------------------------------------------------
+09/20/03 at 10:32:28  Posted by: BAStumm (bs@bs-linux.com)
+--------------------------------------------------
+Just a note of the change from wonid's to steamid's. From my understanding the new system works for both won or steam ID's. Here is the word from Alfred:
+
+QUOTE:
+
+Alfred Reynolds hlcoders@list.valvesoftware.com 
+Tue Sep 16 13:25:03 2003 
+
+The WON change is at an engine level.
+
+The only change you MUST make is to use g_Engfuncs.pfnGetPlayerAuthId()
+(which returns a string) rather than g_Engfuncs.pfnGetPlayerWONId() (which
+returns -1 all the time). This change was introduced in 3.1.1.1 (the
+GetPlayerAuthID function that is).
+
+- Alfred
+
+
+
+--------------------------------------------------
+09/20/03 at 10:37:34  Reply by: Cheesemonster!!! (cheeseh(at)rcbot(dot)net)
+--------------------------------------------------
+Yea I was thinking that ... Never knew it would work ;) Well that's a lot less work to change your own plugin users etc if you authenticate them with Won id's.
+
+--------------------------------------------------
+09/20/03 at 11:01:39  Reply by: BAStumm (bs@bs-linux.com)
+--------------------------------------------------
+yes I do wonid authentication and its going to be a serious pain. Its not a plugin, I just added some basic admin commands into the hpb_bot authenticated by wonid :(
+
+--------------------------------------------------
+09/20/03 at 12:19:01  Reply by: BAStumm (bs@bs-linux.com)
+--------------------------------------------------
+well that wasn't nearly as bad as I thought it was going to be :)
+
+--------------------------------------------------
+09/20/03 at 12:41:22  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+From the discussions I've seen pfnGetPlayerAuthId() doesn't return a valid Steam ID at the point when the player connects (i.e. at ClientConnect).
+
+Steam authorization seems to happen in a different thread than the network connection and sometimes the player "connects" to the server before they have an AuthID.  I believe that the AuthID is valid at the ClientPutInServer() function, but haven't confirmed this myself.
+
+Anyone who is writing a "reserve player slots" plugin should be aware of this limitation (that you can't prevent someone from joining the server until you know who they are and then you may have to kick them off later once the AuthID is known).
+
+botman
+
+--------------------------------------------------
+09/20/03 at 12:56:02  Reply by: Cheesemonster!!! (cheeseh(at)rcbot(dot)net)
+--------------------------------------------------
+I'm sure that's the same with the WONID, I've had trouble with that too upon clientConnect() instead I moved all client connect stufff to ClientPutInServer, anyway should be a big problem :D
+
+--------------------------------------------------
+09/20/03 at 18:26:03  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+I'm not usre I understand what it's all about (I guess here are the effects of beer, there was a beer party tonight and my friends set a trap upon me). My question is:
+How does it affect bots ? I suppoe it doesn't matter at all, since bots don't need to authehticate with WON or Steam servers. The only thing I did with pfnGetPlayerAuthId() was to return always "0" for bots, since otherwise it prevented bots to log stats on servers running HLStats (the HLStats server expected to receive a number, and since the 1.1.0.9 release bots were returning "BOT").
+Bot coders don't need to worry abot this, or do they ?
+
+[or maybe I'd better sleep a little and start fresh with a working brain this time, don't laugh you there]
+
+
+--------------------------------------------------
+09/21/03 at 09:52:34  Reply by: BAStumm (bs@bs-linux.com)
+--------------------------------------------------
+This doesn't affect the HPB_bot really, but there *is* code in the HPB_bot related to the pfnGetPlayerWONId() function, that technically should be updated to include the pfnGetPlayerAuthId(). I suggest adding rather than replacing since the hlds engine still includes the WON side of it, it just reports -1 all the time now (except alfred is wrong, bots still report 0). 
+
+The spots affected are in engine.cpp, h_export.cpp and engine.h
+
+NOT updating the code will not affect the HPB_bot itself, but will mess up any code you add that uses Player Unique ID's. Such as in my case I have added some limited admin commands and my admins are authed by their unique id. In addition I log playername, userid and SteamID of both the admin performing the action and the player being punished (slaps, slays, kicks, bans, etc). When slapping or kicking by userid I need to look up the wonid or now the steamid so I can log it. 
+
+--------------------------------------------------
+09/21/03 at 10:09:59  Reply by: BAStumm (bs@bs-linux.com)
+--------------------------------------------------
+I believe this is the only areas affected in the original HPB_bot source 3.0...
+
+<b>engine.h</b>
+
+FIND:
+code:
+
+unsigned int pfnGetPlayerWONId( edict_t *e );
+
+
+ADD AFTER:
+code:
+
+const char * pfnGetPlayerAuthId( edict_t *e );
+
+
+
+<b>engine.cpp</b>
+
+FIND:
+code:
+
+unsigned int pfnGetPlayerWONId(edict_t *e)
+{
+   if (debug_engine) { fp=fopen("HPB_bot.txt","a"); fprintf(fp,"pfnGetPlayerWONId: %x\n",e); fclose(fp); }
+   return (*g_engfuncs.pfnGetPlayerWONId)(e);
+}
+
+
+ADD AFTER:
+code:
+
+const char * pfnGetPlayerAuthId(edict_t *e)
+{
+   if (debug_engine) { fp=fopen("HPB_bot.txt","a"); fprintf(fp,"pfnGetPlayerAuthId: %x\n",e); fclose(fp); }
+   return (*g_engfuncs.pfnGetPlayerAuthId)(e);
+}
+
+
+
+<b>h_export.cpp</b>
+
+FIND:
+code:
+
+   pengfuncsFromEngine->pfnGetPlayerWONId = pfnGetPlayerWONId;
+
+
+ADD AFTER:
+code:
+
+   pengfuncsFromEngine->pfnGetPlayerAuthId = pfnGetPlayerAuthId;
+
+
+
+[modified on 09/21/03 at 10:09:59]

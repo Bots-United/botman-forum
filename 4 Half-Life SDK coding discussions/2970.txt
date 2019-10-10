@@ -1,0 +1,97 @@
+--------------------------------------------------
+Subject: vehicle
+--------------------------------------------------
+04/09/02 at 06:03:25  Posted by: sharon (sharon@yahoo.com.sg)
+--------------------------------------------------
+hi, reading the last collison detection question, i have the same detection problem. I have written a vehicle code for the SDK but it doesn't move up and down according to the slope. Being trying very hard to solve it but fail. Can any of you guys help mi in it. Is there any code that is in the sdk that i can make use of.
+thks :p
+
+--------------------------------------------------
+04/09/02 at 06:40:39  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+You can use tracelines to check the planes in front of them and find their slope angles from the Treace Result. I think there are some posts for checking slopes in the bot developer forum.
+
+--------------------------------------------------
+04/09/02 at 10:14:34  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+It's very simple to do. You get the center of your vehicle, then you issue a traceline down. Then, the vecPlaneNormal field of the trace result gives you the normal vector of the slope. Then you know the slope angle. Then you can change your vehicle's angles according to it and move it up and down the slope. Such a check has to be made at each frame the vehicle is moving.
+
+
+
+--------------------------------------------------
+04/09/02 at 11:20:26  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+But this method won't always work if the center of the vehicle is on level ground, but the front of the vehicle is already on sloped ground.  In this case, the front of the vehicle would look like it dug into the sloped ground.
+
+You might want to do a UTIL_Traceline() at each of the four corners of the vehicle, or do a traceline at each of the four corners and do another one in the center of each edge that connects the four corners (8 tracelines total).
+
+botman
+
+--------------------------------------------------
+04/09/02 at 11:42:32  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+yeah botman... ;-) but I was keeping things simple for a start...
+
+--------------------------------------------------
+04/09/02 at 14:40:22  Reply by: Capkiller (capkiller_00@yahoo.com)
+--------------------------------------------------
+you might try http://www.planethalflife.com/hlprogramming
+i think i saw a tutorials on vicheles 
+
+--------------------------------------------------
+04/09/02 at 17:28:22  Reply by: sharon (klteo@singnet.com.sg)
+--------------------------------------------------
+Hi,thks for all the reply. My vehicle code is modified from the func_train function. So I do not know where to write the trace code.Can anyone of you guys help me write down the codes for the traceline part for each corner thingy. Really thks for ya help. :p
+
+--------------------------------------------------
+04/10/02 at 05:58:24  Reply by: klteo78 (klteo78@yahoo.com.sg)
+--------------------------------------------------
+I think the code should be like this
+
+TraceResult pT;
+
+vector v_start, v_end;
+
+v_start = pEdict->v.origin + pEdict->v.view_ofs;                                      
+
+v_end = v_start + gpGlobals->v_forward * 100;
+//100 units infront from the origin
+
+UTIL_TraceLine(v_start,v_end,ignore_monsters,               pEdict->v.pContainingEntity, &pT ); 
+
+1)This is only part of the whole thing which i know. The rest of it...could anyone help me out.
+2)Not sure how to write the code for corners
+3)Another problem is i dunno what v.pContainingEntity,edict()and ENT(pev) means which i found in most traceline code.
+
+--------------------------------------------------
+04/10/02 at 07:17:31  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+Use the absmin/absmax origins to get the corners.
+
+I think you should make a traceline where the train/vehicle is facing by using the angles of the vehicle. Although usually when I try to make tracelines shorter they tend to go off in a werid direction...
+
+--------------------------------------------------
+04/10/02 at 11:16:49  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+...also before using gpGlobals->v_forward, you have to call UTIL_MakeVectors() with the view angles (v_angle) to initialize gpGlobals->v_forward to the proper value.
+
+botman
+
+--------------------------------------------------
+04/11/02 at 08:43:48  Reply by: sharon (klteo@singnet.com.sg)
+--------------------------------------------------
+Now I have written the codes and my vehicle is able to detect the slope. But how am i going to get the slope angle and assign it to change the vehicle's angles according to it and move it up and down the slope using pev->angles.x
+
+--------------------------------------------------
+04/11/02 at 09:03:57  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+You can use UTIL_VecToAngles() to convert the vecPlaneNormal field of the traceresult structure to an array of angles.  These angles will be perpendicular to the surface so you will need to add 90 degrees to make them parallel to the surface.  The just set the pitch and roll of your vehicle to match the pitch and roll of the surface.
+
+botman
+
+--------------------------------------------------
+04/11/02 at 12:15:36  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+for a good example on how to do things, look at botman's BotTurnAtWall() function in his HPB template.
+
+

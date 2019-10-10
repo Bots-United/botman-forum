@@ -1,0 +1,56 @@
+--------------------------------------------------
+Subject: Fix a problem that happens to quiet a few ppl
+--------------------------------------------------
+12/29/01 at 22:39:18  Posted by: ReDucTor[FGW] (sjdtmv@tpg.com.au)
+--------------------------------------------------
+Has anyone noticed that sometimes you are in the menus, and all of a sudden you can't get ne more menus agian..
+
+This needs to be fixed, lots of people get lost, and have problems...ask questions, etc...
+
+It happens in PODBot, Admin mod, probley all other bots also
+
+I don't know the exact cause of the error, but i think it might be CS Clearing menus but yours isn't being cleared, so may i suggest that you hook the ShowMenu message and make it something like this
+
+code:
+
+void Hooked_ShowMenu(edict_t *ed, void *p)
+{
+   static int state = 0;   // current state machine state
+
+   if(state == 0 && !*(float *)p)
+      UTIL_ShowMenu(ed, 0x00, 0, false, "");
+
+   state++;
+   if(state > 3)
+     state = 0;
+}
+
+
+
+And to hook the messages do something like this to your pfnMessageBegin code...
+
+code:
+
+void pfnMessageBegin(int msg_dest, int msg_type, const float *pOrigin, edict_t *ed)
+{
+   if (gpGlobals->deathmatch)
+   {
+      int index = -1;
+
+      if (debug_engine) { fp=fopen("bot.txt","a"); fprintf(fp,"pfnMessageBegin: edict=%x dest=%d type=%d\n",ed,msg_dest,msg_type); fclose(fp); }
+
+      if (ed)
+      {
+         if (msg_type == message_ShowMenu)
+           botMsgFunction = Hooked_ShowMenu;
+    
+     ...
+}
+
+
+
+Which would watch if there is a menu coming, and if there is it clears all current menus :)
+
+
+
+<b>By the way this is all untested</b>

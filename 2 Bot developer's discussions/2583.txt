@@ -1,0 +1,40 @@
+--------------------------------------------------
+Subject: static integers in HPB Bot template
+--------------------------------------------------
+12/19/01 at 06:02:48  Posted by: W@NJIK (wanjik@voila.fr)
+--------------------------------------------------
+in the startframe() function (bot.cpp) of HPB Bot template source code, integers (as well as some others) are static
+what is it for?
+I removed the static and had no problem since startframe should be runnning only once in memory
+or perhaps I m missing something here...
+
+--------------------------------------------------
+12/19/01 at 06:31:24  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Here's the code from the StartFrame() function in the dll.cpp file...
+code:
+void StartFrame( void )
+{
+   if (gpGlobals->deathmatch)
+   {
+      edict_t *pPlayer;
+      static float check_server_cmd = 0.0;
+      static int i, index, player_index, bot_index;
+      static float previous_time = -1.0;
+      static float client_update_time = 0.0;
+      clientdata_s cd;
+      char msg[256];
+      int count;
+
+The float variables are static because they need to keep their values after the function has exited (the time stuff is used to check for things after some period of time and you don't want to constantly reset these values back to 0.0 (which is what would happen if the "static" was removed).
+
+The "static int" variables do not need to be static (it doesn't hurt to make them static, they just get allocated off the heap instead of off the stack).
+
+botman
+
+--------------------------------------------------
+12/19/01 at 09:47:25  Reply by: W@NJIK (wanjik@voila.fr)
+--------------------------------------------------
+oops it was in the dll.cpp :)
+thanks for the reply, things are now clearer
+

@@ -1,0 +1,75 @@
+--------------------------------------------------
+Subject: compiling a linux dll?
+--------------------------------------------------
+12/20/01 at 13:41:04  Posted by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+Does anyone have a guide on how to build a bot/dll <b>for</b> linux...???
+
+[modified on 12/20/01 at 13:41:04]
+--------------------------------------------------
+12/21/01 at 02:25:24  Reply by: Tub (tubpc@authmann.de)
+--------------------------------------------------
+first of all, you have to adjust all calls in your code that open files. Linux file/path names are case sensitive, and they don't use "\" as seperator, but "/". There is a function for that, UTIL_BuildFileName in util.cpp (iirc)
+
+to compile it on linux, there is a makefile_linux in botman's template. Rename it to makefile, edit it to match the sources you use (OBJ), the path to your hlds (MOD_DIR), and the name of the .so to generate (HPBBot_i486.so:)
+
+Copy all sources and that makefile to your linux box, into the same directory. cd into that dir, type "make" and see if it works.
+
+
+--------------------------------------------------
+12/21/01 at 13:14:16  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+Thanks, a new problem... :(
+
+It's saying...
+
+code:
+
+.......
+.......
+.......
+
+on -I../pm_shared -c engine.cpp -o engine.o
+gcc -Dstricmp=strcasecmp -Dstrcmpi=strcasecmp -m486 -O2 -w -I../engine -I../comm
+on -I../pm_shared -c h_export.cpp -o h_export.o
+<b>h_export.cpp:77: ANSI C++ forbids declaration `GiveFnptrsToDll' with no type
+make: *** [h_export.o] Error 1</b>
+
+
+?? :( I dunno if theres something diffeent but heres the line its talking about..
+code:
+
+void DLLEXPORT GiveFnptrsToDll( enginefuncs_t* pengfuncsFromEngine, globalvars_t *pGlobals )
+#endif
+#else
+extern "C" DLLEXPORT GiveFnptrsToDll( enginefuncs_t* pengfuncsFromEngine, globalvars_t *pGlobals )
+#endif
+{ <b><--- Line 77</b>
+   int pos;
+   char game_dir[256];
+   char mod_name[32];
+
+   // get the engine functions from the engine...
+
+   memcpy(&g_engfuncs, pengfuncsFromEngine, sizeof(enginefuncs_t));
+   gpGlobals = pGlobals;
+
+
+
+???
+
+--------------------------------------------------
+12/21/01 at 13:21:44  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+at this part instead of this..
+
+extern "C" DLLEXPORT GiveFnptrsToDll
+
+I put...
+
+extern "C" <b>void</b> DLLEXPORT GiveFnptrsToDll
+
+and it compiles now but I cant check it since I dont have linux/HL to see if it works but I know ppl who do :)
+
+I was using my college linux box over telnet :)
+

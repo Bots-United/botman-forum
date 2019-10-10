@@ -1,0 +1,131 @@
+--------------------------------------------------
+Subject: A question to botman
+--------------------------------------------------
+07/09/02 at 16:24:22  Posted by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+Hello botman, I wonder one thing about your bot template.
+
+In your StartFrame, you do something like this (I slightly modified the layout) :
+code:
+
+   clientdata_s cd;
+
+      // if time to update the bots' infobuffers...
+      if (client_update_time <= gpGlobals->time)
+      {
+         client_update_time = gpGlobals->time + 1.0; // next update in 1 second
+
+         // cycle through all bots slots
+         for (bot_index = 0; bot_index < 32; bot_index++)
+         {
+            // is this one used ?
+            if (bots[bot_index].is_used && (bots[bot_index].pEdict != NULL))
+            {
+               memset (&cd, 0, sizeof (cd));
+               UpdateClientData (bots[bot_index].pEdict, 1, &cd); // update his infobuffer
+               bots[bot_index].bot_weapons = cd.weapons; // update his weapons list
+            }
+         }
+      }
+
+
+
+1- Why is it necessary ? I thought the bot would update its weapons by catching the corresponding network messages (like you do in bot_client.cpp)
+2- Why don't you do it each frame, then ? Is UpdateClientData that CPU-intensive ?
+3- Why don't you call it in DMC ?
+4- It looks like it is redundant with your BotClient_Valve_WeaponPickup () ? So, which one should I get rid of safely ?
+
+/me just wanting things to be as neat as possible... :)
+
+
+[modified on 07/09/02 at 16:24:22]
+--------------------------------------------------
+07/10/02 at 05:28:37  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+The UpdateClientData stuff was added to catch when a player drops a weapon (using the "drop" command).  There were cases when you would use "drop" and no network message would get sent to the client to indicate that the player had lost a weapon.  I can't remember which MOD this was put in for (maybe OpFor?), but there was a user made map that I downloaded that would cause the player to drop a weapon when an entity was touched.
+
+This wasn't used for DMC because DMC had a different structure for the weapon bits.  I don't think the "drop" problem effected DMC anyway, but I can't remember for sure.
+
+Yes, it's CPU intensive, but since you can't tell ahead of time which frame the weapon will be dropped in I just called it every frame.  You could just as easily check it once every 1/10th of a second (or once a second) to see if the client data weapon bits didn't match the bot_t bot_weapon weapon bits.
+
+If you're only doing a bot for Counter-Strike, this code probably isn't needed.
+
+botman
+
+--------------------------------------------------
+07/10/02 at 05:59:02  Reply by: @$3.1415rin (joebot@botepidemic.com)
+--------------------------------------------------
+some CS versions ago, it was possible to drop a weapon more than once. But since beta 7.x I guess ( I'm not sure when exactly ) it's fixed.
+
+--------------------------------------------------
+07/10/02 at 20:13:01  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+Thank both of you !
+I will delete it.
+When you say : <i>"There were cases when you would use "drop" and no network message would get sent to the client to indicate that the player had lost a weapon"</i> I don't think I get it : there has to be something sent from the server to the client, anyway, else how could the client know he has dropped his weapon ? The only explanation I see is that it is a bug. Is it ?
+
+
+--------------------------------------------------
+07/10/02 at 20:17:04  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+Oh well, I think I got it.
+It looks actually like a bug in the OpFor code. But since OpFor has had an update from Gearbox (along with some HL engine update some months ago, I can't remember which one), I will assume they fixed it. It's not my role to work other people's bugs around, shit !
+
+
+--------------------------------------------------
+07/11/02 at 08:17:02  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+ERRATUM
+
+This one is more evil than I thought. It is needed very often. Example, in Counter-Strike, when a bot has just planted the bomb, it still believes to own the C4. Idem in Half-Life, OpFor, Azure Sheep and I will assume all mods, when the player_weaponstrip entity is used.
+
+Damn.
+
+
+--------------------------------------------------
+01/07/03 at 07:33:42  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+/me resurrecting this old thread...
+
+I have now this:
+code:
+
+   // TODO: figure out why and when this is needed, definitely once for all !!!
+   UpdateClientData (pBot->pEntity, 1, &cd); // get bot's client data
+   pBot->BotHand.weapons = cd.weapons; // update its weapons list with it
+
+
+
+Now just a question.
+Where does the engine take the weapon field of the clientdata_s structure ?
+If it takes it in the player entity's entvars, wouldn't it be faster to bind directly pBot->pEntity->v.weapons ?
+
+Could "someone" have a quick look in the engine source code for this ?
+...and btw, while "someone" will be at it, can he also confirm there are 256 maximum registerable usermsgs ? ;D
+
+/me thanks "someone" in advance ;D
+
+
+--------------------------------------------------
+01/07/03 at 08:51:48  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+UpdateClientData() is in the SDK client.cpp file.  It basically packs the client entvar_t fields into a clientdata_s structure that the engine sends to the client when that client is ready for data (based on the latency of the client's network connection).
+
+I'm just using it as a shorthand way of copying the entvar_t fields.  If all you cared about was pev->weapons, then yes, you could just copy that field yourself.
+
+Re: RegUserMsg, here's a snippet of code from the engine...
+code:
+      // Is there still room
+      if (giNextUserMsg > 255)
+            return 0;
+
+...so you're actually limited to 255 user messages.
+
+botman
+
+--------------------------------------------------
+01/07/03 at 10:43:56  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Thank you again ! (/me wonders how many times I had to thank you since this forum exists)
+
+

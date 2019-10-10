@@ -1,0 +1,130 @@
+--------------------------------------------------
+Subject: BSP_tool
+--------------------------------------------------
+11/17/01 at 14:35:56  Posted by: Multch (13steps@naplesnews.net)
+--------------------------------------------------
+C:\BSP_tool>bsp_tool -w op4_kndyone.bsp
+Generating waypoints...
+Using waypoint grid size of 100 units
+Ladder found, but can't tell which way is outward!
+Locations visited: 3000
+3758 locations were visited
+880 waypoints were generated
+Calculating waypoint paths...
+Percent of paths calculated: 100%
+Creating waypoint file op4_kndyone.HPB_wpt...
+Done!
+
+
+C:\BSP_tool>bsp_tool -w op4_outpost.bsp
+Generating waypoints...
+Using waypoint grid size of 100 units
+Ladder found, but can't tell which way is outward!
+Locations visited: 3000
+3100 locations were visited
+938 waypoints were generated
+Calculating waypoint paths...
+Percent of paths calculated: 100%
+Creating waypoint file op4_outpost.HPB_wpt...
+Done!
+
+
+C:\BSP_tool>bsp_tool -w op4_repent.bsp
+Generating waypoints...
+Using waypoint grid size of 100 units
+Locations visited: 59000
+59584 locations were visited
+WARNING: Waypointing incomplete!  Too many waypoints generated!
+1024 waypoints were generated
+Calculating waypoint paths...
+Percent of paths calculated: 100%
+Creating waypoint file op4_repent.HPB_wpt...
+Done!
+
+I went through all of my OP4 DM maps. Those are just the misc. maps it found either a ladder problem or too many waypoints. I know it's to be expected at this stage, but what i was curious about is,
+QUOTE:
+If N is not specified the default grid size is 100 units.
+
+But how much over 100 can i go? And would it fix this up --> http://passwordx.hypermart.net/temp4/op4_gasworks0000.JPG
+Can wide open spaces be not so filled in? It puts mega waypoints in, but i like it! But i'd like to cut it down and work from there to fix things up.
+
+Hey that BSP Slicer tool looks Cool!! Can't wait to check that out..
+
+--------------------------------------------------
+11/17/01 at 15:32:03  Reply by: Multch (13steps@naplesnews.net)
+--------------------------------------------------
+I see it.. I missed it.
+QUOTE:
+(where N is the grid size: 64, 72, 80, 100, 120, 150, 200)
+
+ I'm reading and re-reading.. I also see at the bottom of BSP_tool_readme, ANOTHER IMPORTANT NOTE: Hmmmm, ok, i guess i have my questions answered. I'm going to fiddle more and see what happens.
+
+--------------------------------------------------
+11/18/01 at 05:07:50  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Those numbers shown are just examples.  You're not limited to just those.  The grid size can be anything between 32 and 400 (since 400 is the max path length allowed for the paths between waypoints).  At a grid size of 400 you will not successfully fill the map with waypoints (since it won't find all the holes/portals that lead from one room to others).  I would suggest keeping the grid size between 64 and 200, but you can try other values to see how they work out.
+
+The easiest way to test things after creating a waypoint file is to just spawn one bot in the game.  Turn on observer mode ("observer 1" in the console) then go run around and find the bot.  Follow it around as it attempts to navigate the map.  Like the ReadMe says, don't turn on the displaying of waypoints if you have a fairly small grid size as this can lead the client DLL to cause the game to crash.
+
+botman
+
+--------------------------------------------------
+11/18/01 at 05:09:36  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Oh, I'll take a look at the ladders in those OpFor maps.  The ladder automatic waypoint code isn't complete yet.  Any freestanding ladders (not up against walls) can cause problems for the ladder waypoint generator function.  I'll see if these ladders are of that type or just some weird ladder case that I didn't think of.
+
+botman
+
+--------------------------------------------------
+11/19/01 at 05:18:55  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Just FYI, the ladder in op4_outpost that it is having problems with is the ladder leading up to the metal walkway in the big open space above the water.  This ladder isn't against any walls so it can't easily figure out which side is the climbable side.  Hopefully searching for nearby brush models as well as world brush surfaces will allow it to figure out which side is the climbable side.
+
+botman
+
+--------------------------------------------------
+11/20/01 at 00:36:09  Reply by: Multch (13steps@naplesnews.net)
+--------------------------------------------------
+Ok botman.. Any info's on the next possible release of the BSP_tools ? Will it have the BSP_slicer in the next release?
+
+--------------------------------------------------
+11/20/01 at 04:05:25  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Probably sometime later this week.  Yes, the BSP_slicer tool will be included with the next release.  Here's some of the stuff I'm adding to the BSP viewer...
+
+The ability to view the edges of textures (shows how the bsp compile tools split faces).
+
+The ability to view the models for spawnable entities (i.e. models for spawnable weapons, ammo, items, etc.).
+
+renderamt now correctly supported for brush models so that things like glass and other transparent objects are shown correctly.
+
+I hope to rework the drawing of transparent and maked textures (railings, ladders, fences) so that they are drawn back-to-front so that they will display what's behind them properly in all cases.
+
+I'm currently working on simplifying the .cfg file so that you don't have to specify where MOD directories, pak files and wad files are located.  All of this will be automatic as long as you specify where the Half-Life directory is.
+
+botman
+
+[modified on 11/20/01 at 04:05:25]
+--------------------------------------------------
+11/21/01 at 03:08:54  Reply by: jerry_stoel (jerry_stoel@hotmail.com)
+--------------------------------------------------
+
+QUOTE:
+Just FYI, the ladder in op4_outpost that it is having problems with is the ladder leading up to the metal walkway in the big open space above the water.  This ladder isn't against any walls so it can't easily figure out which side is the climbable side.  Hopefully searching for nearby brush models as well as world brush surfaces will allow it to figure out which side is the climbable side.
+
+
+
+
+Can't you just look for the func_ladder entity and try too find out which side the func_ladder is. I did it that way.
+
+--------------------------------------------------
+11/21/01 at 05:03:36  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+"Can't you just look for the func_ladder entity and try too find out which side the func_ladder is"
+
+Huh?  The func_ladder is a brush model that normally isn't displayed while the game is running.  You can get the min and max (and from those, the origin) of the brush model, but there isn't anything in the func_ladder entity that indicates which side is climbable.  In the game, you are restricted from climbing the ladder if the map creator placed a func_wall on one side of it (to make that side of the func_ladder unreachable) and placed a "ladder looking" texture on the func_wall, which is what the player actually sees in the game.
+
+If you meant searching for a func_wall nearby a func_ladder then that's exactly what I was going to add to the automatic waypoint generator.  Currently it only checks for func_ladders that are very close to world brushes (using a TraceLine to see which side of the func_ladder is next to the world, thus the other side of the ladder should have the waypoints).  It's fairly trivial to search for other brush models (like func_wall) near the func_ladder.  It's just that I didn't have time to put that in before releasing the automatic waypoint generator code.
+
+botman
+

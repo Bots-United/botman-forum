@@ -1,0 +1,58 @@
+--------------------------------------------------
+Subject: Quick Question For Botman!
+--------------------------------------------------
+08/30/00 at 12:10:17  Posted by: Bobafett (n64wizard1@hotmail.com)
+--------------------------------------------------
+Hiya Botman, I am trying to learn some C++ and while I'm at it I'm trying to make a bot for CS. It prolly wont turn out good but it's something to fool around with until school starts. Anyways I was wondering how the weapon firing delay worked in bot_combat.cpp here is an excerpt from it.
+
+   {CS_WEAPON_USP,
+    0.3, {0.0, 0.1, 0.2, 0.3, 0.4}, {0.1, 0.2, 0.3, 0.4, 0.5},
+    0.2, {0.0, 0.0, 0.1, 0.1, 0.2}, {0.1, 0.1, 0.2, 0.2, 0.4}},
+
+I would like to know how the numbers would effect the rate of fire. I realize that they do affect it but I don't know what each number does specifically. Any help would be appreaciated. Thx.
+
+--------------------------------------------------
+08/30/00 at 15:00:42  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+This delay is used to pause between "trigger pulls" on the weapons.  The structure contains the weapon ID (CS_WEAPON_USP) followed by the primary firing delays (the first line) and the secondary firing delays (the second line).
+
+For each line with the numbers, there is a base delay value (0.3 in the first line and 0.2 in the second).  This is the base time for the delay between firing.  Then there is a group of numbers for the minimum delay (one for each skill setting) and a group of numbers for the maximum delay (one for each skill setting).  The min and max values corresponding to the skill setting will be used to get a random number between them.  This random amount will be added to the base delay for the total delay before the weapon will fire again.
+
+For example, if the skill setting was 2 the following would be used for the primary fire delay...
+
+0.3 + RANDOM(0.1, 0.2)
+
+...and the following would be used for the secondary fire delay...
+
+0.2 + RANDOM(0.0, 0.1)
+
+...so the primary fire would delay somewhere between 0.4 seconds (0.3 + 0.1) and 0.5 seconds (0.3 + 0.2).  The secondary fire would delay somewhere between 0.2 seconds (0.2 + 0.0) and 0.3 seconds (0.2 + 0.1).
+
+The higher the skill setting (the lower the skill), the longer the delay would be between firing the weapons.
+
+botman
+
+--------------------------------------------------
+08/30/00 at 15:13:42  Reply by: Bobafett (n64wizard1@hotmail.com)
+--------------------------------------------------
+Thank you muchly hehe... now to get them to buy weapons and I'll have somthing to tinker with for the next few days.
+
+BTW, is it possible to allow them to shoot mabye 6 - 10 bullets at rapid speed, pausing for a few seconds to lower re-coil. Or do bots not have to worry about re-coil?
+
+It's very unrealistic to shoot an MP5 non stop until the clip is empty. It is more possible for you to shoot say 6 bullets, pause for a second and start shooting again.
+
+Anyways that's about it for now.
+
+§Boba§
+
+
+--------------------------------------------------
+08/31/00 at 05:06:54  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+The HPB bot is just like a player.  Physics in the game (recoil, gravity, water pressure, etc.) effect bots the same way they effect human players.  The bots are a little bit better at compensating for things like recoil since they can aim much more quickly than humans can.
+
+You could modify the weapons firing code (and the delay stuff) to check if the "hold primary fire" flag is set and the weapon delay is non-zero then start a timer when you being firing and stop after the delay period has reached.  Normally it wouldn't make sense to have the "hold primary fire" flag set AND have a firing delay enabled.
+
+botman
+
+

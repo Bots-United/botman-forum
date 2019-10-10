@@ -1,0 +1,215 @@
+--------------------------------------------------
+Subject: Origin doesn't get updated
+--------------------------------------------------
+07/07/03 at 13:33:15  Posted by: rick (rick_helmus8@hotmail.com)
+--------------------------------------------------
+Well botman asked me to make a new thread and well here it is...
+
+QUOTE:
+Make sure you're always binding the right vector, i.e. pPlayerEdict->v.origin, and NOT a local copy of it. In extenso, if you do this...
+
+// in the bot_t structure: Vector v_enemy_origin;
+pBot->v_enemy_origin = pBot->pBotEnemy->v.origin; // save enemy's origin
+
+// a few frames later...
+
+BotFireAt (pBot->v_enemy_origin); // make the bot fire there, or whatever
+
+... it obviously won't work. Because the enemy will have moved, the engine will have updated its position, but NOT the local copy you made of it several frames before.
+
+Else use a pointer for the case...
+Vector *v_enemy_origin = &pBot->pBotEnemy->v.origin;
+
+
+[modified on 07/07/03 at 10:38:43]
+
+
+
+
+QUOTE:
+In fact, in the same frame the enemy cannot move that fast. It does however slow down the reaction time of the bot. I do have a copy of the vector. So i remember the bots enemy vector. I update this every frame when the bot is still able to see him. If he is not able to see the enemy it will continue to look at the last seen valid position. With this , you can fool bots, but even bots can fool each other (gives nice effects).
+
+
+
+
+
+hmm well lemme explain better;
+every frame my botfindenemy function is called, this function checks first if the current enemy is still valid(visible, not dead etc). Well if it is the Ideal look angle is stored in the AimVec vector of the bot, just before the runplayermove function I call botaim;
+
+code:
+
+void BotAim (bot_t *pBot, Vector TargetVec)
+{
+   edict_t *pEdict = pBot->pEdict;
+   Vector v_aim;
+
+   v_aim = pBot->AimVec;
+
+  // Vector v_angle = pEdict->v.v_angle;
+
+   if (v_aim.y > 180)
+      v_aim.y -=360;
+
+   // Paulo-La-Frite - START bot aiming bug fix
+   if (v_aim.x > 180)
+      v_aim.x -=360;
+
+   if (pBot->aim_delay < gpGlobals->time)
+   {
+          pEdict->v.v_angle = v_aim;
+
+        // set the body angles to point the gun correctly
+            pEdict->v.angles.x = pEdict->v.v_angle.x / 3;
+            pEdict->v.angles.y = pEdict->v.v_angle.y;
+            pEdict->v.angles.z = 0;
+
+            pEdict->v.v_angle.x = -pEdict->v.v_angle.x;
+
+            ClientPrint(listenserver_edict,HUD_PRINTNOTIFY,"AIM\n");
+            if (pBot->bot_skill > 0)
+            {
+                  pBot->aim_delay = gpGlobals->time + 
+                        RANDOM_FLOAT(aim_delays[pBot->bot_skill][0],aim_delays[pBot->bot_skill][1]);
+            }
+   }
+   return;
+}
+
+
+
+so after this the bot should aim correctly; in other words this should happen every frame:
+
+code:
+
+pBot->AimVec = UTIL_VecToAngles(pBot->pBotEnemy->v.origin-pEdict->v.origin);
+
+pEdict->v.v_angle = pBot->AimVec;
+pEdict->v.angles.x = pEdict->v.v_angle/3;
+pEdict->v.angles.y = pEdict->v.v_angle.y;
+
+
+
+I just tried this code, i just putted it before runplayermove and it still occurs.
+Well since pBot->pBotEnemy is a pointer to the orginal edict why can this happen ??
+
+--------------------------------------------------
+07/07/03 at 14:25:17  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+the last 3 lines are not 100%. You still need to convert the x axis (v.v_angle.x = -v.v_angle.x).
+
+I don't get the real problem though. If you can find the enemy (i assume that code works), store the vector of that enemy and a few (hundred) lines later you simply let the bot aim at it. It should work right?
+
+As reference, here is my 'face the vector' function again (feel free to use it, if you want to)
+
+code:
+
+// FACE vector
+// Let bot completely focus on target (head & Body)
+void BotFaceVector(Vector v_target, bot_t *pBot)
+{
+    edict_t *pEdict = pBot->pEdict;
+    Vector vTarget  = (v_target - pBot->pEdict->v.origin);
+    pEdict->v.v_angle = UTIL_VecToAngles( vTarget );
+   
+   if (pEdict->v.v_angle.y > 180)
+      pEdict->v.v_angle.y -=360;
+
+   // Paulo-La-Frite - START bot aiming bug fix
+   if (pEdict->v.v_angle.x > 180)
+      pEdict->v.v_angle.x -=360;
+ 
+   Vector v_shouldbe = pBot->pEdict->v.angles;
+
+   // Vector how it should be, however, we don't allow such a fast turn!
+   v_shouldbe.x = pEdict->v.v_angle.x / 3;
+   v_shouldbe.y = pEdict->v.v_angle.y;
+   v_shouldbe.z = 0;
+
+   // set the body angles to point the gun correctly
+   pEdict->v.angles.x = ReturnTurnedAngle( pBot, 5, pEdict->v.angles.x, v_shouldbe.x);
+   pEdict->v.angles.y = ReturnTurnedAngle( pBot, 5, pEdict->v.angles.y, v_shouldbe.y);
+   pEdict->v.angles.z = 0;
+
+   // adjust the view angle pitch to aim correctly (MUST be after body v.angles stuff)
+   pEdict->v.v_angle.x = -pEdict->v.v_angle.x;
+   // Paulo-La-Frite - END
+
+   pEdict->v.ideal_yaw = pEdict->v.v_angle.y;
+   pEdict->v.idealpitch= pEdict->v.v_angle.x;
+
+   BotFixIdealYaw(pEdict); 
+   BotFixIdealPitch(pEdict);
+}
+
+
+
+
+If you want to make the bot really look at it in 1 frame, simply change the lines where 'ReturnTurnedAngle' is called, so you have 'shouldbe.x/y/z' to make sure the bot just looks at it.
+
+
+
+--------------------------------------------------
+07/07/03 at 15:09:56  Reply by: rick (rick_helmus8@hotmail.com)
+--------------------------------------------------
+Well thanx for the reply, I'll check it out tomorrow, also im gonna check if it helps to store a pointer to the origin like PM said, though its weird, it works when I search every frame for new enemy's(even if the serach give you the previous enemy) but every frame aim at the current enemy don't work....
+
+Well thanx anyway i'll check it out
+
+
+[EDIT]
+also: when I draw a line to the enemy's origin in the botfindenemy function, i see clearly that it isn't get updated, maybe someone else could try this also ??
+[/EDIT]
+
+[modified on 07/07/03 at 15:09:56]
+--------------------------------------------------
+07/07/03 at 15:27:56  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Storing a copy of the enemy origin vector ??? Definitely, what a curious idea !!!
+
+I don't get why you want to do this, really. Human reaction time doesn't work this way, for we SEE things immediately, the point is we don't REACT to them immediately. That's why a well-shaped reaction time can be implemented either in reacting to the enemy's first sight, or in the actual aiming code -- the momentum idea imagined by Tobias and Joe --, or both. If you don't do it this way, men you're weirder than me, and I assure you I am already ! ;D
+
+
+--------------------------------------------------
+07/07/03 at 17:08:21  Reply by: Cheesemonster!!! (cheeseh@houstondod.com)
+--------------------------------------------------
+Surely you should just store a pointer to the enemy's edict (edict_t *) e.g.
+
+typedef struct
+{
+...
+edict_t *pBotEnemy;
+...
+}bot_t;
+
+so that the enemy's details are stored as a pointer in each bot, and you get the enemy's origin by pBot->pBotEnemy->v.origin 
+
+and that is always updated, if it isn't then it's the mods fault and somethings screwed in HL, not in your bot :p
+
+--------------------------------------------------
+07/08/03 at 11:31:53  Reply by: rick (rick_helmus8@hotmail.com)
+--------------------------------------------------
+Heh although I haven't tested it yet I think I know the cause of all this :D
+Very simple:
+
+code:
+
+pPlayer = &pBot->PlayerList[i];
+
+
+
+pBot->Playerlist is an array of edicts which are in sight of the bot, PlayerList is NOT an array  of pointers to edicts...
+So what you get is that pBot->pBotEnemy points to one of the elements of this array and not to the real edict.... Also this might explaining why my bots where keeping attack kicked players(Although its weird, sometimes they aimed good, and he didn't attack kicked players without a name...)
+
+heh simple coding mistake I guess :)
+
+Well thanx for all the reply's I will check it out later but its very lickely this is the cause. :)
+
+btw Pierre I know its not right to check every frame for an enemy. Im still working on reaction times and I will add this to I guess(Or Im weirder then you OMG ;) )
+
+[modified on 07/08/03 at 07:37:47]
+
+[EDIT]
+Yep it works now... the bot aims good, and checking for an empty name to see if a bot is valid isn't necceserely, o well it isn't useless I think ;)
+[/EDIT]
+
+[modified on 07/08/03 at 11:31:53]

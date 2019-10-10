@@ -1,0 +1,274 @@
+--------------------------------------------------
+Subject: Allocating variable Arrays
+--------------------------------------------------
+12/09/01 at 05:36:02  Posted by: Spikeles (spikeles_@hotmail.com)
+--------------------------------------------------
+Ok. i want to know how to allocate memory for variable arrays. Ok this code DOES not compile.
+Can anyone tell me what modifications i have to do to the "new" line to make it allocate the array i want? I looked on the net but i couldn't find anything addressed this issue...
+
+btw: this is the error that is returned...
+23 untitled1.cpp
+ incompatible types in assignment of `CAry (*)[((y - 1) + 1)]' to `CAry *[0][0]'
+
+#include <stdio.h>
+#include <stdlib.h>
+
+class CAry
+{
+public:
+  int x;
+  int y;
+};
+
+class CMyClass
+{
+public:
+  CAry *ary[][];
+};
+
+int main(void)
+{
+  CMyClass Class;
+  int x=10;
+  int y=10;
+
+  Class.ary=new CAry[x][y];
+  printf("x:%d,y:%d\n",Class.ary[5][5]->x,Class.ary[5][5]->y);
+  system("pause");  
+  return 0;
+}
+
+--------------------------------------------------
+12/09/01 at 06:21:54  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+I think your trying to make it diffuclt hehe, looks like yuor trying to make a fifth dimensional array or something hehe.
+
+Just remove the square brackets and the numbers you put in. This will compile below.
+
+code:
+
+#include <stdio.h> 
+#include <stdlib.h> 
+
+class CAry 
+{ 
+public: 
+ int x; 
+ int y; 
+}; 
+
+class CMyClass 
+{ 
+public: 
+ CAry *ary; 
+}; 
+
+int main(void) 
+{ 
+ CMyClass Class; 
+ Class.ary=new CAry; 
+ printf("x:%d,y:%d\n",Class.ary->x,Class.ary->y); 
+ system("pause");   
+ return 0; 
+} 
+
+
+
+if your wanting to make more than one class and use an array then just declare a value in squaer brackets after your definition of "Class"
+
+something like
+
+code:
+
+CMyClass Class[5];
+
+
+
+for 5 myclasses! And of course address any class by telling it what one you index to address.
+
+code:
+
+for ( int i = 0; i < 5; i ++ )
+{
+  Class[i].ary=new CAry
+  printf("x:%d,y:%d\n",Class[i].ary->x,Class[i].ary->y); 
+  system("pause");
+}
+
+
+
+[modified on 12/09/01 at 06:21:54]
+--------------------------------------------------
+12/09/01 at 06:27:51  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+actulaly heres another few things ive done to it :)
+
+code:
+
+#include <stdio.h> 
+#include <stdlib.h> 
+
+#define MAX 5
+
+class CAry 
+{ 
+public: 
+ int x; 
+ int y; 
+}; 
+
+class CMyClass 
+{ 
+public: 
+ CAry *ary; 
+}; 
+
+int main(void) 
+{ 
+
+      CMyClass Class[MAX]; 
+// a MAX amount (5) of Classes have been made!
+
+// Lets loop through each index and print them out.      
+      for( int i = 0; i < MAX; i ++ )
+      {
+// First of all create a new class or it will crash if we try any thing with x or y before we do this!
+            Class[i].ary=new CAry; 
+
+// x and y will be set to whatever you want I've made them both zero
+
+            Class[i].ary->x = 0;
+            Class[i].ary->y = 0;
+
+// system will show whats in x and y then pause
+
+            printf("x:%d,y:%d\n",Class[i].ary->x,Class[i].ary->y); 
+            system("pause");   
+      }
+ return 0; 
+} 
+
+
+--------------------------------------------------
+12/09/01 at 07:01:22  Reply by: Spikeles (spikeles_@hotmail.com)
+--------------------------------------------------
+I see what you are saying but it's not exactly what i want...
+
+basically i'm trying to make a 2 dimensional array of the class CAry.
+
+I want to define this class in another class as a ptr and i want to be able to dynamically modify the array to any values i want.
+
+What you have posted is only a 5 unit array.
+
+01234
+
+i want a 2 dimensional array... containing a total of 25 units.
+
+01234
+1
+2
+3
+4
+
+
+
+--------------------------------------------------
+12/09/01 at 07:42:30  Reply by: ReDucTor[FGW] (sjdtmv@tpg.com.au)
+--------------------------------------------------
+code:
+
+#include <stdio.h>
+#include <stdlib.h>
+
+class CAry
+{
+public:
+ int x;
+ int y;
+};
+
+class CMyClass
+{
+public:
+ CAry ary[5][5];
+};
+int main(void)
+{
+ CMyClass Class;
+
+ for(int left=1;left<5;left++)
+ {
+  for(int right=1;right<5;right++)
+  {
+    Class.ary[left][right] = left*right;
+  }
+ }
+ ShowTable(Class);
+ system("pause");  
+ return 0;
+} 
+
+void ShowTable(CMyClass Class)
+{
+for(int left=1;left<5;left++)
+{
+for(int right=1;right<5;right++)
+{
+printf("%i\t", Class[left][right]);
+}
+printf("\n");
+}
+}
+
+
+
+Are you after something to do something like this? :)
+
+--------------------------------------------------
+12/09/01 at 08:45:24  Reply by: @$3.1415rin (joebot@botepidemic.com)
+--------------------------------------------------
+is you want to use "new" you have to allocate a 5*5 array ( = new type[25] ) and then calculate the position of the element you want to get : array[lx*ysize+ly]
+--------------------------------------------------
+12/10/01 at 03:03:58  Reply by: Spikeles (spikeles_@hotmail.com)
+--------------------------------------------------
+Don't worry anybody.. i found it...
+
+http://www.eskimo.com/~scs/C-faq/q6.16.html
+//*****************
+#include <stdio.h>
+#include <stdlib.h>
+
+class CAry
+{
+public:
+  int x;
+  int y;
+};
+
+class CMyClass
+{
+public:
+  CAry **ary;
+};
+
+int main(void)
+{
+  CMyClass Class;
+  int x=10;
+  int y=10;
+
+  Class.ary=(CAry **) new CAry[y*sizeof(CAry *)];
+  for(int i = 0; i < y; i++)
+        Class.ary[i] = (CAry *) new CAry[x * sizeof(CAry)];
+
+  Class.ary[5][5].x=10;
+  printf("x:%d,y:%d\n",Class.ary[5][5].x,Class.ary[5][5].y);
+  system("pause");  
+  return 0;
+}
+
+--------------------------------------------------
+12/10/01 at 04:38:07  Reply by: @$3.1415rin (joebot@botepidemic.com)
+--------------------------------------------------
+ok, or that way if you wanna have 2 * "[]"
+

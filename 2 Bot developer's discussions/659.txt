@@ -1,0 +1,106 @@
+--------------------------------------------------
+Subject: "Common Bot Project" :)
+--------------------------------------------------
+11/20/00 at 10:47:27  Posted by: FuckFace (gellert.lukacs@dbs.hu)
+--------------------------------------------------
+Its been a while I have visited this forum (engagged with some mapping and gps related stuff). I see there is a lot going on on open bot sources. 
+
+I mean not on bot which are open, but a bot whith an open source...
+
+I was just very shy to ask for help, saying: Hey people: give me some sources on how to make the bot buy weapons, or how to move the bot from A to B. Anyway the answers are way too complicated, and the source code is just the same. I tried to explain once how the BUYZONE can be detected and I ended up listing 3 different functions from two files. It really is difficult.
+
+But I still wonder if we could exchange parts of source code. To explain, I include a simple function which seems to cause probles. (if I got it right). This is a MOVEMENT code, which moves the bot form A to B on a straight line. The fun part is, that the bot doesn't follow its YAW angels. It mean that, the bot can look at ANY direction while it aproaches B from A.
+
+(you will need some globals, but I think it can be deducted from the source)
+
+Take a look:
+
+      if ( MoveValid )
+      {
+            Vector D = MoveDestination - BotEntity->v.origin;
+            if ( D.Length() < 20 ) 
+                  MoveValid = FALSE;
+
+            Vector L = BotEntity->v.angles;
+            Vector A1 = UTIL_VecToAngles( D );
+            float f1 = L.y - A1.y;
+            float SIDE;
+            float FWD;
+            SIDE = sin( f1 * 0.01745329251994329 );
+            FWD = cos( f1 * 0.01745329251994329 );
+            BotSpeed = 260.0; // whatever BOT speed is desired...
+            SpeedForward = BotSpeed * FWD;
+            SpeedSide = BotSpeed * SIDE;
+      }
+
+
+Now, you can pass the SpeedForward and SpeedSide parameters to the pfnRunPlayerMove function. It looks really ok. I believe this sorts out the BOT CAN STRAFE problem...
+
+now, I ask botman if it is possible to set up a discussion specifically with NEED SOURCE, HERE IS THE SOURCE purposes. 
+
+And I can only hope, that the sources I might contribute will have any use.
+
+
+--------------------------------------------------
+11/20/00 at 16:14:11  Reply by: CountFloyd (countfloyd_1999@yahoo.com)
+--------------------------------------------------
+>The fun part is, that the bot doesn't follow its >YAW angels. It mean that, the bot can look at >ANY direction while it aproaches B from A
+
+It might be because your using BotEntity->v.angles which is the lower part of the body. Try using BotEntity->v.v_angle or try adjusting your view angle to the lower body.
+However your code looks good and I would like to share code with others...
+
+--------------------------------------------------
+11/21/00 at 01:21:00  Reply by: theimann (theimann@stud.fh-heilbronn.de)
+--------------------------------------------------
+I guess what you want to archieve is that the bot can move in one direction while looking (and aiming) in another... With SDK 2.0 this is much easier. I don't have internet access from my developer-computer so I can't just paste my code but it's something like that:
+
+v.angle = viewAngle;
+v.v_angle = viewAngle;
+forward = MAX_SPEED;
+strafe = 0;
+pfnRunPlayerMove(..., moveAngle, forward, strafe, 0, ...);
+
+I don't know all the pfn...-parameters from memory but you see that you don't need any sin and cos this way. Try it!
+
+Tobias
+
+--------------------------------------------------
+11/21/00 at 04:07:01  Reply by: William (william@botepidemic.com)
+--------------------------------------------------
+Slightly bending the topic :)
+
+Tobias, can you give us a summary of the differences between the SDK 2 and the previous one?
+
+William
+
+--------------------------------------------------
+11/21/00 at 05:28:11  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+I can!  When Valve released the new netcode and client side prediction (same time as SDK 2.0), they extracted the player physics functions out of the engine and created a new directory in the SDK (pm_shared).  The pm_shared modules contains player physics code that executes on the server and on the client.  If you change a pm_shared module make sure to recompile BOTH the server DLL and the client DLL.
+
+When Valve made these player physics changes it modified the behavior of the bots slightly.  For example in SDK 1.0, you could just set the bot's view angles (where the gun is pointed) and the engine would modify the body angles (which direction the body is facing) accordingly.  With SDK 2.0, you have to set the view angles and the body angles.  If you don't set the body angles the bots tend to twist at the waist, but the skeletal animation system will only allow the upper part of the body to turn just so far (even though the view angle may actually be 180 degrees from the way the lower body is facing).  So what happens is the bots wind up shooting at you even though they are not facing you.
+
+Also with SDK 1.0, when you adjusted the bot's view angle pitch (up and down), the engine would adjust the body angle pitch so that the gun would point in the correct direction.  With 2.0, you have to set the body angle pitch to 1/3 of the view angle pitch.  Don't ask me why it's 1/3, but that seems to be the proper pitch value when you print out body and view angles of real players.
+
+botman
+
+--------------------------------------------------
+11/21/00 at 06:00:08  Reply by: theimann (theimann@stud.fh-heilbronn.de)
+--------------------------------------------------
+Wow, I couldn't tell you all these details... I found out this moveAngle-thing by accident :-)
+I already wondered why the pitch-modification didn't work with my bot - I'll try your suggestions, botman!
+
+Tobias
+
+--------------------------------------------------
+11/21/00 at 09:43:52  Reply by: FuckFace (gellert.lukacs@dbs.hu)
+--------------------------------------------------
+Then, we are already using this SDK2.0 dont't we? 
+
+Try this code, this allows you to move the bot in one direction without having to worry about its yaw angle. By computing the forward and side directional speed, I can ensure that the sum of these two vectors will always point to the desired destination. Since the perpendicular components are always calculated based on the the 
+actual YAW and desired direction vector, the view angle can always be set to anywhere. the bot will move along on a straight line.
+
+Basically we do not have to special case the strafe movement. The bot goes where it wants to and looks at what it likes best.
+
+
+

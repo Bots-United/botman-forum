@@ -1,0 +1,85 @@
+--------------------------------------------------
+Subject: func_illusionary and other fun stuff
+--------------------------------------------------
+10/16/01 at 14:18:42  Posted by: Tub (tubpc@authmann.de)
+--------------------------------------------------
+I have a problem determining bot movement. I currently just use a set of tracelines to find out if a path can be walked.
+
+
+The problem is that tracelines go through things like the de_aztec bridge (a func_illusionary), the cs_assault gate and other things where players cannot go through.
+
+Now I could check for every traceline if there is a func_illusionary near, but that'll remove too much paths, because it does the same no matter if the traceline cut the func or just went near it.
+
+
+Unfortunately my knowledge about hl's internal structure is seriously limited, that's why I need help now.
+
+
+Does anyone have a piece of code (maybe a replacement for UTIL_TraceLine) or a good idea how to get a TraceLine that is blocked by everything that blocks players?
+
+--------------------------------------------------
+10/17/01 at 06:59:05  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+Look at botmans spray paint code in this forum, he has wrote some code using tracelines (to tell if the bot is near a wall to use spray paint) I think the traceline stuff should be pretty easy to understand looking at it :)
+
+--------------------------------------------------
+10/17/01 at 07:54:51  Reply by: @$3.1415rin (joebot@botepidemic.com)
+--------------------------------------------------
+http://dynamic.gamespy.com/~botman/yabb/YaBB.pl?board=2&action=display&num=1042
+
+.. does this help ?
+
+--------------------------------------------------
+10/17/01 at 09:48:43  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+I'd rather choose the FindEntityByClassname routine if you are only looking for one entity as it will save cpu usage :)
+
+--------------------------------------------------
+10/17/01 at 11:43:07  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Tracelines will only intersect solid objects (world brush or players/monsters).  func_wall and func_illusionary won't cause a traceline to terminate.  You will have to use some other method (like a radius check that you mentioned in your post) to determine if the path is blocked by one of these types of entities.  If you are using waypoints you should lay out paths between the waypoints so that you don't try to get the bot to path through those objects.
+
+botman
+
+--------------------------------------------------
+10/17/01 at 12:13:00  Reply by: Tub (tubpc@authmann.de)
+--------------------------------------------------
+
+yes, paths are layed, BUT: they are detected using tracelines, so they are detected wrong. And I don't want to spawn a bot that tries to walk every possible path - that would be too slow.
+Sure - it might be possible to implement some real-time learning, but detecting paths without having a bot walk it would be much better.
+
+
+As said, my knowledge about the HL SDK is limited (it's currently not available for download..), so I need help.
+
+
+I just need some code that 
+a) finds all func_wall's and func_illusionary's that are near the traceline (btw: are there any other entities I should take care of?)
+and
+b) checks if they traceline does hit the func - for this I need the exact dimensions of the entity.
+
+--------------------------------------------------
+10/17/01 at 13:47:41  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+func_door is another brush based entity that won't cause a traceline to terminate.  If you need to know whether a door is open or closed this could be important.
+
+The older versions of the www.fileplanet.com/index.asp?section=208&page=2&file=44992SDK is still available on fileplanet.com.  Nothing has changed in the Half-Life SDK as far as bots are concerned (since they don't have a client).
+
+You'll probably have to come up with your own method of determining if these entities are along the traceline path.  You can use the edict mins and maxs fields to determine the size and location of the entity (see the VecBModelOrigin function in bmodels.cpp of the SDK for an example of determining the origin of brush models, since the edict origin will always be 0,0,0).
+
+If you are good at 3D math you can create a function to find the intersection of a line and a plane (in 3D space) to determine if the traceline (a line) intersects the entity (pick the surface facing the origin of the line as the plane).
+
+botman
+
+--------------------------------------------------
+10/22/01 at 11:03:18  Reply by: Tub (tubpc@authmann.de)
+--------------------------------------------------
+thanks for the link, I will take a look.
+
+I hope I'll find the right code to
+- find all blocking objects
+- get their exact border coordinates
+
+3d math is no problem :)
+
+bye
+Tub
+

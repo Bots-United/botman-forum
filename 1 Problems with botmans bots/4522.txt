@@ -1,0 +1,95 @@
+--------------------------------------------------
+Subject: A bunch of non-shooting gina's...
+--------------------------------------------------
+06/12/03 at 17:48:41  Posted by: pl4tinum (vindi187@hotmail.com)
+--------------------------------------------------
+I dug up this old thread...
+
+http://dynamic.gamespy.com/~botman/yabb/YaBB.pl?board=1&action=display&num=3566
+
+It's exactly the problem I'm facing now, and have seen twice before... Whenever I start the server, the bots load up, ignore what team I told them to go on, and all join Gina.  They ignore humans, and other bots, and just run around and do not shoot.  I can stand right in their face and they don't even know I am there.
+
+Somehow I got the bots to work on my other server, and so I just copied all the files directly over to my new server.  It's basically an identical server, yet, the bots won't respond or shoot and all go on team Gina on this new server and it's unexplainable.
+
+Any clue Botman?  
+
+I can post the configs if needed... i'm stumped big time!
+
+--------------------------------------------------
+06/13/03 at 05:48:07  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Did you check to make sure teamplay wasn't enabled (either in the game menu before starting the game, and/or in the server.cfg file, mp_teamplay 0)?
+
+botman
+
+--------------------------------------------------
+06/13/03 at 09:14:20  Reply by: pl4tinum (vindi187@hotmail.com)
+--------------------------------------------------
+Okay here's my take on this ;P
+
+I run 2 Teamplay Severian's Mod servers.  One of them houses 12 players, including a maximum of 2 bots and a minimum of 1.  These bots join random teams, anytime.  It works great.
+
+The other server was the problem, my 2nd one.  But, I got it to work, after 2 hours of trial and error last night.
+
+Teamplay being off is not an option, my server is a teamplay server.  However, after 2 hours, I figured out that bots will work if you do the two following things:
+
+1. ensure that your mp_teamlist is not empty 
+2. ensure that your mp_teamlist has no more than 6 models in it
+
+Why this is the case is beyond me.  Which models are in the list is not an issue, the only issue is that there are no more than 6 models available in total, otherwise the bots all go on team Gina and do not shoot, and you also cannot even enter the server without getting kicked half the time.
+
+If I take the bots out, it works great.  
+
+But with the bots in there, working, shooting, joining random teams, there can be no more than 6 teams/models available to players...
+
+ie.
+
+mp_teamlist "gina;robo;recon;gman;hgrunt;zombie" is fine;
+
+mp_teamlist "" 
+will result in the "gina" bots who dont shoot
+
+mp_teamlist "gina;robo;recon;gman;hgrunt;zombie;arbitrary_7th_model"
+will result in the "gina" bots who dont shoot whatsoever
+
+Any idea why 6 is the limit?
+
+This is wierd... and why do you insist on teamplay being off?  Did you not create your bot to handle teamplay situations?
+
+Thanks for your time, and by the way, I think your bots kick ass!
+
+PS. I'm using   mp_teamplay 1301  to activate my teamplay setting
+
+[modified on 06/13/03 at 09:14:20]
+--------------------------------------------------
+06/13/03 at 09:50:53  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+I would think that "mp_teamlist" being empty would/should not be valid.  I guess HL teamplay doesn't check for this (I don't either in the HPB bot code, I assume it's going to contain something).
+
+The HPB bot supports teamplay (they won't attack teammates).  The problem the person in the other thread was having was that he/she mistakenly enabled teamplay and didn't realize it (at least I assume that was the problem since they didn't reply after my suggestion of turning teamplay off).  In your case, you WANT to enable teamplay and that's fine.
+
+The default model the HPB bot uses when spawning a bot is the gina model.  This default will be overriden if you specify a model to use in the 'addbot' command.  If you are NOT playing in teamplay mode, and didn't specify a model in the 'addbot' command, then the HPB bot will randomly select a player model from the one's that you have on your machine (clients who don't have that model will see gordon by default).
+
+I'm not sure why there's a problem with more than 6 teams.  The code used to parse the mp_teamlist CVAR comes from the Half-Life SDK (I just cut-and-pasted it).  This is only used to determine if the bot is seeing someone on their team or an enemy team so they don't attack teammates.
+
+The HPB bot doesn't specify the player model when mp_teamplay is enabled, the Half-Life multiplayer code forces the player model to match the team that the player has been assigned to (the player can't choose the team they want to be on and thus can't specify the model they want to use).  So the bots winding up with Gina as a player model seems to indicate that the Half-Life teamplay code is not re-assigning the model properly if there are more than 6 teams.  Since all of the players are "gina", they won't attack anyone because they are all on the same team.
+
+I'm not going to be updating the HPB bot code to try to fix this bug, so you'll have to limit your mp_teamlist to six if that works for you.
+
+botman
+
+--------------------------------------------------
+06/13/03 at 09:59:22  Reply by: pl4tinum (vindi187@hotmail.com)
+--------------------------------------------------
+Indeed.. thanks for the response...
+
+Just to make my point though, when I would join the server on gman, all the bots would be on gina, and they wouldn't attack me even though I was on a different team; thus not a teammate...
+
+As well, the bots were given a specific model to spawn as.  Anyhow, thanks.
+
+[modified on 06/13/03 at 09:59:22]
+--------------------------------------------------
+07/09/03 at 06:03:57  Reply by: pl4tinum (vindi187@hotmail.com)
+--------------------------------------------------
+It's too bad the bots cant randomly choose a team if the mp_teamlist cvar is empty.  But I guess that would involve the bot having some knowledge of what models are available and that is probably more trouble than it's worth. 
+

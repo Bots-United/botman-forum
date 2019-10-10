@@ -1,0 +1,139 @@
+--------------------------------------------------
+Subject: pls help - error sending messages!!!
+--------------------------------------------------
+12/16/01 at 00:14:24  Posted by: SLAVIK (slava@deep-shadows.com)
+--------------------------------------------------
+When I am sending message to the client console apperas with text:
+host_error: writedest_param: not a client
+
+message is written in such way:
+        MESSAGE_BEGIN( MSG_ONE, gmsgLensFlare, NULL, pev );
+                WRITE_BYTE(entindex());
+        MESSAGE_END();
+
+pls help - I don't know what is wrong!
+
+--------------------------------------------------
+12/16/01 at 05:05:29  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+The error, "host_error: writedest_param: not a client", means you are trying to send a network message to something that is NOT a player (not a client).
+
+A common occurence of this problem is when people try to send a message to players indicating where they have hit other players (using the hitgroup for head shot messages, etc.).  They always forget to check if the edict they are sending the message to is a player or something else.  For example, they try to send the network message "You got a headshot!" to a grenade, when the grenade does damage to a player's head.  You can't do this.  Grenades are entities (and have an edict), but grenades are not clients and you can't send network messages to anything that isn't a client.
+
+You can prevent this by checking if the edict has the FL_CLIENT bit set in the flags field before sending the network message...
+code:
+if (pEdict->flags & FL_CLIENT)  // is this a player?
+{
+   // send network message here
+}
+
+botman
+
+--------------------------------------------------
+12/16/01 at 05:35:10  Reply by: ReDucTor[FGW] (sjdtmv@tpg.com.au)
+--------------------------------------------------
+make sure its a player your sending it to..
+
+--------------------------------------------------
+12/17/01 at 06:28:27  Reply by: SLAVIK (slava@deep-shadows.com)
+--------------------------------------------------
+But I can't get the player using CBasePlayer *pPlayer; - HL crashes, also env_lensflare is a child of CBaseDelay - how can I send the message?
+
+--------------------------------------------------
+12/17/01 at 07:57:58  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Show the full code for the function that you are using to send a lens flare message.  You HAVE to have something in there that indicates which player you are sending it to.
+
+botman
+
+--------------------------------------------------
+12/17/01 at 11:46:52  Reply by: SLAVIK (slava@deep-shadows.com)
+--------------------------------------------------
+effects.cpp:
+
+extern int gmsgLensFlare;  
+...
+class CLensFlare : public CBaseDelay
+{
+public:
+        void        Spawn( void );
+        void        EXPORT LensThink( void );
+        void        Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value );
+};
+LINK_ENTITY_TO_CLASS( env_lensflare, CLensFlare );
+
+void CLensFlare::LensThink( void )
+{
+        MESSAGE_BEGIN( MSG_ONE, gmsgLensFlare, NULL, pev );
+                WRITE_BYTE(entindex());
+        MESSAGE_END();
+}
+
+void CLensFlare::Spawn( void )
+{
+    SetThink(&CLensFlare :: LensThink);
+}
+
+void CLensFlare::Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value )
+{
+  SetThink( &CLensFlare::LensThink );
+  pev->nextthink = gpGlobals->time + 0.1;
+}
+
+from player.cpp:
+int gmsgLensFlare = 0;
+...
+gmsgLensFlare = REG_USER_MSG("LensFlare", 1);
+
+--------------------------------------------------
+12/17/01 at 13:21:08  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+There could be 2 ways this LensFlare is used...
+
+1) It only effects the user and you only want the user to see this effect.
+
+2) It effects all the users and you want everyone to see this effect.
+
+For case 1, modify your CLensFlare class to add a CBaseEntity *pActivator variable.  In the Use() function, store the pActivator (the one who used this) in the CLensFlare pActivator class.  Then in the LensThink() function, use the entindex of this pActivator variable.
+
+For case 2, just loop through all the players and send the entindex() of that player in the network message.  It will send the lens flare effect to each user.
+
+If this is NOT the way you intended to use this, you should describe WHAT this lens flare is supposed to do.
+
+P.S. You should probably NOT be sending the lens flare message every 1/10th of a second.  If you have many players on a server with slow bandwidth, the crash with errors about overrunning the client buffer (reliable messages must be acknoledged and the user would need to have 100ms ping or less to be able to keep up with messages sent every 1/10th of a second).  You might want to change your nextthink to 0.5.  Also, you need to keep setting a new nextthink in your LensThink() function, otherwise the effect will only be sent once (the first time).
+
+botman
+
+[modified on 12/17/01 at 13:21:08]
+--------------------------------------------------
+12/18/01 at 06:14:20  Reply by: SLAVIK (slava@deep-shadows.com)
+--------------------------------------------------
+thnx for aswering my question. Now about lens flare:
+ to create lens flare I must know the following:
+ 3d coordinates of light (env_lensflare) entity and coordinates of the center of the screen (i.e. 400,300). But using client.dll I can't find entity by classname (it would be more difficult) to get index - when I will have index I will be able to get entity coordinates to convert them to 2d position. Then, when I will have 2d coordinates of entity and screen center I will build imagine line, on which flares must be.
+ The problem is in that that I can't get entity index, that's why I decided to make an entitie whiñh will send its index to the client, and client will be able to draw flares.
+
+ P.S. I've done think that you talked about, but half-life crashed without any message, I think because activator was button.
+ P.P.S. thnx again and waiting for any comments!
+
+--------------------------------------------------
+12/19/01 at 09:12:46  Reply by: SLAVIK (slava@deep-shadows.com)
+--------------------------------------------------
+well, any ideas?
+
+--------------------------------------------------
+12/19/01 at 11:16:05  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+I would think if you have a lens flare entity that you want to create, it would be created once, when the map is loaded.  When someone joins the server, you would send the location of the lens flare entity to that client (even if the client wasn't anywhere near it).
+
+When the lens flare entity is visible (in the PVS), you could use WorldToScreen() to convert it from 3D world coordinates to screen coordinates.  If the origin is on the screen, then it should be visible and you can render the lens flare effect at that point.
+
+That's the way that I'd do it.
+
+botman
+
+--------------------------------------------------
+12/27/01 at 06:57:34  Reply by: SLAVIK (slava@deep-shadows.com)
+--------------------------------------------------
+Yes, you are right. But I can't send messages to the client, and client can't receive them!!!
+

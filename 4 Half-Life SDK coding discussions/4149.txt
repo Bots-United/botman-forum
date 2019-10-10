@@ -1,0 +1,440 @@
+--------------------------------------------------
+Subject: Need help with a tutorial
+--------------------------------------------------
+02/17/03 at 00:14:49  Posted by: morthy (jonathan987654321@hotmail.com)
+--------------------------------------------------
+Hi, I tried following a tutorial located here: http://hlpp.telefragged.com/tuts/grpack1.htm
+and I downloaded the source, and put it onto an unchanged source code. I got to the bit where it says: 
+
+That's it for the entities! Now all you need to do is make a map with your new .fgd file and it'll be ready to go. 
+
+and I tried to compile, but it got 2 errors to do with the new entities i think. The errors came after the teamdm file had been compiled, right at the place where it copies mp.dll.
+
+BTW im using borland.
+
+--------------------------------------------------
+02/17/03 at 06:02:59  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+We can't help you if you don't show exactly what the errors were.  Also include a few lines of the source code around where the errors were (DON'T INCLUDE THE WHOLE .cpp FILE!!!).
+
+botman
+
+--------------------------------------------------
+02/17/03 at 08:37:17  Reply by: morthy (jonathan987654321@hotmail.com)
+--------------------------------------------------
+Heres a screenie: http://burks.netfirms.com/pic.jpg
+
+--------------------------------------------------
+02/17/03 at 08:38:54  Reply by: morthy (jonathan987654321@hotmail.com)
+--------------------------------------------------
+this is where the 2 errors are: extern edict_t *EntSelectTeamSpawnPoint( CBaseEntity *pPlayer );
+
+edict_t *CRulesTeamDM :: GetPlayerSpawnSpot( CBasePlayer *pPlayer )
+{
+      edict_t *pentSpawnSpot = EntSelectTeamSpawnPoint( pPlayer );
+
+      pPlayer->pev->origin = VARS(pentSpawnSpot)->origin + Vector(0,0,1);
+      pPlayer->pev->v_angle  = g_vecZero;
+      pPlayer->pev->velocity = g_vecZero;
+      pPlayer->pev->angles = VARS(pentSpawnSpot)->angles;
+      pPlayer->pev->punchangle = g_vecZero;
+      pPlayer->pev->fixangle = TRUE;
+      
+      return pentSpawnSpot;
+}
+
+
+--------------------------------------------------
+02/17/03 at 08:40:50  Reply by: morthy (jonathan987654321@hotmail.com)
+--------------------------------------------------
+I dont think this is would stop compiling but this is what is in my fgd 
+@PointClass base(PlayerClass) = info_player_team1 : "Team 1 Start" []
+@PointClass base(PlayerClass) = info_player_team2 : "Team 2 Start" []
+--------------------------------------------------
+02/17/03 at 09:51:39  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Okay, that's a linker error.  The linker is trying to create the DLL file and it can't find a function...
+
+EntSelectTeamSpawnPoint(CBasePlayer *)
+
+You need to declare that function somewhere in your .cpp files.  If you have added an NEW .cpp file, you will need to add the matching .o file to the makefile.  For example, if you created MyWeapon.cpp, you will need to add MyWeapon.o in the makefile.  You can just stick it in after the 'xen.o' entry if you want (but make SURE to include a '\' on the end of the xen.o line so that make will know that the line continues to the next line.  also make SURE you insert a TAB character as the first character of the line, just like the ones that are already in the makefile).
+
+botman
+
+--------------------------------------------------
+02/17/03 at 23:40:47  Reply by: morthy (jonathan987654321@hotmail.com)
+--------------------------------------------------
+ive already added it to makefile, cos thats how i got the errors in teamdm file: the teamdm file is the new file!
+
+Also the file inwhich the error is in, is the new file!
+
+[modified on 02/17/03 at 23:40:47]
+--------------------------------------------------
+02/18/03 at 05:28:11  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Show the code where this function is defined...
+
+EntSelectTeamSpawnPoint()
+
+botman
+
+--------------------------------------------------
+02/18/03 at 08:39:36  Reply by: morthy (jonathan987654321@hotmail.com)
+--------------------------------------------------
+does that mean the code in the .cpp file? if it is, this is the code
+
+this is where the 2 errors are: extern edict_t *EntSelectTeamSpawnPoint( CBaseEntity *pPlayer ); 
+
+edict_t *CRulesTeamDM :: GetPlayerSpawnSpot( CBasePlayer *pPlayer ) 
+{ 
+     edict_t *pentSpawnSpot = EntSelectTeamSpawnPoint( pPlayer ); 
+
+     pPlayer->pev->origin = VARS(pentSpawnSpot)->origin + Vector(0,0,1); 
+     pPlayer->pev->v_angle  = g_vecZero; 
+     pPlayer->pev->velocity = g_vecZero; 
+     pPlayer->pev->angles = VARS(pentSpawnSpot)->angles; 
+     pPlayer->pev->punchangle = g_vecZero; 
+     pPlayer->pev->fixangle = TRUE; 
+      
+     return pentSpawnSpot; 
+} 
+
+
+or does it mean what is in the .h file: This is what i in the teamdm.h file:
+
+#ifndef TEAMDM_H
+#define TEAMDM_H
+
+#define TEAM1 "Red"
+#define TEAM2 "Blue"
+
+class CRulesTeamDM : public CHalfLifeMultiplay
+{
+public:
+      CRulesTeamDM( );
+
+      virtual void ChangePlayerTeam( CBasePlayer *pPlayer, const char *pTeamName, BOOL bKill, BOOL bGib );
+      virtual BOOL ClientCommand( CBasePlayer *pPlayer, const char *pcmd );
+      virtual void DeathNotice( CBasePlayer *pVictim, entvars_t *pKiller, entvars_t *pevInflictor );
+      virtual BOOL FPlayerCanTakeDamage( CBasePlayer *pPlayer, CBaseEntity *pAttacker );
+      virtual const char *GetGameDescription( void ) { return "Team DM"; }      // this is the game name that gets seen in the server browser
+      const char *GetIndexedTeamName( int teamIndex );
+      virtual edict_t *GetPlayerSpawnSpot( CBasePlayer *pPlayer );
+      const char *GetTeamID( CBaseEntity *pEntity );
+      int GetTeamIndex( const char *pTeamName );
+      virtual void InitHUD( CBasePlayer *pPlayer );
+      virtual int IPointsForKill( CBasePlayer *pAttacker, CBasePlayer *pKilled );
+      virtual void PlayerKilled( CBasePlayer *pVictim, entvars_t *pKiller, entvars_t *pInflictor );
+      virtual int PlayerRelationship( CBaseEntity *pPlayer, CBaseEntity *pTarget );
+      virtual int PlayersOnTeam( const char *szTeamName );
+      virtual void PlayerSpawn( CBasePlayer *pPlayer );
+      virtual BOOL ShouldAutoAim( CBasePlayer *pPlayer, edict_t *target );
+      virtual int TeamFrags( const char *szTeamName );
+      virtual const char *TeamWithFewestPlayers( void );
+      virtual void Think( void );
+      virtual void UpdateGameMode( CBasePlayer *pPlayer );      // the client needs to be informed of the current game mode
+
+private:
+      BOOL m_DisableDeathMessages;
+      BOOL m_DisableDeathPenalty;
+};
+
+#endif
+
+--------------------------------------------------
+02/18/03 at 08:48:25  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+You tell the code to call the EntSelectTeamSpawnPoint() function, and tell it that this function is external.
+
+So... WHERE is it ?
+
+where is EntSelectTeamSpawnPoint() declared ?
+
+
+--------------------------------------------------
+02/18/03 at 09:32:24  Reply by: morthy (jonathan987654321@hotmail.com)
+--------------------------------------------------
+In player.cpp there is this code: 
+
+extern edict_t *EntSelectTeamSpawnPoint( CBaseEntity *pPlayer );
+
+Also there is this place: 
+
+
+/*
+============
+EntSelectSpawnPoint
+
+Returns the entity to spawn at
+
+USES AND SETS GLOBAL g_pLastSpawn
+============
+*/
+edict_t *EntSelectSpawnPoint( CBaseEntity *pPlayer )
+{
+
+
+      CBaseEntity *pSpot;
+      edict_t            *player;
+
+      player = pPlayer->edict();
+
+// choose a info_player_deathmatch point
+      if (g_pGameRules->IsCoOp())
+      {
+            pSpot = UTIL_FindEntityByClassname( g_pLastSpawn, "info_player_coop");
+            if ( !FNullEnt(pSpot) )
+                  goto ReturnSpot;
+            pSpot = UTIL_FindEntityByClassname( g_pLastSpawn, "info_player_start");
+            if ( !FNullEnt(pSpot) ) 
+                  goto ReturnSpot;
+      }
+      else if ( g_pGameRules->IsDeathmatch() )
+      {
+            pSpot = g_pLastSpawn;
+            // Randomize the start spot
+            for ( int i = RANDOM_LONG(1,5); i > 0; i-- )
+                  pSpot = UTIL_FindEntityByClassname( pSpot, "info_player_deathmatch" );
+            if ( FNullEnt( pSpot ) )  // skip over the null point
+                  pSpot = UTIL_FindEntityByClassname( pSpot, "info_player_deathmatch" );
+
+            CBaseEntity *pFirstSpot = pSpot;
+
+            do 
+            {
+                  if ( pSpot )
+                  {
+                        // check if pSpot is valid
+                        if ( IsSpawnPointValid( pPlayer, pSpot ) )
+                        {
+                              if ( pSpot->pev->origin == Vector( 0, 0, 0 ) )
+                              {
+                                    pSpot = UTIL_FindEntityByClassname( pSpot, "info_player_deathmatch" );
+                                    continue;
+                              }
+
+                              // if so, go to pSpot
+                              goto ReturnSpot;
+                        }
+                  }
+                  // increment pSpot
+                  pSpot = UTIL_FindEntityByClassname( pSpot, "info_player_deathmatch" );
+            } while ( pSpot != pFirstSpot ); // loop if we're not back to the start
+
+            // we haven't found a place to spawn yet,  so kill any guy at the first spawn point and spawn there
+            if ( !FNullEnt( pSpot ) )
+            {
+                  CBaseEntity *ent = NULL;
+                  while ( (ent = UTIL_FindEntityInSphere( ent, pSpot->pev->origin, 128 )) != NULL )
+                  {
+                        // if ent is a client, kill em (unless they are ourselves)
+                        if ( ent->IsPlayer() && !(ent->edict() == player) )
+                              ent->TakeDamage( VARS(INDEXENT(0)), VARS(INDEXENT(0)), 300, DMG_GENERIC );
+                  }
+                  goto ReturnSpot;
+            }
+      }
+
+      // If startspot is set, (re)spawn there.
+      if ( FStringNull( gpGlobals->startspot )  !strlen(STRING(gpGlobals->startspot)))
+      {
+            pSpot = UTIL_FindEntityByClassname(NULL, "info_player_start");
+            if ( !FNullEnt(pSpot) )
+                  goto ReturnSpot;
+      }
+      else
+      {
+            pSpot = UTIL_FindEntityByTargetname( NULL, STRING(gpGlobals->startspot) );
+            if ( !FNullEnt(pSpot) )
+                  goto ReturnSpot;
+      }
+
+ReturnSpot:
+      if ( FNullEnt( pSpot ) )
+      {
+            ALERT(at_error, "PutClientInServer: no info_player_start on level");
+            return INDEXENT(0);
+      }
+
+      g_pLastSpawn = pSpot;
+      return pSpot->edict();
+}
+
+edict_t *EntSelectTeamSpawnPoint( CBaseEntity *pPlayer )
+{
+      CBaseEntity *pSpot;
+      edict_t            *player;
+
+      player = pPlayer->edict();
+
+      CBasePlayer *pBPlayer = (CBasePlayer *)pPlayer;
+
+      pSpot = g_pLastSpawn;
+
+      char *szTempNextTeam = NULL;
+
+      switch( pBPlayer->m_iNextTeam )            // should only ever be 0, 1, or 2 by now
+      {
+      case 0: szTempNextTeam = pPlayer->m_szTeamName;
+            break;
+      case 1: szTempNextTeam = TEAM1;
+            break;
+      case 2: szTempNextTeam = TEAM2;
+            break;
+      }
+
+      // Randomize the start spot
+      for ( int i = RANDOM_LONG(1,5); i > 0; i-- )
+      {
+            if ( FStrEq( szTempNextTeam, TEAM1 ) )
+                  pSpot = UTIL_FindEntityByClassname( pSpot, "info_player_team1" );
+            else
+                  pSpot = UTIL_FindEntityByClassname( pSpot, "info_player_team2" );
+      }
+
+      if ( FNullEnt( pSpot ) )  // skip over the null point
+      {
+            if ( FStrEq( szTempNextTeam, TEAM1 ) )
+                  pSpot = UTIL_FindEntityByClassname( pSpot, "info_player_team1" );
+            else
+                  pSpot = UTIL_FindEntityByClassname( pSpot, "info_player_team2" );
+      }
+
+      CBaseEntity *pFirstSpot = pSpot;
+
+      do
+      {
+            if ( pSpot )
+            {
+                  // check if pSpot is valid
+                  if ( IsSpawnPointValid( pPlayer, pSpot ) )
+                  {
+                        if ( pSpot->pev->origin == Vector( 0, 0, 0 ) )
+                        {
+                              if ( FStrEq( szTempNextTeam, TEAM1 ) )
+                                    pSpot = UTIL_FindEntityByClassname( pSpot, "info_player_team1" );
+                              else
+                                    pSpot = UTIL_FindEntityByClassname( pSpot, "info_player_team2" );
+                              continue;
+                        }
+                              // if so, go to pSpot
+                        goto ReturnTeamSpot;
+                  }
+            }
+            // increment pSpot
+
+            if ( FStrEq( szTempNextTeam, TEAM1 ) )
+                  pSpot = UTIL_FindEntityByClassname( pSpot, "info_player_team1" );
+            else
+                  pSpot = UTIL_FindEntityByClassname( pSpot, "info_player_team2" );
+
+      } while ( pSpot != pFirstSpot ); // loop if we're not back to the start
+            // we haven't found a place to spawn yet,  so kill any guy at the first spawn point and spawn there
+      if ( !FNullEnt( pSpot ) )
+      {
+            CBaseEntity *ent = NULL;
+            while ( (ent = UTIL_FindEntityInSphere( ent, pSpot->pev->origin, 128 )) != NULL )
+            {
+                  // if ent is a client, kill em (unless they are ourselves)
+                  if ( ent->IsPlayer() && !(ent->edict() == player) )
+                        ent->TakeDamage( VARS(INDEXENT(0)), VARS(INDEXENT(0)), 300, DMG_GENERIC );
+            }
+            goto ReturnTeamSpot;
+      }
+
+ReturnTeamSpot:
+      if ( FNullEnt( pSpot ) )
+      {
+            ALERT(at_error, "PutClientInServer: no player/team start on level");
+            return INDEXENT(0);
+      }
+
+      g_pLastSpawn = pSpot;
+      return pSpot->edict();
+}
+
+[modified on 02/18/03 at 09:32:24]
+--------------------------------------------------
+02/18/03 at 10:42:56  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+[edited]
+sorry, wrong post. I haven't read the code to the bottom.
+
+Anyway, isn't there a contradiction if in player.cpp you are BOTH prototyping a function as "extern" and then declare the same function explicitly in the file ?
+
+[modified on 02/18/03 at 10:42:56]
+--------------------------------------------------
+02/18/03 at 11:31:24  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+In player.cpp you have this...
+code:
+edict_t *EntSelectTeamSpawnPoint( CBaseEntity *pPlayer )
+
+...notice that it takes a 'CBaseEntity' pointer as the parameter.
+
+Now when you call the function you have this...
+code:
+edict_t *pentSpawnSpot = EntSelectTeamSpawnPoint( pPlayer );
+
+You are passing in a 'CBasePlayer' pointer (not a 'CBaseEntity' pointer).  These 2 functions are not the same (since they take different paramters).
+
+You will either have to change your code to convert CBasePlayer pointer to CBaseEntity pointer, or duplicate the EntSelectTeamSpawnPoint() code from player.cpp in your .cpp file and change the parameter to accept a CBasePlayer pointer (instead of CBaseEntity pointer).
+
+This is why following tutorials is sometimes bad, because many of them WON'T compile with the code that is shown on the website.  Sometimes you have to do a bunch of 'monkeying' around with the code to get things to work.
+
+botman
+
+[modified on 02/18/03 at 11:31:24]
+--------------------------------------------------
+02/19/03 at 08:30:32  Reply by: morthy (jonathan987654321@hotmail.com)
+--------------------------------------------------
+I still don't get what to do, could you explain it a noob who dosnt know much c++ please :)
+
+--------------------------------------------------
+02/19/03 at 08:38:16  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+You'll need to read up on C++ function overloading.
+
+In C++, you can create 2 or more functions with the same name but they take different parameters (based on the parameter 'type').  So you can create 1 function that takes an integer...
+code:
+void MyFunc(int x)
+{
+   printf("X is %d\n", x);
+}
+
+...and other function of the same name that takes a pointer to a float variable...
+code:
+void MyFunc(float *p)
+{
+   *p = *p / 3.14159f;
+}
+
+...and they do different things.  If you call them like this, you will call the function that matches the parameter you pass into it...
+code:
+
+void main(void)
+{
+   int z = 10;
+   float n = 100.0f;
+
+   MyFunc(z);  // calls the 'int' version
+   MyFunc(&n);  // calls the 'float *' version
+}
+
+The problem with your tutorial is you have a function defined which takes a 'CBaseEntity *' pointer, but you are trying to call a function which takes a 'CBasePlayer *' pointer (and that function doesn't exist anywhere).
+
+I'm not going to just give you the code you need to correct this (and I recommend other people don't either).  Read a good C++ book (or several) to learn the C++ language before you begin making changes to the Half-Life SDK source code.
+
+botman
+
+--------------------------------------------------
+02/19/03 at 09:48:41  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+"Learn C++ with Teacher Botman, $10 a lesson" ;D
+
+
+--------------------------------------------------
+02/22/03 at 04:10:14  Reply by: morthy (jonathan987654321@hotmail.com)
+--------------------------------------------------
+lol
+

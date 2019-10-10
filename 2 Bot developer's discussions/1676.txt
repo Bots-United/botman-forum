@@ -1,0 +1,92 @@
+--------------------------------------------------
+Subject: need help.... :(
+--------------------------------------------------
+05/21/01 at 02:27:47  Posted by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+Ok, this is weird. This problem, occured since yesterday. All i can say is that i added some INT variables into the bot structure (bot.h) for emotions and such. Anyhow, the problem is like this:
+
+after an amount of time, i cant see any client printed messages! Hence, my HL just drops to the console with NO ERROR message when i try to call the BOTMENU! What the heck is wrong? its like some variable is screwed? i need help on this.
+
+One good example was yesterday. I had my 'debugging' on. So the messages kept roling, and suddendly (i think it was after a radio message), the messages didnt come up anymore! Even the comment "adding bot" when typing ADDBOT, or "debug engine enabled!" when typing debug_engine 1 , didnt show! What could cause this? 
+
+
+--------------------------------------------------
+05/21/01 at 02:35:53  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+ok, this might be the problem:
+i saw i didnt 'comment out' all debug code later. I saw that somewhere i did BotDebug(msg) while msg was emtpy (or garbage) all the time. So this might flood the engine with many messages and thus other messages wont even come up. Anyhow, the problem still excists!
+
+
+
+--------------------------------------------------
+05/21/01 at 04:08:31  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+This is getting weirder and weirder. I 'fixed' the bug. Atleast, i thought , by removing that botdebug. Now, the whole engine crashes. After setting the message values! The engine DOES NOT, give any errors, but it just drops me to my desktop.
+
+/me is puzzled and needs desperately some help
+
+--------------------------------------------------
+05/21/01 at 05:08:17  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+First, try rebuilding everything (in MSVC do a Build->Rebuild All, in MingW32 or Borland do a "make clean" then a "make").
+
+Next, if you are using MSVC run the bot from within the debugger.  Since you are debugging Counter-Strike, you'll have to run the dedicated server instead of the listen server.
+
+botman
+
+--------------------------------------------------
+05/21/01 at 05:54:18  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+ok, here is what i've done. 
+I rebuild the entire thing, i tried the Release and Debug option. I'm working NOW in DEBUG mode. I'm trying to make it work onder a LISTEN server. But, i will take your advice botman and try to debug it in the dedicated server.
+
+Ok, i have changed code. I notice that the game will be created when:
+
+-> initializing the info-point table
+
+, as soon as i try:
+
+-> loading a RBL file
+
+then the engine crashes. Pretty strange, because it ALWAYS worked right. But, ok, lets assume that there is the bug.
+
+I placed A LOT of debug sentences there, so the bot.txt practicly notified me pretty much of anything happening in the code. But, now the other weird part comes. As soon as the DLL writes a line of code , then the engine will crash when it tries to write a SECOND line in the bot.txt (not the second position, but the second time it will try to write a line). I know this for 100% sure, because whenever, and i mean, EVERYWHERE on the code, even in other cpp files. The engine simply drops me to my desktop. 
+
+Somehow, i think there is a major fault in memory somewhere messing up all my variables! I have searched through my code what could be wrong, but didnt find anything yet. 
+
+Even when i grab my backup of yesterday, then still the strange, message dissapearing error comes forward! So, can anyone, give tips/hints/help about:
+
+1. The file stuff?
+2. The dissapearing messages?
+3. About anything said before?
+
+i think all bugs are related with mem. HL simply DROPS me to the desktop. It doesnt give any errors. And thats the same when you dont init a variable in SPAWNINIT of the bot... it also simply drops you to the desktop. But that aint the problem here... i wish it was that simple.
+
+--------------------------------------------------
+05/21/01 at 06:07:05  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+Another tiny update that might help.
+While running in HLDS, the engine simply 'crashes' when loading lgtning (thats right, the file that is precached for waypoints etc). This is when debug_engine = 1 in CODE. But when i set it to 0, the engine loads! However, here is an another problem i encountered which did make the engine crash (and COULD be a problem?).
+
+How can i detect if i found i a PLAYER entity, if its a dedicated server or not?
+
+anyhow, the real bug is still not fixed... :(
+
+--------------------------------------------------
+05/21/01 at 06:12:18  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+Ok, this drives me nuts. I just grabbed my backup. The only 'bug' on that one is that the messages dissapear somehow. Like the engine stop accepting them? or that something gets screwed big time. Also, debugging doesnt work that great here! :(
+
+--------------------------------------------------
+05/28/01 at 10:10:03  Reply by: ExecutionStyle (c_brennan@hotmail.com)
+--------------------------------------------------
+It sounds like you might be overwriting your debug.txt file pointer.  You said you added int variables into the bot structure... do you ever access these ints through pointers?  If so, you may be writing too much data into one of your new variables and overwriting the file pointer.  I had that happen in one of my programs and it was a very hard bug to track down.
+
+Try checking your file pointer for NULL before writing to the file or maybe setting a breakpoint just before the fprintf and put the breakpoint inside an if statement so you can toggle it to break after a certain command that you know comes right before the crash.
+
+The reason I say this is that code you know is good is crashing, and the only thing that has changed since it was working was that you added variables.  
+
+Good luck!
+
+ -Carl
+

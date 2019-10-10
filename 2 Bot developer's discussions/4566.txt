@@ -1,0 +1,382 @@
+--------------------------------------------------
+Subject: Compiling in Knoppix?
+--------------------------------------------------
+06/22/03 at 14:50:17  Posted by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+I am trying to get my bot compiled in Linux myself withouth screwing around with my HD to much.
+
+Someone recommended my Knoppix, and here is how far i got:
+
+- I have the source files
+- I have a makefile
+- I can issue a MAKE command (and yes i can write on the harddisk, i adjusted the permissions)
+- I get an error:
+
+QUOTE:
+
+knoppix@ttyp0[RealBot Linux]$ make
+gcc -Dstricmp=strcasecmp -Dstrcmpi=strcasecmp -march=i486 -O2 -w -I.. -c bot.cpp
+ -o bot.o
+gcc: installation problem, cannot exec `cc1plus': No such file or directory
+make: *** [bot.o] Error 1 
+
+
+
+
+My make file:
+QUOTE:
+
+#
+# HPB_bot makefile for Linux
+#
+# created: 12/16/2000 botman (botman@mailandnews.com)
+#
+
+# the following specifies the path to your MOD...
+MOD_DIR = /mnt/hda6/RealBot Linux/
+
+CPP = gcc
+
+BASEFLAGS = -Dstricmp=strcasecmp -Dstrcmpi=strcasecmp
+
+CPPFLAGS = ${BASEFLAGS} -march=i486 -O2 -w -I.
+
+OBJ = bot.o bot_buycode.o bot_camp.o bot_client.o bot_combat.o bot_emotion.o bot_func.o bot_ini.o bot_navigate.o bot_start.o \
+      bot_task.o bot_think.o debug.o dll.o engine.o h_export.o linkfunc.o util.o tactic.o waypoint.o waypoint_class.o
+
+realbot_i486.so: ${OBJ}
+      ${CPP} -fPIC -shared -o $@ ${OBJ} -ldl
+      cp -f realbot_i486.so ${MOD_DIR}/dlls
+
+clean:
+      -rm -f *.o
+      -rm -f *.so      
+
+%.o:      %.cpp
+      ${CPP} ${CPPFLAGS} -c $< -o $@
+
+%.o:      %.c
+      ${CPP} ${CPPFLAGS} -c $< -o $@
+ 
+
+
+
+
+the paths should be okay. I double checked them.
+
+I am not sure what the cc1plus error could be? i thought gcc was just enough? 
+
+I use Knoppix 3.1 btw.
+
+Any thoughts on this one? It would be perfect to just insert the cd, issue a make command and make it compile a linux version.
+
+[modified on 06/22/03 at 14:50:17]
+--------------------------------------------------
+06/23/03 at 04:36:58  Reply by: Cheesemonster!!! (cheeseh@houstondod.com)
+--------------------------------------------------
+I've been doing some google searching...
+
+I think the permissions might still need a little tweaking.
+
+Try typing:
+
+chmod -R a+r /
+
+...in the shell.
+
+this will give all users a read permission everywhere.
+
+If that doesn't work, you can always try:
+
+chmod -R a=rwx /
+
+and set everything to read/write and executable.
+
+Again, if that doesn't work, try logging in as root (if you can in knoppix) by typically typing "su root" in the shell, then the root password.
+
+--------------------------------------------------
+06/23/03 at 05:29:59  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+"gcc: installation problem, cannot exec `cc1plus'"
+
+Sounds like the GNU C++ compiler (gcc) isn't installed.
+
+botman
+
+--------------------------------------------------
+06/23/03 at 08:53:46  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+QUOTE:
+chmod -R a+r /
+
+this will give all users a read permission everywhere.
+
+If that doesn't work, you can always try:
+
+chmod -R a=rwx /
+
+and set everything to read/write and executable.
+
+
+
+holy shit yes, even /etc/passwd and /etc/shadow!!!
+better make an announcment "come and hack me sweetie" to all the pirates over the world!
+are you nuts or suicidal ???
+:o
+/me slaps Cheesy until he realizes...
+
+
+--------------------------------------------------
+06/23/03 at 09:24:17  Reply by: Cheesemonster!!! (cheeseh@houstondod.com)
+--------------------------------------------------
+eh... yes I know, but it's not as if he's using it for any other users, or much else other than compiling?
+
+--------------------------------------------------
+06/23/03 at 12:13:17  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+quite odd, gcc command does work. 
+
+In Knoppix you cannot log in as root, impossible. (checked the readme and that was the purpose of Knoppix.. darn).
+
+Perhaps any other suggestions? Do i really have to make a seperate partition now? Install any linux version (i got Mandrake laying somewhere here) i got and try again? :(
+
+--------------------------------------------------
+06/23/03 at 12:18:18  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Many Linux distributions come with a bootable CD that you can run from (you don't have to repartition your harddisk).  Many of these distros allow you download a .iso file and burn the CD (if you have a CD burner).
+
+You might want to look around at various Linuxes (Linuxii?), slackware, redhat, debian, etc and try one of their bootable CDs to see if you get gcc as part of the bootable image.  Then the only thing you would have to do is mount your PC filesystem to access the source files, build the .so file, and copy it back to your PC disk.
+
+The downside is that you wouldn't be able to test anything (since you couldn't install hlds into the CD image).
+
+botman
+
+--------------------------------------------------
+06/24/03 at 07:40:48  Reply by: rick (rick_helmus8@hotmail.com)
+--------------------------------------------------
+Hmm weird i've got knoppix to but i can compile atleat botman's template with it... You're sure that you're not using a NTFS formated HD ?
+
+--------------------------------------------------
+06/24/03 at 13:04:01  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+One thing that might be feasible, although I haven't tested it ever.
+
+There are quite a couple of Linux boot disks that have many utilities on them ; at least what interests you here, e.g ldd and the msdos filesystem.
+
+Boot one of these, mount your windows hard drive (as /usr/local for example), set its perms to root, and install a fresh egcs there. You'll need probably to install extra GNUteries as well, gmake, etc.
+
+Then try to compile your stuff directly at its location on your hard disk.
+
+Not guaranteed it works, but it seems to me it could...
+
+
+--------------------------------------------------
+06/24/03 at 14:08:21  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+lol, well i almost screwed up my entire HD with installing Mandrake 9.1 on a partition next to Win XP. I nearly lost everything i had (new bot, homework, everything). No way i will test anything with Linux on this computer anymore.
+
+I have an old computer (old.. well, P750) which has hardware that Linux should be able to detect properly. (Linux did not detect my Geforce FX 5200, and i did not even get passed the installation procedure without errors).
+
+Perhaps i have more luck there, and, yes, i may screw up there aswell! wohoo.
+
+--------------------------------------------------
+06/24/03 at 14:24:45  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+;D
+
+[modified on 06/24/03 at 14:24:45]
+--------------------------------------------------
+06/25/03 at 12:46:52  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+i finally got RB compiled. How? By logging into Tub's Linux account, upload my stuff to there and compile the stuff.
+
+Btw, Pierre, i have an addition to the code you posted ( i believe it was you) to make it also compilable in Linux. (Fix by Tub though, last thing he will ever do for RB i think...). About the hitboxes.
+
+(file: h_export.cpp)
+At your 'defines':
+code:
+
+///// PIERRE
+#ifdef _WIN32
+   #define DLLEXPORT_void void DLLEXPORT
+   #define DLLEXPORT_bool bool DLLEXPORT
+   #define DLLEXPORT_char char DLLEXPORT
+   #define DLLEXPORT_float float DLLEXPORT
+   #define DLLEXPORT_int int DLLEXPORT
+   typedef HINSTANCE dll_t;
+   typedef FARPROC dll_symbol_t;
+   inline dll_t LoadDynamicLibrary (const char *filename) { return (LoadLibrary (filename)); }
+   inline dll_symbol_t GetSymbolInDynamicLibrary (dll_t dll_handle, const char *symbol_name) { return (GetProcAddress (dll_handle, symbol_name)); }
+   inline int CloseDynamicLibrary (dll_t dll_handle) { return (!FreeLibrary (dll_handle)); }
+#else
+   #include <dlfcn.h>
+   #define DLLEXPORT_void extern "C" EXPORT void
+   #define DLLEXPORT_bool extern "C" EXPORT bool
+   #define DLLEXPORT_char extern "C" EXPORT char
+   #define DLLEXPORT_float extern "C" EXPORT float
+   #define DLLEXPORT_int extern "C" EXPORT int
+//   typedef (void *) dll_t;
+//   typedef (void *) dll_symbol_t;
+//   inline dll_t LoadDynamicLibrary (const char *filename) { return (dlopen (filename, RTLD_NOW)); }
+//   inline dll_symbol_t GetSymbolInDynamicLibrary (dll_t dll_handle, const char *symbol_name) { return (dlsym (dll_handle, symbol_name)); }
+ //  inline int CloseDynamicLibrary (dll_t dll_handle) { return (dlclose (dll_handle)); }
+#endif // _WIN32
+
+   // EOF PIERRE
+
+
+
+you can see, i uncommented at the 'else' part some stuff (yes, i did that).
+
+And at the function itself
+code:
+
+DLLEXPORT_int Server_GetBlendingInterface (int version, struct sv_blending_interface_s **ppinterface, struct engine_studio_api_s *pstudio, float (*rotationmatrix)[3][4], float (*bonetransform)[MAXSTUDIOBONES][3][4])
+{
+   // this function synchronizes the studio model animation blending interface (i.e, what parts
+   // of the body move, which bones, which hitboxes and how) between the server and the game DLL.
+   // some MODs can be using a different hitbox scheme than the standard one.
+
+   static bool missing = FALSE;
+
+   // if the blending interface has been formerly reported as missing, give up
+   if (missing)
+      return (0);
+
+   // do we NOT know if the blending interface is provided ? if so, look for its address
+   if (!other_Server_GetBlendingInterface)
+      other_Server_GetBlendingInterface = (SERVER_GETBLENDINGINTERFACE) GetProcAddress (h_Library, "Server_GetBlendingInterface");
+//      other_Server_GetBlendingInterface = (SERVER_GETBLENDINGINTERFACE) GetSymbolInDynamicLibrary (h_Library, "Server_GetBlendingInterface");
+
+   // have we NOT found it ?
+   if (!other_Server_GetBlendingInterface)
+   {
+      missing = TRUE; // then mark it as missing, no use to look for it again in the future
+      return (0); // and give up
+   }
+
+   // else call the function that provides the blending interface on request
+   return ((other_Server_GetBlendingInterface) (version, ppinterface, pstudio, rotationmatrix, bonetransform));
+}
+
+
+
+
+you can see "GetProcAddress" is used now instead of "GetSymbolInDynamicLibrary". This also compiled in Windows btw. I did not test it 100% yet, but afaik it should work.
+
+--------------------------------------------------
+06/25/03 at 13:22:04  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Yeah Stefan, but you know, GetProcAddress() is not available under Unix... that's why I wrapped it to GetSymbolInDynamicLibrary() to take this to a more abstractive level. No wonder you "uncommented" it, because it should never have been commented :)
+
+But anyway, that's not the complete #ifdef I posted, if you want it, just ask and I'll post the whole scary code ;D
+
+
+[Edited] BTW, so Tub's not dead yet ?? Hey, how long is it we haven't seen him around ? good!! lol
+
+[modified on 06/25/03 at 13:22:04]
+--------------------------------------------------
+06/26/03 at 02:58:44  Reply by: rick (rick_helmus8@hotmail.com)
+--------------------------------------------------
+
+QUOTE:
+Yeah Stefan, but you know, GetProcAddress() is not available under Unix... that's why I wrapped it to GetSymbolInDynamicLibrary() to take this to a more abstractive level. No wonder you "uncommented" it, because it should never have been commented :)
+
+But anyway, that's not the complete #ifdef I posted, if you want it, just ask and I'll post the whole scary code ;D
+
+
+ BTW, so Tub's not dead yet ?? Hey, how long is it we haven't seen him around ? good!! lol
+
+[modified on 06/25/03 at 13:22:04]
+
+
+
+
+Ehm can i ask it to :-)
+I will need this stuff for later so if you can help me :)
+
+--------------------------------------------------
+06/26/03 at 09:58:03  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Well most of the ideas actually come from Will Day's source code (i.e. metamod). This guy did a very efficient wraparound of platform subtleties in metamod, and uses a syntax like this, based on a lot of #ifdefs that make the code virtually compilable on anything. You may want to have a look there, before I take the time to write some explanation about my way of doing things...
+
+
+--------------------------------------------------
+06/27/03 at 02:47:51  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+actually, Tub does not code actively on RealBot anymore for almost a year now.
+
+So, to be honest, yes Tub is virtually dead on the bot scene, although he does not let me really officially tell it on the website. However, if he continues to keep absent and let me code most stuff now, i see no other option. Besides, he does not even the website for ages, so even if i did, he won't be even noticing it.
+
+You can still mail him though with some questions, although he rarely replies.
+
+I bet he is to busy with this diablo2.de thingy
+
+--------------------------------------------------
+06/27/03 at 05:27:30  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Speaking of bootable CDs.  Did anybody see the announcement about Dyne-bolic?
+
+They have a bootable Linux CD that allows you to easily try out various Linux applications without having to reformat or repartition your hard disk.  It will even boot on Xboxes with MOD chips!
+
+http://dynebolic.org/
+
+botman
+
+--------------------------------------------------
+06/27/03 at 06:45:51  Reply by: rick (rick_helmus8@hotmail.com)
+--------------------------------------------------
+
+QUOTE:
+Speaking of bootable CDs.  Did anybody see the announcement about Dyne-bolic?
+
+They have a bootable Linux CD that allows you to easily try out various Linux applications without having to reformat or repartition your hard disk.  It will even boot on Xboxes with MOD chips!
+
+http://dynebolic.org/
+
+botman
+
+
+
+
+Erm doesn't knoppix do this :)
+With knoppix you have a bunch of linux programs, you don't have to (re)format your hd and its optional to make a small partation on your hd to store some stuff :)
+
+--------------------------------------------------
+06/27/03 at 07:33:15  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+"Erm doesn't knoppix do this :)"
+
+Yes, but it won't boot on an Xbox!  8)
+
+botman
+
+--------------------------------------------------
+06/27/03 at 08:54:23  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+<TAUNT>
+What's the frikkin purpose of booting UNIX on a gaming console anyway ???
+
+Real OS for men: http://www.openbsd.org ;)
+</TAUNT>
+
+
+--------------------------------------------------
+06/27/03 at 10:32:59  Reply by: rick (rick_helmus8@hotmail.com)
+--------------------------------------------------
+
+QUOTE:
+"Erm doesn't knoppix do this :)"
+
+Yes, but it won't boot on an Xbox!  8)
+
+botman
+
+
+
+
+hehe ok you win :-)
+
+@Pierre
+So you can do things like you can with a pc :D
+

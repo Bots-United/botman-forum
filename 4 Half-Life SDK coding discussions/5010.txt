@@ -1,0 +1,198 @@
+--------------------------------------------------
+Subject: Teleport Rune
+--------------------------------------------------
+12/15/03 at 20:40:07  Posted by: Blood_Dust (di@html.com)
+--------------------------------------------------
+ok im trying to make a teleport rune that if you bind the command and use it. it will teleport you but i tryed this it crashed server?? o and im puting this in the player.cpp,
+
+code:
+const char *pcmd = CMD_ARGV(0);
+void CBasePlayer::RuneTel()
+
+{
+
+if( m_iPlayerRune & RUNE_TEL )
+ClientPrint(this->pev, HUD_PRINTCENTER, "You are now can teleport.\n");
+{
+      if ( FStrEq(pcmd, "telrune" ))
+      {
+            GetClassPtr((CBasePlayer *)pev)->Teleport();
+      }
+//     Teleport();      
+//      edict_t *Teleport;
+      //Teleport = EntSelectSpawnPoint(this); //Select our teleport destination 
+      //pev->origin = VARS(Teleport)->origin + Vector(0,0,1);
+      //pev->angles = VARS(Teleport)->angles;
+      return;
+}
+pev->nextthink = gpGlobals->time + 10.0;
+}
+
+
+[modified on 12/15/03 at 20:40:07]
+--------------------------------------------------
+12/15/03 at 21:16:18  Reply by: LazyOne (the_lazy_one_09@hotmail.com)
+--------------------------------------------------
+There are a few things wrong here, first, keep the commands in either client.cpp:ClientCommand in your gamerules::ClientCommand functions.
+
+Second, you do realize that pev points to the current object's entvars structure? It is not healthy to be changing a player's nextthink.
+
+Is that code all accurate?
+It seems kinda odd for command chekcing to be there and the other stuff seems out of place somehow.
+
+
+--------------------------------------------------
+12/18/03 at 10:39:54  Reply by: Blood_Dust (di@html.com)
+--------------------------------------------------
+i am trying to make it where you have to use a command to use the rune but you have to have the rune first.
+ ok i have this in player.cpp
+
+code:
+
+void CBasePlayer::RuneTel()
+
+{
+if( m_iPlayerRune & RUNE_TEL )
+ClientPrint(this->pev, HUD_PRINTCENTER, "You can now teleport.\n");
+{
+
+            edict_t *Teleport;
+      Teleport = EntSelectSpawnPoint(this); //Select our teleport destination 
+      pev->origin = VARS(Teleport)->origin + Vector(0,0,1);
+      pev->angles = VARS(Teleport)->angles;
+      return;
+}
+}
+
+
+
+and this in cleint.cpp
+
+code:
+
+      else if ( FStrEq(pcmd, "userune" ))
+      {
+                  
+            GetClassPtr((CBasePlayer *)pev)->RuneTel();
+      
+      }
+
+
+--------------------------------------------------
+12/18/03 at 11:48:56  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+You have to lift the player off the ground before changing thier location.  See this code from the CBaseTrigger::TeleportTouch() function in the triggers.cpp file...
+code:
+pevToucher->flags &= ~FL_ONGROUND;
+      
+UTIL_SetOrigin( pevToucher, tmp );
+
+pevToucher->angles = pentTarget->v.angles;
+
+if ( pOther->IsPlayer() )
+{
+   pevToucher->v_angle = pentTarget->v.angles;
+}
+
+pevToucher->fixangle = TRUE;
+pevToucher->velocity = pevToucher->basevelocity = g_vecZero;
+
+...also make SURE to call UTIL_SetOrigin() to change the origin (not just setting pev->origin to a vector) so that the engine will update the collision hash information for that player.
+
+botman
+
+[modified on 12/18/03 at 11:48:56]
+--------------------------------------------------
+12/18/03 at 11:56:40  Reply by: Blood_Dust (di@html.com)
+--------------------------------------------------
+the code that i put in works but it also works if you do not have the rune?
+
+--------------------------------------------------
+12/18/03 at 14:32:36  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+That's probably because your "if" statement code is "broken" (i.e. doesn't work properly because of the brackets).
+
+You have this...
+code:
+if( m_iPlayerRune & RUNE_TEL ) ClientPrint(this->pev, HUD_PRINTCENTER, "You can now teleport.\n");
+
+You probably wanted this instead...
+code:
+if( m_iPlayerRune & RUNE_TEL )
+{
+   ClientPrint(this->pev, HUD_PRINTCENTER, "You are now can teleport.\n");
+   if ( FStrEq(pcmd, "telrune" ))
+   {
+      GetClassPtr((CBasePlayer *)pev)->Teleport();
+   }
+//     Teleport();      
+//      edict_t *Teleport;
+   //Teleport = EntSelectSpawnPoint(this); //Select our teleport destination 
+   //pev->origin = VARS(Teleport)->origin + Vector(0,0,1);
+   //pev->angles = VARS(Teleport)->angles;
+   return;
+}
+
+botman
+
+--------------------------------------------------
+12/22/03 at 12:59:58  Reply by: Blood_Dust (di@html.com)
+--------------------------------------------------
+One last thing about the teleport rune im trying to make it where it will wait like 10 sec then work again. I put nextthink blah blah 10 and it does not effect it.
+code:
+
+void CBasePlayer::Teleport(void)
+{
+      edict_t *Teleport;
+      Teleport = EntSelectSpawnPoint(this); //Select our teleport destination 
+      pev->origin = VARS(Teleport)->origin + Vector(0,0,1);
+      pev->angles = VARS(Teleport)->angles;
+      pev->nextthink = gpGlobals->time + 10.0;
+}
+
+
+--------------------------------------------------
+12/22/03 at 13:12:49  Reply by: Cheesemonster!!! (cheeseh(at)rcbot(dot)net)
+--------------------------------------------------
+use UTIL_SetOrigin(pev, <teleport origin>)
+
+or remove the FL_ONGROUND flag from players flags before setting origin
+
+--------------------------------------------------
+12/22/03 at 14:01:46  Reply by: LazyOne (the_lazy_one_09@hotmail.com)
+--------------------------------------------------
+Ok, your teleport is not resetting for a few reasons...
+
+You are setting the player's nextthink - bad idea and it just won't work.
+You really should add null pointer checks, it makes for much more stable code.
+
+To have a time limit sort of thing you'd do something like this...
+
+Declare a float variable in CBasePlayer.
+On teleport set it to gpGlobals->time + seconds.
+In the player's think check if gpGlobals->time >= your CBasePlayer's teleport time variable.
+If that evaluates to true, zero it.
+
+If you want to check if they can fire they're teleport just check if player's_time_float == 0.0.
+If that evaluates to true they should be allowed to teleport.
+
+That's just off the top of my head but you should get the idea.
+
+
+
+--------------------------------------------------
+12/22/03 at 14:29:11  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+"nextthink" ONLY works on Think() functions (which your's is NOT).  You should be using a timer to keep track of when the last time the rune was used and skip over the code if it's too soon to use it yet...
+code:
+if (use_time < gpGlobals->time)  // is next time it can be used less than current time?
+{
+   use_time = gpGlobals->time + 10.0;  // set next time this can be used to 10.0 seconds in the future
+ 
+   // your stuff here
+}
+
+You will need to store "use_time" as a float variable in the player class (i.e. add it to the CBasePlayer class in player.h) and you will need to initialize the "use_time" to 0.0 when the player spawns (indicating that they can use the rune right away, since 0.0 will always be less than the current game time).
+
+botman
+

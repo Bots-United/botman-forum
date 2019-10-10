@@ -1,0 +1,70 @@
+--------------------------------------------------
+Subject: Invisable brush entitys...
+--------------------------------------------------
+01/09/03 at 18:58:13  Posted by: LeonThePro (sirgalahad@ozgn.com)
+--------------------------------------------------
+How could I do a check to see if I'm in a invisable brush entity, like in tfc, func_nobuild or some other entity like that?
+
+--------------------------------------------------
+01/09/03 at 20:04:30  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+UTIL_TraceHull with a non-point hull (head_hull for example).
+
+
+--------------------------------------------------
+01/10/03 at 04:18:53  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+FindEntityByClassname "func_nobuild"
+
+check to see if pev->origin of player is inside it's absmin & absmax.
+
+--------------------------------------------------
+01/10/03 at 12:22:02  Reply by: LeonThePro (sirgalahad@ozgn.com)
+--------------------------------------------------
+how would i check to see if their in the absmin and absmax?
+
+--------------------------------------------------
+01/10/03 at 12:48:31  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+I dunno if your supposed to edit the vector.h file since it's valves ;) but you can add new operators to it such as these in the Vector class.
+
+code:
+
+      inline bool operator<=(const Vector &v) const { return ( (x <= v.x) && (y <= v.y) && (z <= v.z) ); }
+      inline bool operator>=(const Vector &v) const { return ( (x >= v.x) && (y >= v.y) && (z >= v.z) ); }
+      
+      inline bool operator>(const Vector &v) const { return ( (x > v.x) && (y > v.y) && (z > v.z) ); }
+      inline bool operator<(const Vector &v) const { return ( (x < v.x) && (y < v.y) && (z < v.z) ); }
+
+
+
+you can then find out by
+
+code:
+
+bool OriginInsideEntity ( const Vector &v_origin, edict_t *pEntity )
+{
+        return (v_origin >= pEntity->v.absmin) && (v_origin <= pEntity->v.absmax);
+}
+
+bool OriginInsideEntityByClassname ( const Vector &v_origin, const char *classname )
+{
+        edict_t *pLocation = NULL;
+
+      while ( (pLocation = UTIL_FindEntityByClassname(pLocation,classname)) != NULL )
+      {
+            if ( (v_origin >= pLocation->v.absmin) && (v_origin <= pLocation->v.absmax) )
+                  return TRUE;
+      }
+
+      return FALSE;
+}
+
+
+
+[modified on 01/10/03 at 12:48:31]
+--------------------------------------------------
+01/12/03 at 10:33:55  Reply by: LeonThePro (sirgalahad@ozgn.com)
+--------------------------------------------------
+Thank you =)
+

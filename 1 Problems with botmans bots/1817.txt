@@ -1,0 +1,76 @@
+--------------------------------------------------
+Subject: Can two people make wayponits at once?
+--------------------------------------------------
+06/16/01 at 20:44:43  Posted by: ted (darth_nuggs@yahoo.com)
+--------------------------------------------------
+Can two people in the same server make waypoints at the same time? If so please tell he how to.
+
+--------------------------------------------------
+06/17/01 at 05:12:36  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+Sure.  The HPB bot source code will call WaypointThink() for any player that is not a fake client (bot).  So if you had two people running around in the map, WaypointThink() would get called for each of them.  The WaypointThink() function keeps track of where a player is so that it can draw the waypoints near the player.  Only the waypoints within 400 units of the player are drawn.  The reason that I don't draw every waypoint is that you only have about 350 temporary entities on the client (any more than this and it will crash).  So if you had more than 350 waypoints you would have problems.
+
+The commands to add or remove waypoints don't check to see which player it is (and they don't care).  The only player that is allowed to execute client commands is the player that created the server (i.e. the listen server client).  You can remove this check by commenting out this line in the ClientCommand() function in the dll.cpp file...
+code:
+   if ((gpGlobals->deathmatch) && (!IS_DEDICATED_SERVER()) &&
+       (pEntity == listenserver_edict))
+
+...that will allow any player connected to the server to execute any HPB bot command (like addbot, waypoint add, waypoint delete, etc.).
+
+botman
+
+--------------------------------------------------
+06/17/01 at 08:26:51  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+Whenever I have my bots in the game and use "autowaypoint on", They start making waypoints for me too! ;) But they walk all over the place ... :D
+
+I thought maybe it was a bug...??? or is it ??? ;)
+
+
+--------------------------------------------------
+06/17/01 at 10:45:10  Reply by: ted (darth_nuggs@yahoo.com)
+--------------------------------------------------
+Thanks a million botman. But i have one more quick question. 
+
+QUOTE:
+ You can remove this check by commenting out this line in the ClientCommand() function in the dll.cpp file...
+code:
+   if ((gpGlobals->deathmatch) && (!IS_DEDICATED_SERVER()) &&
+      (pEntity == listenserver_edict))
+
+
+
+ 
+So basically open that .dll with textpad and erase that line? Thanks again
+
+--------------------------------------------------
+06/18/01 at 05:15:01  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+"I thought maybe it was a bug...??? or is it ???"
+
+Yes, there used to be a bug where bots would call the WaypointThink() function (which does the autowaypointing stuff).  I fixed that problem by checking to make sure that the current player is not a fake client (not a bot) before calling the WaypointThink() function.  The HPB bot template source code has this...
+code:
+   if ((g_waypoint_on) && FBitSet(pPlayer->v.flags, FL_CLIENT))
+   {
+      WaypointThink(pPlayer);
+   }
+
+...I modified it to this...
+code:
+   if ((g_waypoint_on) &&
+       FBitSet(pPlayer->v.flags, FL_CLIENT) &&
+       !FBitSet(pPlayer->v.flags, FL_FAKECLIENT))
+   {
+      WaypointThink(pPlayer);
+   }
+
+"So basically open that .dll with textpad and erase that line?"
+
+No, you will need to download the HPB bot template source, make the changes described above and compile the HPB bot template source code with a supported C++ compiler (Microsoft Visual C++, Borland or MingW32).  Also realize that the HPB bot template code IS NOT the same as the released version of the HPB bot (the template code won't follow any waypoints).
+
+I was simply trying to describe what would be necessary for a bot author to change in the code to be able to have multiple people editing the waypoints in a map.  Since making this change also opens the door to allowing any other client add bots or change bot settings this is a bad thing (considered a security problem by server admins).
+
+I guess I should have simply said "No, it's not possible to have multiple people editing waypoints at the same time in a map" and left it at that.
+
+botman
+

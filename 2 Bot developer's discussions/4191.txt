@@ -1,0 +1,96 @@
+--------------------------------------------------
+Subject: map size in counter strike
+--------------------------------------------------
+03/03/03 at 15:01:51  Posted by: theturtle (theturtle@wanadoo.fr)
+--------------------------------------------------
+1°) i'd like to know how to get the map size (length and height) to create my own waypoint system but i don't know how to get these values...
+perhaps with gpGlobals ?
+2°) i didn't manage to get documentation on gpGlobals as it seems to store a lot of informations about the game, map, ... does someone have someting about that for me ?
+
+thanks a lot guys :o)
+
+
+--------------------------------------------------
+03/03/03 at 15:15:51  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+1) The map boundries aren't available directly from inside the game DLL code (or through the engine interface).  The only thing you can do to determine the BSP boundries is to load the BSP data yourself.  See my 'BSP tools' project for samples on doing this.
+
+2) The globalvars_t structure can be found in the engine\progdefs.h file.
+
+botman
+
+--------------------------------------------------
+03/03/03 at 16:42:50  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+You can get the map size by getting access to the bounding box of the first model in the BSP data. The first entity loaded (worldspawn), is the map itself, and since bounding box are always axial, it will get you the length and width of the map. You don't need much BSP code to do this. 20 lines of code and the same amount of structure definitions, including comments, should get the job done.
+
+Also, if you want to see how one can use the BSP data for building a navmesh, you might want to look at my template here:
+http://www.racc-ai.com/racc-template.exe
+
+Basically, I build a bidimensional hashtable over the map, which buckets are sized relatively to the width and depth of the map itself, in order to store "walkface" data (which you can compare to waypoints).
+
+{edited}
+
+the globalvars_t structure doesn't hold that much data. It doesn't tell you the map size, if that's what you want to know.
+
+typedef struct
+{      
+   float time; // time elapsed in seconds since the server booted (a map change starts a new server)
+   float frametime; // time elapsed in seconds since the last main game loop (video frame) on the server
+   float force_retouch; // dunno
+   string_t mapname; // index in the string table to the map name string, without the .bsp
+   string_t startspot; // contains data for single player seamless level transision in a string
+   float deathmatch; // non-null if deathmatch mode
+   float coop; // non-null if cooperative mode (unused in HL)
+   float teamplay; // non-null if teamplay mode (teamplay in the HLDM meaning; with models)
+   float serverflags; // dunno
+   float found_secrets; // probably an obsolete relic of a previous HL project where there would have been secret places
+   vec3_t v_forward; // forward (relative y in common math) direction of the latest 3D referential build call (MAKE_VECTORS)
+   vec3_t v_up; // upper (relative z in common math) direction of the latest 3D referential build call (MAKE_VECTORS)
+   vec3_t v_right; // right (relative y in common math) direction of the last 3D referential build call (MAKE_VECTORS)
+   float trace_allsolid; // traceresult parameter transposed in global variable, useless (TraceResult allsolid equivalent)
+   float trace_startsolid; // traceresult parameter transposed in global variable, useless (TraceResult startsolid equivalent)
+   float trace_fraction; // traceresult parameter transposed in global variable, useless (TraceResult flFraction equivalent)
+   vec3_t trace_endpos; // traceresult parameter transposed in global variable, useless (TraceResult vecEndPos equivalent)
+   vec3_t trace_plane_normal; // traceresult parameter transposed in global variable, useless (TraceResult vecPlaneNormal equivalent)
+   float trace_plane_dist; // traceresult parameter transposed in global variable, useless (TraceResult flPlaneDist equivalent)
+   edict_t *trace_ent; // traceresult parameter transposed in global variable, useless (TraceResult pentIgnore equivalent)
+   float trace_inopen; // traceresult parameter transposed in global variable, useless (TraceResult in_open equivalent)
+   float trace_inwater; // traceresult parameter transposed in global variable, useless (TraceResult in_water equivalent)
+   int trace_hitgroup; // traceresult parameter transposed in global variable, useless (TraceResult iHitGroup equivalent)
+   int trace_flags; // traceresult parameter transposed in global variable, useless (TraceResult iTraceFlags equivalent)
+   int msg_entity; // dunno
+   int cdAudioTrack; // audio CD track supposed to be played on this level, from the BSP file
+   int maxClients; // maximum clients on server
+   int maxEntities; // number of entity slots on server, to size the entity exchange at map start between clients and server
+   const char *pStringBase; // pointer to address of string table start
+   void *pSaveData; // dunno, has to do with the save/restore feature in single player
+   vec3_t vecLandmarkOffset; // wtf ?
+} globalvars_t;
+
+[modified on 03/03/03 at 16:42:50]
+--------------------------------------------------
+03/27/03 at 15:46:39  Reply by: theturtle (theturtle@wanadoo.fr)
+--------------------------------------------------
+"The first entity loaded (worldspawn), is the map itself, and since bounding box are always axial, it will get you the length and width of the map."
+
+ok i understand how to get the bounding box of an entity_t but what do you mean by "first entity loaded" ??? is it the first one described in the .bsp file ? the first entity loaded in counter strike ?
+i've watched both loading code for bsp file from racc-ai and botman's bsp tool but i don't understand where the "map floor" is defined... and i NEED this...
+
+if someone could explain me that in details... that 'll be great !
+
+thanks again guys
+
+[modified on 03/27/03 at 15:46:39]
+--------------------------------------------------
+03/31/03 at 03:09:45  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+the entity called "worldspawn" is the first entity to be spawned in DispatchSpawn() when a map loads.
+
+--------------------------------------------------
+03/31/03 at 04:07:36  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+...and it is ALSO entity #0 in the BSP file's entdata, as well as model #0 in the BSP file's models data.
+This is a constant. Worldspawn (the map) is always the first entity, and the first model, everywhere.
+
+

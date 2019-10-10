@@ -1,0 +1,62 @@
+--------------------------------------------------
+Subject: disable "use" key in Serv-side mod
+--------------------------------------------------
+05/14/02 at 23:48:32  Posted by: Sparken (incoming@sparksonline.org)
+--------------------------------------------------
+THis should be real simple, but I'm stumped.
+Anyone know how I can disable the clients "use" and "duck" keys in a given mode?
+
+THis is for a server side mod - so the use function won't trigger unwanted client-side events. IE, simply assigning "IN_USE" to the server-side function, isn't keeping it from executing client-side valve stuff. Grrr.
+
+--------------------------------------------------
+05/15/02 at 00:58:13  Reply by: BrianL (halfkiller@hotmail.com)
+--------------------------------------------------
+You can check if the person is pressing IN_USE then doing to a variables like so:
+
+  Use this check in ClientCommand (edict_t *pEdict):
+
+  if ((pEdict->v.button & IN_USE) && (noUseKEY))
+  {
+    CLIENT_COMMAND("-use\n");
+    pEdict->v.button &= ~IN_USE; // Stop him from using it...
+  }
+
+Same goes for ducking, you might want to make it on a timer too.
+
+[modified on 05/15/02 at 00:56:28]
+
+[modified on 05/15/02 at 00:58:13]
+--------------------------------------------------
+05/15/02 at 04:28:29  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Also blocking the engine calling DispatchUse() function will prevent some cases of things being used (others will still occur if the game DLL code calls DispatchUse() directly.).
+
+P.S. I wouldn't check the IN_USE or IN_DUCK buttons in ClientCommand(), I would check in the PlayerPostThink() function.
+
+botman
+
+[modified on 05/15/02 at 04:28:29]
+--------------------------------------------------
+05/16/02 at 00:04:08  Reply by: Sparken (incoming@sparksonline.org)
+--------------------------------------------------
+I appreciate the help guys and hope you can bear with me a lil bit more...
+
+Okay, I tried this to no avail. It has the effect of toggling the use function imediately off after it is initiated. I need to be able to completely prevent the client from initiating the call for "IN_USE". 
+
+A better example would be if a player is just standing there, normally if he hits the use key, he will hear the anoying lil beep, indicating the key was pressed. Let's imagine we just want to make it so we never even hear the noise by preventing the key press being registered on the client side as a +use. The action has to be ahead of the action instead of the server waiting for an IN_USE to trigger the action. 
+
+I placed the code above without any conditions in the PlayerPostThink (should totally disable use at all times) and even though the client can't hold the key and get say, a health charger to work, you still hear the "beep" each key press.
+
+Kind of a hack, but effective thing to do in my mind, would be to read the client's key bind for +use, then unbind it, then rebind it back at the end of the function. Although, I am not experienced enough to do so. 
+
+The sole purpose is to defeat the inset window and options menu from being qued by the client in an observer mode. Since I am using iuser1,2 pairs between client and server, it wants to bring up what I imagine is TFC menu stuff. Piece of cake if this was going to be a client side mod. Perhaps there is an easier way?
+
+
+
+--------------------------------------------------
+05/16/02 at 00:48:36  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+I may be mistaken because I have not had the occasion to toy with DispatchUse yet, but I think Botman's method, i.e. blocking dispatch call in DispatchUse would do what you want. The only point on which I'm not sure is, is the lil bip done because the key is pressed, or because something is used ? I'd say the second point, but...
+
+Good luck anyway.
+

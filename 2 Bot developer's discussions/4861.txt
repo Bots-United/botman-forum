@@ -1,0 +1,179 @@
+--------------------------------------------------
+Subject: About msecval
+--------------------------------------------------
+09/29/03 at 07:29:45  Posted by: OffTopic (khomsan.ph@student.chula.ac.th)
+--------------------------------------------------
+from the BotThink() function of the HPB_bot template...
+code:
+
+// TheFatal - START from Advanced Bot Framework (Thanks Rich!)
+
+// adjust the millisecond delay based on the frame rate interval...
+if (pBot->msecdel <= gpGlobals->time)
+{
+      pBot->msecdel = gpGlobals->time + 0.5;
+      if (pBot->msecnum > 0)
+            pBot->msecval = 450.0/pBot->msecnum;
+      pBot->msecnum = 0;
+}
+else
+      pBot->msecnum++;
+
+if (pBot->msecval < 1)    // don't allow msec to be less than 1...
+      pBot->msecval = 1;
+
+if (pBot->msecval > 100)  // ...or greater than 100
+      pBot->msecval = 100;
+
+// TheFatal - END
+
+
+I notice from the joebot's source that @$3.1415rin does this in the StartFrame()
+My question is why not do this stuff in the StartFrame() like @$3.1415rin does and set the 'msecval' as a global variable?
+
+Is the msecval difference among the bots?
+
+
+--------------------------------------------------
+09/29/03 at 08:53:46  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+No, the msec value will be the same for all bots (since they all think once during the same frame).
+
+My original intent was to change how often bots think and each one could have a different msec value based on how often they think.  After trying out different think times for each bot, I decided to have them all think during every frame.
+
+If you have something that is CPU intensive (like scanning the world with lots of tracelines), you might want to stagger the think times for each bot so that they don't all think at once and bog down the framerate.
+
+botman
+
+--------------------------------------------------
+09/29/03 at 08:57:15  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+It may be different yes, because it's the time elapsed between two successive calls of pfnRunPlayerMove() for the SAME bot. Hence if a bot is spectating or dead, and the other one is in some intense gunfight, the time between both may not be the same. I wonder why Joe did it that way ???
+
+[edit] aaaaaahh, guru botman doesn't agree with me. Gasp... Are you sure of this, botman ?
+
+[modified on 09/29/03 at 08:57:15]
+--------------------------------------------------
+09/29/03 at 13:07:52  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+I'm pretty sure that the game time (gpGlobals->time) won't change during the same StartFrame() function.  If you loop through all of your bots within StartFrame(), the game clock should be "frozen" at some specific time and shouldn't change until the engine calls StartFrame() again.
+
+botman
+
+--------------------------------------------------
+09/29/03 at 14:12:16  Reply by: Cheesemonster!!! (cheeseh(at)rcbot(dot)net)
+--------------------------------------------------
+It does in fact botman :) don't ask how but I've stored a before and after time for executing my bots think during startframe using gpGlobals->time, and it has a value more than 0, typically 1/framerate
+
+[modified on 09/29/03 at 14:12:16]
+--------------------------------------------------
+09/30/03 at 05:46:32  Reply by: OffTopic (khomsan.ph@student.chula.ac.th)
+--------------------------------------------------
+Trust botman or cheesy then? ???
+
+[modified on 09/30/03 at 05:46:32]
+--------------------------------------------------
+09/30/03 at 05:47:11  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Only trust yourself.
+
+Experiment and find out on your own.
+
+botman
+
+--------------------------------------------------
+09/30/03 at 06:08:31  Reply by: OffTopic (khomsan.ph@student.chula.ac.th)
+--------------------------------------------------
+OK i trust botman... ;D
+
+--------------------------------------------------
+09/30/03 at 08:47:33  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Then I'll go on trusting myself 8)
+
+
+--------------------------------------------------
+10/02/03 at 00:13:46  Reply by: OffTopic (khomsan.ph@student.chula.ac.th)
+--------------------------------------------------
+Here is my experiment...
+
+I put this in StartFrame()...
+code:
+
+static int frame_count = 0;
+frame_count++;
+AppendLog( BOT_LOG, VarArgs( "frame%d: time => %f\n", frame_count, gpGlobals->time ) );
+Sleep( 100 );
+AppendLog( BOT_LOG, VarArgs( "frame%d: time => %f\n", frame_count, gpGlobals->time ) );
+
+
+
+and here is part of the log file...
+
+...
+frame18: time => 1.800000
+frame18: time => 1.800000
+frame19: time => 1.936089
+frame19: time => 1.936089
+frame20: time => 2.186090
+frame20: time => 2.186090
+frame21: time => 2.359707
+frame21: time => 2.359707
+frame22: time => 2.523792
+frame22: time => 2.523792
+...
+
+
+so botman word is true! or the Sleep() function pause the engine time.
+
+--------------------------------------------------
+10/02/03 at 03:45:04  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+QUOTE:
+or the Sleep() function pause the engine time.
+
+
+Actually I find it normal that it does; you shouldn't do it this way.
+
+Do it this way instead: put a new variable in bot_t that you call f_prev_runplayermove_time or whatever, and set it to gpGlobals->time just after you called pfnRunPlayerMove() for bots. Then, just BEFORE calling pfnRunPlayerMove(), print something like:
+printf ("time elapsed since last RunPlayerMove() for bot %s: %f\n", STRING (pBot->pEdict->v.netname), gpGlobals->time - pBot->f_prev_runplayermove_time);
+and run the test with 4 or 5 bots ; you should see that during the same frame, not all bots have the same delta of time.
+
+
+--------------------------------------------------
+10/10/03 at 21:46:19  Reply by: OffTopic (khomsan.ph@student.chula.ac.th)
+--------------------------------------------------
+I finally found that the engine has give us the frametime as a globalvars_t's
+code:
+
+gpGlobals->frametime
+
+
+can we  use it in place of msecval like this?
+code:
+
+RUN_PLAYER_MOVE( pBot->pEdict, pev->v_angle, forwardmove, sidemove
+                     , 0/* upmove */, pev->button, 0/* impulse */,  gpGlobals->frametime * 1000 );
+
+
+
+
+--------------------------------------------------
+10/11/03 at 04:17:04  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+You may, but you will miss the low-pass filtering that the msec system provides.
+
+
+--------------------------------------------------
+10/11/03 at 06:52:03  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+I got REALLY weird results using gpGlobals->frametime.  You can try it and see if it works for you or not.
+
+botman
+
+--------------------------------------------------
+10/11/03 at 07:58:22  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+You may indeed get weird results if there is a big difference in terms of computation time from frame to frame. If all frames are roughly equal, it may work well. But as it's difficult to plan in advance what changes will occur in your code in the future and whether these changes will require long frame times on occasion, I don't advise to use this method.
+
+

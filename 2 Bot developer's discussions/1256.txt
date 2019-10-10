@@ -1,0 +1,116 @@
+--------------------------------------------------
+Subject: Another minor issue
+--------------------------------------------------
+02/24/01 at 13:41:24  Posted by: Dog (dog@apexmail.com)
+--------------------------------------------------
+Probably attributed to User Error as well.
+
+Error E2451 client.cpp 305: Undefined symbol 'pc' in function Host_Say(edict_s *,int)
+*** 1 errors in Compile ***
+
+Here's what I was doing.  I wanted to start off with a base of Bot #10.  So I downloaded the full sdk's sourcecode, copied the Bot source into the dlls folder (all of the files in the zip).  Then applied the borland_full compatibility patch.  Edited the makefile, bcc32.cfg and ilink32.cfg files to point to the proper directories and compiled.
+
+My guess is this problem is related to the fact that the full source uses the VGUI library.  In case you havn't noticed, i'm not a real programmer.  I got enough knowledge of programming to be able to tweak things but not enough to debug :)
+
+Jason S
+My purpose for wanting to edit the code was to insert new/more animations for my models.  This is also why I chose the bot code (so I could test various models! :)
+
+--------------------------------------------------
+02/25/01 at 02:10:22  Reply by: pikachu (emperorstuart@hotmail.com)
+--------------------------------------------------
+The vgui.lib is clientside :D
+
+--------------------------------------------------
+02/25/01 at 05:44:12  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+Host_Say uses this code...
+code:
+// make sure the text has content
+   for ( char *pc = p; pc != NULL && *pc != 0; pc++ )
+   {
+      if ( isprint( *pc ) && !isspace( *pc ) )
+      {
+         pc = NULL;  // we've found an alphanumeric character
+         break;
+      }
+   }
+   if ( pc != NULL )
+      return;  // no character found, so say nothing
+
+...this is very bad C++ form.  The pc variable is defined inside the "for" loop.  The scope for this variable should only exist inside the "for" loop.  Once the block of code inside the "for" loop is exited the "pc" variable should not exist (like Valve is using in the "if ( pc != NULL )" statement.  You can fix it by doing this...
+code:
+// make sure the text has content
+char *pc;
+for ( pc = p; pc != NULL && *pc != 0; pc++ )
+
+botman
+
+--------------------------------------------------
+02/25/01 at 15:09:17  Reply by: Dog (dog@apexmail.com)
+--------------------------------------------------
+Fancy, when I got into the code it looked
+code:
+// make sure the text has content
+for ( pc = p; pc != NULL && *pc != 0; pc++ )
+
+
+So I added the char *pc; and recompiled got new error's (well okay old error's which I was not aware of at the time) which I believe are related to this:
+
+Notes about differences in the source code for the Borland compiler:
+The major difference is the SetThink(), SetTouch() and SetUse() functions
+had to change.  Everywhere in the original Valve SDK where a SetThink(),
+SetTouch() or SetUse() appeared had to be changed to include a reference
+to the class containing the function (i.e. the address of the function).
+For example, here's a change that was made in the airtank.cpp file...
+
+and I was wondering if you could explain this referencing to the class containing the function a bit more for my C++ lacking mind :)
+
+I think I found one of these I need to change, in the client.cpp
+code:
+         // call the think function for the bot...
+         pBot->BotThink();
+
+
+This is when I realized that I have no clue what to do :P  There's more error's too I just noticed the last two cause of the ()
+
+Dog
+Current error output:
+Error: Unresolved external '_bot_respawn' referenced from D:\DEVELOPMENT\SOURCECODE\DLLS\CLIENT.OBJ
+Error: Unresolved external 'BotCreate(const char *, const char *, const char *)' referenced from D:\DEVELOPMENT\SOURCECODE\DLLS\CLIENT.OBJ
+Error: Unresolved external '_f_Observer' referenced from D:\DEVELOPMENT\SOURCECODE\DLLS\CLIENT.OBJ
+Error: Unresolved external '_f_botskill' referenced from D:\DEVELOPMENT\SOURCECODE\DLLS\CLIENT.OBJ
+Error: Unresolved external '_f_botdontshoot' referenced from D:\DEVELOPMENT\SOURCECODE\DLLS\CLIENT.OBJ
+Error: Unresolved external 'CBotCam::Create(CBasePlayer *, CBasePlayer *)' referenced from D:\DEVELOPMENT\SOURCECODE\DLLS\CLIENT.OBJ
+Error: Unresolved external 'CBotCam::Disconnect()' referenced from D:\DEVELOPMENT\SOURCECODE\DLLS\CLIENT.OBJ
+Error: Unresolved external 'CBot::BotThink()' referenced from D:\DEVELOPMENT\SOURCECODE\DLLS\CLIENT.OBJ
+
+--------------------------------------------------
+02/26/01 at 04:57:53  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+The unresolved external errors are probably because you don't include bot.h in the client.cpp file.
+
+botman
+
+--------------------------------------------------
+02/26/01 at 08:20:05  Reply by: Dog (dog@apexmail.com)
+--------------------------------------------------
+code:
+// START BOT
+#include "bot.h"
+#include "botcam.h"
+
+void BotCreate(const char *skin, const char *name, const char *skill);
+
+
+This is a fresh full sdk source code, I then copied all of the files from bot10src.zip into the dlls folder (overwriting existing files).  Then I copied the contents of borland_full.zip (from borland_sdk.zip) into the sourcecode folder and ran mod_sdk.bat.  Now I doubt this was the best way to do this, but i am just trying to compile bot10 with borland with no other code modifications.  Since there's not a hint at what you need to do with bot10src.zip, it's hard for clueless people such as myself to figure it out in a way that works.
+
+Jason
+Still interested in a lil more detail about that referencing info.
+
+--------------------------------------------------
+02/26/01 at 13:57:21  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+Bot Number 10 will NOT work with the Full SDK.  Start with the Standark SDK instead.
+
+botman
+

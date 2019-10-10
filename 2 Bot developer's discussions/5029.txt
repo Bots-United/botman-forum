@@ -1,0 +1,84 @@
+--------------------------------------------------
+Subject: file handles leak
+--------------------------------------------------
+12/24/03 at 16:42:58  Posted by: BAStumm (bs@bs-linux.com)
+--------------------------------------------------
+I'm having a server crashing problem (have for a WHILE now) that I've finally tracked down. The other day I noticed that when trying to reread plugins.ini for metamod its giving a "too many open files" problem then after that the error is couldn't spawn 2fort.bsp (or whatever map is loading). The server runs fine for many many hours (10+) between crashes. I restarted yesterday with developer 1 on and sure enough, 26 hours later I see this...
+
+Spawn Server rock2
+Clearing memory
+Using WAD File: halflife.wad
+Using WAD File: tfc.wad
+Using WAD File: liquids.wad
+Texture load:   14.8ms
+Building PAS...
+Average leaves visible / audible / total: 129 / 430 / 3366
+loading waypoint file: tfc/maps/rock2.HPB_wpt
+loading HPB bot waypoint paths for team 1
+loading HPB bot waypoint paths for team 2
+Cvar_Set: variable room_type not found
+Cvar_Set: variable v_dark not found
+L 12/24/2003 - 16:14:33: Server name is " SpokaneTeamFortress.com"
+0 entities inhibited
+L 12/24/2003 - 16:14:33: [SPARKYV2] FoXBoT area file "/hlds_l/tfc/addons/foxbot/tfc/areas/rock2.far" loaded
+L 12/24/2003 - 16:14:33: Server cvar "sv_maxspeed" = "400"
+"sv_maxspeed" changed to "400"
+Executing tfc/maps/rock2_HPB_bot.cfg
+Executing tfc/maps/rock2_HPB_bot.cfg
+Executing tfc/maps/rock2_HPB_bot.cfg
+Executing tfc/maps/rock2_HPB_bot.cfg
+Executing tfc/maps/rock2_HPB_bot.cfg
+Executing tfc/maps/rock2_HPB_bot.cfg
+
+lsof reports over 3000 instances of rock2_HPB_bot.cfg are open... I use a modified HPB_bot version 3.0 (full not template). I don't believe any of my modifications changed the config file reading areas but I could be wrong. So first, any chance this bug exists in HPB_bot code? And if its a problem I've introduced where should I check? I don't believe its related to this particular config file for rock2 since the crashes happen on various different maps. Also I see nothing unusual in this config file either. 
+
+The confusing part is how it runs fine for many hours (26 hours last session) before crashing. I checked periodically over the past day and always had less than 100 files open according to lsof so its a very random bug that puts it into a loop of opening the config over and over and over and over until it reaches the max open files per process. 
+
+
+--------------------------------------------------
+12/24/03 at 16:44:57  Reply by: BAStumm (bs@bs-linux.com)
+--------------------------------------------------
+oh yea and bots do not join on the map PRIOR to the crash, which is when the huge number of config files are opened. So even though its opening 3000 some copies of MAP_HPB_bot.cfg its not reading it correctly... 
+
+--------------------------------------------------
+12/24/03 at 18:26:45  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+then for sure there is a bug in how the bot handles its config files. I'd bet there is a way to exit the portion of code corresponding to after checking whether the config file opened correctly, WITHOUT closing it ; like a "return" without fclose() just before, or something like that. I'd be willing to check that out, but I've no HPB_bot source code under the hand right now.
+
+
+--------------------------------------------------
+12/27/03 at 06:45:44  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Maybe you are not processing the .cfg file all the way to the end (where you reach End Of File, eof which causes the file to be closed).
+
+The default HPB bot code processes one line at a time in the .cfg file and keeps the file open until it reaches end of file.  When a "pause" command is reached, the code stores the time when the pause command will be finished skips the .cfg file parsing until that time is reached.  Similarly when bots are spawned, it delays a bit between each bot since early versions of the engine had problems with bots being spawned too fast (causing a crash).
+
+Perhaps you are setting the timer incorrectly, or are overwriting it somewhere else and the rest of the .cfg never gets executed because the timer value is wrong.
+
+Try putting some logging statements (using printf to another text file) to display what's happening at each point in the code that parses the .cfg file.  When you execute a command from the .cfg file, log that out to the file.  When you set a timer, log that out as well as the current game time so you know when the next command should have been executed.
+
+botman
+
+--------------------------------------------------
+12/28/03 at 11:08:35  Reply by: BAStumm (bs@bs-linux.com)
+--------------------------------------------------
+In the dll.cpp there are two spots such as:
+
+sprintf(msg, "Executing %s\n", filename);
+
+I've modified these two lines to determine which spot causes the repeating Executing mapnamehere_HPB_bot.cfg. The second instance of this code (reading top to bottom) is the culprit. The only way we can get into this loop is:
+
+if ((gpGlobals->time + 0.1) < previous_time)
+
+So something is getting messed up with either gpGlobals->time or previous_time. The only time this statement should be true is at map start. Yet for me at random times (2-48 hours run time) this is getting messed up causing the map specific bot config file to be opened over and over and over... 
+
+--------------------------------------------------
+12/28/03 at 12:11:42  Reply by: Cheesemonster!!! (cheeseh(at)rcbot(dot)net)
+--------------------------------------------------
+instead of using the time method to catch a new map, use the ServerActivate function :)
+
+--------------------------------------------------
+12/28/03 at 12:55:58  Reply by: BAStumm (bs@bs-linux.com)
+--------------------------------------------------
+Disregard this thread, I'm an idiot. Had a "return" in a very bad spot... 
+

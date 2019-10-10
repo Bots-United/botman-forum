@@ -1,0 +1,158 @@
+--------------------------------------------------
+Subject: tfc entity info and other stuff
+--------------------------------------------------
+10/12/01 at 15:30:15  Posted by: RedFox (redfox@nildram.co.uk)
+--------------------------------------------------
+Well, got a few things I'm stumped on.
+I've been trying to find where certain infomation is stored (and access it) with not much luck on the following (I've saved the entire entity info for items with no luck):
+
+for flags and ammo packs (info_tfgoals..I think) I'm trying to find out how much ammo/armor it will give you if you pick it up...also which team can pick it up..
+
+for cap points (can't remeber what entity those are) I'm trying to find out what goal number activates it (i.e. what flag can be capped their.. e.g. '100'...the flags 'number' is stored under ent->v.impulse)
+
+sentry gun ammo levels (rockets and shells)..no luck atall with this...I can get the health, but not the ammo level. should this one be got from intercepting a message to the bot/user the level its at (i.e. the info in the bottom right of the HUD stating the sg's health/ammo level)???
+
+weapons... what the current amount of ammo is in the chamber (bumber of rockets/pipe bombs) :)
+hopefully this ones simple...
+also, is their somthing that tell you if the weapon is currently fireing?? (i.e. in recoil/reload?)
+
+how many grenades a player has...I assume that ones simple aswell, but no luck their iether.. :(
+
+and finally, buttons...is their a way to check their state? i.e. have they just been pressed? are they currently on/off??
+I can get all the entites their linked to etc...
+
+also, anything about env_beams being on/off...this one I don't really need, but could be useful if its not the same sort of info as the buttons..
+
+sorry for asking for lots of stuff at once :) just had a list of stuff I havn't been able to get for a while.
+all this stuff doesn't seem to be part of the ent->v.* vars..but may be part of the ent->v.euser stuff...dunno
+
+thanks for any help in advance :D
+I appreciate any help, even if its just pointing me in the right direction...
+:)
+
+--------------------------------------------------
+10/12/01 at 17:12:19  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+have a look at fgd mapping files... hers just some bits I got from the info_tfgoal :-) visit http://info.gamedesign.net :-)
+
+code:
+
+      frags(integer) : "Add/Subtract frags"
+      lives(integer) : "Add/Subtract lives"
+      health(integer) : "Add/Subtract health"
+      //      Armortypes are:
+      //            0.3 : Green
+      //            0.6 : Yellow
+      //            0.8 : Red
+      armortype(Choices) : "Armor Type" : 0 =
+      [
+            0 : "normal"
+            1 : "1 - kevlar"
+            2 : "2 - wodden"
+            4 : "4 - blast"
+            8 : "8 - shock"
+            16 : "16 - ceramic"
+      ]
+      armorvalue(integer) : "Armor Value %"
+      armorclass(choices) : "Armor Class" : 0 =
+      [
+            0 : "normal"
+            1 : "1 - kevlar"
+            2 : "2 - wodden"
+            4 : "4 - blast"
+            8 : "8 - shock"
+            16 : "16 - ceramic"
+      ]
+
+      ammo_shells(integer) : "Add/Subtract shells"
+      ammo_nails(integer) : "Add/Subtract nails"
+      ammo_rockets(integer) : "Add/Subtract rockets"
+      ammo_cells(integer) : "Add/Subtract cells"
+      ammo_medikit(integer) : "Add/Subtract medikit"
+      ammo_detpack(integer) : "Add/Subtract detpack"
+
+
+--------------------------------------------------
+10/12/01 at 17:37:47  Reply by: RedFox (redfox@nildram.co.uk)
+--------------------------------------------------
+Yup..but doesn't help much cus I can't find them in the code! (thanks anyway)...
+the ent vars don't contain these (as far as I can tell)....
+they may be pointed to by the ent var, but if so its not obviouse...
+
+ok, just checked the code and they are their...but theirs still no info on getting them from an entity....thats what I need really..how to get these vars from an entity (as their not part of the entity variable structure)
+
+[modified on 10/12/01 at 17:37:47]
+--------------------------------------------------
+10/13/01 at 02:52:35  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+I think im getting somewhere here. I found this in the sdk..
+
+I take it its for the train entity, but they things called "lip" and "wait" etc are values that are put into it. I dunno where the pkvd comes from tho ;-)
+
+code:
+
+
+void CBasePlatTrain :: KeyValue( KeyValueData *pkvd )
+{
+      if (FStrEq(pkvd->szKeyName, "lip"))
+      {
+            m_flLip = atof(pkvd->szValue);
+            pkvd->fHandled = TRUE;
+      }
+      else if (FStrEq(pkvd->szKeyName, "wait"))
+      {
+            m_flWait = atof(pkvd->szValue);
+            pkvd->fHandled = TRUE;
+      }
+
+
+
+
+theres even a value called "volume" which may be useful for bots... just to be more human like, to hear doors, trains etc.
+
+If u could just somehow get all that stuff for what you want then ur in business!
+
+[modified on 10/13/01 at 02:52:35]
+--------------------------------------------------
+10/13/01 at 05:37:25  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+You'll need to intercept and store this information as entities are being spawned.  See these posts on using DispatchKeyValue()...
+
+http://dynamic.gamespy.com/~botman/yabb/YaBB.pl?board=2&action=display&num=991
+
+http://dynamic.gamespy.com/~botman/yabb/YaBB.pl?board=2&action=display&num=639
+
+http://dynamic.gamespy.com/~botman/yabb/YaBB.pl?board=2&action=display&num=366
+
+botman
+
+--------------------------------------------------
+10/13/01 at 18:29:23  Reply by: RedFox (redfox@nildram.co.uk)
+--------------------------------------------------
+Thanks guys, most useful that!
+Got some new areas to mess with now :)
+
+--------------------------------------------------
+10/19/01 at 15:51:47  Reply by: RedFox (redfox@nildram.co.uk)
+--------------------------------------------------
+To start with, thanks again cus the dispatch spawn info helps with a lot.
+But I still can't find info for some things....
+
+Sentry guns.....any clues on how to get their ammo level?
+The main problem is that I see no dispatchspawn messages during a level, only at the level load.
+So its not being shown through that.... I may have missed a message being sent that is showing the ammo level (I can see one being sent to human clients..but maybe not bots for the display in the bottom left hand corner of the screen, perhaps I should use this?)
+Just wondering if you guys have any clues to this one :)
+
+Also...still can't figure if a func_button is active or not.... i.e. its been pressed
+also say its only 'on' for a certain time, I need a meathod that tells me when it changes state back aswell.
+I did find some stuff with the think time value, but its not that helpful (doesn't always apply).
+
+Their must be a trick to all this I'm missing..just wondering if you guys have any insight on these.
+
+Thanks again.
+
+--------------------------------------------------
+10/20/01 at 06:19:56  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+I might think that there may be a network message to the engineer that built the sentry that will tell the armor and ammo, beacuase its shown on the engi's HUD. *Possibly*! :)
+

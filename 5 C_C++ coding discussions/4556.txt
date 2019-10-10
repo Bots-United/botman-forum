@@ -1,0 +1,182 @@
+--------------------------------------------------
+Subject: linux iobuf
+--------------------------------------------------
+06/20/03 at 09:26:39  Posted by: Cheesemonster!!! (cheeseh@houstondod.com)
+--------------------------------------------------
+[edit]
+well after searching my files even more I found:
+code:
+
+struct _IO_FILE {
+  int _flags;            /* High-order word is _IO_MAGIC; rest is flags. */
+#define _IO_file_flags _flags
+
+  /* The following pointers correspond to the C++ streambuf protocol. */
+  /* Note:  Tk uses the _IO_read_ptr and _IO_read_end fields directly. */
+  char* _IO_read_ptr;      /* Current read pointer */
+  char* _IO_read_end;      /* End of get area. */
+  char* _IO_read_base;      /* Start of putback+get area. */
+  char* _IO_write_base;      /* Start of put area. */
+  char* _IO_write_ptr;      /* Current put pointer. */
+  char* _IO_write_end;      /* End of put area. */
+  char* _IO_buf_base;      /* Start of reserve area. */
+  char* _IO_buf_end;      /* End of reserve area. */
+  /* The following fields are used to support backing up and undo. */
+  char *_IO_save_base; /* Pointer to start of non-current get area. */
+  char *_IO_backup_base;  /* Pointer to first valid character of backup area */
+  char *_IO_save_end; /* Pointer to end of non-current get area. */
+
+  struct _IO_marker *_markers;
+
+  struct _IO_FILE *_chain;
+
+  int _fileno;
+  int _blksize;
+  _IO_off_t _old_offset; /* This used to be _offset but it's too small.  */
+
+
+
+
+so I guess blksize is the same as bufsize in windows
+
+Original message:
+
+
+Hey, I'm having trouble with getting to know what the FILE (_iobuf) struct has in linux, In windows it is:
+
+struct _iobuf {
+        char *_ptr;
+        int   _cnt;
+        char *_base;
+        int   _flag;
+        int   _file;
+        int   _charbuf;
+        int   _bufsiz;
+        char *_tmpfname;
+        };
+typedef struct _iobuf FILE;
+
+But what is it in linux? Because I can't find it on my linux box and I believe the structure is different. Because I'm referencing parts of the FILE structure in my program, but in linux it says "_iobuf" doesn't have the variable that im poiting to in the structure (i.e. _ptr or _bufsiz)
+
+I've tried searching on google, but can't find a good link on it :/
+
+[modified on 06/20/03 at 09:26:39]
+--------------------------------------------------
+06/20/03 at 09:39:27  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+I would imagine that 'blksize' varies based on the size of blocks used to create a partition in unix (extfs, sysv, advfs, ufs, reiserfs, etc.).
+
+What are you referencing from the file structure?
+
+That stuff will ALL be non-portable so don't assume that file structure fields will translate to anything related between Win32 and Linux (the file systems and protection methods are so vastly different that there's going to be very little in common).
+
+botman
+
+--------------------------------------------------
+06/20/03 at 12:33:09  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+That's the problem I had with my "mfile" library ; I was assuming the FILE structure contents were the same on all OS where actually it is not. I had to make my own structure to deal with files.
+
+I believe writing a new structure for handling files with the according read/write/seek functions is the most efficient way to get things working without embarassing oneself with a lot of #ifdef's.
+
+
+--------------------------------------------------
+06/20/03 at 15:19:44  Reply by: Cheesemonster!!! (cheeseh@houstondod.com)
+--------------------------------------------------
+I'm using it in PM'S BSP Reading code, but I didn't use your own File handling code, PM, becuase I had trouble with it crashing :(
+
+code:
+
+      fp = fopen(map_path,"rb");
+
+      int *bufsiz = NULL;
+
+//get the buffer size
+#ifdef __linux__
+      bufsiz = &fp->_blksize; // is this right???
+#else
+      bufsiz = &fp->_bufsiz;
+#endif
+
+      char *file = (char *) pfnLoadFileForMe (filename, bufsiz); // load the file 
+      
+      fclose(fp);
+      // here we skip all checks. Useless, since the HL engine succeeded in booting the map, the 
+      // BSP file has obviously no error. 
+      
+      map.nummodels = ReadLump (LUMP_MODELS, map.dmodels, sizeof (map.dmodels), (dheader_t *) file);
+
+...
+...
+
+ 
+
+after reading my post again with the linux code I guess that bufsiz will be
+
+int linux_buf_siz = (int)_IO_buf_end - (int)_IO_buf_base;
+
+?
+
+[modified on 06/20/03 at 15:19:44]
+--------------------------------------------------
+06/20/03 at 19:22:53  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+What's the point of all this ? I'm confused. Do you want to specify the size of the BSP data to read in pfnLoadFileForMe(), in the hope that it won't crash ? If you're up to get the size of the file, why don't you just go with a bufsiz = fseek(fp, 0, SEEK_END) ?
+
+Also one thing that you DEFINITELY shouldn't do, is to open the file with fopen(), then open another instance of it with pfnLoadFileForMe(). You don't have to fopen() a file before pfnLoadingItForYou(), and actually you MUSTN'T.
+
+Either fclose() the file before, or don't open it at all. Do you understand fully what pfnLoadFileForMe() does ?
+
+
+--------------------------------------------------
+06/21/03 at 05:40:14  Reply by: Cheesemonster!!! (cheeseh@houstondod.com)
+--------------------------------------------------
+Ah right :O
+
+I was also confused with the LoadFileForMe stuff, I thought the files were different, well that's how I managed to do it without crashing before.. anyway I'll try the seek thing :P
+
+--------------------------------------------------
+06/21/03 at 07:12:18  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Sorry, I got myself messed up once again ;D
+code:
+
+   fseek (fp, 0, SEEK_END); // seek at end of file
+   file_size = ftell (fp); // get the file size
+
+
+works better, definitely...
+
+
+--------------------------------------------------
+07/01/03 at 04:58:16  Reply by: BrianL (halfkiller@hotmail.com)
+--------------------------------------------------
+I also used his code before, and created my own struct for managing files...  If you want it get it here...
+
+Copy 'n' Paste into brower: (Angelfire don't like linking)
+http://www.angelfire.com/games3/bjlbot/MFile.html
+
+--------------------------------------------------
+07/01/03 at 06:04:03  Reply by: Cheesemonster!!! (cheeseh@houstondod.com)
+--------------------------------------------------
+You forgot to initialise, tmpfname, and when it trys to free it it gets a nasty error.
+
+mFile::mFile()
+{ 
+  for (i = 0; i < MAX_FILES; i++)
+  { 
+    pFiles[i]._ptr = NULL;
+    pFiles[i]._bufsize = -1;
+    pFiles[i]._cnt = -1;
+    pFiles[i]._tmpfname = NULL; // need this too
+  }
+}
+
+--------------------------------------------------
+07/01/03 at 06:16:56  Reply by: BrianL (halfkiller@hotmail.com)
+--------------------------------------------------
+doh, yea no one's perfect ;)
+
+Thanx for pointing it out, I better go through all my projects now :)
+
+[modified on 07/01/03 at 06:16:56]

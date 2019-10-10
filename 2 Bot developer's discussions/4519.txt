@@ -1,0 +1,347 @@
+--------------------------------------------------
+Subject: Switch between primary and secondary weapon
+--------------------------------------------------
+06/11/03 at 13:00:10  Posted by: martin (lobo@diku.dk)
+--------------------------------------------------
+Hallo
+
+How do I switch between a primary and secondary weapon, when I don't know which weapon the bot is carrying and their names ? 
+
+I thought I could use something like this, but it dosen't work.
+ 
+            if (RANDOM_LONG(1,10) >= 5)
+                   FakeClientCommand(pEdict,"slot1",NULL,NULL);
+                  else
+                   FakeClientCommand(pEdict,"slot2",NULL,NULL);
+
+Regards Martin
+
+--------------------------------------------------
+06/11/03 at 14:35:00  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+"primary and secondary weapon" -> I assume you are talking about Counter-Strike
+
+You actually can know which weapons the bot has, just look at the weapons field of the bot's edict_t structure. This is
+code:
+
+pBot->pEdict->v.weapons
+
+
+in botman's template. It is an integer bitmap, where each of the 32 bits that make the integer correspond to a weapon. If the bot owns this weapon, this bit will be set to 1 ; else, it will be reset to 0.
+
+Here are the bitmap definitions for the weapons in Counter-Strike:
+code:
+
+// weapon ID values for Counter-Strike
+#define CS_WEAPON_P228 1
+#define CS_WEAPON_UNKNOWN2 2
+#define CS_WEAPON_SCOUT 3
+#define CS_WEAPON_HEGRENADE 4
+#define CS_WEAPON_XM1014 5
+#define CS_WEAPON_C4 6
+#define CS_WEAPON_MAC10 7
+#define CS_WEAPON_AUG 8
+#define CS_WEAPON_SMOKEGRENADE 9
+#define CS_WEAPON_ELITE 10
+#define CS_WEAPON_FIVESEVEN 11
+#define CS_WEAPON_UMP45 12
+#define CS_WEAPON_SG550 13
+#define CS_WEAPON_UNKNOWN14 14
+#define CS_WEAPON_UNKNOWN15 15
+#define CS_WEAPON_USP 16
+#define CS_WEAPON_GLOCK18 17
+#define CS_WEAPON_AWP 18
+#define CS_WEAPON_MP5NAVY 19
+#define CS_WEAPON_M249 20
+#define CS_WEAPON_M3 21
+#define CS_WEAPON_M4A1 22
+#define CS_WEAPON_TMP 23
+#define CS_WEAPON_G3SG1 24
+#define CS_WEAPON_FLASHBANG 25
+#define CS_WEAPON_DEAGLE 26
+#define CS_WEAPON_SG552 27
+#define CS_WEAPON_AK47 28
+#define CS_WEAPON_KNIFE 29
+#define CS_WEAPON_P90 30
+
+
+
+
+--------------------------------------------------
+06/11/03 at 14:55:16  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+You can read the weapon slots from the weaponlist network message, and thus work out what is a primary weapon and a secondary weapon by looking at their slot number. (I should also write that you need not implement the reading of these network messages, as botmans hpb_bot template already includes this and the "extern bot_weapon_t" values should also be found properly in botmans code) 
+
+typically the primary weapon has slot 0, and secondary has slot 1. I think its the same for CS.
+
+for example:
+
+add:
+
+code:
+
+int primary_weapon_id;
+int secondary_weapon_id;
+
+
+
+To your bot_t structure...
+
+And you'll be able to use this function
+
+code:
+
+void BotUpdateWeaponIds ( bot_t *pBot )
+{
+    int weapon;
+    extern bot_weapon_t weapon_defs[MAX_WEAPONS];
+    // get bot weapon definitions from the bot_client 
+    // (its defined in bot_client) and updated there
+    
+    pBot->primary_weapon_id = 0;
+    pBot->secondary_weapon_id = 0;
+    // Lets set these to 0 first.
+
+    // take a loop through all the weapons available
+    // in counter-strike. (from p228 to p90) as you can
+    // see in PM's post
+
+    for ( weapon = CS_WEAPON_P228; weapon <= CS_WEAPON_P90; weapon++ )
+    {
+        // does the bot have this weapon?
+        if ( pBot->bot_weapons & (1<<weapon))
+        {
+            if ( weapon_defs[weapon].iSlot == 0 ) // primary weapon
+                pBot->primary_weapon_id = weapon;
+            else if ( weapon_defs[weapon].iSlot == 1 ) // secondary weapon
+                pBot->secondary_weapon_id = weapon; // update these ids
+        }
+    }
+}
+
+
+
+Now its easy to switch between primary and secondary weapons.
+
+Lets create a new function:
+
+code:
+
+BOOL BotSelectWeapon( bot_t *pBot, int iId )
+// Returns TRUE if the weapon was successfully changed to
+// the id "iId", and FALSE if not successful (e.g. doesn't have the weapon)
+{
+    extern bot_weapon_t weapon_defs[MAX_WEAPONS];
+    edict_t *pEdict = pBot->pEdict;
+
+    if ( pBot->bot_weapons & (1<<iId) ) // does bot have the weapon with id : iId ?
+    {
+      if ( pBot->current_weapon.iId != iId ) // If the bots current weapon isn't this id already
+            UTIL_SelectItem(pEdict,weapon_defs[iId].szClassname); // Select the classname of the id (i.e. "weapon_...")
+    }
+    else
+      return FALSE;
+      
+    // return true as weapon has been changed or the weapon is currently iId.
+    return TRUE;
+}
+
+
+
+Now you're ready to use these functions
+
+code:
+
+// somewhere in your bot code: (e.g. BotThink)
+...
+
+BOOL WeaponSuccess;
+
+BotUpdateWeaponIds(pBot);
+
+if ( pBot->WANTS_TO_SELECT_PRIMARY_WEAPON )
+   WeaponSuccess = BotSelectWeapon(pBot,pBot->primary_weapon_id);
+else if ( pBot->WANTS_TO_SELECT_SECONDARY_WEAPON )
+   WeaponSuccess = BotSelectWeapon(pBot,pBot->secondary_weapon_id);
+
+if ( WeaponSuccess )
+{
+//weapon was changed, do something if neccessary here
+}
+else
+{
+//weapon couldn't be changed, do something if neccessary here
+}
+
+...
+
+
+
+[modified on 06/11/03 at 14:55:16]
+--------------------------------------------------
+06/11/03 at 15:03:15  Reply by: martin (lobo@diku.dk)
+--------------------------------------------------
+OK - Thanks for the help
+
+[modified on 06/11/03 at 15:03:15]
+--------------------------------------------------
+06/11/03 at 15:04:12  Reply by: Cheesemonster!!! (cheeseh@houstondod.com)
+--------------------------------------------------
+This determines if its a primary or secondary weapon:
+
+code:
+
+if ( weapon_defs[weapon].iSlot == 0 ) // primary weapon                 
+   pBot->primary_weapon_id = weapon;  
+else if ( weapon_defs[weapon].iSlot == 1 ) // secondary weapon                 
+   pBot->secondary_weapon_id = weapon; // update these ids 
+
+
+
+The weapons iSlot will be 0 if its in the primary slot, 1 if its in the secondary slot.
+
+But you the code at your own disgression, if you don't think it will work. However I think its quite neat and you can set a timer to update it occasionaly (say every 0.5 seconds) instead of having many "if's & else if's" to check for the current primary/secondary weapons.
+
+[modified on 06/11/03 at 15:04:12]
+--------------------------------------------------
+06/11/03 at 16:21:24  Reply by: martin (lobo@diku.dk)
+--------------------------------------------------
+Hallo Cheese 
+I think we had made som crossposting.
+My first reply was to Pierre, because i haven't seen yours reply. I think your metod is quite good. 
+But i don't understand the weapon_defs[weapon]. When is the array initialized with the weapon data ? Only when BotClient_Valve_WeaponList is called ?
+
+--------------------------------------------------
+06/11/03 at 16:26:53  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Yes
+The WeaponList message is always sent when the server starts, just after the MOD DLL has been attached. All the weapons that are used in the MOD are sent to clients, with their ID and specifications.
+
+
+--------------------------------------------------
+06/11/03 at 16:48:47  Reply by: martin (lobo@diku.dk)
+--------------------------------------------------
+OK. 
+And here is all the weapon values.
+
+iPosition: 3 
+iSlot: 1 
+weapon id: 1 
+szClassname:  
+iPosition: 0 
+iSlot: 0 
+weapon id: 0 
+szClassname: weapon_scout 
+iPosition: 9 
+iSlot: 0 
+weapon id: 3 
+szClassname: weapon_hegrenade 
+iPosition: 1 
+iSlot: 3 
+weapon id: 4 
+szClassname: weapon_xm1014 
+iPosition: 12 
+iSlot: 0 
+weapon id: 5 
+szClassname: weapon_c4 
+iPosition: 3 
+iSlot: 4 
+weapon id: 6 
+szClassname: weapon_mac10 
+iPosition: 13 
+iSlot: 0 
+weapon id: 7 
+szClassname: weapon_aug 
+iPosition: 14 
+iSlot: 0 
+weapon id: 8 
+szClassname: weapon_smokegrenade 
+iPosition: 3 
+iSlot: 3 
+weapon id: 9 
+szClassname: weapon_elite 
+iPosition: 5 
+iSlot: 1 
+weapon id: 10 
+szClassname: weapon_fiveseven 
+iPosition: 6 
+iSlot: 1 
+weapon id: 11 
+szClassname: weapon_ump45 
+iPosition: 15 
+iSlot: 0 
+weapon id: 12 
+szClassname: weapon_sg550 
+iPosition: 16 
+iSlot: 0 
+weapon id: 13 
+szClassname:  
+iPosition: 0 
+iSlot: 0 
+weapon id: 0 
+szClassname:  
+iPosition: 0 
+iSlot: 0 
+weapon id: 0 
+szClassname: weapon_usp 
+iPosition: 4 
+iSlot: 1 
+weapon id: 16 
+szClassname: weapon_glock18 
+iPosition: 2 
+iSlot: 1 
+weapon id: 17 
+szClassname: weapon_awp 
+iPosition: 2 
+iSlot: 0 
+weapon id: 18 
+szClassname: weapon_mp5navy 
+iPosition: 7 
+iSlot: 0 
+weapon id: 19 
+szClassname: weapon_m249 
+iPosition: 4 
+iSlot: 0 
+weapon id: 20 
+szClassname: weapon_m3 
+iPosition: 5 
+iSlot: 0 
+weapon id: 21 
+szClassname: weapon_m4a1 
+iPosition: 6 
+iSlot: 0 
+weapon id: 22 
+szClassname: weapon_tmp 
+iPosition: 11 
+iSlot: 0 
+weapon id: 23 
+szClassname: weapon_g3sg1 
+iPosition: 3 
+iSlot: 0 
+weapon id: 24 
+szClassname: weapon_flashbang 
+iPosition: 2 
+iSlot: 3 
+weapon id: 25 
+szClassname: weapon_deagle 
+iPosition: 1 
+iSlot: 1 
+weapon id: 26 
+szClassname: weapon_sg552 
+iPosition: 10 
+iSlot: 0 
+weapon id: 27 
+szClassname: weapon_ak47 
+iPosition: 1 
+iSlot: 0 
+weapon id: 28 
+szClassname: weapon_knife 
+iPosition: 1 
+iSlot: 2 
+weapon id: 29 
+szClassname: weapon_p90 
+iPosition: 8 
+iSlot: 0 
+weapon id: 30 
+
+

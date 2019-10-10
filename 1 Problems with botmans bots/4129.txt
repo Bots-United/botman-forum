@@ -1,0 +1,62 @@
+--------------------------------------------------
+Subject: question about bot config files
+--------------------------------------------------
+02/11/03 at 20:37:03  Posted by: BAStumm (bs@bs-linux.com)
+--------------------------------------------------
+I was wondering about bot.cfg files and the pause
+
+I have some long pauses in my files. The idea is on unpopular maps if half way through the map time we aren't full I add some more bots. 
+
+Question is this. Does the pause delay the reading of addbot commands later in the file until after the pause or is it already in memory?
+
+I ask this becuase I use the $MAP_HPB_bot.cfg option (map specific bot files). And I recently wrote a bot randomizer program that re-writes the bot configs from a VERY big listing of various bot configs. Bot configs are re-written every 15 minutes. What I'm getting at is, will a pause perhaps enhance my randomnizer? Other words we load the first two bots then pause, during this time my bot randomizer switches the bot config with a new one, then we load 2 more bots... So the result is we get 2 bots from the first config and 2 bots from the updated config. I'm guessing all 4 botnames, skill, class etc will be determined by the contents of the bot config when the map loads irregardless of any pauses in the file.
+
+--------------------------------------------------
+02/12/03 at 05:20:43  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+The bot .cfg file is opened once when the map is first started.
+
+The bot code will read each line then execute that line.  If there is a pause of 10 seconds, then the bot code that parses the .cfg file will set a timer for 10 seconds in the future and not do anything more until that time is reached.  Once the pause time is up, it will read the next line an process it.
+
+The file is not opened and closed each time it executes a command, so changing the file once it has been opened will have no effect.  The operating system will either prevent you from overwriting the file (in the case of Windows), or the operating system will simply rename the file to a hidden temporary name in order for the new file to be created (in Linux).  The bot code is still parsing the OLD file however.  Any changes made to the file since it was originally opened at the start of the map will have no effect.
+
+The only way to add bots during the middle of the game would be to put a pause in roughly half the map duration time.  So, for example, if the map time limit is 20 minutes (1200 seconds), you would need to pause about 600 seconds before adding more bots...
+code:
+
+addbot 2 1
+addbot 1 1
+addbot 2 4
+addbot 1 4
+
+pause 600
+
+addbot 1 5
+addbot 2 5
+
+botman
+
+--------------------------------------------------
+02/12/03 at 09:45:30  Reply by: BAStumm (bs@bs-linux.com)
+--------------------------------------------------
+Thats exactly what I'm doing, pause 900 (30 minute maps). But I have a cron job overwriting the bot config files every 15 minutes. choose 15 minutes overwrite schedule because I have two servers from the same directory. Chances are they will change maps at different times and I wanted bot names to be different on the two servers. 
+
+No biggy on the initial bots coming from one config and later (pause 900) bots coming from another config. 
+
+--------------------------------------------------
+04/25/03 at 19:27:36  Reply by: BAStumm (bs@bs-linux.com)
+--------------------------------------------------
+botman, your initial reply is incorrect.
+
+If a map starts, loads two bots then pauses and during the pause time the bot config file is overwritten then after the pause it will read from from the new bot config file starting at the point it left off (after the pause). At least this is true on my redhat linux server. At least this is what I am experiencing...
+
+--------------------------------------------------
+04/26/03 at 05:55:26  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+This is operating system dependant.
+
+Linux allows this behaviour.  I believe most versions of Windows does not (WinNT and WinXP may be the exception).
+
+File sharing is NOT something that Windows handles very gracefully since it wasn't really meant to be a multi-user operating system, unlike *nix systems which are designed from the ground up to allow multiple users to share multiple resources.
+
+botman
+

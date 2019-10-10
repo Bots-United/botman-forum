@@ -1,0 +1,110 @@
+--------------------------------------------------
+Subject: Waypoint converter
+--------------------------------------------------
+12/27/00 at 12:26:55  Posted by: MKlimstra (mklimstra@zonnet.nl)
+--------------------------------------------------
+I'm writing a waypoint converter which can convert waypoint files from one format to another. It uses separate dlls for each format. If it's done, I will release the sourcecode of the dlls, so that custum converter dlls can be made for each format.
+It works like this: the main program calls the 'ReadWaypoints'-function of the source-format dll (hpb_convert.dll for example). It reads the waypoint file and writes it to an internal standard format (in memory ofcourse). Then the main program calls the 'WriteWaypoints'-function of de destination-format dll (pod_convert.dll for example). That function converts the 'standard waypoint format' to the pod-bot format and writes it to a new file.
+I need some advice on the standard waypoint format. This is what I have so far:
+code:
+// standard waypoint flags:
+// note that many of these flags are optional
+
+// general:
+#define STD_WPFLAG_TEAM              3         // allow for 4 teams (0-3)
+#define STD_WPFLAG_TEAM_SPEC         (1<<2)    // only for specified team
+
+// navigation:
+#define STD_WPFLAG_CROUCH            (1<<3)    // crouch to reach this waypoint
+#define STD_WPFLAG_DUCKJUMP          (1<<4)    // duckjump to reach this waypoint
+#define STD_WPFLAG_LADDER            (1<<5)    // this waypoint is on a ladder
+#define STD_WPFLAG_LIFT              (1<<6)    // wait for lift to be down
+#define STD_WPFLAG_DOOR              (1<<7)    // wait for door to open
+
+// misc
+#define STD_WPFLAG_SNIPER            (1<<8)    // sniper spot
+#define STD_WPFLAG_CAMP              (1<<9)    // camp spot
+#define STD_WPFLAG_COVER             (1<<10)   // cover
+#define STD_WPFLAG_AIM               (1<<11)   // aiming waypoint
+#define STD_WPFLAG_WATER             (1<<12)   // this waypoint is in water
+#define STD_WPFLAG_GUIDEPOINT        (1<<13)   // guidepoint
+#define STD_WPFLAG_JUNCTION          (1<<14)   // junction
+
+// deathmatch
+#define STD_WPFLAG_DM_HEALTH         (1<<15)   // health kit
+#define STD_WPFLAG_DM_ARMOR          (1<<16)   // armor/HEV
+#define STD_WPFLAG_DM_AMMO           (1<<17)   // ammo location
+
+// cstrike:
+#define STD_WPFLAG_CS_BOMB           (1<<18)   // bomb spot
+#define STD_WPFLAG_CS_HOSTAGE        (1<<19)   // hostage position
+#define STD_WPFLAG_CS_RESCUE         (1<<20)   // hostage/vip rescue point
+
+// tfc:
+#define STD_WPFLAG_TFC_FLAG          (1<<21)   // flag position
+#define STD_WPFLAG_TFC_CAPTURE       (1<<22)   // capture point
+
+// flf:
+#define STD_WPFLAG_FLF_CAPTURE       (1<<23)   // caption point
+#define STD_WPFLAG_FLF_PRONE         (1<<24)   // go prone here
+
+// misc defines
+#define MAX_WAYPOINTS                4096
+#define MAX_PATH_INDEX               16
+
+// Vector struct
+typedef struct
+{
+      float                  x, y, z;
+} Vector;
+
+// standard header
+typedef struct
+{
+      int                   number_of_waypoints;
+      char                  mapname[32];
+      char                  creatorname[32];
+} stdheader_t;
+
+// standard waypoint
+typedef struct
+{
+      Vector                origin;
+      int                   flags;
+      float                 radius;
+} stdwaypoint_t;
+
+// standard path
+typedef struct
+{
+      short int             index[MAX_PATH_INDEX];
+      short int             count;
+} stdpath_t;
+
+
+// waypoint data
+typedef struct
+{
+      stdheader_t           header;
+      stdwaypoint_t         waypoint[MAX_WAYPOINTS];
+      stdpath_t             path[MAX_WAYPOINTS];
+} waypointdata_t;
+What additional flags, struct-fields etc. are needed?
+
+btw, CountFloyd and Dark Youth, have you received my e-mail?
+
+--------------------------------------------------
+12/27/00 at 17:52:01  Reply by: CountFloyd (countfloyd_1999@yahoo.com)
+--------------------------------------------------
+This is quite a good idea. Some time ago I tried to convince other people to do something like this. You can read the thread here:
+http://www.nuclearbox.com/ubb/cgi-bin/ubbcount.cgi?expath1=Forum3&expath2=&topic=000035&type=&number=3
+
+And no, I didn't receive a mail from you yet.
+
+--------------------------------------------------
+12/27/00 at 17:56:44  Reply by: MKlimstra (mklimstra@zonnet.nl)
+--------------------------------------------------
+Yes, that thread is what I got the idea from :)
+Quite strange that you didn't receive my e-mail! I sent it a couple of days ago. I'll try again using hotmail or something.
+
+

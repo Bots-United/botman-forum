@@ -1,0 +1,136 @@
+--------------------------------------------------
+Subject: removing pistols in CS
+--------------------------------------------------
+03/27/02 at 07:28:08  Posted by: jldailey (jldailey@uchicago.edu)
+--------------------------------------------------
+
+I tried playing around with removing pistols in CS, to be used in combination with ClanMod to create some true knife arenas with no pistols flopping around.
+
+I made a couple changes to the Source so that it would print out something for every spawn that it sees (whether it strips it or not) and the pistols that you get in the beginning of the game dont ever actually DispatchSpawn()?  So how is it possible to remove them?
+
+Has anyone done this before?
+
+--------------------------------------------------
+03/27/02 at 07:47:33  Reply by: LunaticWithCandy (candyranger@hotmail.com)
+--------------------------------------------------
+Use adminmod and the weapon restrict commands to remove the use of pistols, or any weapon. Just watch out for those knife aimbots :)
+
+--------------------------------------------------
+03/27/02 at 07:52:28  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Weapons in Counter-Strike are given to the player internally in the MOD code (not from the engine using DispatchSpawn).  It's similar to the SDK source code where the player is given the HUD suit, crowbar, and 9mm handgun.  You can't strip those out by blocking the DispatchSpawn() for them either.
+
+botman
+
+--------------------------------------------------
+03/27/02 at 08:03:25  Reply by: LunaticWithCandy (candyranger@hotmail.com)
+--------------------------------------------------
+Do you have any idea why adminmod can do it? Does it just intercept the client attempts to buy the gun and reject them, or is there more to it?
+
+--------------------------------------------------
+03/27/02 at 11:17:57  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+It intercepts the menu commands that are used to buy the weapons and doesn't pass them along to the MOD code.
+
+botman
+
+--------------------------------------------------
+03/28/02 at 10:12:36  Reply by: jldailey (jldailey@uchicago.edu)
+--------------------------------------------------
+
+what about when a weapon is thrown?
+
+doesnt it have to be spawned into the world at that point?
+
+near as i can tell, restricting menu options does not remove the ability to spawn with the pistol, which ruins a knife only round... clanmod fights this by continually making you drop any pistol you have, so if i could keep it from 'landing' then the solution would be perfect.
+
+
+
+
+--------------------------------------------------
+03/28/02 at 13:06:52  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Yes, but if no one can buy the weapon, then no one can throw one down on the ground.
+
+Again, Counter-Strike spawns thrown weapons internally.  The DispatchSpawn() function is only used when the Half-Life engine needs to spawn something from the map .bsp file.  Items that are spawned from within the MOD code don't use DispatchSpawn() in this way.
+
+botman
+
+--------------------------------------------------
+04/10/02 at 16:57:29  Reply by: LunaticWithCandy (candyranger@hotmail.com)
+--------------------------------------------------
+Hey guy, I came accross exactly what you are looking for...
+
+http://logd.sourceforge.net/ - It HAS to interact with adminmod, and has its own set of plugins. One of the plugins is a knife arena for CS.
+
+--------------------------------------------------
+06/10/02 at 14:55:16  Reply by: JustinHoMi (stripper.20.skel@spamgourmet.org)
+--------------------------------------------------
+Actually this can be done w/ stripper2. Here's an example that i tested on aztec:
+
+{
+   classname/game_player_equip
+   spawnflags/1
+   weapon_knife/1
+   targetname/equipment
+   item_assaultsuit/1
+   origin/128 -832 -128
+}
+
+{
+   classname/player_weaponstrip
+   targetname/stripper
+   origin/192 -896 -128
+}
+
+{
+   classname/multi_manager
+   spawnflags/1
+   targetname/game_playerspawn
+   stripper/0
+   equipment/1
+   origin/64 -960 -128
+}
+
+They spawn w/ knife and armor, nuttin else. Just disable buy zones and you'll be set ;)
+
+--------------------------------------------------
+06/10/02 at 15:48:12  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Buy zones are spawned dynamically by the Counter-Strike code.  The older versions of Counter-Strike required a "func_buyzone" entity in the map .bsp file.  Newer versions of the maps don't even have these func_buyzone entities anymore (so you can't strip them out).
+
+botman
+
+--------------------------------------------------
+06/29/02 at 23:29:03  Reply by: qboney (codex@hotmail.com)
+--------------------------------------------------
+This does...
+
+
+[strip]
+func_buyzone
+ // Key/Value         : classname/func_buyzone <---- THIS DOES NOT WORK !!!!!
+ // Key/Value         : model/*1
+
+[add]
+{
+   classname/info_map_parameters
+   bombradius/500
+   buying/3                    // allow no buying = 3 !!! <------ But this does !!!
+   origin/387 -633 0
+}
+
+I need help creating walls, etc...
+Any help much appreciated...
+Thanks,
+-Quint
+Codex@Hotmail.com
+
+--------------------------------------------------
+06/30/02 at 05:12:13  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+remember info_buyzone's also exist and the player spawns act as a buy zone if there is no buyzone entity. So what you have got to do is remove that buyzone and create a new one in an unreachable place.
+
+Also I've said in previous posts, when you buy a weapon you can intercept the weapon that is being spawned in pfnCreateNamedEntity. Although the weapon that is spawned is called a "weaponbox" which makes it harder to work out what weapon has been bought or what weapon is 'inside' the weaponbox...
+
+[modified on 06/30/02 at 05:12:13]

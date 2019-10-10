@@ -1,0 +1,66 @@
+--------------------------------------------------
+Subject: getting on ladders
+--------------------------------------------------
+02/08/02 at 13:09:59  Posted by: ocb (ocb1@earthlink.net)
+--------------------------------------------------
+If a bot runs at a ladder from the correct side and is looking in the correct up/down direction, will the bot automatically start to climb up/down the ladder?  I've had bots do this, but they get stopped at the base of the ladder.  Is there something special that needs to be done to get them on the ladder?  I was hoping that approaching the ladder in the right direction was all that's needed.
+
+Oscar
+
+
+--------------------------------------------------
+02/08/02 at 13:21:50  Reply by: CountFloyd (countfloyd@botepidemic.com)
+--------------------------------------------------
+You need to press the according up/down key depending on the view direction.
+
+--------------------------------------------------
+02/08/02 at 13:45:40  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+You need to invert the pitch angle.
+
+-60 for angle of 60 etc..
+
+--------------------------------------------------
+02/08/02 at 13:53:16  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+When a bot touches the ladder, the Half-Life engine code will change the movetype to MOVETYPE_FLY and they will be on the ladder.
+
+When you see the movetype get changed to MOVETYPE_FLY, you know that a bot is on a ladder.
+
+To get the bot to move on the ladder, set pev->buttons = IN_FORWARD to move in the direction the bot is looking.  You will have to make the bot look up or down the ladder by changing the pev->v_angle.x (pitch) angle.
+
+botman
+
+--------------------------------------------------
+02/08/02 at 15:20:07  Reply by: ocb (ocb1@earthlink.net)
+--------------------------------------------------
+Thanks!  A bot just climbed a ladder. :)  Of course, now I need to fine-tune things...
+
+--------------------------------------------------
+02/11/02 at 11:17:30  Reply by: ocb (ocb1@earthlink.net)
+--------------------------------------------------
+Now I'm checking pEdict->v.movetype != MOVETYPE_FLY to figure out when the bot has reached the top of the ladder (climbing up) but by then sometimes the bot has flown straight off the top(!).  It looks like I may need to examine the ladder entity itself for info about its dimensions.  Is there a quick way to know which ladder the bot is currently on, or do I manually have to find the closest ladder to the bot (iterating through all ladders in the map)?
+
+
+--------------------------------------------------
+02/11/02 at 11:25:34  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+You will have to find the ladder using UTIL_EntityInSphere() or something similar.  Use the VecBModelOrigin() to get the "origin" of the ladder since brush models always have (0,0,0) as the origin.
+
+botman
+
+--------------------------------------------------
+02/11/02 at 15:47:05  Reply by: ocb (ocb1@earthlink.net)
+--------------------------------------------------
+Do bots climb down ladders slower than up?  It seems that way as I watch the bots.  Also, it takes a longer until pEdict->v.movetype != MOVETYPE_FLY when going down ladders (possibly because of the ground).
+
+Oscar
+
+
+--------------------------------------------------
+02/11/02 at 16:40:30  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Their speed is based on how much they look up or down.  Looking up/down at 10 degrees from horizontal will make them climb very slowly.  Looking up/down 80 degrees will make them climb very quickly.  You can't make them look up/down 90 degrees (just like the player can't look up/down 90 degrees) so use something like +/- 85 degrees as the max.
+
+botman
+

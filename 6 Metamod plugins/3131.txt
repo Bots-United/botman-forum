@@ -1,0 +1,121 @@
+--------------------------------------------------
+Subject: Water Grates
+--------------------------------------------------
+05/23/02 at 09:22:23  Posted by: WFB (williamfbuckleyjr@yahoo.com)
+--------------------------------------------------
+I was on a TFC server running 2forts, however the all of the grates appeared to look like transparent blue water.  This was a normal 2fort.bsp, in that it required no download of a new bsp.
+
+Anyone know how to edit brush models as discribed above?  Can it done with stirpper2?   
+
+Thanks
+
+--------------------------------------------------
+05/23/02 at 09:34:08  Reply by: desNotes (desTubes@tampabay.rr.com)
+--------------------------------------------------
+Take a look at botman's post on How to create brush models below:
+
+
+http://dynamic.gamespy.com/~botman/yabb/YaBB.pl?board=6&action=display&num=2687
+
+It should give you a starting point
+
+--------------------------------------------------
+05/23/02 at 10:38:01  Reply by: WFB (williamfbuckleyjr@yahoo.com)
+--------------------------------------------------
+Been there already.  I tend to read prior posts on a topic before I post.
+
+--------------------------------------------------
+05/23/02 at 11:54:35  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Without changing from one brush model to another (i.e. changing "model/*45" to "model/*73") I would think you would need to change the miptex texture used by one of the faces in the brush model.
+
+Stripper2 won't allow you to do this.  I don't think ripent will allow you to do this either.  You would have to extract the face data from the BSP file, modify the face "Textinfo Id" to use a different texture, then import the modified faces back into the BSP file.  I would think doing this would require the client to download the map otherwise you could find a transparent texture in the map somewhere and replace all the textures with the transparent one and have an undetectable wall hack.
+
+botman
+
+--------------------------------------------------
+05/24/02 at 11:21:56  Reply by: LunaticWithCandy (candyranger@hotmail.com)
+--------------------------------------------------
+I don't think what he said is possible, but I don't exactly understand what he means.
+
+Do you know what server it was? It *might* have been a load error, but that'd be one hell of a load error :).
+
+--------------------------------------------------
+05/24/02 at 12:22:12  Reply by: WFB (williamfbuckleyjr@yahoo.com)
+--------------------------------------------------
+Look, what I said occured.  I was there and it required NO bsp download.  The server-host was there and he said that his friend modded the 2fort.bsp for him.  In addition to blue transparent grates that were overhead as you enter the bases (replacing the normal metal looking grates) there were two outside lifts to the snipe decks that were operational via a button trigger. If I had my wits about me I would have exited the server, renamed my 2forts.bsp, reentered the server in order to dl the modded bsp so that I could determine what was going on. Since this happened a few months ago I’m not sure, but I think the modder was named Hellfire or Hellspawn.  I asked the server-host if the modifications were the result of some sort of entity manipulation via adminop (or some other program) and he said that he had the modded bsp long before adminop existed.  I suppose that he could have been lying to me about the adminop manipulation but it didn’t seem likely.
+
+--------------------------------------------------
+05/24/02 at 12:50:20  Reply by: Python (zed1@jippii.fi)
+--------------------------------------------------
+U was in z-server?
+HellFire doesnt play tfc anymore.
+
+--------------------------------------------------
+05/24/02 at 13:04:17  Reply by: WFB (williamfbuckleyjr@yahoo.com)
+--------------------------------------------------
+Yes, I think it was the z server.
+
+--------------------------------------------------
+05/24/02 at 13:33:01  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Adding your own lift shouldn't be too hard and can be done with Stripper2.  See the crossfire_str.cfg file for an example of creating a button to trigger another entity (the button opens the "secret" blue room).
+
+As for changing the textures on brush models, I've never really tried it, so I'm not sure what you would need to do to make it happen.  I didn't say it couldn't be done or that it would require the .bsp file to be downloaded, I just said that I would think that changing the texinfo values would give the map a different checksum (which would require the map to be downloaded by the client).  If you can change the entity (func_wall) model key/value pair from one brush model (*X) to another brush model (*Y) and get the effect that you are looking for then that can also be done using Stripper2 (just strip the existing entity and add in the new one at the same location).  Changing just the entities does not require the map to be downloaded to the client.
+
+botman
+
+--------------------------------------------------
+05/25/02 at 12:13:04  Reply by: WFB (williamfbuckleyjr@yahoo.com)
+--------------------------------------------------
+So Python, are you able to enlighten us on this topic?  Are you familiar with the modded 2fort.bsp of which I speak?  Do you know how the solid blue grate was created?  Any help would be nice. -Thanks
+
+--------------------------------------------------
+05/29/02 at 10:29:57  Reply by: Hogweed (hogweed@optonline.net)
+--------------------------------------------------
+As for the watery grates, if they were a func_wall possibly the modder played with the renderfx, rendermode, renderamt and rendorcolor to get a watery effect. Or changed the model from a func_wall to func_water.
+
+The lifts might be doable if there were usable brush based entities in the map already to clone and change the properties of. I've cloned doors (with the ripent method), lifts should work too.
+
+--------------------------------------------------
+05/29/02 at 10:58:52  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+"As for the watery grates, if they were a func_wall possibly the modder played with the renderfx, rendermode, renderamt and rendorcolor to get a watery effect."
+
+This you can already do with Stripper2.  Just remove the old entity and add a new entity with the same name, origin and model (*X brush model), then add key/value pairs for the renderfx, rendermode, renderamt and rendercolor to make it appear bluish and somewhat transparent.
+
+I was assuming that you wanted to change the brush model TEXTURE to a water texture (which will ripple up and down).  Changing the brush model texture is not possible with Stripper2 (but changing the render properties is).
+
+botman
+
+--------------------------------------------------
+05/29/02 at 11:39:08  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Here's a Stripper2 .cfg file for 2fort that will modify the gate above the entrance to the blue fort to make it bluish...
+code:
+[strip]
+func_wall
+
+[add]
+{
+   classname/func_wall
+   origin/0 0 0
+   rendermode/1
+   renderamt/120
+   rendercolor/0 0 255
+   model/*27
+}
+
+...you can play around with the renderamt and rendercolor to change things.
+
+Since you can't strip a single (individual) func_wall entity using Stripper2 (they have no origin), you will have to strip them ALL and then add them ALL back in again using the correct brush models.  You should be able to dump stuff using my BSP tools or Zoner's ripent to get the func_wall entities.  Then edit the output from these tools to create the [add] section that Stripper2 would need.
+
+Obviously, in this case, it would be easier to use Zoner's tools to rip the entities, modify ONE of them and write them all back to the BSP file again.
+
+botman
+
+--------------------------------------------------
+05/29/02 at 11:52:11  Reply by: WFB (williamfbuckleyjr@yahoo.com)
+--------------------------------------------------
+Thank you botman, I will give it a try.
+

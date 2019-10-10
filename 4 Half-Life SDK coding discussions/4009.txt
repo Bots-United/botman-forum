@@ -1,0 +1,385 @@
+--------------------------------------------------
+Subject: HUD Text Episode II
+--------------------------------------------------
+01/09/03 at 05:29:32  Posted by: Phreak (dead_sexy_simon@hotmail.com)
+--------------------------------------------------
+Hello again,
+
+Now, i am having trouble with HUD Text once again. I have read a few posts and websites on the subject, and i have found you can't send network messages to Bots (FakeClients). Since I will be using Bots aswell, I would like to know (Pierre probably because his code is what i used) how to send special HUD Text to only human clients. Here is the code i modified for myself like pierre said, but it only prints to my HUD.
+
+
+--------------------------------------------------
+char message[256];
+
+g_engfuncs.pfnMessageBegin ( MSG_ONE_UNRELIABLE, SVC_TEMPENTITY, NULL, pEntity );   
+              g_engfuncs.pfnWriteByte ( TE_TEXTMESSAGE );   
+              g_engfuncs.pfnWriteByte ( 1 ); // channel       
+              g_engfuncs.pfnWriteShort ( -12500 ); // x coordinates * 14500    
+              g_engfuncs.pfnWriteShort ( -8192 ); // y coordinates * 8192       
+              g_engfuncs.pfnWriteByte ( 0 ); // effect (fade in/out)      
+              g_engfuncs.pfnWriteByte ( RANDOM_LONG(0,255) ); // initial RED        
+              g_engfuncs.pfnWriteByte ( RANDOM_LONG(0,255) ); // initial GREEN         
+              g_engfuncs.pfnWriteByte ( RANDOM_LONG(0,255) ); // initial BLUE      
+              g_engfuncs.pfnWriteByte ( 1 ); // initial ALPHA          
+              g_engfuncs.pfnWriteByte ( 255 ); // effect RED      
+              g_engfuncs.pfnWriteByte ( 255 ); // effect GREEN          
+              g_engfuncs.pfnWriteByte ( 255 ); // effect BLUE     
+              g_engfuncs.pfnWriteByte ( 1 ); // effect ALPHA         
+              g_engfuncs.pfnWriteShort ( 256 ); // fade-in time in seconds * 256     
+              g_engfuncs.pfnWriteShort ( 512 ); // fade-out time in seconds * 256   
+              g_engfuncs.pfnWriteShort ( 1024 ); // hold time in seconds * 256
+g_engfuncs.pfnWriteString ( message ); // send message  
+                     g_engfuncs.pfnMessageEnd (); // end
+
+--------------------------------------------------
+
+If anyone could help me with my problem, that would be great. I am very anxious to get this working, because once I do, I will revise it, and I will understand it properly. I know this from my library of Programming books that is under my desk, that i haven't put down in a long time :D.
+
+Thanks in advance
+
+
+Simon
+
+
+--------------------------------------------------
+01/09/03 at 05:49:56  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+All bots can be identified by having the FL_FAKECLIENT bit set in the pev->flags entvars_t structure.  For example...
+code:
+if (!(pPlayer->pev->flags & FL_FAKECLIENT))
+{
+   // human player stuff here
+}
+else
+{
+   // bot stuff here
+}
+
+The HPB bot source code references the entvars_t structure directly through the edict_t structure that the engine uses...
+code:
+if (!(pEdict->v.flags & FL_FAKECLIENT))
+{
+   // human player stuff here
+}
+else
+{
+   // bot stuff here
+}
+
+botman
+
+--------------------------------------------------
+01/09/03 at 05:53:26  Reply by: Phreak (dead_sexy_simon@hotmail.com)
+--------------------------------------------------
+So, as long as I put that code in the human player code area, all human clients should see it?
+
+Or is there more too it than that? It seems to easy for me to be asking :S
+
+--------------------------------------------------
+01/09/03 at 08:56:35  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+There's no such thing as "human player code area".
+
+All code is executed by both human players and bots.  The only difference between human players and bots as far as the engine is concerned is that bots don't have a network connection (since they don't actually have a client).
+
+Bots execute the exact same code as human clients would.  They move around the world in exactly the same way and have the same physics limitations.  They fire the weapons in exactly the same way and have the same accuracy limitations.  They pick up items in exactly the same way.
+
+Since bots don't have a client, they also don't have a buffer allocated to store their commands from the client.  I get around this by creating a FakeClientCommand() function that allocates a buffer to store commands in and then passes that buffer to the game DLL code so that it thinks the command was issued by a real (human) client.
+
+botman
+
+--------------------------------------------------
+01/09/03 at 09:30:36  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Two things.
+
+1. In order to tell the mod: "if the player is not a bot, execute the following code, then don't", you need to check for the FL_FAKECLIENT flag. So basically:
+code:
+
+// is this player NOT a bot ?
+if (!(pEntity->v.flags & FL_FAKECLIENT))
+{
+   // send the message to him
+   g_engfuncs.pfnMessageBegin ( MSG_ONE_UNRELIABLE, SVC_TEMPENTITY, NULL, pEntity );   
+             g_engfuncs.pfnWriteByte ( TE_TEXTMESSAGE );   
+             g_engfuncs.pfnWriteByte ( 1 ); // channel       
+             g_engfuncs.pfnWriteShort ( -12500 ); // x coordinates * 14500    
+             g_engfuncs.pfnWriteShort ( -8192 ); // y coordinates * 8192       
+             g_engfuncs.pfnWriteByte ( 0 ); // effect (fade in/out)      
+             g_engfuncs.pfnWriteByte ( RANDOM_LONG(0,255) ); // initial RED        
+             g_engfuncs.pfnWriteByte ( RANDOM_LONG(0,255) ); // initial GREEN         
+             g_engfuncs.pfnWriteByte ( RANDOM_LONG(0,255) ); // initial BLUE      
+             g_engfuncs.pfnWriteByte ( 1 ); // initial ALPHA          
+             g_engfuncs.pfnWriteByte ( 255 ); // effect RED      
+             g_engfuncs.pfnWriteByte ( 255 ); // effect GREEN          
+             g_engfuncs.pfnWriteByte ( 255 ); // effect BLUE     
+             g_engfuncs.pfnWriteByte ( 1 ); // effect ALPHA         
+             g_engfuncs.pfnWriteShort ( 256 ); // fade-in time in seconds * 256     
+             g_engfuncs.pfnWriteShort ( 512 ); // fade-out time in seconds * 256   
+             g_engfuncs.pfnWriteShort ( 1024 ); // hold time in seconds * 256
+   g_engfuncs.pfnWriteString ( message ); // send message  
+                    g_engfuncs.pfnMessageEnd (); // end
+}
+
+
+
+2. Also you might not have realized that pfnMessageBegin() sends the message to ONE client and only one at a time. Not all clients are concerned. pfnMessageBegin sends the message to the client whose player entity is pEntity ONLY. So if you want to send your message to ALL clients, you have to cycle through all clients (with a "for" loop), and send them the message individually
+code:
+
+// cycle through all clients (note that client indexes start at 1)
+for (int client_index = 1; client_index <= gpGlobals->maxClients; client_index++)
+{
+   edict_t *pEntity = INDEXENT (client_index); // get a pointer to the client entity number #client_index
+
+   // is it a bot ?
+   if (pEntity->v.flags & FL_FAKECLIENT)
+      continue; // then skip this one (because we don't want to send messages to bots)
+
+   // now you are certain pEntity points to a human player entity
+   // send message etc...
+}
+
+
+
+
+--------------------------------------------------
+06/09/03 at 06:27:15  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+might as well share this......
+
+
+this Is code I made for my bot ...
+
+if there is a  (pipe) character in the message it will interepert it as a space, and a ^ will be interpreted as a newline! have fun. :P
+
+code:
+
+#define HUD_TEXT_LENGTH 128
+
+// Use the hud text by
+// creating a variable from this class
+// using the variable with
+// variable_name.SayMessage(...)
+
+class HudText 
+{
+public :
+      void SayMessage  ( const char *message, Vector colour1, Vector colour2, edict_t *pPlayer );
+private:
+      void Initialise  ( void );
+      void SetColour1  ( Vector colours ) { m_textParms.r1 = (int)colours.x, m_textParms.g1 = (int)colours.y, m_textParms.b1 = (int)colours.z; };
+      void SetColour2  ( Vector colours ) { m_textParms.r2 = (int)colours.x, m_textParms.g2 = (int)colours.y, m_textParms.b2 = (int)colours.z; };
+      void InitMessage ( const char *message );
+
+      hudtextparms_t m_textParms;
+      char m_sMessage[HUD_TEXT_LENGTH];
+};
+
+void HudText :: SayMessage ( const char *message, Vector colour1, Vector colour2, edict_t *pPlayer )
+{
+      SetColour1 ( colour1 );
+      SetColour2 ( colour2 );
+
+      InitMessage ( message );
+
+      if ( pPlayer )
+            UTIL_BotHudMessage(pPlayer,m_textParms,m_sMessage);
+      else
+            UTIL_BotHudMessageAll(m_textParms,m_sMessage);
+}
+
+void HudText :: InitMessage ( const char *message )
+{
+      short int length,i;
+
+      strncpy(m_sMessage,message,HUD_TEXT_LENGTH - 1);
+
+      m_sMessage[HUD_TEXT_LENGTH-1] = 0;
+
+      length = strlen(m_sMessage);                                                
+      
+      i = 0;
+                        
+      while ( i < length )
+      {
+            if(m_sMessage[i] == '')
+                  m_sMessage[i] = ' ';
+            
+            if(m_sMessage[i] == '^')
+                  m_sMessage[i] = '\n';
+            
+            i++;
+      }
+}
+
+void HudText :: Initialise (void)
+{
+      m_textParms.channel = 1;
+      m_textParms.x = -1;
+      m_textParms.y = -1;
+      m_textParms.effect = 2;
+      m_textParms.r1 = 140; 
+      m_textParms.g1 = 140; 
+      m_textParms.b1 = 140; 
+      m_textParms.a1 = 255;
+      m_textParms.r2 = 255; 
+      m_textParms.g2 = 255; 
+      m_textParms.b2 = 255; 
+      m_textParms.a2 = 200;
+      m_textParms.fadeinTime = 0.2;
+      m_textParms.fadeoutTime = 0.5;
+      m_textParms.holdTime = 4;
+      m_textParms.fxTime = 0.5;
+}
+
+
+
+
+code:
+
+void UTIL_BotHudMessageAll( const hudtextparms_t &textparms, const char *pMessage )
+{
+      int      i;
+
+      for ( i = 1; i <= gpGlobals->maxClients; i++ )
+      {
+            edict_t *pPlayer = INDEXENT( i );
+            if ( pPlayer )
+            {
+                  if( pPlayer->v.netname )
+                  {                        
+                        UTIL_BotHudMessage( pPlayer, textparms, pMessage );
+                  }
+            }
+      }
+}
+
+void UTIL_BotHudMessage( edict_t *pEntity, const hudtextparms_t &textparms, const char *pMessage )
+{
+      if ( !pEntity  !(pEntity->v.flags & FL_CLIENT)  (pEntity->v.flags & FL_FAKECLIENT))
+            return;
+
+      MESSAGE_BEGIN( MSG_ONE, SVC_TEMPENTITY, NULL, pEntity );
+            WRITE_BYTE( TE_TEXTMESSAGE );
+            WRITE_BYTE( textparms.channel & 0xFF );
+
+            WRITE_SHORT( FixedSigned16( textparms.x, 1<<13 ) );
+            WRITE_SHORT( FixedSigned16( textparms.y, 1<<13 ) );
+            WRITE_BYTE( textparms.effect );
+
+            WRITE_BYTE( textparms.r1 );
+            WRITE_BYTE( textparms.g1 );
+            WRITE_BYTE( textparms.b1 );
+            WRITE_BYTE( textparms.a1 );
+
+            WRITE_BYTE( textparms.r2 );
+            WRITE_BYTE( textparms.g2 );
+            WRITE_BYTE( textparms.b2 );
+            WRITE_BYTE( textparms.a2 );
+
+            WRITE_SHORT( FixedUnsigned16( textparms.fadeinTime, 1<<8 ) );
+            WRITE_SHORT( FixedUnsigned16( textparms.fadeoutTime, 1<<8 ) );
+            WRITE_SHORT( FixedUnsigned16( textparms.holdTime, 1<<8 ) );
+
+            if ( textparms.effect == 2 )
+                  WRITE_SHORT( FixedUnsigned16( textparms.fxTime, 1<<8 ) );
+            
+            if ( strlen( pMessage ) < 512 )
+            {
+                  WRITE_STRING( pMessage );
+            }
+            else
+            {
+                  char tmp[512];
+                  strncpy( tmp, pMessage, 511 );
+                  tmp[511] = 0;
+                  WRITE_STRING( tmp );
+            }
+      MESSAGE_END();
+}
+
+static unsigned short FixedUnsigned16( float value, float scale )
+{
+      int output;
+
+      output = value * scale;
+      if ( output < 0 )
+            output = 0;
+      if ( output > 0xFFFF )
+            output = 0xFFFF;
+
+      return (unsigned short)output;
+}
+
+static short FixedSigned16( float value, float scale )
+{
+      int output;
+
+      output = value * scale;
+
+      if ( output > 32767 )
+            output = 32767;
+
+      if ( output < -32768 )
+            output = -32768;
+
+      return (short)output;
+}
+
+
+
+code:
+
+void ClientCommand ( edict_t *pEntity )
+{
+...
+...
+            else if (FStrEq(pcmd, "hud_say"))
+            {
+                  if ( got_arg1 )
+                  {
+                        HudTextMessage.SayMessage(arg1,Vector(255,255,255),Vector(255,255,255),NULL);
+                  }
+                  else
+                        ClientPrint(pEntity,HUD_PRINTCONSOLE,"Usage : hud_say \"<message>\"\n");
+                  
+                  return;
+            }
+
+
+
+any problems just ask (try to fix any easy errors first ;)) you'll need the prototypes in too.
+
+[modified on 06/09/03 at 06:27:15]
+--------------------------------------------------
+01/09/03 at 18:40:03  Reply by: Phreak (dead_sexy_simon@hotmail.com)
+--------------------------------------------------
+Ok, 2nd time i've modified this. Everything is working except for one error.
+
+
+'UTIL_BotHudMessageAll' Undeclared Identifier.
+
+
+That can't be true as i have included the header file in which it is declared.
+
+Whats wrong?
+
+
+Thanks in advance
+
+Simon
+
+[modified on 01/09/03 at 18:40:03]
+--------------------------------------------------
+01/09/03 at 18:49:36  Reply by: Phreak (dead_sexy_simon@hotmail.com)
+--------------------------------------------------
+(Laughing) 3rd time I have modified this post. I have now made it work an tested it.
+
+Thank you very much Cheesemonster Pierre and botman :)
+
+
+Thanks alot
+
+
+Simon
+

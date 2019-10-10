@@ -1,0 +1,148 @@
+--------------------------------------------------
+Subject: Please help!!! Confused with making weapon !!!
+--------------------------------------------------
+06/07/02 at 03:09:42  Posted by: SLAVIK (slava@deep-shadows.com)
+--------------------------------------------------
+Hello everybody! I am recreating displacer weapon for my mod and stuck with one thing. I finished all the green_ball part and it works perfectly. I coded it first, because thought that making displacer won't take a lot of time, but I was wrong. I can shoot from weapon, use secondary attack, BUT!!! there is one problem. As you remember displacer spins up before shooting and it takes 1.0 sec. I thought I will make this using nextthink but weapons made in another way then usual entities :(
+
+How can I make displacer waiting a second while DISPLACER_SPINUP animation is played???
+
+Please, help me...
+
+Thank you VERY much for reply ;)
+
+P.S. I looked through standart HL weapons and didn't foind any similar code :(
+
+--------------------------------------------------
+06/07/02 at 09:29:49  Reply by: SLAVIK (slava@deep-shadows.com)
+--------------------------------------------------
+botman, please give me even a smallest tip on that thing ;-)
+
+--------------------------------------------------
+06/07/02 at 10:46:00  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Add a member variable to your C++ class for the weapon that stores the time the attack button is pressed.  In the primary attack function, don't allow the weapon to fire until it has been pressed for X seconds (m_flAttackTime + X <= gpGlobals->time).
+
+In the weapon idle and weapon holster function, set this member variable time to -1.  Then in the attack function if the time is less than zero, set it to the current time (gpGlobals->time), this way it will only get set once each time the attack button is pressed and held down.
+
+botman
+
+--------------------------------------------------
+06/08/02 at 07:52:50  Reply by: SLAVIK (slava@deep-shadows.com)
+--------------------------------------------------
+thanks botman, that helped me much! THank you very,very much!!! :) but still I have some questions:
+
+void CDisplacer::PrimaryAttack( void )
+{
+if (m_flAttackTime + X <= gpGlobals->time) 
+ return;
+
+    SendWeaponAnim( DISPLACER_FIRE );
+      UTIL_MakeVectors( m_pPlayer->pev->v_angle + m_pPlayer->pev->punchangle  );
+    Vector vecSrc = m_pPlayer->GetGunPosition( );
+      
+      CTeleBall *pEntity = (CTeleBall *)Create( "displacer_teleporter", vecSrc, m_pPlayer->pev->angles, m_pPlayer->edict() );
+      pEntity->pev->owner = m_pPlayer->edict();
+      pEntity->pev->velocity = gpGlobals->v_forward * 300;
+
+      m_fInAttack = 0;
+      m_flTimeWeaponIdle = UTIL_WeaponTimeBase() + 1.0;
+      m_pPlayer->m_flNextAttack = UTIL_WeaponTimeBase() + 0.2;
+
+      if (m_flAttackTime < 0)
+            m_flAttackTime = gpGlobals->time;
+}
+
+maybe u know what is wrong with it, because displacer even can't shoot...
+
+--------------------------------------------------
+06/08/02 at 10:57:32  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+What did you set 'X' to?  Did you ever initialize it (if not, it's going to be garbage).  The 'X' was just an example, put the real value you want as a constant for example to wait 3.7 seconds would be...
+
+if ((m_flAttackTime + 3.7) <= gpGlobals->time)
+{
+
+botman
+
+--------------------------------------------------
+06/08/02 at 11:16:38  Reply by: SLAVIK (slava@deep-shadows.com)
+--------------------------------------------------
+I set it to 1. THat was my mistake of posting code here. I first typed it new notepad, then tested in CPP. I changed X for 1. And initialized it (-1). In cpp there is no "X" and everything compiles.
+
+--------------------------------------------------
+06/08/02 at 11:37:43  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+You're never going to get past this...
+code:
+if (m_flAttackTime + X <= gpGlobals->time) 
+return;
+
+...unless you set m_flAttackTime somewhere else.
+
+Try something like this instead...
+code:
+if (m_flAttackTime < 0)  // is it -1?
+{
+   // first time attack button was pressed, set fire time...
+   m_flAttackTime = gpGlobals->time + 3.7;
+   return;
+}
+
+if (m_flAttackTime > gpGlobals->time)
+{
+   // not time to fire yet?
+   return;
+}
+
+// else fire the weapon here
+
+
+[modified on 06/08/02 at 11:37:43]
+--------------------------------------------------
+06/08/02 at 13:49:05  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+remember if you're trying to compare floating point numbers with integers, it wont work properly if your comparing with an integer value more than 10 because integers are in hexadecimal (10 is 16 in hexadecimal)
+
+so if you had 
+
+pEntity->pev->velocity = gpGlobals->v_forward * 300;
+
+This is actually (probably) multiply the v_forward vector by 768, not 300.
+
+So just remember to put a .0 after your floating points, i.e.
+
+pEntity->pev->velocity = gpGlobals->v_forward * 300.0;
+
+when you wanted to 
+
+--------------------------------------------------
+06/09/02 at 03:55:57  Reply by: SLAVIK (slava@deep-shadows.com)
+--------------------------------------------------
+Thank you Botman and Cheesemonster very much.
+Displacer is finished except beam attachments...
+
+I looked through sdk soure and found some examples on how to attach point to model (for example Xen plantlight), but this goes wrong with weapon. Beam stars from players origin and ends somewhere in world... what is wrong here?
+
+ pBeam = CBeam::BeamCreate("sprites/lgtning.spr",200);
+ pBeam->PointEntInit(pev->origin, m_pPlayer->entindex());
+ pBeam->SetEndAttachment(2);
+ pBeam->SetColor( 0, 255, 0 );
+ pBeam->SetNoise( 65 );
+ pBeam->SetBrightness( 150 );
+ pBeam->SetWidth( 18 );
+ pBeam->SetScrollRate( 35 );
+ pBeam->SetThink( SUB_Remove );
+ pBeam->pev->nextthink = gpGlobals->time + 1;
+
+If I use this:
+ pBeam->SetEndAttachment(2);
+ pBeam->SetStartAttachment(3);
+second line of code does nothing. One part of beam attached to point, another to the players origin point... Displacer has 4 attachment points - I know their numbers - 2,3,4. I need one beam to be drawn between 2n and 3, second between 3 and 4.
+
+
+Than you for reply :)
+
+[modified on 06/09/02 at 03:54:51]
+
+[modified on 06/09/02 at 03:55:57]

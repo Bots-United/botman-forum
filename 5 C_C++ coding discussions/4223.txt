@@ -1,0 +1,645 @@
+--------------------------------------------------
+Subject: botmaaaaaaaaan
+--------------------------------------------------
+03/16/03 at 18:58:56  Posted by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Daaaaah I want to make a cool plugin for Half-Life that uses multithreads but daaaaaaah I get way too much lag when I run more than a couple threads at once daaaaaaaaaah I'm using Microsoft's _beginthread() and daaaaaaah I should maybe specify the thread stack size but daaaah I dont know what to put in daaaaaaaah botman help me.
+
+/me stops crying
+code:
+
+//  This program requires the multithread library.
+//
+
+#include <stdio.h>
+#include <process.h> // _beginthread()
+
+#ifndef _MT
+#define _MT
+#endif
+
+
+#include <winsock2.h>
+
+#define GPGLOBALS_MAXCLIENTS 8
+
+// IRC bot orders
+#define IRCBOT_ORDER_NOORDER 0
+#define IRCBOT_ORDER_CONNECT 1
+#define IRCBOT_ORDER_DISCONNECT 2
+#define IRCBOT_ORDER_TERMINATETHREAD 3
+
+// IRC bot errors
+#define IRCBOT_ERROR_NOERROR 0
+#define IRCBOT_ERROR_CANTCREATESOCKET 1
+#define IRCBOT_ERROR_CANTCONNECTTOSERVER 2
+
+
+
+typedef struct
+{
+   int ircbot_order; // current order given to this player's IRC bot
+   int ircbot_error; // current error reported by this player's IRC bot
+   bool thread_active; // set to TRUE if this player's IRC bot thread is currently running
+   bool connected_to_server; // set to TRUE if this player is connected to the IRC server
+   bool connected_to_channel; // set to TRUE if this player is currently member of the IRC channel
+   char irc_name[32]; // IRC nickname of the player in all characters
+   char tx_buffer[4096]; // chat string to be sent to the IRC channel by the player's IRC bot
+   char rx_buffer[4096]; // chat string received from the IRC channel by the player's IRC bot
+   unsigned int irc_socket; // network socket ID of this player's IRC bot client
+} player_t;
+
+
+player_t players[32];
+sockaddr_in ircserver_sockaddr;
+hostent *ircserver_hostinfo;
+int current_player_index;
+char irc_channel_string[256];
+
+// multithreaded functions
+void StartMultithreadedIRCBot (void *thread_id);
+void IRCBot_Connect (int player_index);
+void IRCBot_Disconnect (int player_index);
+void IRCBot_Talk (int player_index);
+void IRCBot_Listen (int player_index);
+void IRCBot_Think (int player_index);
+const char *GetWord (const char *string, int word_number);
+
+
+void main (void)
+{
+   int player_index;
+   bool is_valid_player;
+
+   // META_ATTACH
+
+   printf ("initializing Winsock...\n");
+
+   // Initialize Windows TCP stack (Winsock)
+   WSADATA wsaData;
+   WSAStartup (0x0101, &wsaData);
+
+   // reset the server socket structure
+   memset (&ircserver_sockaddr, 0, sizeof (ircserver_sockaddr));
+
+   printf ("getting host by address...\n");
+
+   // get the server hostinfo structure by resolving its name
+   ircserver_hostinfo = gethostbyname ("127.0.0.1");
+   if (ircserver_hostinfo == NULL)
+      return;
+
+   // fill in the sockaddr server structure with the server hostinfo data
+   ircserver_sockaddr.sin_family = ircserver_hostinfo->h_addrtype;
+   ircserver_sockaddr.sin_port = htons (atoi ("6667"));
+   memcpy ((char *) &ircserver_sockaddr.sin_addr, ircserver_hostinfo->h_addr, ircserver_hostinfo->h_length);
+
+   // SERVERACTIVATE
+
+   printf ("LAUNCHING THREADS !\n");
+
+   // verify that a separate thread exists for each of the possible clients' IRC bots
+   for (current_player_index = 0; current_player_index < GPGLOBALS_MAXCLIENTS; current_player_index++)
+   {
+      // if this player's IRC bot thread doesn't exist yet, then start one
+      if (!players[current_player_index].thread_active)
+      {
+         // reset this player's IRC bot structure, launch the thread and wait for it to start
+         memset (&players[current_player_index], 0, sizeof (&players[current_player_index]));
+         _beginthread (StartMultithreadedIRCBot, 0, &current_player_index); // launch the thread
+         while (!players[current_player_index].thread_active) _sleep (100); // wait until the thread has started
+      }
+   }
+
+   // STARTFRAME
+
+   printf ("LOOPING !\n");
+
+   while (TRUE)
+   {
+      // get the CVARs we need for thread-safe operation
+      strcpy (irc_channel_string, "#half-life"); // will use CVAR_GET_STRING
+
+      // cycle through all players
+      for (player_index = 0; player_index < GPGLOBALS_MAXCLIENTS; player_index++)
+      {
+         is_valid_player = FALSE; // assume player entity is invalid unless known otherwise
+
+         // check for this player's validity
+         is_valid_player = TRUE; // this player entity is valid
+
+         // if this player is valid, and his IRC bot is NOT connected...
+         if (is_valid_player && !players[player_index].connected_to_server)
+            players[player_index].ircbot_order = IRCBOT_ORDER_CONNECT; // then connect his IRC bot
+
+         // else if this player is NOT valid, and his IRC bot is still connected...
+         else if (!is_valid_player && players[player_index].connected_to_server)
+            players[player_index].ircbot_order = IRCBOT_ORDER_DISCONNECT; // then disconnect his IRC bot
+
+         // is this player's IRC bot complaining about something ?
+         if (players[player_index].ircbot_error == IRCBOT_ERROR_CANTCREATESOCKET)
+         {
+            printf ("cant create socket.\n");
+            return;
+         }
+         else if (players[player_index].ircbot_error == IRCBOT_ERROR_CANTCONNECTTOSERVER)
+         {
+            printf ("cant connect to server.\n");
+            return;
+         }
+      }
+   }
+}
+
+
+void StartMultithreadedIRCBot (void *thread_id)
+{
+   // this function starts a new thread in which the IRC bot of the client whose index is
+   // specified by the current value of the current_player_index global variable will run
+
+   int player_index = current_player_index; // first get the player index this thread is for
+
+   printf ("starting thread #%d...\n", player_index);
+
+   // first off, the thread has successfully started, so give the signal back to the parent
+   players[player_index].thread_active = TRUE;
+
+   // loop endlessly while we're not asked to quit
+   while (players[player_index].ircbot_order != IRCBOT_ORDER_TERMINATETHREAD)
+   {
+      // has this player's IRC bot be given an order ?
+      if (players[player_index].ircbot_order == IRCBOT_ORDER_CONNECT)
+         IRCBot_Connect (player_index);
+      else if (players[player_index].ircbot_order == IRCBOT_ORDER_DISCONNECT)
+         IRCBot_Disconnect (player_index);
+      else
+      {
+         // if we are connected...
+         if (players[player_index].connected_to_server)
+         {
+            IRCBot_Listen (player_index); // listen to IRC...
+            IRCBot_Think (player_index); // ...and formulate a reply when needed
+         }
+      }
+   }
+
+   // if we reach there, then the thread is about to end, so give the signal back to the parent
+   players[player_index].thread_active = FALSE;
+   _endthread (); // and suicide :)
+
+   return;
+}
+
+
+void IRCBot_Connect (int player_index)
+{
+   // this function connects a bot on the IRC server and attributes this bot to the player
+   // whose index is player_index
+
+   int hl_nick_length, irc_nick_length, index;
+
+   printf ("Bot %d connecting...\n", player_index);
+
+   // initialise some variables
+   players[player_index].connected_to_server = FALSE;
+   players[player_index].connected_to_channel = FALSE;
+   players[player_index].irc_socket = NULL;
+   players[player_index].ircbot_error = IRCBOT_ERROR_NOERROR;
+
+   // what's this player's name, again ?
+   hl_nick_length = strlen ("joe dalton"); // will use STRING (pPlayerEntity->v.netname)
+
+   // can we use directly this player's name for his IRC bot's nickname ?
+   if (hl_nick_length < 30)
+      irc_nick_length = hl_nick_length; // this player's HL nickname fits for an IRC nickname
+   else
+      irc_nick_length = 30; // IRC nicknames are maximum 30 characters long, looks like
+
+   // build this player's IRC name
+   strncpy (players[player_index].irc_name, "joe dalton", irc_nick_length);
+   for (index = 0; index < irc_nick_length; index++)
+      if (players[player_index].irc_name[index] == ' ')
+         players[player_index].irc_name[index] = '_'; // convert spaces to underscores
+   players[player_index].irc_name[irc_nick_length] = 0; // terminate the string
+
+   // create a socket for this player
+   players[player_index].irc_socket = socket (AF_INET, SOCK_STREAM, 0);
+   if (players[player_index].irc_socket == -1)
+   {
+      players[player_index].ircbot_error = IRCBOT_ERROR_CANTCREATESOCKET; // set the error level
+      return; // break on error
+   }
+
+   // connect this player to the IRC server using that socket
+   if (connect (players[player_index].irc_socket, (sockaddr *) &ircserver_sockaddr, sizeof (ircserver_sockaddr)) == -1)
+   {
+      players[player_index].ircbot_error = IRCBOT_ERROR_CANTCONNECTTOSERVER; // set the error level
+      return; // break on error
+   }
+
+   // at this point, the bot has established a socket connection to the IRC server
+   players[player_index].connected_to_server = TRUE; // so mark it as connected
+
+   // register the user on the IRC server
+   sprintf (players[player_index].tx_buffer, "USER %s 0 * : \n", players[player_index].irc_name);
+   IRCBot_Talk (player_index); // login step 1: USER
+
+   sprintf (players[player_index].tx_buffer, "NICK %s\n", players[player_index].irc_name);
+   IRCBot_Talk (player_index); // login step 2: NICKname
+
+   players[player_index].ircbot_order = IRCBOT_ORDER_NOORDER; // we successfully handled the order
+
+   printf ("Bot %d connected.\n", player_index);
+
+   return; // so return
+}
+
+
+void IRCBot_Disconnect (int player_index)
+{
+   // this function disconnects the IRC server bot attributed to the player whose index is
+   // player_index
+
+   printf ("bot %d disconnecting...\n");
+
+   // send the QUIT command with the reason for it
+   sprintf (players[player_index].tx_buffer, "QUIT :%s has left the game\n", players[player_index].irc_name);
+   IRCBot_Talk (player_index); // logout
+   closesocket (players[player_index].irc_socket); // close the IRC bot socket
+
+   players[player_index].ircbot_order = IRCBOT_ORDER_NOORDER; // we successfully handled the order
+
+   printf ("Bot %d disconnected.\n", player_index);
+
+   return; // so return
+}
+
+
+void IRCBot_Talk (int player_index)
+{
+   // this function makes the IRC bot associated to the player whose index is player_index send
+   // its transmission buffer to the IRC server
+
+   if (!players[player_index].connected_to_server)
+      return; // reliability check, don't send anything if player is not connected
+
+   // write the transmission buffer to the IRC client socket in direction of the IRC server
+   send (players[player_index].irc_socket, players[player_index].tx_buffer, strlen (players[player_index].tx_buffer), 0);
+   players[player_index].tx_buffer[0] = 0; // reset the tx buffer now that it has been sent
+
+   return; // and return
+}
+
+
+void IRCBot_Listen (int player_index)
+{
+   // this function makes the IRC bot associated to the player whose index is player_index listen
+   // to the data sent by the IRC server and fill in its reception buffer accordingly
+
+   int count = 0;
+   static char buffer[1024];
+
+   if (!players[player_index].connected_to_server)
+      return; // reliability check, don't listen to anything if player is not connected
+
+   // as long as we don't get a carriage return (13) or we don't reach 256 packets of data...
+   while ((buffer[0] != 13) && (count < 256))
+   {
+      // listen to the socket and stuff the temporary buffer with what we get
+      recv (players[player_index].irc_socket, buffer, 1, 0);
+      strcat (players[player_index].rx_buffer, buffer); // concatenate the data in the rx buffer
+      count++; // we have processed one packet more
+   }
+   recv (players[player_index].irc_socket, buffer, 1, 0); // handle the terminator packet
+
+   return; // and return
+}
+
+
+void IRCBot_Think (int player_index)
+{
+   // this function examines the reception buffer of the IRC bot associated to the player whose
+   // index is player_index and formulate an automatic reply to the IRC server when needed
+
+   static char words[16][256];
+   static int i;
+
+   if (!players[player_index].connected_to_server)
+      return; // reliability check, don't examine anything if player is not connected
+
+   if (players[player_index].rx_buffer[0] == 0)
+      return; // reliability check, don't examine anything if nothing in the reception buffer
+
+   printf ("Bot %d thinking...\n", player_index);
+
+   // if the data received is typical from a disconnection, then we need to reconnect
+   if ((strncmp (players[player_index].rx_buffer, "\n\n\n\n\n", 5) == 0)
+        (strncmp (players[player_index].rx_buffer, "     ", 5) == 0))
+   {
+      printf ("Bot %d was disconnected.\n", player_index);
+      _sleep (5000); // wait for 5 seconds before retrying to connect
+      players[player_index].ircbot_order = IRCBOT_ORDER_CONNECT; // try to reconnect the IRC bot
+      return; // don't go any further
+   }
+
+   // else we are still connected and we need to examine word by word what the server sends us
+
+   // parse the server words and fill our array
+   for (i = 0; i < 16; i++)
+      strcpy (words[i], GetWord (players[player_index].rx_buffer, i)); // store each word
+
+   printf ("  Bot %d reads: ", player_index);
+   for (i = 0; i < 16; i++)
+      printf ("%s ", words[i]);
+   printf ("\n");
+
+   // is it a "nick already in use" error ?
+   if (strcmp ("433", words[1]) == 0)
+   {
+      strcat (players[player_index].irc_name, "_"); // append an underscore to his IRC nickname
+      sprintf (players[player_index].tx_buffer, "NICK %s\n", players[player_index].irc_name);
+      IRCBot_Talk (player_index); // retry login step 2: NICKname
+   }
+
+   // else is it a PING request ?
+   else if (strcmp ("PING", words[0]) == 0)
+   {
+      sprintf (players[player_index].tx_buffer, "PONG %s\n", words[1]);
+      IRCBot_Talk (player_index); // send PONG
+   }
+
+   // else are we asked for our IRC client version name ?
+   else if ((strcmp ("PRIVMSG", words[2]) == 0) && (strcmp ("VERSION", words[4]) == 0))
+   {
+      sprintf (players[player_index].tx_buffer, "NOTICE %s :%cVERSION HLIRC version %s%c\n", words[0], 0x01, "1.0", 0x01);
+      IRCBot_Talk (player_index); // send VERSION name
+      sprintf (players[player_index].tx_buffer, "NOTICE %s :%cVERSION by Pierre-Marie Baty <pm@racc-ai.com>%c\n", words[0], 0x01, 0x01);
+      IRCBot_Talk (player_index); // send VERSION info
+   }
+
+   // else are we asked for our IRC client version ping ?
+   else if ((strcmp ("PRIVMSG", words[2]) == 0) && (strcmp ("PING", words[4]) == 0))
+   {
+      sprintf (players[player_index].tx_buffer, "NOTICE %s :%cPING %s%c\n", words[0], 0x01, words[6], 0x01);
+      IRCBot_Talk (player_index); // send VERSION ping
+   }
+
+   // else is it a MOTD notice ?
+   else if ((strcmp ("376", words[1]) == 0)  (strcmp ("422", words[1]) == 0))
+   {
+      sprintf (players[player_index].tx_buffer, "JOIN %s\n", irc_channel_string);
+      IRCBot_Talk (player_index); // request to join the specified channel
+   }
+
+   // else is it a NAMES list ? (such a list is sent when we have joined a channel)
+   else if (strcmp ("366", words[1]) == 0)
+      players[player_index].connected_to_channel = TRUE; // bot is now a member of the channel
+
+   // else is it a notification that we have been kicked out of the channel ?
+   else if (strcmp ("KICK", words[1]) == 0)
+   {
+      sprintf (players[player_index].tx_buffer, "JOIN %s\n", irc_channel_string);
+      IRCBot_Talk (player_index); // request to join the specified channel
+   }
+
+   // that's all we can do, so reset the reception buffer
+   players[player_index].rx_buffer[0] = 0;
+   return; // and return
+}
+
+
+const char *GetWord (const char *string, int word_number)
+{
+   // this function returns the wanted word in a string
+
+   static char word_returned[256];
+   int length, i, index = 0, word_count = 0, fieldstart, fieldstop;
+
+   word_returned[0] = 0; // reset arg
+   length = strlen (string); // get length of string
+
+   // while we have not reached end of line
+   while ((index < length) && (word_count <= word_number))
+   {
+      while ((index < length) && ((string[index] == ' ') 
+                                   (string[index] == ':')
+                                   (string[index] == '!')
+                                   (string[index] == '~')
+                                   (string[index] == 0x01)
+                                   (string[index] == 0x0D)
+                                   (string[index] == 0x0A)))
+         index++; // ignore spaces, smileys, separators, carriage returns and end of lines
+
+      fieldstart = index; // save field start position
+      while ((index < length) && (string[index] != ' ') 
+                              && (string[index] != ':')
+                              && (string[index] != '!')
+                              && (string[index] != '~')
+                              && (string[index] != 0x01)
+                              && (string[index] != 0x0D)
+                              && (string[index] != 0x0A))
+         index++; // reach end of field
+      fieldstop = index - 1; // save field stop position
+
+      // is this word we just processed the wanted one ?
+      if (word_count == word_number)
+      {
+         for (i = fieldstart; i <= fieldstop; i++)
+            word_returned[i - fieldstart] = string[i]; // store the field value in a string
+         word_returned[i - fieldstart] = 0; // terminate the string
+         break; // and exit the while loop
+      }
+
+      word_count++; // we have processed one argument more
+   }
+
+   return (&word_returned[0]); // return a pointer to the wanted word
+}
+
+
+it's a standalone .exe yet (but this will change very soon), everything is here, there's no need for external includes apart setting the multithreaded library in the project options instead of the single-threaded one and of course the use of wsock32.lib as a link-time library.
+
+How can I stop this stupid crap from lagging like hell ???
+
+O Thou Munificent Guru, may Thou in Thy Immense Wisdom dry the shameless tears and show the Right Way to Thy worthless and illiterate servant.
+
+(who said "amen"?)
+
+
+[modified on 03/16/03 at 18:58:56]
+--------------------------------------------------
+03/17/03 at 05:46:52  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+The Half-Life engine isn't using the multithreaded version of the standard C library.  Make sure you are linking against the static library instead of the DLL when you create your project otherwise you will wind up calling non-threadsafe versions of standard C functions (see the MSVC documentation for details).
+
+Your loops don't ever seem to give up their timeslice and allow process context switching.  Instead of something like this...
+code:
+while (TRUE)
+{
+   // do lots of stuff here
+}
+
+...do something like this...
+code:
+while (TRUE)
+{
+   // do lots of stuff here
+
+   sleep(0);  // allow context switching if necessary
+}
+
+...also put a sleep(0) at the bottom of your loop in the StartMultithreadedIRCBot() function so it will allow context switching also.  See the MSVC documentation about "sleep(0)" and what it does in a multithreaded environment.
+
+botman
+
+--------------------------------------------------
+03/17/03 at 09:18:33  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Bad context switching, that was it, thanks botman. Actually that's the very first time I try to program anything that uses threads and I took the example for using _beginthread() from Microsoft's web site. I never saw they used _sleep(0) there. Geez, they could at least fix the bugs in their own tutorials :D
+
+
+--------------------------------------------------
+03/17/03 at 09:57:55  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+"Geez, they could at least fix the bugs in their own tutorials"
+
+Some of the multithread examples assume you will be creating a separate .exe and that you will be able to adjust the priority of the executable.
+
+For example, you might have and executable that spawns off many threads, but then the threads adjust the priority of the "process" to be below the normal default process priority.  This gives priority to other threads or processes that need to run instead of the threads spawned by your application.  Rather than messing with the priority of the process, you can just "give up" the rest of your time slice by using sleep(0) to signal the operating system that you are done with what you were doing and you want to see if anybody else has anything that they need to do.
+
+botman
+
+--------------------------------------------------
+03/17/03 at 15:00:43  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Good to know.
+Thanks again.
+:)
+
+
+--------------------------------------------------
+03/18/03 at 05:23:48  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+P.S. Using a spin loop (or wait loop or busy wait loop) to check for events in a thread is a bad way to do things.  If you have a thread that typically won't be doing much very often, you should use one of the Windows signaling mechanisms to signal the thread that there is something to do.  Many of these signaling mechanisms are somewhat portable to other platforms depending on which one you choose.
+
+See the MSDN webpage about multithreaded signaling mechanisms such as Semaphores, Mutexes, and other multithreaded synchronization methods.  It will make your threads MUCH more CPU efficient and not spend 90% of your CPU time doing nothing but "sleep(0)".
+
+botman
+
+--------------------------------------------------
+03/18/03 at 14:40:00  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Okay, I've been checking a couple of docs about thread-safe programming and such, most of them at Microsoft's. They seem to encourage people to use what they call "Mutexes" but as usuals I bet it isn't portable. Do you know a commonly used (portable) method of inter-process communication ?
+
+Anyway, I circumvented the problem. As you may have seen, the goal of this thing was to create a bot on an IRC channel for each player in the game, which bot would have acted as a "proxy" for this player to view the IRC channel on his game screen and for the people on IRC to see what was going on in the game server. Instead of making one bot (and so one thread) per person, I make one single bot for all players and it simplifies many things. But still, I want to do things the right way.
+
+Actually, it's untrue to say that my process is idle most of the time ; it's not looping endlessly doing nothing, it's basically listening at the TCP socket all the time. So is it still relevant not to allow it to have its full timeslice ?
+
+Dunno, hence I ask ;D
+
+
+--------------------------------------------------
+03/18/03 at 15:08:25  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+As long as you are calling some Windows function that will cause the process to get rescheduled (such as you are doing with 'recv()'), that's fine.
+
+The problems come when you do something like this in a thread...
+code:
+while (TRUE)
+{
+   if (global_flag == TRUE)  // is there something to do?
+   {
+      // go process something here
+   }
+
+   // nothing to do, let's go back to top of loop
+   sleep(0);
+}
+
+This thread will just SPIN like crazy eating up whatever CPU time is not being used by any other processes.  You system shouldn't become laggy since you are calling sleep() to swap processes, but if you run the Windows system performance tools, you should see no idle CPU time and your application (actually it's thread) will be taking up almost all of the CPU time.
+
+To prevent this type of useless spinning problem, you can create a mutex or a semaphore (which is what I prefer to use since Windows semaphores and Linux semaphores are so similar).  So the above code would change to something like this (psuedo code, not real functions)...
+code:
+while (TRUE)
+{
+   // wait to be told there is something to do...
+   WaitForSemaphore(handle, semaphore_id);
+
+   // go process something here, then go back to top of loop
+}
+
+...somewhere else (either in your main application, or in another thread) you will POST to the semaphore which will signal any threads that are waiting on that semaphore.  As soon as a thread waits on a semaphore, the Windows (or Linux) process scheduler puts that thread to sleep and it uses no more CPU time until the semaphore has been set.
+
+It's a much more complicated way of doing things than just having a global flag somewhere, but it's a hell of a lot more CPU efficient and can make a very big difference if you have lots of threads (dozens or more) running at the same time.
+
+botman
+
+--------------------------------------------------
+03/18/03 at 17:39:41  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Okie dokie.
+Thank you (I wonder how many times I had to say this)
+
+
+--------------------------------------------------
+03/18/03 at 23:09:35  Reply by: BrianL (halfkiller@hotmail.com)
+--------------------------------------------------
+You could do something like this as-well but its not very portable this way:
+
+code:
+
+#define MAXLONG     0x7fffffff
+#define THREAD_BASE_PRIORITY_LOWRT  15  // value that gets a thread to LowRealtime-1
+#define THREAD_BASE_PRIORITY_MAX    2   // maximum thread base priority boost
+#define THREAD_BASE_PRIORITY_MIN    -2  // minimum thread base priority boost
+#define THREAD_BASE_PRIORITY_IDLE   -15 // value that gets a thread to idle
+
+#define THREAD_PRIORITY_LOWEST          THREAD_BASE_PRIORITY_MIN
+#define THREAD_PRIORITY_BELOW_NORMAL    (THREAD_PRIORITY_LOWEST+1)
+#define THREAD_PRIORITY_NORMAL          0
+#define THREAD_PRIORITY_HIGHEST         THREAD_BASE_PRIORITY_MAX
+#define THREAD_PRIORITY_ABOVE_NORMAL    (THREAD_PRIORITY_HIGHEST-1)
+#define THREAD_PRIORITY_ERROR_RETURN    (MAXLONG)
+
+#define THREAD_PRIORITY_TIME_CRITICAL   THREAD_BASE_PRIORITY_LOWRT
+#define THREAD_PRIORITY_IDLE            THREAD_BASE_PRIORITY_IDLE
+
+HANDLE hThink = NULL;
+DWORD __stdcall pThinkThread (void *arg)
+{
+  while (TRUE)
+  {
+    // Do stuff here...
+  }
+  return 1;
+}
+
+int main (void)
+{
+  hThink = CreateThread(0, 0, pThinkThread, 0, 0, 0);
+
+  if (hThink != NULL) {
+      SetThreadPriority(hThink, THREAD_PRIORITY_IDLE);
+  }
+
+  WaitForSingleObject(hThink, INFINITE);
+  CloseHandle(hThink);
+
+  return 1;
+}
+
+
+I use those types in my server/client app for alot of usefull things :-P
+
+For multiple threads:
+  // WaitForMultipleObjects(DWORD nCount, CONST HANDLE *lpHandles, BOOL bWaitAll, DWORD dwMilliseconds)
+
+  #define MAX_THREADS 3
+  HANDLE pThreads[MAX_THREADS];
+  //  etc...
+  WaitForMultipleObjects(MAX_THREADS, &pThreads, TRUE, INFINITE);
+
+Hope that helps if ya wanna go that way :-P
+But using SetThreadPriority can really help fix your CPU hog problems...
+
+[modified on 03/18/03 at 23:09:35]

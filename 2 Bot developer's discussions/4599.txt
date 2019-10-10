@@ -1,0 +1,117 @@
+--------------------------------------------------
+Subject: quick question
+--------------------------------------------------
+07/02/03 at 12:50:39  Posted by: WKYA-Undertaker (mofo_badboys@yahoo.com)
+--------------------------------------------------
+I have been working on a bot for "Digital Paintball" (DPB for short) for quite some time now.  It started out with "Half-Life Paintball" as a learning experience.  Anyway, DPB uses a "points" system to select your guns when you start.  You cant gain anypoints, so what you start out with is what you have for the entire game.  
+
+For now, I am using a fakeclientcommand to try to force the bots to select a gun. 
+
+         FakeClientCommand(pEdict, "weaponconfig", "10 2 0 0", NULL);
+
+The problem is that the bots will not select the gun.  What bugs the heck out of me is what is stated in the bot.txt which here are to snipets from it.
+
+<--------this is whats sent when a real client selects a gun-------->
+ClientCommand: weaponconfig 10 2 0 0
+pfnPvAllocEntPrivateData:
+pfnCreateNamedEntity: edict=663f908 name=weapon_emag
+pfnPrecacheModel: models/p_emag.mdl
+pfnPrecacheModel: models/v_emag.mdl
+pfnPrecacheModel: models/w_emag.mdl
+pfnMessageBegin: edict=6626708 dest=1 type=35
+pfnWriteByte: 0
+<--------end-------->
+
+
+<--------this is whats sent when a bot selects the same gun-------->
+FakeClientCommand=weaponconfig 10 2 0 0
+ClientCommand: weaponconfig 10 2 0 0
+pfnMessageBegin: edict=6626a2c dest=1 type=80
+pfnWriteByte: 0
+<--------end-------->
+
+Does anyone have any suggestions at all as to why the bot cant select the gun but the client can?   Thanks to anyone that can offer information.
+
+
+for a side note, I am sitting at home druged up thanks to a migrane, so im sorry if this does not make sence, ill read it again latter and try to rewrite it if its needed.
+
+--------------------------------------------------
+07/02/03 at 13:05:18  Reply by: rick (rick_helmus8@hotmail.com)
+--------------------------------------------------
+what happens when you do the numbers between double quotes ("):
+
+code:
+
+FakeClientCommand(pEdict, "weaponconfig", "\"10 2 0 0\"", NULL);
+
+
+--------------------------------------------------
+07/02/03 at 13:13:13  Reply by: WKYA-Undertaker (mofo_badboys@yahoo.com)
+--------------------------------------------------
+I still have the same problem.
+
+The acctual command you type into the console is:
+
+weaponconfig 10 2 0 0
+
+where the first number is the gun, the second number is the barrel, the 3rd is the number of extra ammo, and the 4th is the color of your paint
+
+[modified on 07/02/03 at 13:13:13]
+--------------------------------------------------
+07/02/03 at 13:12:03  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+"FakeClientCommand(pEdict, "weaponconfig", "10 2 0 0", NULL)"
+
+Each value (10, 2, 0, 0) needs to be a separate argument, like this...
+code:
+FakeClientCommand(pEdict, "weaponconfig", "10", "2", "0", "0");
+
+...unfortunetly FakeClientCommand() was only designed to take 4 arguments (not 5).  You will have to modify it and the code that processes these arguments from the global buffer so that it can take (and process) 5 arguments instead of 4.
+
+botman
+
+--------------------------------------------------
+07/02/03 at 13:14:14  Reply by: WKYA-Undertaker (mofo_badboys@yahoo.com)
+--------------------------------------------------
+I will give that a try botman, I tried it before with an older version of dpb but didnt have any luck, but maybe I was doing somthing wrong also.
+
+--------------------------------------------------
+07/02/03 at 13:24:12  Reply by: Cheesemonster!!! (cheeseh@houstondod.com)
+--------------------------------------------------
+You can always try PM's magical FakeClientCommand code ;D
+
+http://dynamic.gamespy.com/~botman/yabb/YaBB.pl?board=2&action=display&num=4032
+
+[modified on 07/02/03 at 13:24:12]
+--------------------------------------------------
+07/02/03 at 13:41:57  Reply by: WKYA-Undertaker (mofo_badboys@yahoo.com)
+--------------------------------------------------
+Even with 4 arguments the bots still act the same and it still returns the same message in the bot.txt.  What else could it be?
+
+Here is my fakeclientcommand, perhaps im not doing it right?
+
+             FakeClientCommand2(pEdict, "weaponconfig", "10", "2", "0", "0"); 
+
+
+edit:
+Just so you know, the bots do join the game alright, they navigate all right, they simply dont have a gun.  One thing ive wondered about, could it be possible that the bots have to close the menu's before they are given the gun?  I know when I try the weaponconfig command in the console, I dont get a gun unless I close the menu.  I could I go about closing a vgui menu?
+
+[modified on 07/02/03 at 13:41:57]
+--------------------------------------------------
+07/02/03 at 14:53:33  Reply by: WKYA-Undertaker (mofo_badboys@yahoo.com)
+--------------------------------------------------
+on a second note, I created the fakeclientcommand2 to be identical to the orignial only with 2 extra arguments. 
+
+--------------------------------------------------
+07/02/03 at 15:42:14  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+And are you processing those extra command parameters in Cmd_Argv()?
+
+Actually now I look at the code, FakeClientCommand() only handles 3 arguments (which in your case is "weaponconfig", "10" and "2").
+
+You'll have to modify Cmd_Argv() so that it returns g_argv[256] and g_argv[320] (or whereever you store them in FakeClientCommand).
+
+Alternately, you can look at PM's code from the link that Cheesemonster gave and see if that works any better.
+
+botman
+

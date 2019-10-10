@@ -1,0 +1,77 @@
+--------------------------------------------------
+Subject: Yet another weird linux problem
+--------------------------------------------------
+06/21/03 at 18:09:56  Posted by: Cheesemonster!!! (cheeseh@houstondod.com)
+--------------------------------------------------
+Hello yet again,
+
+About getting this linux build of my bot to work, I've ran into weird problems.
+
+For some reason the engine functions are recursively calling themselves, and this means I get a stack overflow, and the server crashes.
+
+I'm wondering if theres any reason to this, I have had other programs work with linux without doing this and the GiveFnptrsToDll function is the same.
+
+It crashes when ever I call any engine function simply because I believe its recursively calling itself, whether it's pfnIsDedicatedServer, or pfnGetGameDir or any other engine function in engfuncs_t (pengFuncsFromEngine).
+
+I'm thinking there's a problem with the MOD dll itself? Or its a linking problem... or the bot dll is actually being recursive called? But I'm totally unsure.
+
+When I run gdb (debug program)
+
+I get stuff such as...
+
+QUOTE:
+
+Program received signal... Segmentation Fault
+0x43712263 in pfnIsDedicatedServer () from ./ns/..rcbot/dlls/rcbot_i486.so
+(gdb) where
+#0 0x43712263 in pfnIsDedicatedServer () from ./ns/../rcbot/dlls/rcbot_i486.so
+#1 0x43712269 in pfnIsDedicatedServer () from ./ns/../rcbot/dlls/rcbot_i486.so
+#2 0x43712269 in pfnIsDedicatedServer () from ./ns/../rcbot/dlls/rcbot_i486.so
+...
+
+
+
+#'s all the way down to infinity or something ridicolous!
+
+And all I would have in my actuall code would be
+
+code:
+
+#ifndef __linux__
+#ifdef __BORLANDC__
+extern "C" DLLEXPORT void EXPORT GiveFnptrsToDll(enginefuncs_t* pengfuncsFromEngine, globalvars_t *pGlobals)
+#else
+void DLLEXPORT GiveFnptrsToDll( enginefuncs_t* pengfuncsFromEngine, globalvars_t *pGlobals )
+#endif // __BORLANDC__
+#else // ELSE __linux__
+extern "C" DLLEXPORT void GiveFnptrsToDll( enginefuncs_t* pengfuncsFromEngine, globalvars_t *pGlobals )
+#endif // __linux__
+{
+   int pos;
+   char game_dir[256];
+   char mod_name[32];
+
+   char game_dll_filename[256];
+
+   // get the engine functions from the engine...
+   memcpy(&g_engfuncs, pengfuncsFromEngine, sizeof(enginefuncs_t));   
+   gpGlobals = pGlobals;
+
+   // IS_DEDICATED_SERVER reads g_engfuncs
+   if ( IS_DEDICATED_SERVER() )
+   {
+      // stuff in here....
+   }
+   // Even this will crash (recursive?) stack overflow type thing...
+   (*g_engfuncs.pfnGetGameDir)(game_dir);
+ 
+   // And this will do the same
+   (*pengfuncsFromEngine->pfnGetGameDir)(game_dir);
+
+...
+
+
+
+Damn why can't linux be easy.... ???
+
+[modified on 06/21/03 at 18:09:56]

@@ -1,0 +1,276 @@
+--------------------------------------------------
+Subject: Help w/ Quake C into C++
+--------------------------------------------------
+12/25/02 at 07:36:20  Posted by: trendkiller (corbin_mike@hotmail.com)
+--------------------------------------------------
+Im trying to convert some Quake C code from the quake mod Midair to Half-life DMC..Its server side only mod..But I cant figure where to put the code??I have tried to get someone help me do this but as you all know there are only a few of us who play DMC regularly and its hard to find help..
+
+Here is part of what the readme text file in the midair source for Quake says :
+
+"Here is the source for Midair. All of the stuff which is new to midair is preceded by "// MIDAIR" or something similar, with the added bonus of my own barely coherent ramblings in some cases. The breakdown of functionality across the modified files is as follows:
+
+      combat.qc:      The most important change, to the damage algorithm. If you just rip this bit out and stick it into another mod, you'll have the essence of midair."
+
+And here is what is in combat.qc that I need to compile in DMC code :
+
+local   vector  dir;
+      local   entity  oldself;
+      local   float   save;
+      local   float   take;
+      local   float   playerheight;
+      local   string  s;
+      local   string  attackerteam, targteam;
+      local      float      lowheight;            // MIDAIR:      true if the player is below jump height
+      local      float      axe;                  // MIDAIR:      true if the damage is coming from an axe hit
+
+
+
+// MIDAIR:      If the target isn't on the ground, rape them            
+      
+      // Work out height above ground
+      traceline(targ.origin, targ.origin - '0 0 2048', TRUE, targ);
+      playerheight = targ.absmin_z - trace_endpos_z;
+      /*bprint(PRINT_MEDIUM, "Player foot: ");
+      s = ftos(targ.absmin_z);
+      bprint(PRINT_MEDIUM, s);
+      bprint(PRINT_MEDIUM, "      Ground level: ");
+      s = ftos(trace_endpos_z);
+      bprint(PRINT_MEDIUM, s);
+      bprint(PRINT_MEDIUM, "\n");*/
+      if (playerheight < 42.5 || targ.flags & FL_ONGROUND)
+      {
+            lowheight = TRUE;
+      }
+      else
+      {      
+            // No damage below jumping height, starts at full damage
+            // at max jumping height and increases from there, with
+            // the multiplier increasing by one about once every player
+            // height
+            damage = damage * (1 + (playerheight - 42.5) / 64);
+            lowheight = FALSE;
+      }
+
+
+
+
+
+// save damage based on the target's armor level      
+      save = ceil(targ.armortype*damage);
+      if ( lowheight && !(targ.flags & FL_INWATER) && !targ.axhitme)      
+      {
+            // MIDAIR:      If they are near the ground, take no damage but get knocked about            
+            save = save*0.5;            
+      }
+      
+      if (save >= targ.armorvalue)
+      {
+            save = targ.armorvalue;
+            targ.armortype = 0;     // lost all armor
+            targ.items = targ.items - (targ.items & (IT_ARMOR1 | IT_ARMOR2 | IT_ARMOR3));
+      }
+            
+      
+      targ.armorvalue = targ.armorvalue - save;
+      take = ceil(damage-save);
+
+      if ( lowheight  && !(targ.flags & FL_INWATER) && !targ.axhitme)      
+      {
+            // MIDAIR:      If they are on the ground, take no damage but get knocked about.
+            //                  Also, take full damage from the axe
+            take = 0;
+      }
+
+OK - Can anyone help me ? What is this translated to in C++ ? Would this compile in the DMC\DLLS\combat.cpp ? If so where ?
+
+Would someone want to do this for me ? I dont know jack about coding but I cant get any help..
+
+Thank you
+
+
+
+
+--------------------------------------------------
+12/25/02 at 11:20:06  Reply by: labalaba (developer@counter-strike.org)
+--------------------------------------------------
+nevermind porting the code, you should really learn coding first.. then learn both sdk, half-life and quake, then you can think of porting the code. even then you won't get much help since not that many ppl in the world would know of porting both engines. even if you find one, he might not be that available and i dont think ive seen anyone like that on this forum.. ;)
+
+
+
+--------------------------------------------------
+12/25/02 at 12:38:44  Reply by: @$3.1415rin (johannes@_-removeifnotavirus-_lampel.net)
+--------------------------------------------------
+right. you cannot 'convert' code from C to C++, there is no general rule to do this. You have to know both languages, and then you have to know what you want to archieve and after this you can think about how to code it in C++, which classes to use, which to create, from which to inherit.
+
+Just doing a copy and paste adventure won't work I guess.
+
+--------------------------------------------------
+12/25/02 at 17:04:00  Reply by: trendkiller (corbin_mike@hotmail.com)
+--------------------------------------------------
+Thanks very much..I really hate to try and learn C and C++ just for 1 paragraph of code :( I really dont have time to do anything further than this simple little mod...But if thats what it will take to play midair in DMC then so be it :)
+
+Maybe some of you can give some places to start in the SDK ?
+
+This is what I need to achieve for midair to work..
+
+1) Players spawn with 250 health and 200 armor and the rocket launcher with 100 rockets and the crowbar.
+
+2) Damage is only inflicted while the players are in air..
+
+3) Damage taken is directly proportional to the height the player is above the standard jump height. Basically damage is scaled by the targets height off the ground. Every 64 units, damage increases by a factor of one. 
+Armour is damaged when your on the ground, its damaged even more when your not. There is no falling or rocketjump damage except to armour.
+
+Thats about it..Can someone give some tips just off the top of their head of where to start ?  combat.cpp ? Ill try to get right by trial and error just need pointed in the right direction..
+
+Thanks to you all..
+
+
+--------------------------------------------------
+12/25/02 at 19:34:53  Reply by: RobGP (rob@planetfortress.com)
+--------------------------------------------------
+1) Players spawn with 250 health and 200 armor and the rocket launcher with 100 rockets and the crowbar. 
+
+Look in player.cpp in the Spawn() function, you can change the starting health and armor there. Health is stored in pev->health and Armor is stored in pev->armorvalue.
+
+
+2) Damage is only inflicted while the players are in air.. 
+
+Go into player.cpp, look for the TakeDamage() function, add something like this to the top of the function:
+
+code:
+
+if(pev->flags & FL_ONGROUND)
+    return; //No damage if on the ground
+
+
+
+
+3) Damage taken is directly proportional to the height the player is above the standard jump height. Basically damage is scaled by the targets height off the ground. Every 64 units, damage increases by a factor of one. 
+
+You would need to create a traceline straight down in the TakeDamage() function and calculate the distance between the player and the floor, then divide by 64 and multiply the damage value appropriately.
+
+--------------------------------------------------
+12/25/02 at 19:40:05  Reply by: trendkiller (corbin_mike@hotmail.com)
+--------------------------------------------------
+WOW, Thanks very much..The whole DMC community (all 10 of us) will be very thankfull if I can get this to work...
+
+Thanks again !
+
+--------------------------------------------------
+12/26/02 at 15:15:28  Reply by: trendkiller (corbin_mike@hotmail.com)
+--------------------------------------------------
+robGP - The code you supplied worked perfectly only I told you wrong ; If players are near the ground, take no damage but get knocked about..
+
+A friend of mine figured out where to place it..In quake_player.cpp near the RJ function with blast velocity code..
+
+I cant seem to figure how to make damage dealt increase relative to player height.. Im sorry I dont quite understand what you meant by traceline ?
+
+The midair QuakeC code looks like this :
+
+no damage below jumping height, starts at full damage
+            // at max jumping height and increases from there, with
+            // the multiplier increasing by one about once every player
+            // height
+            damage = damage * (1 + (playerheight - 42.5) / 64);
+            lowheight = FALSE;
+
+Can you get me goin in the right direction ?
+
+Or another idea would be to make it instagib only when the rocket hits the player in the air..Could this be done ? If so how ...
+
+Thanks very much
+
+[modified on 12/26/02 at 15:15:28]
+--------------------------------------------------
+12/26/02 at 16:33:08  Reply by: RobGP (rob@planetfortress.com)
+--------------------------------------------------
+To calculate the player height from the ground use something like this:
+
+code:
+
+#define MAX_HEIGHT 8000 //Maximum height we will calculate (8000 is large enough for anything)
+
+float Get_Player_Height( CBasePlayer *pPlayer )
+{
+      TraceResult tr;      
+      UTIL_TraceLine( pPlayer->pev->origin, (pPlayer->pev->origin + Vector(0,0,-MAX_HEIGHT), ignore_monsters, pPlayer->pev->pContainingEntity, &tr);
+      
+      if (tr.flFraction == 1.0)
+            return MAX_HEIGHT;
+      else
+            return (pPlayer->pev->origin.z - tr.vecEndPos.z);
+}
+
+
+
+If you want to instagib someone with the RPG, find the line below in ggrenade.cpp (around line 197 inside the Explodetouch() function):
+
+code:
+
+Explode( &tr, DMG_BLAST );
+
+
+
+change to...
+
+code:
+
+Explode( &tr, DMG_BLAST <pipe symbol here> DMG_ALWAYSGIB );
+
+
+
+...and players will always be gibbed if killed by an RPG rocket.
+
+hope this helps.
+
+- Rob
+
+Modified - Forums dont seem to allow use of the pipe symbol, just add one where I specify.
+
+[modified on 12/26/02 at 16:33:08]
+--------------------------------------------------
+12/28/02 at 08:37:09  Reply by: trendkiller (corbin_mike@hotmail.com)
+--------------------------------------------------
+Thanks Rob..
+
+The mod works fine BUT not the way I intended it to..
+
+I need code so that NO damage will be taken below player_height or max jump height (whichever is easier to code) BUT players still get knocked around w/ no damage..
+
+Damage taken WILL instagib above the set height of player_height or jump height (whichever is easier)
+
+BTW - DMC code does not have ggrenade.cpp ??
+
+Thanks very much for the help, I have learned ALOT (i promise) through the help I have been given..
+
+I am guessing that the height I need for NO damage is < 72 (player height is 72 units)
+
+And instagib will be > 72 ??
+
+Im having trouble working out this code..
+Im pretty sure it will go in quake_player.cpp
+around line 199, I am assuming I will need player origin code something like this
+
+pPlayer->pev->origin < Vector(0,0,72)
+
+not sure how to work it out so the player origin is less than or greater than the height I need.. 
+
+[modified on 12/27/02 at 21:57:22]
+
+[modified on 12/28/02 at 08:37:09]
+--------------------------------------------------
+12/28/02 at 23:10:59  Reply by: RobGP (rob@planetfortress.com)
+--------------------------------------------------
+http://girlpower2.dhs.org/downloads/midair.zip
+
+Contains the sourcecode to a modified dmc.dll which basically does what youve described, you will probably want to tweak it to fit your needs, and I hope that you dont just compile and play, but try to learn a little with whats going on. I have clearly marked all the modifications with "//MIDAIR" so you can search for them easily (there isnt a great deal).
+
+hope this helps,
+
+- Rob.
+
+--------------------------------------------------
+12/28/02 at 23:26:49  Reply by: trendkiller (corbin_mike@hotmail.com)
+--------------------------------------------------
+I really appreciate your generosity and help..I am actually trying to learn the SDK more by trying to do this mod, If I can work everything out then I will try advancing further..Thanks very much
+

@@ -1,0 +1,156 @@
+--------------------------------------------------
+Subject: Hpbot and monsters
+--------------------------------------------------
+12/20/02 at 09:29:56  Posted by: awesome_quad (awesome_quad@yahoo.com)
+--------------------------------------------------
+Is there any way of getting together bots and monsters? (with monster plugin)
+
+What can I do? 
+(I guess it should be possible, cause somebody used together stripper plugin and sturmbot)
+
+
+--------------------------------------------------
+12/27/02 at 12:32:04  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+See this post about using metamod's "+localinfo" when starting the server...
+
+http://dynamic.gamespy.com/~botman/yabb/YaBB.pl?board=1&action=display&num=3369
+
+botman
+
+--------------------------------------------------
+02/02/03 at 19:19:22  Reply by: houndhoof (deveringham@neteze.com)
+--------------------------------------------------
+Yeah, that wrks! But the bots won't shoot at the monsters - any way to make the monsters targets? I'm envisioning an "us against them" with monsters guarding a flag (well, standing around flag).
+
+
+--------------------------------------------------
+02/03/03 at 05:48:08  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+"any way to make the monsters targets?"
+
+Yes.  Modify the HPB bot source code to make the bots target monsters as well as human players.  Compile the modified code to create a new DLL.  The code you want to modify is in dlls\bot_combat.cpp in the BotFindEnemy() function.  Currently the bots only target human players (which is the way I like it).
+
+botman
+
+--------------------------------------------------
+02/03/03 at 17:29:35  Reply by: houndhoof (deveringham@neteze.com)
+--------------------------------------------------
+OK, I'm gonna attempt to modify the code to get the bots to target the monsters. Could you give me a pointer or two? I think the best place to put the new code might be just before these lines in bot_combat.cpp:
+
+if (pNewEnemy)
+   {
+      // face the enemy
+
+so that shooting monsters takes a lower priority than shooting at the other team. 
+
+Now there's a function called BotFindItem in bot.cpp that seems to be the place to start, it uses UTIL_FindEntityInSphere to come up with a search string with the class of the entity in it. Further along in BotFindItem there's even a couple of empty checks for monster_satchel and monster_snark.
+
+It should be fairly easy (if I'm on the right track about all this) to put portions of BotFindItem into bot_combat.cpp, and add extra checks for each targetable entity. 
+
+What I'm fuzzy on is how to pass the fact that the monster found is to be considered the enemy. Do I make pNewEnemy = pent if a monster class matches the string, then let the code fall to 
+
+if(pNewEnemy)
+{// face the enemy
+
+or something like that? C++ isn't my strong suit, please let me know if I'm anywhere near the mark on all this, or if something needs to be different. Thank you
+
+
+
+--------------------------------------------------
+02/03/03 at 19:00:05  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+This part of BotFindEnemy() loops through all the players...
+code:
+   if (pNewEnemy == NULL)
+   {
+      Vector vecEnd;
+
+      nearestdistance = 9999;
+
+      // search the world for players...
+      for (i = 1; i <= gpGlobals->maxClients; i++)
+      {
+         edict_t *pPlayer = INDEXENT(i);
+
+...it checks to make sure the player is visible and not on the same team as the bot (otherwise it ignores them).  It will store any enemy player in the pNewEnemy pointer.
+
+...so just below that loop you have the code you indicated...
+code:
+   if (pNewEnemy)
+   {
+      // face the enemy
+
+...and yes, that seems like the best place to put something (just before that).
+
+You can loop through all the entities looking for something that's got a classname of "monster_*" by doing something like this...
+code:
+if (pNewEnemy == NULL)
+{
+   edict_t *pent = NULL;
+   float radius = 1000.0f;  // search within 1000 units of bot
+
+   while ((pent = UTIL_FindEntityInSphere( pent, pEdict->v.origin, radius )) != NULL)
+   {
+      if (strncmp(STRING(pent->v.classname), "monster_", 8) == 0)
+      {
+         Vector vecStart = pEdict->v.origin + pEdict->v.view_ofs;
+         Vector vecEnd = pent->v.origin;
+
+         // find angles from bot origin to entity...
+         float angle_to_entity = BotInFieldOfView( pBot, vecEnd - vecStart );
+
+         // check if entity is outside field of view (+/- 45 degrees)
+         if (angle_to_entity > 45)
+            continue;  // skip this item if bot can't "see" it
+
+         // check if line of sight to object is not blocked (i.e. visible)
+         if (BotEntityIsVisible( pBot, vecEnd ))
+         {
+            pNewEnemy = pent;
+            break;  // just target the first one found (not the nearest one)
+         }
+      }
+   }
+}
+
+...that should be pretty close to what you want.  All of that is untested, of course (it might not even compile), but it will give you an idea of how to get started.
+
+botman
+
+--------------------------------------------------
+02/05/03 at 00:21:26  Reply by: houndhoof (deveringham@neteze.com)
+--------------------------------------------------
+That looks like it should work - unfortunately after adding the code the bots still don't shoot at monsters. The DLL I compiled runs perfectly, though, so I can rule out a compiler error - it's as if the code never finds the string "monster_".
+
+You don't suppose it's not working because the way the monsters are "plugged in" thru monster_mm.dll? Running entities.exe on monster_mm.dll gives nothing, so that led me to wonder if the monster's classnames aren't getting registered properly. Kind of a silly thought, but I thought it anyway. It would explain why the code isn't picking up the string "monster_".
+
+
+--------------------------------------------------
+02/05/03 at 05:48:45  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+It shouldn't stop bots from shooting at players (or other bots) as long as you put the new part below the existing loop that searches for players (i.e. it will only search for monsters if it hasn't already searched for players and found a player to shoot at, monsters are lower priority).
+
+I would suggest using the Debugger in Visual Studio to set a breakpoint at the new code and stepping through it to see what's going wrong.
+
+botman
+
+--------------------------------------------------
+05/10/03 at 08:47:07  Reply by: Apophis (Ville_Mattila89@jippii.fi)
+--------------------------------------------------
+i would be intrested in getting bots to shoot monsters,generally players who join my server dont like monsters to be ingame and leave :\
+
+--------------------------------------------------
+05/10/03 at 08:51:42  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+"generally players who join my server dont like monsters to be ingame"
+
+Okay, then just don't spawn any monsters.  What good does having bots shoot them?  As soon as they die, they will respawn.  Why put monster on there in the first place if nobody wants them in?
+
+botman
+
+--------------------------------------------------
+05/10/03 at 09:09:57  Reply by: Apophis (Ville_Mattila89@jippii.fi)
+--------------------------------------------------
+HLDM tend to get be repeative and boring,so i try and spice up game with couple controller and the loosers leave because they cant be bothered to shoot a monster what you cant get frag from.
+

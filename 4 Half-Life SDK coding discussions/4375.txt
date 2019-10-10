@@ -1,0 +1,124 @@
+--------------------------------------------------
+Subject: Flying & Flapping
+--------------------------------------------------
+05/03/03 at 06:09:29  Posted by: predakanga (predatory_kangaroo@hotmail.com)
+--------------------------------------------------
+Hi...
+I've recently been working on coding a flying system for my mod, which alters the jump function slightly...
+
+I've pasted the code below, but i'll explain the problem now.
+I decided to have my player be able to either flap, by tapping the jump button, or glide, by holding it.  Glide should merely decrease the speed of the descent, but flap should give the player some extra height.
+I got this function working at first, but the flaps were giving WAY too much upward velocity (on boot_camp, one flap would take you to the top of the skybox), so i recoded the function to look like it does below.  The only other change to the whole function is adding this line in the variable declarations: static int NoFlaps
+
+Does anyone see what the problem is, because i am completely clueless.
+
+
+
+      // If this isn't the first frame pressing the jump button, break out.
+      if ( !FBitSet( m_afButtonPressed, IN_JUMP ) )
+      {
+            //This is where the gliding code should go
+                  pev->velocity.z ++;
+                  pev->velocity.z ++;
+                  pev->velocity.z ++;
+                  pev->velocity.z ++;
+                  pev->velocity.z ++;
+                  pev->velocity.z ++;
+                  pev->velocity.z ++;
+                  pev->velocity.z ++;
+                  pev->velocity.z ++;
+                  pev->velocity.z ++;
+            return;         // don't pogo stick
+      }
+
+      if ( !(pev->flags & FL_ONGROUND) || !pev->groundentity )
+      {
+            //This is where the flapping code should go
+            if(NoFlaps > 10)
+            {
+                  pev->velocity.z += (NoFlaps - 5);
+            }
+            if(NoFlaps <= 10)
+            {
+                  pev->velocity.z += (int)(NoFlaps / 2);
+            }
+            if(NoFlaps < 0)
+             {
+            }
+            NoFlaps--;
+            return;
+      }
+
+      if ( (pev->flags & FL_ONGROUND) || pev->groundentity )
+      {
+            NoFlaps = 15;
+      }
+
+--------------------------------------------------
+05/03/03 at 12:58:32  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+Your code is loose. And by looking at it I can believe its your first if not, early look at game programming.
+
+code:
+
+                 pev->velocity.z ++; 
+                 pev->velocity.z ++; 
+                 pev->velocity.z ++; 
+                 pev->velocity.z ++; 
+                 pev->velocity.z ++; 
+                 pev->velocity.z ++; 
+                 pev->velocity.z ++; 
+                 pev->velocity.z ++; 
+                 pev->velocity.z ++; 
+                 pev->velocity.z ++; 
+           return;         // don't pogo stick 
+
+
+
+is exact same thing as..
+
+code:
+
+pev->velocity.z += 10;
+return;
+
+
+
+If you were expecting the player to go up slowly then you need to carry this out over 10 frames and not 10 times in one frame, because the players velocity update wont be visible until the next frame.
+
+Checking for a NULL pev->groundentity aswell isn't required if you know the ON_GROUND flag isnt set.
+
+code:
+
+     if ( !(pev->flags & FL_ONGROUND) )
+     {
+           //This is where the flapping code should go...
+           if (NoFlaps > 0)
+           {
+
+               // get percentage of num flaps made, more flaps, less height. Max height of a jump if 20 here...
+
+               pev->velocity.z += 20*(NoFlaps / 15);
+               NoFlaps--;
+           }
+
+           return;
+     }
+     else
+     {
+           NoFlaps = 15;
+     } 
+
+
+
+
+
+ 
+
+[modified on 05/03/03 at 12:58:32]
+--------------------------------------------------
+05/03/03 at 18:50:10  Reply by: predakanga (predatory_kangaroo@hotmail.com)
+--------------------------------------------------
+The part about pev->velocity.z += 10 i knew about, but i had left it like that temporarily.  The glide speed is going to be set by a server-side cvar, and that will be a for loop.
+Helpful though those comments are, it still doesn't solve the problem... Ther should at least be SOME change ingame, but the compiled program just jumps normally
+

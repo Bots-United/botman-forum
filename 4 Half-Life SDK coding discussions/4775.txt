@@ -1,0 +1,755 @@
+--------------------------------------------------
+Subject: info_tfdetect
+--------------------------------------------------
+08/27/03 at 06:49:25  Posted by: LazyOne (the_lazy_one_09@hotmail.com)
+--------------------------------------------------
+My plugin is having a problem with maps that do not have an info_tfdetect entity.
+
+Currently it hooks pfnKeyValue and if its for the info_tfdetect entity it looks up new class information in a config file ( eg. Pyros on hunted ). The problem is some maps do not have a tfdetect entity and even making a config for those maps will have no effect.
+
+I was wondering when is the best time to look for this entity and if it doesn't exist to create it with the class settings in the map config file.
+
+The current source is available on my website...
+lazyone.50megs.com
+
+Any help is greatly appreciated on this.
+I really dont want to have to look through the bsp.
+
+
+--------------------------------------------------
+08/27/03 at 11:47:25  Reply by: LazyOne (the_lazy_one_09@hotmail.com)
+--------------------------------------------------
+I did some checking and put a check in DispatchSpawn to see what maps have an info_tfdetect entity.
+
+It seems all of them do, but then why won't my plugin change their class settings?
+
+Heres a 2fort config...
+
+code:
+
+#      Civilian only 2fort
+#      Test config for TFClass
+
+blue/-1
+red/-1
+
+
+
+That does nothing at all, but this one for hunted works perfectly...
+
+code:
+
+#      Sample map configuration file for hunted
+#
+#      # denotes a comment line, they must be at the beginning of the line only.
+#      Format for teams TEAM/classbits
+#
+#      Add up the values of the classes you DONT want playable, a value of -1
+#      is a team made up of civilians only. A value of 0, means all classes are playable.
+#
+#      0 - No limits
+#      -1 - Civilian only
+#      1 - No scouts
+#      2 - No snipers
+#      4 - No soldiers
+#      8 - No demomen
+#      16 - No medics
+#      32 - No hwguys
+#      64 - No pyros
+#     128 - No random playerclass
+#     256 - No spies
+#     512 - No engineers
+#
+#      TFClass 2003 - Lazy < the_lazy_one_09@hotmail.com >
+#
+#      Final Notes: You cannot make up new teams, if there is no existing team ( eg. green )
+#            the values you specify will be ignored.
+
+blue/-1
+red/897
+yellow/1021
+
+
+
+This is driving me nuts, could it be that the info_tfdetect is missing class values? I have no clue why it won't work.
+
+
+[ ADDED ]
+
+Ok, the bug is caused by missing keys in the info_tfdetect entity.
+Maps like 2fort, rock2 leave out these keys so you can play as any class.
+
+A new question comes up now, how do I find out wether or not theys keys exist?
+
+I know that if they don't and there is a config for that map I'll just add in a random value so that DispatchKeyValue can find it and change the class limits.
+
+
+[modified on 08/27/03 at 11:47:25]
+--------------------------------------------------
+08/27/03 at 13:10:17  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+If you're talking about using Stripper2, you can't determine which keys are or are not present in a map's entity.
+
+If you are creating your own plugin for this, you can intercept each key/value pair as it is being sent to the game DLL code to see which ones are present and which ones aren't.  See the HPB bot source code for examples of intercepting the keys in a map entity (for example, the HPB bot code uses this method to determine which teams are valid in TFC and which teams are allies (like in Hunted)).
+
+botman
+
+--------------------------------------------------
+08/27/03 at 13:18:19  Reply by: LazyOne (the_lazy_one_09@hotmail.com)
+--------------------------------------------------
+Thats what I do ( sort of ), here is my DispatchKeyValue function...
+
+code:
+
+void DispatchKeyValue( edict_t* pEdict, KeyValueData* pkvd )
+{
+      if ( FStrEq( STRING( pEdict->v.classname ), "info_tfdetect" ) )      /*      The entity where class settings are      */
+      {
+            printf( "TFDETECT: %s %s %s\n", pkvd->szClassName, pkvd->szKeyName, pkvd->szValue );
+
+            if ( strcmpi( pkvd->szKeyName, "maxammo_shells" ) == 0 )      /*      Blue team key      */
+            {
+                  if ( strlen( gszBlue ) != 0 )
+                  {
+                        sprintf( pkvd->szValue, gszBlue );      /*      Copy the info we got from the config file as long as it has something in it      */
+                  }
+            }
+
+            else if ( strcmpi( pkvd->szKeyName, "maxammo_nails" ) == 0 )      /*      Red team key      */
+            {
+                  if ( strlen( gszRed ) != 0 )
+                  {
+                        sprintf( pkvd->szValue, gszRed );
+                  }
+            }
+
+            else if ( strcmpi( pkvd->szKeyName, "maxammo_rockets" ) == 0 )      /*      Yellow team key            */
+            {
+                  if ( strlen( gszYellow ) != 0 )
+                  {
+                        sprintf( pkvd->szValue, gszYellow );
+                  }
+            }
+
+            else if ( strcmpi( pkvd->szKeyName, "maxammo_cells" ) == 0 )      /*      Green team key      */
+            {
+                  if ( strlen( gszGreen ) != 0 )
+                  {
+                        sprintf( pkvd->szValue, gszGreen );
+                  }
+            }
+      }
+
+      RETURN_META( MRES_IGNORED );      /*      Let the mod handle the rest            */
+}
+
+
+
+I guess I'll have to put in a global variable that checks wether or not any class keys were present. Thx for your help since it pointed me back to that area.
+
+
+--------------------------------------------------
+08/27/03 at 13:28:25  Reply by: LazyOne (the_lazy_one_09@hotmail.com)
+--------------------------------------------------
+Actually, I'm not sure how that would work ( since planethalflife is down I can't get the hpb bot ). The only thing I could figure is get the keyvalues when DispatchSpawn is called since DispatchKeyValue is called first.
+
+--------------------------------------------------
+08/27/03 at 17:52:50  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+You should try and hook ServerActivate() and browse the entity list that is passed through it.
+Just an idea...
+
+
+--------------------------------------------------
+08/27/03 at 18:05:17  Reply by: LazyOne (the_lazy_one_09@hotmail.com)
+--------------------------------------------------
+I've made some progress, now I can tell which maps have no class limiting keys in their info_tfdetect entity. But for some strange reason calling MDLL_KeyValue has no effect on the entity whatsoever. Its almost as if TFC ignores keyvalues after DispatchSpawn is called.
+
+I do the stuff in StartFrame 1/2 seconds after DispatchSpawn is called with ENTINDEX == 0.
+
+code:
+
+void StartFrame( )
+{
+      if ( gpGlobals->time >= giLastCheckTime && gbFinishedCheck == FALSE )
+      {
+            if ( gbFoundKey == TRUE )
+            {
+                  printf( "NOTICE: This map has custom class keys\n" );
+            }
+            else
+            {
+                  printf( "NOTICE: This map does not have custom class keys\n" );
+
+                  KeyValueData* pkvd = new KeyValueData;
+                  edict_t* pEdict = g_engfuncs.pfnFindEntityByString( NULL, "classname", "info_tfdetect" );
+                  
+                  if ( ! FNullEnt( pEdict ) )
+                  {
+                        pkvd->szClassName = "info_tfdetect";
+                        pkvd->szKeyName = "maxammo_shells";
+                        pkvd->szValue = "-1";
+
+                        MDLL_KeyValue( pEdict, pkvd );
+                  }
+
+                  delete pkvd;
+            }
+
+            gbFinishedCheck = TRUE;
+            gbFoundKey = FALSE;
+      }
+
+      RETURN_META( MRES_IGNORED );
+}
+
+
+
+This is very odd, I cannot use sprintf on anything in KeyValueData. I've got visual C++ set up in debug mode so I know thats where the crashes come from, equal signes do nothing either ( not that they would, just ran out of ideas ).
+
+
+--------------------------------------------------
+08/28/03 at 14:23:55  Reply by: LazyOne (the_lazy_one_09@hotmail.com)
+--------------------------------------------------
+This is getting even more annoying since DispatchSpawn has nothing to do with anything.
+
+There must be something I'm not seeing here since MDLL_KeyValue does not change a thing. Calling sprintf on the values in KeyValueData results in a crash. Im getting ready to accept the fact that my plugin will only work on class-limited maps like hunted, push, ect...
+
+Heres all my main code, full credits are in order if anyone can help point out the problem.
+
+code:
+
+#include <extdll.h>
+#include <meta_api.h>
+#include "dll.h"
+#include "io.h"
+
+FILE* gfp;
+char gszBlue[ 8 ];
+char gszRed[ 8 ];
+char gszYellow[ 8 ];
+char gszGreen[ 8 ];
+
+BOOL gbConfig = FALSE;
+BOOL gbFoundKey = FALSE;
+BOOL gbFinishedCheck = FALSE;
+int giLastCheckTime = 0;
+
+void ClientCommand( edict_t* pEdict )
+{
+      /*      Client entered a command into their console       */
+
+      const char* pszCommand = CMD_ARGV( 0 );
+      const char* pszArgs = CMD_ARGS( );
+      int                  iArgc = CMD_ARGC( );
+      
+      if ( FStrEq( pszCommand, "civilian" ) )
+      {
+            if ( pEdict->v.playerclass == 11 || pEdict->v.team == 0 )
+            {
+                  /*      Don't let players who are already civilians or spectators
+                        use this command.
+                  */
+
+                  RETURN_META( MRES_SUPERCEDE );
+            }
+
+            /*      The following code detects wether or not the player's team
+                  is civilian only. If it is, let the mod dll handle the request.
+            */
+
+            if ( pEdict->v.team == 1 && strcmpi( gszBlue, "-1" ) == 0 )
+            {
+                  RETURN_META( MRES_IGNORED );
+            }
+            
+            else if ( pEdict->v.team == 2 && strcmpi( gszRed, "-1" ) == 0 )
+            {
+                  RETURN_META( MRES_IGNORED );
+            }
+
+            else if ( pEdict->v.team == 3 && strcmpi( gszYellow, "-1" ) == 0 )
+            {
+                  RETURN_META( MRES_IGNORED );
+            }
+
+            else if ( pEdict->v.team == 4 && strcmpi( gszGreen, "-1" ) == 0 )
+            {
+                  RETURN_META( MRES_IGNORED );
+            }
+
+            if ( ( ( int ) g_engfuncs.pfnCVarGetFloat( "tfclass_civilian" ) ) == 0 )
+            {
+                  RETURN_META( MRES_SUPERCEDE );
+            }
+
+            if ( pEdict->v.deadflag == DEAD_NO )
+            {
+                  /*      Player must be dead before we can set their class      */
+
+                  MDLL_ClientKill( pEdict );
+            }
+            
+            pEdict->v.playerclass = 11;
+            RETURN_META( MRES_SUPERCEDE );      /*      The plugin handles this one      */
+      }
+
+      RETURN_META( MRES_IGNORED );      /*      Ignore all other commands      */
+}
+
+BOOL ClientConnect( edict_t* pEdict, const char* pszName, const char* pszIPAddress, char szRejectReason[ ] )
+{
+      char szTemp[ 255 ];
+      const char* pszVersion = g_engfuncs.pfnCVarGetString( "tfclass_version" );
+      int iCiv = ( ( int ) g_engfuncs.pfnCVarGetFloat( "tfclass_civilian" ) );
+
+      if ( gbConfig == FALSE )
+      {
+            sprintf( szTemp, "\n\n--- This server is using TFClass version %s\n--- 2002 - Lazy - Visit lazyone.50megs.com for details\n", pszVersion );
+      }
+      else
+      {
+            sprintf( szTemp, "\n\n--- This server is using TFClass version %s\n--- 2002 - Lazy - Visit lazyone.50megs.com for details\n--- This map has been modified by TFClass\n", pszVersion );
+      }
+
+      if ( iCiv != 0 )
+      {
+            strcat( szTemp, "--- You can type civilian in your console to become the civilian class\n" );
+      }
+
+      if ( ! FNullEnt( pEdict ) )
+      {
+            CLIENT_PRINTF( pEdict, print_console, szTemp );
+      }
+
+      RETURN_META_VALUE( MRES_IGNORED, FALSE );
+}
+
+
+int DispatchSpawn( edict_t* pEdict )
+{
+      if ( g_engfuncs.pfnIndexOfEdict( pEdict ) == 0 )      /*      Worldspawn      */
+      {
+            char* pszLine = new char[ 512 ];
+            char* pTeam = NULL;
+            char* pBits = NULL;
+
+            gbFoundKey = FALSE;
+            gbFinishedCheck = FALSE;
+            giLastCheckTime = gpGlobals->time + 0.5;
+
+            if ( ( gfp = OpenMapConfig( STRING( gpGlobals->mapname ) ) ) == NULL )
+            {
+                  /*      Try to open the config file for this map, if no file is found
+                        we "" out the global team strings. This ensures the settings
+                        from the last map are not carried over.
+                  */
+
+                  UTIL_LogPrintf( "[ TFClass ]: Warning: No custom config for this map found, class defaults used.\n" );
+
+                  sprintf( gszBlue, "" );
+                  sprintf( gszRed, "" );
+                  sprintf( gszYellow, "" );
+                  sprintf( gszGreen, "" );
+
+                  gbConfig = FALSE;
+            }
+            else
+            {
+                  gbConfig = TRUE;
+
+                  while ( !feof( gfp ) )      /*      Until we reach the end of the file      */
+                  {
+                        ReadLine( pszLine, gfp );      /*      Grab a line            */
+
+                        if ( pszLine[ 0 ] != '#' )      /*      Ignore comment lines      */
+                        {
+                              pTeam = strtok( pszLine, "/" );      /*      Get pointer to the team name      */
+
+                              if ( pTeam )      /*      Make sure we don't have a NULL pointer      */
+                              {
+                                    pBits = strtok( NULL, "/" );      /*      Get a pointer to the class settings            */
+
+                                    if ( pBits )      /*      Again, NULL check      */
+                                    {
+                                          /*      Compare the team names and copy them to the
+                                                global team variables.
+                                          */
+
+                                          if ( strcmpi( pTeam, "blue" ) == 0 )
+                                          {
+                                                sprintf( gszBlue, pBits );
+                                          }
+
+                                          else if ( strcmpi( pTeam, "red" ) == 0 )
+                                          {
+                                                sprintf( gszRed, pBits );
+                                          }
+
+                                          else if ( strcmpi( pTeam, "yellow" ) == 0 )
+                                          {
+                                                sprintf( gszYellow, pBits );
+                                          }
+
+                                          else if ( strcmpi( pTeam, "green" ) == 0 )
+                                          {
+                                                sprintf( gszGreen, pBits );
+                                          }
+                                          else
+                                          {
+                                                /*      Someone may have made a spelling error ( eg. Yellwo ),
+                                                      log the error ( note: the config will not be used ).
+                                                */
+
+                                                UTIL_LogPrintf( "[ TFClass ]: Unrecognized team identifier: %s - map %s\n", pTeam, STRING( gpGlobals->mapname ) );
+                                          }
+                                    }
+                              }
+                        }
+                  }
+
+                  delete[ ] pszLine;      /*      Free the memory we used            */
+                  fclose( gfp );      /*      Close the config file      */
+            }
+      }
+
+      if ( FStrEq( STRING( pEdict->v.classname ), "info_tfdetect" ) )
+      {
+      }
+
+      RETURN_META_VALUE( MRES_IGNORED, FALSE );
+}
+
+void DispatchKeyValue( edict_t* pEdict, KeyValueData* pkvd )
+{
+      if ( FStrEq( STRING( pEdict->v.classname ), "info_tfdetect" ) )      /*      The entity where class settings are      */
+      {
+            if ( strcmpi( pkvd->szKeyName, "maxammo_shells" ) == 0 )      /*      Blue team key      */
+            {
+                  gbFoundKey = TRUE;
+                  
+                  if ( strlen( gszBlue ) != 0 )
+                  {      
+                        sprintf( pkvd->szValue, gszBlue );      /*      Copy the info we got from the config file as long as it has something in it      */
+                  }
+            }
+
+            else if ( strcmpi( pkvd->szKeyName, "maxammo_nails" ) == 0 )      /*      Red team key      */
+            {
+                  gbFoundKey = TRUE;
+                  
+                  if ( strlen( gszRed ) != 0 )
+                  {      
+                        sprintf( pkvd->szValue, gszRed );
+                  }
+            }
+
+            else if ( strcmpi( pkvd->szKeyName, "maxammo_rockets" ) == 0 )      /*      Yellow team key            */
+            {
+                  gbFoundKey = TRUE;
+                  
+                  if ( strlen( gszYellow ) != 0 )
+                  {      
+                        sprintf( pkvd->szValue, gszYellow );
+                  }
+            }
+
+            else if ( strcmpi( pkvd->szKeyName, "maxammo_cells" ) == 0 )      /*      Green team key      */
+            {
+                  gbFoundKey = TRUE;
+                  
+                  if ( strlen( gszGreen ) != 0 )
+                  {      
+                        sprintf( pkvd->szValue, gszGreen );
+                  }
+            }
+      }
+
+      RETURN_META( MRES_IGNORED );      /*      Let the mod handle the rest            */
+}
+
+void StartFrame( )
+{
+      if ( gpGlobals->time >= giLastCheckTime && gbFinishedCheck == FALSE )
+      {
+            if ( gbFoundKey == TRUE )
+            {
+                  printf( "NOTICE: This map has custom class keys\n" );
+            }
+            else
+            {
+                  printf( "NOTICE: This map does not have custom class keys\n" );
+
+            }
+
+            gbFinishedCheck = TRUE;
+            gbFoundKey = FALSE;
+      }
+
+      RETURN_META( MRES_IGNORED );
+}
+
+
+
+
+--------------------------------------------------
+08/28/03 at 14:38:19  Reply by: Cheesemonster!!! (cheeseh(at)houstondod(dot)com)
+--------------------------------------------------
+Keyvalues only have effect before the entity is spawned i believe, as keyvalue data is usually handled in the spawn functions, normally this is the case.
+
+you are better doign something like this in your keyvalue function
+
+code:
+
+
+static edict_t *pInfoDetect = NULL;
+
+// new entity
+if ( pentKeyvalue != pInfoDetect )
+{
+  if ( strcmp(pkvd->szKeyName,"classname") == 0 )
+  { // is an info_Detect
+    pInfoDetect = pentKeyvalue;
+  }
+}
+else
+{
+    // do stuff in here
+}
+
+
+
+
+botman already does all this in the hpb_bot template, in keyvalue data to find the classes available, perhaps you could just take that ay?
+
+--------------------------------------------------
+08/28/03 at 14:51:08  Reply by: LazyOne (the_lazy_one_09@hotmail.com)
+--------------------------------------------------
+I've got it finding wether they exist or not, it just won't accept new keyvalues. For example...
+
+2fort has an info_tfdetect entity, since it has no class limiting keys it gets ignored by my plugin even if it has a config.
+
+What I tried to do was give keyvalues to the entity so that it would be picked up by my DispatchKeyValue function. I even tried preventing DispatchSpawn from being called on any info_tfdetect entities but that has no effect.
+
+
+--------------------------------------------------
+08/31/03 at 16:00:40  Reply by: vxD (ffx0@msn.com)
+--------------------------------------------------
+I rewrote most of the code, and it seems to work now. sorry for butchering your code, but it made it easier for me to get it working.
+
+code:
+
+#include <extdll.h>
+#include <meta_api.h>
+#include "dll.h"
+
+enum {TEAM_BLUE, TEAM_RED, TEAM_YELLOW, TEAM_GREEN};
+char gszClassBits[4][8];
+bool gbFound[4] = {false, false, false, false};
+
+void LoadConfig(void) {
+      FILE *pFile;
+      char *pTeam = NULL;
+      char *pBits = NULL;
+      char szGamedir[256];
+      char szFullpath[256];
+      char szLine[512];
+      memset(szGamedir, 0x0, 256);
+      memset(szFullpath, 0x0, 256);
+      memset(szLine, 0x0, 512);
+
+      g_engfuncs.pfnGetGameDir(szGamedir);
+
+      #ifdef __LINUX__      /*      I really really really hope this is right      */
+            sprintf(szFullpath, "%s//addons//tfclass//%s.tfc", szGamedir, STRING(gpGlobals->mapname));
+      #else
+            sprintf(szFullpath, "%s\\addons\\tfclass\\%s.tfc", szGamedir, STRING(gpGlobals->mapname));
+      #endif
+
+      pFile = fopen(szFullpath, "rt");
+
+      if(!pFile) {
+            SERVER_PRINT("[ TFClass ]: Warning: No custom config for this map found, class defaults used.\n");
+            return;
+      }
+
+      while(!feof(pFile)) {
+            memset(szLine, 0x0, 512);
+            pTeam = NULL;
+            pBits = NULL;
+            fgets(szLine, 512, pFile);
+
+            if(szLine[0] == '#') continue;
+
+            pTeam = strtok(szLine, "/");
+            if(!pTeam) continue;
+            pBits = strtok(NULL, "/");
+            if(!pBits) continue;
+
+
+            if(strcmpi(pTeam, "blue") == 0) {
+                  memcpy(gszClassBits[TEAM_BLUE], pBits, strlen(pBits));
+            } else if(strcmpi(pTeam, "red") == 0) {
+                  memcpy(gszClassBits[TEAM_RED], pBits, strlen(pBits));
+            } else if(strcmpi(pTeam, "yellow") == 0) {
+                  memcpy(gszClassBits[TEAM_YELLOW], pBits, strlen(pBits));
+            } else if (strcmpi(pTeam, "green") == 0) {
+                  memcpy(gszClassBits[TEAM_GREEN], pBits, strlen(pBits));
+            } else {
+                  SERVER_PRINT("[ TFClass ]: Unrecognized team identifier.\n");
+            }
+      }
+
+      fclose(pFile);
+}
+
+int DispatchSpawn(edict_t *pEntity) {
+      if (g_engfuncs.pfnIndexOfEdict(pEntity) == 0) {
+            gbFound[TEAM_BLUE] = false;
+            gbFound[TEAM_RED] = false;
+            gbFound[TEAM_YELLOW] = false;
+            gbFound[TEAM_GREEN] = false;
+
+            memset(gszClassBits[TEAM_BLUE], 0x0, 8);
+            memset(gszClassBits[TEAM_RED], 0x0, 8);
+            memset(gszClassBits[TEAM_YELLOW], 0x0, 8);
+            memset(gszClassBits[TEAM_GREEN], 0x0, 8);
+
+            LoadConfig();
+      }
+
+      if(FStrEq(STRING(pEntity->v.classname), "info_tfdetect")) {
+            if(!gbFound[TEAM_BLUE]) {
+                  KeyValueData pkvd;
+                  pkvd.szClassName = "info_tfdetect";
+                  pkvd.szKeyName = "maxammo_shells";
+                  pkvd.szValue = gszClassBits[TEAM_BLUE];
+                  pkvd.fHandled = FALSE;
+                  MDLL_KeyValue(pEntity, &pkvd);
+            }
+            if(!gbFound[TEAM_RED]) {
+                  KeyValueData pkvd;
+                  pkvd.szClassName = "info_tfdetect";
+                  pkvd.szKeyName = "maxammo_nails";
+                  pkvd.szValue = gszClassBits[TEAM_RED];
+                  pkvd.fHandled = FALSE;
+                  MDLL_KeyValue(pEntity, &pkvd);
+            }
+            if(!gbFound[TEAM_YELLOW]) {
+                  KeyValueData pkvd;
+                  pkvd.szClassName = "info_tfdetect";
+                  pkvd.szKeyName = "maxammo_rockets";
+                  pkvd.szValue = gszClassBits[TEAM_YELLOW];
+                  pkvd.fHandled = FALSE;
+                  MDLL_KeyValue(pEntity, &pkvd);
+            }
+            if(!gbFound[TEAM_GREEN]) {
+                  KeyValueData pkvd;
+                  pkvd.szClassName = "info_tfdetect";
+                  pkvd.szKeyName = "maxammo_cells";
+                  pkvd.szValue = gszClassBits[TEAM_GREEN];
+                  pkvd.fHandled = FALSE;
+                  MDLL_KeyValue(pEntity, &pkvd);
+            }
+      }
+
+      RETURN_META_VALUE( MRES_IGNORED, FALSE );
+}
+
+void DispatchKeyValue(edict_t *pEntity, KeyValueData *pkvd) {
+      if (FStrEq(STRING(pEntity->v.classname), "info_tfdetect")) {
+            if (strcmpi(pkvd->szKeyName, "maxammo_shells") == 0) {
+                  gbFound[TEAM_BLUE] = true;
+                  if (strlen(gszClassBits[TEAM_BLUE]) != 0) {
+                        memset(pkvd->szValue, 0x0, strlen(pkvd->szValue));
+                        memcpy(pkvd->szValue, gszClassBits[TEAM_BLUE], strlen(gszClassBits[TEAM_BLUE]));
+                  }
+            } else if (strcmpi(pkvd->szKeyName, "maxammo_nails") == 0) {
+                  gbFound[TEAM_RED] = true;
+                  if (strlen(gszClassBits[TEAM_RED]) != 0) {
+                        memset(pkvd->szValue, 0x0, strlen(pkvd->szValue));
+                        memcpy(pkvd->szValue, gszClassBits[TEAM_RED], strlen(gszClassBits[TEAM_RED]));
+                  }
+            } else if (strcmpi(pkvd->szKeyName, "maxammo_rockets") == 0) {
+                  gbFound[TEAM_YELLOW] = true;
+                  if (strlen(gszClassBits[TEAM_YELLOW]) != 0) {
+                        memset(pkvd->szValue, 0x0, strlen(pkvd->szValue));
+                        memcpy(pkvd->szValue, gszClassBits[TEAM_YELLOW], strlen(gszClassBits[TEAM_YELLOW]));
+                  }
+            } else if ( strcmpi( pkvd->szKeyName, "maxammo_cells" ) == 0 ) {
+                  gbFound[TEAM_GREEN] = true;
+                  if (strlen(gszClassBits[TEAM_GREEN]) != 0) {
+                        memset(pkvd->szValue, 0x0, strlen(pkvd->szValue));
+                        memcpy(pkvd->szValue, gszClassBits[TEAM_GREEN], strlen(gszClassBits[TEAM_GREEN]));
+                  }
+            }
+      }
+
+      RETURN_META(MRES_IGNORED);
+}
+
+
+
+some notes:
+io.cpp, io.h are not needed
+in dll.h, ClientCommand does not need to be defined.
+removed reference to ClientCommand in metamod.cpp
+
+this code works on 2fort...
+
+please correct any code and repost, i need to work on figuring out memory management... the code may overwrite random spots in memory, i'm not sure. If there is no info_tfdetect entity, this code will not handle it.
+
+oh yeah, if you want it in a zip so you don't have to copy it line-by-line, just ask.
+
+--------------------------------------------------
+08/31/03 at 16:39:04  Reply by: LazyOne (the_lazy_one_09@hotmail.com)
+--------------------------------------------------
+Your help is greatly appreciated, I wouldn't have thought of doing it that way.
+
+I don't know why you wanted to remove ClientCommand though, thats where players can be a civilian on any map.
+
+As for the memory, it seems ok, but I forgot alot of that memory chapter I read so I can't comment that much.
+
+As for needing io.cpp,.h - I like to keep my code organized. I guess that explains the idiotic amount of spacing kicking around in there.
+
+I'll update my code and give it a try.
+
+
+--------------------------------------------------
+08/31/03 at 17:11:15  Reply by: LazyOne (the_lazy_one_09@hotmail.com)
+--------------------------------------------------
+Thanks very much!
+I made the appropriate changes in my code and everything works perfectly.
+
+I just tested a config that fixes concmap2 so people not on the blue team must be civs.
+
+How would you like to be credited?
+In the console spam? Plugin info?, ect?
+ 
+
+--------------------------------------------------
+08/31/03 at 17:21:08  Reply by: vxD (ffx0@msn.com)
+--------------------------------------------------
+the civilian command seemed to mess up my 2fort test config, which had blue team as civilian. using trace_mm, when you press the civilian button on the team selection menu, the TFC client sends the command "civilian" to the server... somehow, calling your version of civilian instead of tfc's messes up, causing you to stay in the air, as if you were still on the menu... when i typed kill in console, it all became fine, and i respawned as i should.
+
+--------------------------------------------------
+08/31/03 at 17:27:49  Reply by: LazyOne (the_lazy_one_09@hotmail.com)
+--------------------------------------------------
+Mine doesn't do that since it checks if the team is civ only and if it is, it lets the mod handle the request.
+
+
+--------------------------------------------------
+08/31/03 at 17:51:44  Reply by: vxD (ffx0@msn.com)
+--------------------------------------------------
+if you want to credit me, readme/console spam or whereever you have room, also maybe i was working with an older version, i noticed some differences between posted code and the stuff in the .zip, or the civilian command i was working with might have been messed.
+
+also, i'd like to see the finished version, i think it's a good plugin to have, so please post a link when your done
+
+--------------------------------------------------
+08/31/03 at 18:18:00  Reply by: LazyOne (the_lazy_one_09@hotmail.com)
+--------------------------------------------------
+Updated and put on my website at lazyone.50megs.com.
+
+I credited you in the plugin info, console message and website. Seemed fitting since this plugin worked only 50% without your fix.
+
+

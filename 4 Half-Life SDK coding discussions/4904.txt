@@ -1,0 +1,275 @@
+--------------------------------------------------
+Subject: Couldn't Get DLL API
+--------------------------------------------------
+10/14/03 at 13:28:23  Posted by: LazyOne (the_lazy_one_09@hotmail.com)
+--------------------------------------------------
+I downloaded the HPB template #3, scrapped all of the bot stuff, rewrote ALL of the dll and engine functions ( gotta have neat code :) ) and got it finally to compile cleanly.
+
+As soon as I start my server this comes up...
+
+code:
+
+Console initialized.
+Protocol version 46
+Exe version 1.1.2.1 (tfc)
+Exe build: 17:30:09 Sep  9 2003 (2511)
+Server IP address 192.168.1.12:27015
+LoadLibrary failed on .\tfc\dlls\hpb_bot.dll (1114)
+Host_Error: Couldn't get DLL API from .\tfc\dlls\hpb_bot.dll!
+
+
+
+And a message box comes up with an error saying it couldn't get the DLL API from the dll.
+
+I tried putting messageboxes of my own in key places but only the one in DllMain:DLL_PROCESS_ATTACH gets called.
+
+I didn't change any of the key areas, linkfunc.cpp, namefunc.cpp, h_export.cpp were for the most part left alone other than the removal of the Borland stuff.
+
+I was planning on using this to build a metamod + standalone dll stub to build other plugins off of but I need to get this part working first.
+
+GetEntityAPI and GetNewDllFunctions are exported with C linkage and GiveFnptrsToDll with __stdcall so I'm pretty sure thats ok.
+
+Could there be something I'm missing here?
+Any help is apprecated.
+
+[ Added ]
+
+I downloaded the HPB template #3 and rebuilt it as-is out of the zip with no errors.
+
+I turned on debugging and found it crashing at GiveFnptrsToDll. The debugger points to the last } in the function, just like another template #3 based plugin I have except that one crashed with an "Value of ESP was not saved across a function call" error. 
+I'm using the latest HLDS which I update regularly with the steam hlds update tool.
+
+[ Added ]
+
+There was a line of code I needed to change in the HPB template #3 to get it to work.
+
+Change this
+code:
+
+   strcpy(mod_name, &game_dir[pos]);
+
+
+
+To this
+
+code:
+
+   strcpy(mod_name, &game_dir[pos - 1]);
+
+
+
+I was stepping through the code and noticed mod_name was "fc".
+
+[modified on 10/14/03 at 12:48:11]
+
+[modified on 10/14/03 at 13:28:23]
+--------------------------------------------------
+10/14/03 at 14:18:36  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Valve changed the way the pfnGetGameDir() function works.  It used to return the full path, now it only returns a relative path.  You have to make changes in the h_export.cpp code that determines the MOD name (just changing the index in the array won't work properly).  See the code changes in this thread...
+
+http://dynamic.gamespy.com/~botman/yabb/YaBB.pl?board=1&action=display&num=4379
+
+The "Can't Get DLL" error is caused by one of two things...
+
+1) Either you have the path/filename wrong in the liblist.gam file and the engine can't find the DLL at all (kind of a misleading error message).
+
+2) The liblist.gam file 'gamedll' entry is correct and points to the correct DLL, but the GiveFnptrsToDLL() or GetEntityAPI() functions aren't exported with C linkage (possibly using C++ name mangling or they aren't exported at all).
+
+Since you state that they are being exported with C linkage, I'll assume you have verified this by looking at the exports in the .map file or have run "dumpbin /exports" on the DLL file and know that GiveFnptrsToDLL() and GetEntityAPI() are being exported properly.
+
+If both of these functions are exported properly, the only other problem could be that the liblist.gam file 'gamedll' entry is not pointing to the proper directory or filename.
+
+botman
+
+
+
+--------------------------------------------------
+10/14/03 at 14:26:19  Reply by: LazyOne (the_lazy_one_09@hotmail.com)
+--------------------------------------------------
+I just did a dumpbin on the dll, here are the results...
+
+code:
+
+D:\Program Files\Microsoft Visual Studio .NET\Vc7\bin>dumpbin /EXPOR
+er\tfc\dlls\hpb_bot.dll
+Microsoft (R) COFF/PE Dumper Version 7.00.9466
+Copyright (C) Microsoft Corporation.  All rights reserved.
+
+
+Dump of file d:\hlserver\tfc\dlls\hpb_bot.dll
+
+File Type: DLL
+
+  Section contains the following exports for HPB_bot.dll
+
+    00000000 characteristics
+    3F8C63D8 time date stamp Tue Oct 14 17:00:08 2003
+        0.00 version
+           1 ordinal base
+         231 number of functions
+         231 number of names
+
+    ordinal hint RVA      name
+
+          2    0 00017316 ?SUB_CallUseToggle@CBaseEntity@@QAEXXZ
+          3    1 00017C76 CreateInterface
+          4    2 000170B4 DelayedUse
+          5    3 00017C4E GetEntityAPI
+          6    4 00017C71 GetNewDLLFunctions
+          1    5 00017B09 GiveFnptrsToDll
+          7    6 00017A19 adminmod_timer
+          8    7 00017DBB aiscripted_sequence
+          9    8 00017E38 ambient_generic
+         10    9 00017C58 beam
+
+
+
+It seems to be exported, however I know the liblist.gam is correct since DllMain gets called.
+
+I set a breakpoint on GiveFnptrsToDll and it never gets called neither does GetEntityAPI or GetNewDLLFunctions.
+
+This is very confusing.
+
+
+--------------------------------------------------
+10/14/03 at 15:10:06  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Could you post the prototype of your functions ?
+
+
+--------------------------------------------------
+10/14/03 at 15:25:11  Reply by: LazyOne (the_lazy_one_09@hotmail.com)
+--------------------------------------------------
+h_export.cpp
+
+code:
+
+#ifndef __linux__
+      void WINAPI GiveFnptrsToDll( enginefuncs_t* pengfuncsFromEngine, globalvars_t* pGlobals )
+#else
+      extern "C" void GiveFnptrsToDll( enginefuncs_t* pengfuncsFromEngine, globalvars_t* pGlobals );
+#endif
+
+
+
+dll.cpp
+
+code:
+
+#ifdef __linux__
+#define C_EXPORT extern "C"
+#else
+#define C_EXPORT extern "C" __declspec( dllexport )
+#endif
+
+C_EXPORT int GetEntityAPI( DLL_FUNCTIONS* pFunctionTable, int interfaceVersion  )
+
+C_EXPORT int GetNewDLLFunctions( NEW_DLL_FUNCTIONS* pFunctionTable, int* interfaceVersion )
+
+
+
+
+None of these were prototyped, but theres the function declarations.
+
+
+
+--------------------------------------------------
+10/14/03 at 15:48:15  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+This might be your problem...
+
+"void WINAPI GiveFnptrsToDll"
+
+Try using...
+
+"void __stdcall GiveFnptrsToDll"
+
+I think the parameters are being passed incorrectly into this function.
+
+botman
+
+--------------------------------------------------
+10/14/03 at 16:20:31  Reply by: LazyOne (the_lazy_one_09@hotmail.com)
+--------------------------------------------------
+Thanks botman, there was something that needed to be __stdcall but it wasn't GiveFnptrsToDll.
+
+I never noticed the lack of WINAPI infront of DllMain, it probably would have gone unnoticed without that point in the right direction.
+
+Thanks for taking the time to help out.
+
+[modified on 10/14/03 at 16:20:31]
+--------------------------------------------------
+10/21/03 at 23:33:20  Reply by: BrianL (halfkiller@hotmail.com)
+--------------------------------------------------
+nvm.....
+
+[modified on 10/21/03 at 23:33:20]
+--------------------------------------------------
+11/17/03 at 08:04:50  Reply by: Gonosz (bmalkovich@freemail.hu)
+--------------------------------------------------
+When I tried to allocate memory in the constructor of the bot class, I got the same error. If I commented those lines out, it worked (don't know why). Now the bot class is inherited, and the error is the same... anyone has an idea what could cause it ?
+
+I tried to debug the code, but even the dllmain does not get called. The liblist.gam should be correct, since if I remove some lines from the code it's working...
+
+code:
+
+BOOL DLLEXPORT WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved)
+
+void DLLEXPORT __stdcall GiveFnptrsToDll( enginefuncs_t* pengfuncsFromEngine, globalvars_t *pGlobals )
+
+
+
+(Tried changing WINAPI to __stdcall, it didn't work.)
+
+EDIT: dumpbin does nothing on my machine, but the above functions are in the .map file:
+code:
+
+ 0001:00014850       _DllMain@12                10015850 f   h_export.obj
+ 0001:000148d0       ?GiveFnptrsToDll@@YGXPAUenginefuncs_s@@PAUglobalvars_t@@@Z 100158d0 f   h_export.obj
+ 0002:00001898       ??_C@_0BA@BACA@GiveFnptrsToDll?$AA@ 10052898     h_export.obj
+ 0003:0000eda8       ?other_GiveFnptrsToDll@@3P6GXPAUenginefuncs_s@@PAUglobalvars_t@@@ZA 10067da8     h_export.obj
+
+
+
+
+[modified on 11/17/03 at 08:04:50]
+--------------------------------------------------
+11/17/03 at 10:13:07  Reply by: LazyOne (the_lazy_one_09@hotmail.com)
+--------------------------------------------------
+Make sure DllMain returns 1 or TRUE.
+If it doesn't LoadLibrary will fail and that error will appear.
+
+
+--------------------------------------------------
+11/17/03 at 14:27:30  Reply by: Gonosz (bmalkovich@freemail.hu)
+--------------------------------------------------
+It is.
+The template itself is working. But if I do almost anything in the constructor of the bot class, I will get that LoadLibrary error. In that case, dllmain won't even get called.
+I wonder if that has anything to with the fact that static (global) object are created with these classes ?
+
+--------------------------------------------------
+11/17/03 at 16:35:33  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+There is no "bot class" in the HPB bot template.
+
+If you are using the SDK source code and creating your own MOD, you shouldn't use the C++ "new" operator to allocate memory (since this has been overriden in the cbase.h header file for all classes derrived from CBaseEntity).
+
+You should use the "malloc" function instead or create a C++ class that is NOT derrived from CBaseEntity (or anything that inherits from CBaseEntity).
+
+botman
+
+--------------------------------------------------
+11/18/03 at 05:46:08  Reply by: Gonosz (bmalkovich@freemail.hu)
+--------------------------------------------------
+Oops forgot this out of the first post :)
+I myself have written a class for all the functions in bot.cpp. Basically, it just means that I wrote 'Bot::' in front of all the function def's, and instead of bot_t bots[] I use Bot bots[] in dll.cpp. 
+
+Neither of the classes I use are derived from CBaseEntity, so the original new() should get called.
+
+Since no one has experienced an error like this before there should be something wrong with the code I changed... funny it's been running for hours :)
+
+Anyway, thanks for your help,
+
+Gonosz
+

@@ -1,0 +1,309 @@
+--------------------------------------------------
+Subject: How about a little debugging challenge ?
+--------------------------------------------------
+04/16/02 at 23:57:56  Posted by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+Hello gurus,
+
+There's an error somewhere in that that can sometimes lead the HL engine to crash or behave strangely (especially I believe it's somewhat related to my "ghost bots" problem). I can't find where. How about a little debugging challenge for better programmers than I am ? :-)
+
+code:
+
+void FakeClientCommand (edict_t *pFakeClient, char *command)
+{
+   int length, index = 0;
+
+   if ((command == NULL)  (*command == 0))
+      return; // if no argument, return
+
+   memset (g_argv, 0, sizeof (g_argv));
+   strcpy (g_argv, command); // first copy the command to the argv field
+   length = strlen (g_argv); // get length of command
+   if (g_argv[length - 1] == '\n')
+      length--; // remove any final '\n'
+   g_argv[length] = 0; // terminate the string
+
+   fake_arg_count = 0; // let's now parse the line and count the different fields
+
+   // count the number of arguments
+   while (index < length)
+   {
+      while ((index < length) && (g_argv[index] == ' '))
+         index++; // ignore spaces
+
+      // is this field a group of words between quotes or a single word ?
+      if (g_argv[index] == '"')
+      {
+         index++; // move one step further to bypass the quote
+         while ((index < length) && (g_argv[index] != '"'))
+            index++; // reach end of field
+         index++; // move one step further to bypass the quote
+      }
+      else
+         while ((index < length) && (g_argv[index] != ' '))
+            index++; // reach end of field
+
+      fake_arg_count++; // we have processed one argument more
+   }
+
+   isFakeClientCommand = TRUE; // set the fakeclient flag
+   ClientCommand (pFakeClient); // tell now the MOD DLL to execute the ClientCommand...
+   g_argv[0] = 0; // when it's done, reset the g_argv field
+   isFakeClientCommand = FALSE; // reset the fakeclient flag
+   fake_arg_count = 0; // and the argument count
+}
+
+
+int Cmd_Argc (void)
+{
+   if (isFakeClientCommand)
+      return fake_arg_count; // return the argument count
+
+   return (*g_engfuncs.pfnCmd_Argc) ();
+}
+
+
+const char *Cmd_Args (void)
+{
+   if (isFakeClientCommand)
+      return &g_argv[0]; // return the whole argument string
+
+   return (*g_engfuncs.pfnCmd_Args) ();
+}
+
+
+const char *Cmd_Argv (int argc)
+{
+   if (isFakeClientCommand)
+      return (GetArg (g_argv, argc)); // returns the wanted argument
+
+   return (*g_engfuncs.pfnCmd_Argv) (argc);
+}
+
+
+const char *GetArg (const char *command, int arg_number)
+{
+   int length, i, index = 0, arg_count = 0, fieldstart, fieldstop;
+   char arg[129];
+
+   strcpy (arg, ""); // reset arg
+   length = strlen (command); // get length of command
+
+   // while we have not reached end of line
+   while ((index < length) && (arg_count <= arg_number))
+   {
+      while ((index < length) && (command[index] == ' '))
+         index++; // ignore spaces
+
+      // is this field multi-word between quotes or single word ?
+      if (command[index] == '"')
+      {
+         index++; // move one step further to bypass the quote
+         fieldstart = index; // save field start position
+         while ((index < length) && (command[index] != '"'))
+            index++; // reach end of field
+         fieldstop = index - 1; // save field stop position
+         index++; // move one step further to bypass the quote
+      }
+      else
+      {
+         fieldstart = index; // save field start position
+         while ((index < length) && (command[index] != ' '))
+            index++; // reach end of field
+         fieldstop = index - 1; // save field stop position
+      }
+
+      if (fieldstop > fieldstart + 128)
+         fieldstop = fieldstart + 128; // avoid stack overflows
+
+      // is this argument we just processed the wanted one ?
+      if (arg_count == arg_number)
+      {
+         for (i = fieldstart; i <= fieldstop; i++)
+            arg[i - fieldstart] = command[i]; // store the field value in a string
+         arg[i - fieldstart] = 0; // terminate the string
+      }
+
+      arg_count++; // we have processed one argument more
+   }
+
+   return (&arg[0]); // returns the wanted argument
+}
+
+
+
+Note that it is my custom version of botman's FakeClientCommand() stuff. I thought I could have get it better, but I guess I would have had better follow the well-known advice : "if ain't broken, don't fix it"...
+
+However, no way! I won't get back to the old code without having understood my mistake! I'm fed up programming with bugs and never learning why!
+
+So... is there a genius in this place ?
+;)
+
+
+
+[modified on 04/16/02 at 23:57:56]
+--------------------------------------------------
+04/17/02 at 03:52:55  Reply by: ReDucTor[FGW] (sjdtmv@tpg.com.au)
+--------------------------------------------------
+c[// My Remake from Q2 to HL :P
+#define MAX_ARGS 5
+#define MAX_STRING_CHARS 1024
+bool is_fake_cl_cmd;
+int cmd_argc;
+static char *cmd_argv[MAX_ARGS];
+static char *cmd_null_string = "";
+static char cmd_args[MAX_STRING_CHARS];
+
+int Cmd_Argc(void)
+{
+      if(is_fake_cl_cmd)
+            return cmd_argc;
+
+      return (*g_engfuncs.pfnCmd_Argc) ();
+}
+
+char * Cmd_Argv(int arg)
+{
+      if(is_fake_cl_cmd)
+      {
+            if((unsigned)arg >= cmd_argc)
+                  return cmd_null_string;
+            return cmd_args[arg];
+      }
+
+      return (*g_engfuncs.pfnCmd_Argv) (argc); 
+}
+
+char * Cmd_Args(void)
+{
+      if(is_fake_cl_cmd)
+            return cmd_args;
+
+      return (*g_engfuncs.pfnCmd_Args) ();
+}
+
+void FakeClientCommand(edict_t *pFakeClient, char *fmt, ...)
+{
+      va_list            argptr;
+      static char            string[1024];
+      
+      va_start (argptr, fmt);
+      vsprintf (string, fmt,argptr);
+      va_end (argptr);
+      
+      for(int i=0;i<cmd_argc;i++)
+            free(cmd_argv[i]);
+
+      cmd_argc = 0;
+      cmd_args[0] = 0;
+
+      // Fill in Argument String
+      strcpy(cmd_args, string);
+      for (int l=strlen(cmd_args) - 1 ; l >= 0 ; l--)
+            if (cmd_args[l] <= ' ')
+                  cmd_args[l] = 0;
+            else
+                  break;
+
+      char curcmd[1024];
+      while(*string != 0 && *string != '\n')
+      {
+            if(*string==' ')
+            {
+                  string++;
+                  memset(curcmd, 0, 1024);
+                  int count=0;
+                  while(*string != 0 && *string != ' ')
+                  {
+                        curcmd[count] = string[count];
+                        count++;
+                  }
+                  curcmd[count] = 0;
+                  cmd_argv[cmd_argc] = malloc(count+1);
+                  strcpy(cmd_argv[cmd_argc], curcmd);
+            }
+            if(*string=='"')
+            {
+                  string++;
+                  memset(curcmd, 0, 1024);
+                  int count=0;
+                  while(*string != 0 && *string != '"')
+                  {
+                        curcmd[count] = string[count];
+                        count++;
+                  }
+                  curcmd[count] = 0;
+                  cmd_argv[cmd_argc] = malloc(count+1);
+                  strcpy(cmd_argv[cmd_argc], curcmd);
+            }
+      }
+}]c
+
+--------------------------------------------------
+04/17/02 at 12:08:19  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+So what's my mistake? Not to have used memset/free ? Or another thing ?
+
+
+
+--------------------------------------------------
+04/17/02 at 13:40:08  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Why do you assume that the problem lies in the FakeClientCommand() function?  Is the debugger showing that the code is crashing within this function?
+
+botman
+
+--------------------------------------------------
+04/17/02 at 14:23:40  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+The fact is that the debugger never pops up :( Either the engine behaves strangely (and still go on engin'ing), or it suddently closes just like if I had typed the "exit" server command. Strange, isn't it ?? As I can't get the debugger to hook the error, I assume it may be there because it's the only place where I strongly modified some string manipulations which, as I code like a pig as usual, *might* lead to some sort of stack overflow...
+
+
+--------------------------------------------------
+04/17/02 at 14:33:04  Reply by: SoulWind (SoulWind@gmx.de)
+--------------------------------------------------
+Hi,
+
+
+first at all, sorry for my bad english (its not my native language), but i will try to explain some things i saw in your source-code and hope that it helps you to find your bug:
+
+
+- memset (g_argv, 0, sizeof (g_argv));
+
+In that case the sizeof() returns the number of Bytes the Pointer needs, not of the contents the Pointer points to. So the first 4 Bytes of g_argv will be zeroed (I guess what you wanted to do is to delete the complete "contents" of g_argv).
+You can completely remove that line, because its followed by a
+"strcpy (g_argv, command);"
+which will override g_argv anyways.
+
+
+- I dont know if it can happen in your case, but if "command" points to a String with length zero, you will get a problem at:
+"if (g_argv[length - 1] == '\n')"
+
+
+- In your function "GetArg":
+you do a "return (&arg[0]);" which returns a pointer to a function-local-variable! ("char arg[129];")
+This is VERY critical, because "local" variables are mostly invalid after the function returns. So you will return a pointer to a memory-location that is not in use for the declared variable anymore and the associated memory. That can cause a lot of problems because you never know when and where that part of memory will be used again for different things.
+You can avoid that Problem by declaring the "arg" as "static", or better, by using a global-variable.
+
+
+I hope that helps,
+
+SoulWind
+
+
+
+--------------------------------------------------
+04/17/02 at 15:01:38  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+
+TTTTTT HH  HH  AAAA  NNNNN  KK  KK  SSSSS !!
+TTTTTT HH  HH AA  AA NNNNNN KK KK  SSSSSS !!
+  TT   HHHHHH AAAAAA NN  NN KKKK    SSS   !!
+  TT   HHHHHH AAAAAA NN  NN KKKK     SSS  !!
+  TT   HH  HH AA  AA NN  NN KK KK  SSSSSS
+  TT   HH  HH AA  AA NN  NN KK  KK SSSSS  !!
+
+
+(edited: here's the sort of answer I do like... the one that makes me a bit less stupid)
+
+[modified on 04/17/02 at 15:01:38]

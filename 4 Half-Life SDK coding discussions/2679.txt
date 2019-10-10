@@ -1,0 +1,292 @@
+--------------------------------------------------
+Subject: Light maps, and light levels
+--------------------------------------------------
+01/28/02 at 18:27:23  Posted by: RedFox (redfox@nildram.co.uk)
+--------------------------------------------------
+Hey
+Ok, this one goes back to the old question of getting the light levels of player/ents etc
+
+I've found that the light_level is stored for just about everything except fakeclients! arg
+
+so, as your bsp tools (and theirs source code) are out (thanks botman!) I've been looking at the bsp veiwer code and trying to figure out texture lightmaps (early days)
+I know exactly how they work, from when they where introduced origernally in quake1..but I'm still not 100% on the actual code detail...
+
+anyways, my question is 2 fold
+do you have an idea of how to get light levels (from tracing to the texture under the player/veiwer) in your veiwer...i.e. from the lightmaps?
+if not I'll try and figure that one, but any pointers would be nice
+
+in the actual game, is their a way to get the maps litemaps without having to load them your self?! if I do have to load the lightmap myslef, any tips? (ok, I can probably figure that from your viewer, but I'd like to try and focus on other things appart from getting light level data!)
+if you can help me out on this one, I'll report back any success, as I'm sure everyone will apretiatie the code :)
+
+thx botman
+
+--------------------------------------------------
+01/29/02 at 04:33:01  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+See this thread on Wavelength...
+
+http://dynamic.gamespy.com/~wavelength/ib/ikonboard.cgi?s=3c56959d74b1ffff;act=ST;f=13;t=935
+
+botman
+
+--------------------------------------------------
+01/29/02 at 16:44:41  Reply by: RedFox (redfox@nildram.co.uk)
+--------------------------------------------------
+thx
+well, did a bit of experimenting today, discovered summit intresting (just incase ya want to know)
+the GetEntityIllum works ok for just about everything except fakeclients?!
+
+so I cheated and created an invisible entity and got its light value :)
+
+it returns the light levels great..I did think it was only half working, but I discovered it also returns high values for sunlight (>300)
+
+I did try the CBasePlayer :: Illumination( void )
+but without success...so perhaps I should try it again
+
+heres the code if anyones bothered
+                                    
+      pPoint = CREATE_NAMED_ENTITY(MAKE_STRING("info_target"));
+                                          DispatchSpawn(pPoint);
+                                          pPoint->v.origin = pBot->pBotEnemy->v.origin;
+                                                                        pPoint->v.takedamage = DAMAGE_NO;
+                                          pPoint->v.solid = SOLID_NOT;
+                                          pPoint->v.owner = pBot->pBotEnemy;
+                                          pPoint->v.movetype = MOVETYPE_FLY; //noclip
+                                          pPoint->v.classname = MAKE_STRING("entity_botlightvalue");
+                                          pPoint->v.nextthink = gpGlobals->time;
+                                          pPoint->v.rendermode = kRenderNormal;
+                                          pPoint->v.renderfx = kRenderFxNone;
+                                          pPoint->v.renderamt = 0;
+                                             SET_MODEL(pPoint, "models/mechgibs.mdl");                                       amb=GETENTITYILLUM(pPoint);
+
+--------------------------------------------------
+01/30/02 at 06:25:38  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+thats neat :)
+
+--------------------------------------------------
+02/02/02 at 02:59:38  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+neat indeed! Any ideas why it is working 50% of the time? Also, isnt this going to spawn to many entities when playing wiht lots of bots for a long time?..
+
+unless this is  a temp-entity ?
+
+
+
+--------------------------------------------------
+02/02/02 at 04:19:58  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+unless you just create one of these entities when a player connects and use that until the player leaves. The position of the info_target could be updated everyframe, then it could be removed when the player leaves :)
+
+--------------------------------------------------
+02/23/02 at 07:28:01  Reply by: eLiTe (ali@elitegamer.fsnet.co.uk)
+--------------------------------------------------
+Very cool :)
+
+Good to know you guys are still working on your bots and that Cheesemonster has upgraded from waypointmaker to botmaker (the same as me!).
+
+Now we should be able to get bots with combat as good as CGF (which I've never played, but I've read up on the aiming/reaction-time system)
+
+--------------------------------------------------
+02/23/02 at 09:05:54  Reply by: RedFox (redfox@nildram.co.uk)
+--------------------------------------------------
+Yeah, what weirder is I only found out about CGF and what it could do once I'd started writing out a proper program spec for all the new features I wanted. And its looking almost like CGF! hehe
+Never played CFG either...shame it doesn't support normal Q2..otherwise I would have tried it
+
+as to the only working 50% of the time, yeah you need to create it and leave it for atleast 1 engine cycle for it to actually return the correct value, then its fine :)
+just use the DispatchThink function to update its position apropriatly
+
+--------------------------------------------------
+02/27/02 at 03:43:51  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+I'm not sure but I think that for moving objects (like players/bots), their illumination is the same as the one of the entity they're standing on (floor...) Maybe we could use that as a trick by getting the floor illumination.
+
+
+--------------------------------------------------
+02/27/02 at 06:11:15  Reply by: RedFox (redfox@nildram.co.uk)
+--------------------------------------------------
+Yup, all entites are lit from the light level on the floor :)
+Unfortunatly, getting at that data directly involves loading the bsp your self and extracting the light data
+Its all locked away in the gfx engine of halflife, which is not part of the SDK source code.
+
+As entities don't always return light values (bots...grr) this was the most direct meathod of getting the light value I found :)
+As it get its light value from the floor also
+
+--------------------------------------------------
+02/27/02 at 07:29:15  Reply by: CountFloyd (countfloyd@botepidemic.com)
+--------------------------------------------------
+Weeeee...it really works...somehow ! ;)
+It still is a bit strange and not too accurate though. Here's what I did so far:
+Instead of moving the entity around with Enemies etc. I'm trying to precalculate light levels for the waypoints. So I'm spawning the entity only once, reposition it, let it think for 0.2 secs and get the light value after that (looping through all waypoints).
+What really is noticeable is that texture colors don't seem to affect the light value in any way. Also strange is that it doesn't seem to be so much about illumination and light but a free sight to the skybox (I might be wrong with that but it looks a lot like it). This gives very different results on some maps where I would say a certain spot is i.e. very bright but the light value tells it's almost dark (and vice versa). Since this is no perfect solution I would like to add the real texture colors into it. One problem I have is that I don't know of any Function which could be used to trace a Texture for colors. Is this possible anyway ?     
+
+--------------------------------------------------
+02/27/02 at 14:42:16  Reply by: RedFox (redfox@nildram.co.uk)
+--------------------------------------------------
+Hmm, I've considered trying this with textures aswell
+Their is a trace texture function, dunno what results that comes up with
+I suppose if it only returns the name perhaps you can guess (i.e. you know how bright a texture is by looking at the ones in the wad) at what result it would have..
+lookup table for the texture names?
+
+hmm, not very good, but the only other way is back to loading the bsp ya self and extracting the info that way
+sucks huh?
+
+obviously I could have missed usmmit, so someone correct me if I'm wrong
+
+As to the values, so far they seem ok. I did notice that if your being lit by the light from the sky (on 2fort for example) the value can be up around 300+
+I don't think this is a bug, just a Very bright sky :p
+As to the dark values, I always checked this by linking it to a player, so I could see (from how light the player was) if they matched or not
+They always match (from my testing), however you might be in one of those spots that returns a low value even though the floor looks bright
+try standing their and see if your weapons darker than you'd expect
+
+Alternativly, your wait cycles wrong. you have to wait for atleast 1 'start frame' call to be done...
+i.e. the engine can go away and do stuff behind the scenes before getting its light value
+so..set the entites position, let the engine do its stuff, get the light level
+
+its anoying, but its what I've found :)
+
+--------------------------------------------------
+03/01/02 at 15:13:18  Reply by: CountFloyd (countfloyd@botepidemic.com)
+--------------------------------------------------
+QUOTE:
+
+Their is a trace texture function, dunno what results that comes up with
+
+
+
+Returns the textures name. Lookup Tables wouldn't work well in CS with lots of custom wads/textures.
+Might work in cheesy looking TFC though (sorry, couldn't resist!).
+
+QUOTE:
+
+hmm, not very good, but the only other way is back to loading the bsp ya self and extracting the info that way
+sucks huh?
+
+
+
+yes indeed. What about Botman's Map Viewer ? Is it possible to trace rgb colors with that tool ?
+
+QUOTE:
+
+I did notice that if your being lit by the light from the sky (on 2fort for example) the value can be up around 300+
+I don't think this is a bug, just a Very bright sky
+
+
+
+That's ok. Engine light values range from 0 - 300.
+
+QUOTE:
+
+They always match (from my testing), however you might be in one of those spots that returns a low value even though the floor looks bright
+try standing their and see if your weapons darker than you'd expect
+
+
+
+Problem is that I overestimated the light factor and underestimated human sense of colors. For example in dust at the T Spawn there are several positions near the crates which are light-wise very dark but don't appear that way because the texture has a very bright color.
+
+QUOTE:
+ 
+Alternativly, your wait cycles wrong. you have to wait for atleast 1 'start frame' call to be done...
+i.e. the engine can go away and do stuff behind the scenes before getting its light value
+so..set the entites position, let the engine do its stuff, get the light level
+
+
+
+Yes I know and I *think* I'm doing this as safe as possible. As told above I'm first creating the entity. The following frames the entity is first repositioned, then it breaks out of that function. Next frame it checks if the entity has been thinking for at least 0.2 secs. All in all there's at least 1 frame (should be lots more) time for the thinking process and again I *think* the values are the best you can get because I also had it think for over a second and it gave me the same numbers.
+
+
+
+
+
+
+--------------------------------------------------
+03/01/02 at 15:50:28  Reply by: William (william@cgf-ai.com)
+--------------------------------------------------
+Also note that you shouldn't interpret light values lineary (in the AI vision).
+In Q2, lightvalues are in the range 0..127. initially, I simply used a 'reduced visibility' for light values < 32: 
+code:
+
+visibility = min(lightlevel,32)/32;
+
+
+
+Alas, it didn't feel right. I then resorted to something like:
+code:
+
+visibility = sqrt(min(lightlevel,32)/32);
+
+
+which seemed to resemble my own vision more closely (but I wear contacts and use a 19" screen :) ).
+
+(with visibility in the [0,1] range)
+
+William
+
+[modified on 03/01/02 at 15:50:28]
+--------------------------------------------------
+03/02/02 at 06:36:32  Reply by: RedFox (redfox@nildram.co.uk)
+--------------------------------------------------
+Interesting.
+Anyway, I was thinking of useing a contrast system aswell.
+Say your a T de_dust and have reached the archway (the dark bit) before the CT's... if one appears at the end or is even already running down the dark coridor, they will be easier to spot than if they where sat against a dark background.
+Due to the end of the coridoor being outside and brightly lit.
+So contrast should come into it (movement aswell...if you want to get into human style vision, high contrast moving objects are the most easily spotted, and more easily spotted out of the corner of your eye than straight forward..heh)
+
+You can probably have a simple (but maybee unreliable) contrast system by checking the bots light value, and then checking the land behind it.
+
+this is where tracing the textures will come in handy aswell...dang
+All you need todo is to be able to trace a line to a point on a texture and extract the rgb value of it.. ok you'd need todo a few for the average selection (hmmm, thats why a lookup table may be useful again)... but it would be the best result.
+But only if the average was a good average...heh
+
+
+
+--------------------------------------------------
+01/13/03 at 16:25:02  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Awaking the dead one more time...
+
+It seems that you've been using a buggy light calculation for months, guys.
+
+I've just been doing my little testing on the question, and it appears that pfnGetEntityIllum() returns a value IF and ONLY IF a REAL player has already had this entity IN SIGHT once BEFORE. Like if some PVS needed to be "initialized" by a player sight. Else no matter, it always returns zero.
+
+I was using Cheesy's implementation, each bot created gets attributed a pLightEntity edict_t pointer, linked to an invisible entity like the one Tom is using that is updated every frame so as to follow the player, and which I make think every 0.2 second.
+
+My terro is spawning at the other side of dust. I tell him to tell me its illumination value, it answers "zero". Moving along, still zero. Once I get at the top of the stairs, then miraculously, my terro's illumination is bumped to 154.
+
+Crap, crap, crap, crap, crap.
+
+
+btw. the PVS stuff is HIGHLY UNRELIABLE. Error margin is up to 300 units sometimes.
+
+
+--------------------------------------------------
+01/13/03 at 16:44:38  Reply by: RedFox (redfox@nildram.co.uk)
+--------------------------------------------------
+I new this already :)
+testing on a hlds with just bots on and no human players..
+
+anyways, you can use my light traceline for the bsp viewer with the map data you loaded..thats what I'm planning
+gonna have to speed it up tho, cus its slower than it should be
+
+as to the PVS...how are you using it?
+
+--------------------------------------------------
+01/13/03 at 17:29:45  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+about the PVS stuff: Well, exactly like it has been posted on the other thread as an alternative for TraceLines, I wanted to check if I could sorta "initialize" the bot's illumination by setting up a fake player PVS facing them ; no success, then I moved on using the PVS stuff for checking long-range visibility ; it appears that it declares some entities visible whereas they are hidden by a wall 50 units aside, and overall it is absolutely jerky with vertical checks, and I have seen players reported as visible when they were hiding 300 units away.
+
+
+--------------------------------------------------
+01/14/03 at 03:55:08  Reply by: RedFox (redfox@nildram.co.uk)
+--------------------------------------------------
+Yeah, I tried the PVS stuff for the lighting aswell..no luck
+heh
+
+As to howto use the PVS...don't use it as an alternative to traceline, cus as you've discovered, its inacurate
+but its close..
+
+so use it as a filter, like the FOV check
+before you run a traceline to make sure it is visible :-D
+
+
+

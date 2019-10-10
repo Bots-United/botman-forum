@@ -1,0 +1,1101 @@
+--------------------------------------------------
+Subject: RACC template #1, including final BSP stuff.
+--------------------------------------------------
+01/22/03 at 13:27:08  Posted by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Aside of the very bad news from Valve, here's at least something I'm happy of.
+
+I've cleaned all the source code I've written, tidied the commenting up, and bundled it all into what could be compared to a higher level successor of botman's HPB_bot template.
+
+It features :
+. A spawning, if not playing, bot in Counter-Strike
+. A fully working MegaHAL-style Markov-model based chat system, you can talk to the bot and learn it whatever language you like
+. A fully functional files/folders hierarchy for bot personality, you can add as many bot profiles as you want
+. A fully translated 2D awareness system, extracted from the BSP info and saved into an engine-independent format back to disk
+. The most documentation I ever seen anywhere about the engine and mod function interfaces (functions in enginefuncs_t and dll funcs) directly written in the source code right where you need it
+. A fully working bot hearing system so that bots hear anything, and they hear it as long as the sound lasts in their ears
+. A fully working bot vision system, involving the entities in sight, a spatial representation of the field of view through a traceline scan, and the HUD icons and text
+. A fully working bot sensing system, making the bot aware through a bitmap data of its immediate surroundings, falls, walls and low walls and ceilings
+. A fully working, frame-independent aiming system, involving momentum aiming and aiming at model bones (although I ripped some "feel" features I still want to keep secret)
+. A code layout portable to any HL mod, just needing to update the link_entity_to_funcs
+. An almost completely engine-independent way of writing the bot internal code, through 2 levels of abstraction (but the engine and DLL functions hooking are still in place, of course). The only thing missing so far to the multi-engine multi-mod interface is the abstraction of Tracelines. Easy to do.
+. An almost OS-independent source code (the only thing missing is a directory search routine in util.cpp)
+. A logging system
+. Various debug levels
+. More that I can think of now
+
+It does NOT feature:
+. motile AI (neither cognitive nor basic) - you have to write yours
+. a pathfinding algorithm (only the data structures are here)
+. the rest of the RACC code
+
+It can be used by bot developers or by whoever wanting to know a little more about HL internals, or by people who are in search for documentation about the Half-Life engine and gamedll functions.
+
+http://www.racc-ai.com/racc-template.exe
+
+I will update the documentation on the engine functions as I write it, and as I manage to find it and how it works. I may also update it when I will have abstracted the traceline data and the directory search routine. In the meanwhile, I think it's worth the look. Have fun.
+
+
+--------------------------------------------------
+01/22/03 at 14:30:35  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+i took a quick look. Neat code!
+
+I don't get this abstraction layer, for me it seems nothing really changed there. Well, not in the way i thought you would mean abstract.
+
+I know Tub made lots of code which only compiled with some tags in code (like you can define debug modes that way on compile-time) so you can compile the code under the HL engine, but also would be able to compile it without it. It was something like:
+
+
+Bot <-> Layer
+
+Layer <-> Engine
+
+Thus, the bot always compiles, and the layer functions are filled in by whatever engine you use. I don't have the source on my disk, you should mail Tub about this; the idea was pretty cool and it worked pretty well aswell. You could do:
+
+World->Message("Hello world");
+
+and it will pop up a message on HL , but also it would show up on the TA engine (if those dudes every provided the correct last pieces of code). 
+
+--------------------------------------------------
+01/22/03 at 14:38:28  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Oh, I see what you mean... I didn't want to go that complicated, that's all :)
+
+The interest of this is that when I'll have to port my code to a new engine, I'll only have to change the engine-specific code in engine_specific.cpp, for example. Of course, I'll still have to correctly hook the video frame and such, but nothing really specific to the engine remains in the bot AI code I'm writing.
+
+Yeah, by "abstraction layer" I didn't mean that the bot code would need no recompiling to work on another platform... only that porting will be much simpler :)
+
+
+--------------------------------------------------
+01/23/03 at 00:15:17  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+:D okay, so i know what you mean with your abstraction layer now Thats cool Pierre, i still like the way you did it, but i was still thinking on Tubs concept.
+
+The way the MEMM (Multi-Engine Multi-Mod) project was designed needed recompiling though, but in a cool way. Disabling code which is not meant for specific engines and so on. I found it kinda neat, i hope i can get the source of it again so we might finish it.
+
+--------------------------------------------------
+01/23/03 at 18:10:51  Reply by: MrE (ezamudin@tm.net.my)
+--------------------------------------------------
+is it my comp or is it the installer is just 72 Kb?
+
+--------------------------------------------------
+01/24/03 at 02:54:40  Reply by: @$3.1415rin (johannes@_-removeifnotavirus-_lampel.net)
+--------------------------------------------------
+
+QUOTE:
+is it my comp or is it the installer is just 72 Kb?
+
+
+
+
+try to redownload it :)
+
+nice work pierre. But there is one thing I don't really like ( or did I get it wrong ? ) : When I looked at your GetTeam function - would I need several different dlls to support several mods ? Because that function is global, has no mod specific ending or whatever, so you don't call it via a function pointer ...
+
+well, you know, I like c++ :)
+
+--------------------------------------------------
+01/24/03 at 04:38:57  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+yes, that's it.
+You need one different DLL for each MOD you support. If you look in the linkfuncs, only the Counter-Strike linkfuncs are there.
+
+And I think that's how things should be, shouldn't they ? After all a different MOD is a different game... do you ever compare CS to Ricochet ?
+
+
+--------------------------------------------------
+01/24/03 at 20:12:46  Reply by: CountFloyd (countfloyd@botepidemic.com)
+--------------------------------------------------
+I'm having the same problem as MrE, the downloaded file is only 72kb and too short. I'm getting 'unexpected end of archive' and 'CRC Error' when trying to unpack it.
+
+--------------------------------------------------
+01/24/03 at 21:16:16  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+oh... :(
+Can't be my FTP server though...
+Are you using a download manager ? Try disabling it (and if you ain't, try one). Try the "Save Target as..." trick, also. If all else fail, I may send it to you by email (it would ruin my connection for at least one hour... ;))
+
+
+--------------------------------------------------
+01/25/03 at 05:06:19  Reply by: @$3.1415rin (johannes@_-removeifnotavirus-_lampel.net)
+--------------------------------------------------
+
+QUOTE:
+And I think that's how things should be, shouldn't they ? After all a different MOD is a different game... do you ever compare CS to Ricochet ?
+
+
+
+ok, my pov is here that all mod you are supporting need a lot of identical functions, so why put it into multible dlls in one release ?!
+
+anyway, that's for sure one of the less important points here. I solved this problem with team selection btw this way :
+
+code:
+
+// we need this class for an implementation of the getTeam code.
+// counter-strike doesnt use the normal v.team, but instead you have to get
+// the information via the player models.
+
+class CPlayerCS : public CPlayer  
+{
+public:
+      CPlayerCS();
+      virtual ~CPlayerCS();
+
+      virtual int getTeam(void);
+};
+
+
+
+so i'm not accessing the players directly by the edicts, but via this player classes. the CS getTeam replaces the normal getTeam function here.
+
+--------------------------------------------------
+01/25/03 at 09:00:46  Reply by: Extrarius (cprgmsw@rietta.com)
+--------------------------------------------------
+Same problem here: Only 72k, and 'unexpected end of archive'. Perhaps the copy on your FTP didn't finish getting uploaded or something like that?
+
+--------------------------------------------------
+01/25/03 at 09:17:16  Reply by: @$3.1415rin (johannes@_-removeifnotavirus-_lampel.net)
+--------------------------------------------------
+I mirrored it at ftp://joebot.net/jo/joebot.net/racc-template.exe
+
+( pierre, if you dont want that, I'll remove it, ok ? anyway, why did you put it into a .exe file if you are such an BSD freak ?! )
+
+--------------------------------------------------
+01/25/03 at 10:02:44  Reply by: Phreak (dead_sexy_simon@hotmail.com)
+--------------------------------------------------
+Theres only one phreak around here :)
+
+[edit]
+I have downloaded it from the mirror from ase.lalsrin (or just joebot creator)
+
+On behalf of everyone wanting to download this ase, thank you :D
+[/edit]
+
+[edit number 2]
+Whoops, spoke too soon. Doesn't work... Get a command prompt window and an error message saying
+"Device Driver Failed" or something simillar. This may just be me, i think my computer is slowly dieing (my Athlon 1.8 :()
+
+Anyone else get this error?
+[/edit number 2]
+
+Pierre, can you please paste your UTIL_WrapVectors() function from your bot, if it is ok, i would like a look at it...
+
+Phreak
+
+[modified on 01/25/03 at 10:02:44]
+--------------------------------------------------
+01/25/03 at 11:04:10  Reply by: CountFloyd (countfloyd@botepidemic.com)
+--------------------------------------------------
+Thanks @$3.1415rin I got it now. Looks ok to me but a lot of important stuff isn't in (or I didn't look hard enough). No entity wrapper, no really generalized Engine Layer, some Util functions barely changed and no putting of Players into generalized classes, that kind of stuff. But it's a good start, nice work! 
+
+--------------------------------------------------
+01/25/03 at 16:37:27  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Why would you need an "entity class wrapper" when you don't access the entity data in your bot code ?
+code:
+
+typedef struct edict_s entity_t;
+
+
+is way enough... Especially since all the data I need from an entity is accessed through the functions in engine_specific.cpp, which are, obviously, engine-specific :)
+
+No really generalized engine layer: yes, when we talked on IRC, I have had the feeling that you wanted to do things very in deep... Why ? After all, provided that :
+1°) in my bot code, I don't get below the pointer level when passing entities back and forth through functions, and
+2°) in my bot code, I don't call any single function from engine.cpp (although yes, you're right, pfnTraceLine() is not yet wrapped into engine_specific)
+... then I can safely say my bot code is engine independent. Isn't it ? You'll say, not really, since it still relies on hooking functions in dll.cpp ; so what ? I still hook the video frame, the player connecting, client commands ; don't all engines implement these features ?
+
+And yes, you're right, I hardly set up a single class. I first wanted to write lots of classes for everything, but I retracted then, because I prefer having the continuous sight of all the variable instances I am using, when passing them as parameters to my functions. This feature of C++ is confusing to me, I prefer the rigour of plain old C to this.
+
+
+
+--------------------------------------------------
+01/25/03 at 17:43:18  Reply by: CountFloyd (countfloyd@botepidemic.com)
+--------------------------------------------------
+What's the point in typedef'ing the edict struct into a custom entity_t struct if you would still have do access it like entity_t.v.origin ? Isn't that just like calling apples oranges ?
+
+I tried to do it the aspirin OOP way instead, I've got this class hierarchy for the Bots now:
+CBaseClient ->
+ CCSClient ->
+CBaseBot ->
+   CCSBot (derieved from CCSClient as well)
+
+Much like what HL did with their CBaseMonster, most functions in CBaseClient are just pure virtual. The HL entity ptr is wrapped into this class and handled through member functions. Porting to a new engine would just mean to change some of the wrapper functionality, the basic bot would still work like it does now.
+Most of the engine stuff is handled in my BotManager class which is like
+CBaseBotManager ->
+ CCSBotManager
+
+This one does most of the translation engine->bot bot->engine and all the "world" things like Player Recording/Management, Cell management, Config stuff etc.
+
+But in the end if you feel comfortable about it yourself then don't be bothered.
+
+--------------------------------------------------
+01/25/03 at 18:08:24  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+QUOTE:
+What's the point in typedef'ing the edict struct into a custom entity_t struct if you would still have do access it like entity_t.v.origin ? Isn't that just like calling apples oranges ?
+
+
+you don't get my point. When I want to know the origin of an entity, I call:
+
+vector entity_origin = OriginOf (pEntity);
+
+which is a function in engine_specific.cpp, that you could compare to a "method" in your "entity class". There is NO INSTANCE of pEntity->v in my bot code, NEVER, I don't get below the "pEntity" pointer level. The only place where I go through the entity data, is inside my wrapper functions in engine_specific.cpp. Ha, as long as it's not written inside a class, you get lost ! ;)
+
+I'm not calling apples oranges, I'm just providing one of these functions for each information I want to get from the entity's data, and then call it, and only this one. This is, what I call my "engine abstraction layer".
+
+--------------------------------------------------
+01/26/03 at 10:54:21  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+If i would have to write an abstraction layer, which i might do btw.. i would do something like:
+
+1 world class, defining the 'world' everything
+2 game class
+3 mod class
+4 own entity class/struct
+5 own vector class/struct
+6 own player class (which could be a bot aswell)
+
+When i should code a bot for HL, i would have the bot be compiled the correct way using my HL 'plugin code'. Therefor the entire project would need a logical directory structure for the files, but thats a different story.
+
+The game would be initialized, check out the mod, and then the funky stuff should begin. Such as when a engine message comes in, it would be 'converted' to the 'general' (common known) vector. Hard to tell without real code, but as i don't have real code yet i'll try to explain it using pseudo code:
+
+code:
+
+// HLVector will be the original vector struct/class here
+// Vector is my own class of a vector
+void ENGINE_SetVector(Vector v, HLVector hlv)
+{
+ v.x=hlv.x; 
+ v.y=hlv.y;
+ v.z=hlv.z;
+}
+
+
+
+Ofcourse this is a very simple example, but you get the idea. So no matter what engine is used, using your own Vector stuff will allow you to get a bot do what you want on every engine (in theory).
+
+--------------------------------------------------
+01/26/03 at 17:11:23  Reply by: theimann (killaruna@nuclearbox.com)
+--------------------------------------------------
+I realize that this is getting slightly offtopic ;D, but while the discussion is about engine-independant architectures I can't resist to put up a link to the class diagram some of you know from Amsterdam. parabot.nuclearbox.com/architecture.jpgHere we go...
+It shows the most important base classes, not including utilities like vector classes. A red frame means that subclasses have to be derived for each new engine, a blue frame a subclass for each new mod.
+As I said, it was just too tempting ;)
+
+Tobias
+
+--------------------------------------------------
+01/27/03 at 00:51:45  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+QUOTE:
+// HLVector will be the original vector struct/class here
+// Vector is my own class of a vector
+void ENGINE_SetVector(Vector v, HLVector hlv)
+{
+ v.x=hlv.x; 
+ v.y=hlv.y;
+ v.z=hlv.z;
+}
+
+
+
+Hey hey hey people, you're obsessed by C++. THIS is EXACTLY what I am doing. I've ripped Valve's vector class and now every vector in my code is declared as 
+   vector v_something;
+instead of
+   Vector v_something;
+or
+   vec3_t v_something;
+This way my vectors are 100% portable ; and when I get a vector from, let's say, an engine function, all I am doing is a cast from (Vector) to (vector).
+I do exactly the same for server variables and entities.
+
+The ONLY difference is that my functions are not grouped by class but are just plain C functions !!!
+
+Man, I don't understand what this fuzz is all about ; for me we are just misunderstanding each other as usuals ;D Read my code carefully, the features you expect ARE implemented !
+
+@ Tobias: Thanks a lot for the link! When we left Amsterdam I was just thinking 'too bad nobody asked Tobias to have a copy of his diagram' - see how things go, sometimes...
+
+[modified on 01/27/03 at 00:51:45]
+--------------------------------------------------
+01/27/03 at 07:24:34  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+hey, that diagram is still on my computer somewhere. Nice one Tobias.
+
+--------------------------------------------------
+01/27/03 at 09:46:52  Reply by: CountFloyd (countfloyd@botepidemic.com)
+--------------------------------------------------
+Thanks Tobias, I think we should tempt you a lot more if this is one of the results ! :)
+I had a hd-crash and lost all of the emails so I also lost your diagrams and layer overview.
+While we're at documentation be sure to check out Doxygen -> http://www.stack.nl/~dimitri/doxygen/
+a free documentation system which is really great for spotting design flaws (originally William pointed me to it and it has been proven very useful).
+About the diagram:
+I couldn't see what kind of messaging is going on between the world class and the bot. Does the Bot perceive entities and report it to the world class ? 
+I've got it this way currently:
+There's a list of world messages and a list of messages in each Bot. Bots are handed their own messages directly into their list. Global messages first go into the world list, each frame is then decided if the message needs to be further distributed into a single Bot message list (such as "bomb planted" messages etc.). Each Message Item looks like this:
+
+int  iType 
+int  iSubType 
+int  iExpirationFlags 
+float  fTimeStamp 
+float  fTimeNotify 
+float  fTimeExpire 
+int  iButtons 
+int  iMisc 
+Vector  vecPos 
+char  szCommand1 [40] 
+char  szCommand2 [40]
+
+(copied out of the doxygen documentation so this is missing colons etc.)
+
+As you can see this isn't only about notifying but can also contain the necessary action to be done like in this MOTD example:
+code:
+
+00778         BOT_MSG_BROADCAST_T *pBroadcast = new BOT_MSG_BROADCAST_T;
+00779         assert(pBroadcast);
+00780         pBroadcast->iType = MSG_BUTTON;
+00781         pBroadcast->iExpirationFlags = EXPIRE_COMPLETED;
+00782         pBroadcast->fTimeStamp = gpGlobals->time;
+00783         pBroadcast->fTimeNotify = gpGlobals->time + 0.5f;
+00784         pBroadcast->iButtons = BUTTON_FIRE1;
+00785         pBot->addMessageEvent(pBroadcast);
+
+
+
+(just saw that I'm still using gpGlobals here omg)
+
+Now I'm more and more running into cases where I would have to pass entities as well. However I'm unsure on how to deal with them. Ptrs to entities are bad, they might die between frames and could lead to crashes hard to figure out. Entity indexes would be great if they wouldn't be reused and changed inbetween. EHANDLEs would be best since HL cares about them but it's a very special class. How do you guys pass around entities ?
+
+Another problem might be passing ptrs to classes. My CBaseBotManager class is a bit like the World class in the diagram (it's a singleton class). Before Bots are driven it does the statistics work like calculating distances between clients, their properties, cell recording and whatnot. A bot who wants to know enemy distances calls this class helper function and passes a ptr to himself. I'm just unsure if there isn't a better way.
+
+While being offtopic:
+Shouldn't stuff like reaction times for bots be made frame dependant ? Because if we're using static times like 0.3 secs users with faster machines would find the bots easier than ppl with slower machines. I'm talking about stuff like this:
+m_fTimerStuckTolerance = g_BotManager.getWorldTime() + 2.0f * g_BotManager.getGameSpeedMultiplier();
+
+(where 2.0f is the static time)
+
+I guess I just have to start emailing again since I've got a lot of design questions (storing the inter-waypoint visibility is nagging me too). Could you PM me your current email account again ? Btw. task scheduling is finally working well...yipie yay !
+
+[modified on 01/27/03 at 09:46:52]
+--------------------------------------------------
+01/27/03 at 12:06:31  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+QUOTE:
+
+A bot who wants to know enemy distances calls this class helper function and passes a ptr to himself. I'm just unsure if there isn't a better way. 
+
+
+
+? Can't you just use a function on your world class which returns the distance between 2 vectors? 
+
+code:
+
+float distance = world.distance(vec1, vec2);
+
+
+
+
+--------------------------------------------------
+01/27/03 at 14:22:56  Reply by: theimann (killaruna@nuclearbox.com)
+--------------------------------------------------
+QUOTE:
+Does the Bot perceive entities and report it to the world class ?
+
+No, it's rather the other way round: Perception::scanEnvironment() uses World::findEntity() to update its list of perceipts. What the bot knows of the world is there in this list.
+QUOTE:
+How do you guys pass around entities ?
+
+In my design the perceipts take the role of entities, so I just have to pass pointers to them. All the validations can be done in the Perceipt class (At least that's what I guess because I haven't implemented much of the design yet). Obviously the Player class is an entity wrapper as well.
+QUOTE:
+Before Bots are driven it does the statistics work like calculating distances between clients, their properties, cell recording and whatnot.
+
+Cell recording should take place in my Observer class, precalculating and caching distances or other data is not planned (yet).
+QUOTE:
+Shouldn't stuff like reaction times for bots be made frame dependant ?
+
+And I thought the big improvement was to have it frame independant?!? 
+
+Your messaging system looks really neat btw... And yes, Doxygen is a nice tool ;-)
+Enough offtopic, maybe we should finally open a new thread for independant engine design?
+
+Tobias
+
+[modified on 01/27/03 at 14:22:56]
+--------------------------------------------------
+01/28/03 at 01:07:42  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+"How do you guys pass around entities ?"
+
+I pass the pointer, and I don't get below this level. Instead, I call one of my many functions to get information about this entity. If I want its origin, I call OriginOf (pEntity). If I want its name, I call ClassnameOf (pEntity).
+
+There's a handy function in the HL engine as well, that can save you of working with EHANDLEs.
+It's called pfnEntOffsetOfPEntity() or something like that.
+code:
+
+bool IsNull (const entity_t *pEntity)
+{
+   // this function returns TRUE if the pointer to entity pEntity is void or null, FALSE if it
+   // looks correct and actually points to a valid entity. We ask the engine directly for the
+   // pointer offset.
+
+   // return TRUE if either the entity pointer is void, or the entity slot is free
+   return ((pEntity == NULL) || (pfnEntOffsetOfPEntity (pEntity) == 0) || pEntity->free);
+}
+
+
+
+
+--------------------------------------------------
+01/29/03 at 18:52:06  Reply by: MrE (ezamudin@tm.net.my)
+--------------------------------------------------
+Good template... but pierre have you forgotten 'bout the CS radar, i can't find it code anywhere? Not that I'm saying you should include it so other people can rip it but just a question to you...
+
+--------------------------------------------------
+01/30/03 at 01:55:39  Reply by: @$3.1415rin (johannes@_-removeifnotavirus-_lampel.net)
+--------------------------------------------------
+read the template carefully again, then you'll know that there is no need for that radar :D
+
+--------------------------------------------------
+01/30/03 at 02:34:30  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Why do you say that @$3.1415rin ?
+
+well actually, I don't know exactly how the CS radar works, but I'd think it's client-side stuff, the only broadcast messages being for when a "special" thing has to be displayed, such as a player talking or something like that...
+If it ain't, sure it would be an idea to hook these messages and build a "radar" struct in pBot->BotEyes.BotHUD in parallel to the chat messages, which would hold, let's say, the approximative positions of the players in terms of angle and distance from the center...
+
+One simple way to simulate the radar though, and what I think most bot makers are doing, is to force the bot to loop through all clients, discarding enemies, so that the bot would know the exact position of its teammates. I know, a true radar is better. Good idea anyway, I think I'm going to do that.
+
+
+--------------------------------------------------
+01/30/03 at 05:38:01  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+I'm also pretty sure the Counter-Strike radar is all client side.  They're probably using the PVS and PAS on the client side for most of the player location information, but since they also show people outside the PVS or PAS, there must be somewhere that this additional player location information is sent to the client.
+
+It's kind of a moot point for server side bots, since anything server side can always get the exact location of all players without needing anything special.
+
+botman
+
+--------------------------------------------------
+01/30/03 at 08:36:42  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+yeah, I know, but bots shouldn't be allowed means that real players have not. Why else bothering implementing "eyes", "ears", and list of perceipts for our bots then ? I don't think it's that a "moot point"... actually I would encourage bot coders in doing so.
+
+
+
+--------------------------------------------------
+01/30/03 at 08:53:18  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+What I meant was moot was if you want to know the origins of players, you don't need to do any special radar hacking to get it, you already have it.
+
+The radar serves no purpose to bots (since they already can know where every player is), the radar only helps humans that don't already know where other players are located.
+
+What you decide to do with the information that is available to bots is up to you.  You can allow them to "cheat" in some cases to make up for weaknesses in other cases.  You have to actually create more code to prevent bots from "cheating" which makes them seem more human-like (which is a good thing unless you are a newbie bot coder that has no idea how to put restrictions on bots and simply wants to get them roaming around and shooting at stuff).
+
+botman
+
+--------------------------------------------------
+02/01/03 at 06:54:29  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Back on the topic...
+I don't know how this occured, but something definitely went wrong with the archive on my FTP server. So those experiencing problems with 75kb-only truncated archives were right.
+
+I've uploaded it again, and I fixed a bug in TranslateButtons() in engine_specific.cpp
+
+Instead of AND-masking the variables, they should be OR-ed. Here's the correct function :
+code:
+
+unsigned short TranslateButtons (playerbuttons_t &playerbuttons)
+{
+   // this function builds the engine-specific input buttons bitmap variable corresponding to
+   // the engine-independent player button states structure located at address &playerbuttons.
+
+   static unsigned short button;
+
+   button = 0; // first reset the buttons integer bitmap
+
+   // now check successively for each of this player's buttons
+   if (playerbuttons.f_forward_time >= CurrentTime ())
+      button = IN_FORWARD; // this player is moving forward
+   if (playerbuttons.f_backwards_time >= CurrentTime ())
+      button = IN_BACK; // this player is moving backwards
+   if (playerbuttons.f_turnleft_time >= CurrentTime ())
+      button = IN_LEFT; // this player is turning left
+   if (playerbuttons.f_turnright_time >= CurrentTime ())
+      button = IN_RIGHT; // this player is turning right
+   if (playerbuttons.f_strafeleft_time >= CurrentTime ())
+      button = IN_MOVELEFT; // this player is strafing left
+   if (playerbuttons.f_straferight_time >= CurrentTime ())
+      button = IN_MOVERIGHT; // this player is strafing right
+   if (playerbuttons.f_jump_time >= CurrentTime ())
+      button = IN_JUMP; // this player is jumping
+   if (playerbuttons.f_duck_time >= CurrentTime ())
+      button = IN_DUCK; // this player is ducking
+   if (playerbuttons.f_prone_time >= CurrentTime ())
+      button = IN_ALT1; // this player is proning
+   if (playerbuttons.f_walk_time >= CurrentTime ())
+      button = IN_RUN; // this player is walking instead of running
+   if (playerbuttons.f_use_time >= CurrentTime ())
+      button = IN_USE; // this player is taking an action upon some interactive entity
+   if (playerbuttons.f_fire1_time >= CurrentTime ())
+      button = IN_ATTACK; // this player is firing his primary fire
+   if (playerbuttons.f_fire2_time >= CurrentTime ())
+      button = IN_ATTACK2; // this player is firing his secondary fire
+   if (playerbuttons.f_reload_time >= CurrentTime ())
+      button = IN_RELOAD; // this player is reloading his weapon
+   if (playerbuttons.f_displayscore_time >= CurrentTime ())
+      button = IN_SCORE; // this player is displaying the scores grid
+
+   return (button); // return the engine-readable input buttons integer bitmap
+}
+
+
+I was wondering why my bots didn't jump anymore... doh...
+
+[modified on 02/01/03 at 06:54:29]
+--------------------------------------------------
+02/05/03 at 14:05:30  Reply by: Corund (kostyapr@operamail.com)
+--------------------------------------------------
+   First of all i want to say THANK YOU to Pierre-Marie Baty.
+   It seems that i am target user of your template:
+   i have some skill in c/c++; have free time+willing to write my own bot for CS; know very little about AI and HL engine.
+
+   I have seen botmans template (readme.txt is great but few comments in the code), joebot sources (too complicate for me), HL SDK (so much to understand!). 
+
+   RACC template is perfect to start with: every line is commented, most of the low level functions interacting with the engine are done. Only creative work is left for bot developer.
+
+   I have several proposals, questions and a small bug report (yes, yes :) ) for you:
+
+1. proposal: Installation must be explained in readme.txt. I copied racc.dll to ..\cstrike\dlls - crashed; then extracted all files to cstrike folder - crashed; and at last extracted all files to my half-life directory - success.
+
+2. proposal: Example of bot work is necessary! Like this: begin. bot spawns, buy desert eagle, run forward until get stucked with the wall, if hear something - turn to that noise, if see enemy fires. end. I am sure it will be easy to implement such code and it will be very useful for understanding how RACC works!
+
+3. question: What is the use of navigation files? Can be this data reused for waypointing?
+
+4. question: You said that RACC requires powerful machine. How much powereful? Is Celeron 433, 256 mb, 32 mb 3dcard is enough to run RACC on de_dust2 like maps with <10 bots?
+
+5. bug?: When you first time start RACC on de_dust map it reports: "RACC:bot's HAL brain damaged", "RACC:bot's nav brain damaged". Then i noticed that 2 new files appeared in Half - Life\racc\profiles\guinea_pig\cstrike\de_dust directory: racc_nav.brn and racc_hal.brn.
+
+6. bug?: When you change map bot does not join teams (even if this map is listed in profile like de_dust). Command "racc add" doesn't help.
+
+7. bug?: I got this error only once but it would be better if you know. When i changed map from dust to dust2(no profile for this map) all sounds played with a 1-2 second delay.
+
+8. bug?: When changed map to cs_estate OS crashes; i restarted computer but CMOS setup was reseted and CPU speed undetected! (just kidding :) it's my hardware problems).
+
+9. offtopic: Download section (english) on your site is not working for me. First on december 2002, after I checked it from time to time with different browsers but all the same: page not found. But french version is ok.
+
+     Waiting for new version of template and your RACC bot!
+                   Happy coding!
+
+--------------------------------------------------
+02/05/03 at 14:28:14  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Glad someone finds it useful at last :)
+
+OK, a couple questions, a couple replies.
+
+1. Yes, that's right. The RACC directory is supposed to be extracted in the Half-Life base directory ; then, the liblist.gam should point to:
+gamedll "../racc/release/cstrike/release/racc.dll"
+
+2. You're probably right, but I know people enough to fear those hordes who will necessarily confuse the template with a release bot. And welcome the "UR BOTS ARE STUPID"-style emails. Yes, people are THAT stupid.
+
+3. The navigation files keep track of the links the bots know to exist between the walkable faces, and their reachability. Each bot has its own navigation memory, which is stored in its racc-nav.brn file. There is a special place in PlayerPostThink() that I have prepared for you to add your own checks for the bots to observate themselves and the other players around and build their own navigation memory, according to the rules you will specify.
+
+4. Actually, I don't know. I hardly ever test more than 4 bots at a time. But bear in mind that the main difference between RACC and the other bots, is that RACC doesn't share any decisional nor motile AI between all bots ; all bots have their own resources (they have their own navigation brain, their own HAL brain, etc.)
+
+5. No, it's not a bug. The fact is that it's the first time you "give birth" to the bot named guinea_pig on this map, and since he has no HAL brain nor nav brain yet for it, it reports this error and creates a new one. Remember, for RACC, the map is the Universe, and thus each map is a different world. If you decide to name a bot "Rambo" and grow it a personality on de_dust, this bot won't exist on de_dust2 ; you'll have to "give birth" to another bot on de_dust2 (which you could as well call Rambo too, but it will still be a different bot, because it's a different world).
+
+6. Might be a bug, maybe the racc_maxbots is reset and thus no bots are allowed to join... I will look for it.
+
+7. I don't know what could have happened. I usually get this problem in any HL mod when I switch to another app, then switch back to Half-Life.
+
+8. Don't scare me that much ! Anyhow I took the precaution of discharging myself "this program is provided without warranty of any kind either express implied blah blah blah" haha !
+
+9. Yes, the english section of my site is broken for 6 months now, and the french one isn't even finished writing and hasn't been updated for months either. I'm lazy :)
+
+Happy coding too :)
+
+
+--------------------------------------------------
+02/06/03 at 21:13:00  Reply by: MrE (ezamudin@tm.net.my)
+--------------------------------------------------
+1) Won't it be better if the a bot share the same common files between maps? Not between bots but within a bot himself. So, rather then profile/mod/map structure it became profile/mod ... each mod share a single profile file, chat text and audio, and chat brain. the only different is that the navigation brain...rather then racc-nav.brn it could be map.nav for example..the reason is simple... for user simplicity. There are a lot of player with hundreds of maps in their comp.  if i'm not mistaken, you test for error_in_personality for every profile. Each file have the same name(profile.cfg , bye.txt,etc... ) only different is their respective folder. for each map, you need a folder that have at least have the profile file and the chat file. Only the nav file and the HAL brain is created on the fly. The problem with your method is that if there are none of the file above exist, the personality is declared as buggy and remove from the population. Why the redundancy? You do mention 'bout every map is a different universe, and the 'dude' in de_dust is actually a different 'dude' in de_dust2 but why bother a profile folder if inside it there are a thousand more profile that only share the same profile name? Better if you build a profile which we soon be attach to it...Imagine you train 'Eddy' to speak your language in de_dust... suddenly after map change your 'Eddy' could speak only "mommy mommy" ? Oh plz...do we have to train it all over again? Some will copy and paste the brain but have mercy on those with lot's and I mean LOTS of maps... You've give a question "would you imagine yourself being dropped suddently on Mars and still trying to act as a Terrian ? " My answer is yes...because i'm still the same person....but I could try to adapt my tactic to survive here :)..I mean if I do have a tactic.
+
+2) CS-Radar... won't it be enough if you called UTIL_FindEntityInSphere to look for teammate and C4. the only thing you need is the radar radius.
+
+3) Bot Eyes... Why did you loop through all entities and take the first 50 (BOT_EYES_SENSITIVITY) the bot sees. What if a VIP player is the 51th entities that should be seen... Shouldn't you be declaring an array the size of MaxEntities and find out how many entities that the bot really sees first. you could even sort it out according to the entity's important. 
+
+Again, if you disagree on any of the above(especially on no 1), I understand perfectly as it is your bot...you are entitle to do anything you feel right for it :). The fact that you even kind enough to share your code with the likes of me (who know very little 'bout bot coding and VC++..but I'm learning and your code is a welcome tutorial) is more then appreciated. This suggestion at least could also benefit others who wish to build a bot base upon your template.
+
+Peace! 
+
+--------------------------------------------------
+02/07/03 at 07:44:57  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+I can answer 3) :)
+
+All the players are in the entity index value 1 through maxClients, so the VIP is definetly in there. 50 should be enoguh, its not as if the bot will always see the first 50 entities it finds (lets say 32 players for instance.. theyve got to be in fov and visible for the index to incrmeent also)
+
+"find out how many entities that the bot really sees first"
+
+Thats much more CPU time...
+
+Like me, I'd use a linked list but I know Pierre doesn't like them much :)
+
+[edit]
+
+oh.. another method pierre you could try with this, is store only the first 50 nearest entities it sees, so it makes the closer entities more important. You should do a check when the list is full, whether the current entity is closer to the furthest entity in the list, if it is replace it with that entity in the list. So you'd need to store two floating point values (furthest distance/entity distance) and an integer (index of the furthest entity in list) and when replacing youll need to find a new furthest distance and index though! If you catch my drift ;)
+
+[modified on 02/07/03 at 07:43:06]
+
+[modified on 02/07/03 at 07:44:57]
+--------------------------------------------------
+02/07/03 at 10:15:40  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+QUOTE:
+oh.. another method pierre you could try with this, is store only the first 50 nearest entities it sees, so it makes the closer entities more important. You should do a check when the list is full, whether the current entity is closer to the furthest entity in the list, if it is replace it with that entity in the list. So you'd need to store two floating point values (furthest distance/entity distance) and an integer (index of the furthest entity in list) and when replacing youll need to find a new furthest distance and index though! If you catch my drift ;)
+
+
+
+uhh... not really you know ;D
+
+
+--------------------------------------------------
+02/07/03 at 11:23:57  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+consider this :)
+
+I dont have much familiarity with the RACC functions, so I've been using the bare methods to get distances and exact origins.
+
+code:
+
+void BotSee (bot_t *pBot)
+{
+   ...
+
+   entity_t *pTempEntity;
+   int i;
+   int furthest_index = -1;
+
+   // cycle through all entities in game
+   for (entity_index = 0; entity_index < MaxEntitiesOnServer (); entity_index++)
+   {
+      pEntity = EntityAtIndex (entity_index); // bind that entity number
+      
+      if (IsNull (pEntity))
+            continue; // if unregistered, skip it
+            
+      if (BotCanSeeOfEntity (pBot, pEntity) == NULLVEC)
+            continue; // if not in sight, discard this item
+            
+      distance = (((pEntity->v.absmin + pEntity->v.absmax)/2) - (pBot->pEntity->v.origin + pBot->pEntity->v.view_ofs)).Length();
+            
+      if (entity_count == BOT_EYE_SENSITIVITY)
+      {
+            if ( distance < maxdistance )
+            {
+                  pBot->BotEyes.pEntitiesInSight[furthest_index] = pEntity; // insert this one in place of the furthest entity
+                  
+                  maxdistance = 0;
+                  
+                  for ( i = 0; i < BOT_EYE_SENSITIVITY; i ++ ) // update maxdistance and furthest index
+                  {
+                        pTempEntity = pBot->BotEyes.pEntitiesInSight[i];
+                        
+                        distance = (((pTempEntity->v.absmin + pTempEntity->v.absmax)/2) - (pBot->pEntity->v.origin + pBot->pEntity->v.view_ofs)).Length();
+                        
+                        if ( distance > maxdistance ) // update maxdistance and index
+                        {
+                              maxdistance = distance;
+                              furthest_index = i;
+                        }
+                  }
+            }
+      }
+      else
+      {
+            if ( distance > maxdistance ) // update maxdistance is needed.
+            {
+                  maxdistance = distance;
+                  furthest_index = entity_count;
+            }
+            
+            pBot->BotEyes.pEntitiesInSight[entity_count] = pEntity; // bot can see this entity
+            entity_count++;
+      }
+   }
+
+    ...
+} // end of function BotSee
+
+
+--------------------------------------------------
+02/07/03 at 13:00:17  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+I see...
+Good one, Cheesy !
+
+But I think the size of the entity should matter too. I'll see if I can come up with a method for determining which entities should be seen and which ones not.
+
+
+--------------------------------------------------
+02/07/03 at 20:57:21  Reply by: Gimli (sstephanoff@hotmail.com)
+--------------------------------------------------
+Any way to get the bot without the code lol i tryed english and french. I also tryed to compile it and use it but the game crashes and I'd like to see if its just my compile or the code...
+
+[modified on 02/07/03 at 20:57:21]
+--------------------------------------------------
+02/08/03 at 06:11:17  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Why would you want the bot without the code ? You'll get a spawning bot that doesn't even move. That's all.
+
+--------------------------------------------------
+02/08/03 at 08:03:09  Reply by: Gimli (sstephanoff@hotmail.com)
+--------------------------------------------------
+Well I'm trying to figure out why I dont even get a bot at all. It goes into console and just crashes. I'm trying to debug and its getting wierd on me I'll copy and paste hold on.
+
+Ok it pops up with this right after cs crashes
+"User Breakpoint called from code at 0x77f97704"
+
+I dont see a breakpoint anywhere am I missing anything? Heres the debug window
+
+Server IP address 68.47.81.108:27015
+Could not get IPX socket name, IPX disabled
+Reason:  WSAENOTSOCK
+Loaded 'C:\SIERRA\Half-Life\racc\release\cstrike\release\racc.dll', no matching symbolic information found.
+Loaded 'C:\SIERRA\Half-Life\cstrike\dlls\mp.dll', no matching symbolic information found.
+PackFile: C:\SIERRA\Half-Life\valve\pak0.pak : skill.cfg
+The thread 0x6AC has exited with code 0 (0x0).
+HEAP[hl.exe]: Invalid Address specified to RtlFreeHeap( 4db0000, 9124008 )
+The program 'C:\SIERRA\Half-Life\hl.exe' has exited with code 0 (0x0).
+
+and heres the call stack
+HL! 00484d92()
+KERNEL32! 77ea847c()
+
+Is there something I'm missing, am I making a newbie mistake what could it be?!?!? lol and thank you for the templete its very nice looking code :)
+
+
+
+[modified on 02/08/03 at 08:03:09]
+--------------------------------------------------
+02/08/03 at 08:46:33  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+I've tried this before, there seems to be problems with freeing the character pointer in mfclose() so it crashes. I changed all the "mf"..file stuff to normal file stuff and it worked fine ???
+
+--------------------------------------------------
+02/08/03 at 09:26:11  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Interesting...
+
+Which OS are you running Half-Life on ?
+
+
+--------------------------------------------------
+02/08/03 at 09:35:16  Reply by: Gimli (sstephanoff@hotmail.com)
+--------------------------------------------------
+Windows 2000
+
+--------------------------------------------------
+02/08/03 at 18:29:30  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+What about you Cheesy ?
+
+
+--------------------------------------------------
+02/09/03 at 06:49:26  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+win 98 SE
+
+It crashes on the assert in free dbgheap or something, if you keep ignoring it, it will eventually hit an unhandled exception.
+
+[edit] litle more info...
+
+I don't think you can free a string pointer. If anyone knows you can, and have tried it without problems please tell me as well as I'd like to know how :)
+
+[modified on 02/09/03 at 06:49:26]
+--------------------------------------------------
+02/09/03 at 08:55:15  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Why couldn't you free a string pointer ? You can free anything you mallocate, right ? So if I allocate space and cast it to (char *), I must be able to free it ?
+
+I don't see your point...
+
+
+--------------------------------------------------
+02/09/03 at 11:24:45  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+Yeah I did a test programbelow
+code:
+
+#include <malloc.h>
+
+#define TEST_STR_LEN 16
+
+void main()
+{
+      char *test = (char*)malloc(TEST_STR_LEN);
+
+      short int i;
+
+      strncpy(test,"testtesttesttesttesttesttest",TEST_STR_LEN - 1);
+      test[TEST_STR_LEN-1] = 0;
+
+      if ( test )
+            free(test);
+}
+
+
+which worked fine.. although I dont think you "malloc" the string you free though (in the file), e.g. you use pfnLoadFileForMe and set the string pointer to it... You could try..
+
+code:
+
+
+char *szFp = (char *) pfnLoadFileForMe (file_path, &fp._bufsiz);
+
+if ( szFp )
+{
+  fp._ptr = (char*)malloc(strlen(szFp)+1);
+  strcpy(fp._ptr,szFp);
+}
+
+
+
+so you directly allocate the mem into the files _ptr
+
+--------------------------------------------------
+02/09/03 at 11:34:55  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+It would be pretty pointless mallocating twice some memory space for a file, since that's just what pfnLoadFileForMe() does ?!?
+
+The purpose of my mfile stuff was to make this engine-independent by getting rid of the need to call pfnLoadFileForMe()...
+
+
+--------------------------------------------------
+02/09/03 at 11:47:53  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+bah maybe it isnt that, But it definetly crashes on mfclose() when freeing fp._ptr so I don't know how it would be fixed ??? (I made a debug profile for RACC and checked)
+
+--------------------------------------------------
+02/09/03 at 15:08:29  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+I don't experience this bug so I can't do it myself....
+
+Could you do run some tests in order to see if the crash cause is a call of free() upon a pointer which would already been free()d before ? of course, if it's not too complicated, else just give up.
+
+Just that I am curious about this bug but can't seem to be able to reproduce it here...
+
+
+--------------------------------------------------
+02/09/03 at 18:06:19  Reply by: Gimli (sstephanoff@hotmail.com)
+--------------------------------------------------
+What did you do exactly cheese? I'll take out the free on mine to see if it happens somewhere else.
+
+/*edit*/
+Um it just ran a little longer :\ maybe it helped or something I'll check debug
+/*edit*/
+
+[modified on 02/09/03 at 18:06:19]
+--------------------------------------------------
+02/09/03 at 18:13:15  Reply by: Gimli (sstephanoff@hotmail.com)
+--------------------------------------------------
+This is what it got to this time any ideas?
+
+Server IP address 127.0.0.1:27015
+Could not get IPX socket name, IPX disabled
+Reason:  WSAENOTSOCK
+Loaded 'C:\SIERRA\Half-Life\racc\release\cstrike\release\racc.dll', no matching symbolic information found.
+Loaded 'C:\SIERRA\Half-Life\cstrike\dlls\mp.dll', no matching symbolic information found.
+PackFile: C:\SIERRA\Half-Life\valve\pak0.pak : skill.cfg
+The thread 0x69C has exited with code 0 (0x0).
+PackFile: C:\SIERRA\Half-Life\valve\pak0.pak : models/w_battery.mdl
+PackFile: C:\SIERRA\Half-Life\valve\pak0.pak : sound/items/gunpickup2.wav
+PackFile: C:\SIERRA\Half-Life\valve\pak0.pak : models/w_antidote.mdl
+PackFile: C:\SIERRA\Half-Life\valve\pak0.pak : models/w_security.mdl
+PackFile: C:\SIERRA\Half-Life\valve\pak0.pak : models/w_longjump.mdl
+PackFile: C:\SIERRA\Half-Life\valve\pak0.pak : models/w_9mmclip.mdl
+PackFile: C:\SIERRA\Half-Life\valve\pak0.pak : sound/items/9mmclip1.wav
+PackFile: C:\SIERRA\Half-Life\valve\pak0.pak : models/shotgunshell.mdl
+PackFile: C:\SIERRA\Half-Life\valve\pak0.pak : sound/weapons/reload1.wav
+PackFile: C:\SIERRA\Half-Life\valve\pak0.pak : sound/weapons/reload3.wav
+PackFile: C:\SIERRA\Half-Life\valve\pak0.pak : models/w_shotbox.mdl
+PackFile: C:\SIERRA\Half-Life\valve\pak0.pak : sound/weapons/357_cock1.wav
+PackFile: C:\SIERRA\Half-Life\valve\pak0.pak : models/w_weaponbox.mdl
+PackFile: C:\SIERRA\Half-Life\valve\pak0.pak : sprites/zerogxplode.spr
+PackFile: C:\SIERRA\Half-Life\valve\pak0.pak : sprites/WXplo1.spr
+PackFile: C:\SIERRA\Half-Life\valve\pak0.pak : sprites/steam1.spr
+PackFile: C:\SIERRA\Half-Life\valve\pak0.pak : sprites/bubble.spr
+PackFile: C:\SIERRA\Half-Life\valve\pak0.pak : sprites/bloodspray.spr
+PackFile: C:\SIERRA\Half-Life\valve\pak0.pak : sprites/blood.spr
+PackFile: C:\SIERRA\Half-Life\valve\pak0.pak : sprites/b-tele1.spr
+PackFile: C:\SIERRA\Half-Life\valve\pak0.pak : sprites/c-tele1.spr
+PackFile: C:\SIERRA\Half-Life\valve\pak0.pak : sprites/laserbeam.spr
+PackFile: C:\SIERRA\Half-Life\valve\pak0.pak : sprites/laserdot.spr
+PackFile: C:\SIERRA\Half-Life\valve\pak0.pak : models/grenade.mdl
+PackFile: C:\SIERRA\Half-Life\valve\pak0.pak : sprites/explode1.spr
+PackFile: C:\SIERRA\Half-Life\valve\pak0.pak : sound/weapons/debris1.wav
+PackFile: C:\SIERRA\Half-Life\valve\pak0.pak : sound/weapons/debris2.wav
+PackFile: C:\SIERRA\Half-Life\valve\pak0.pak : sound/weapons/debris3.wav
+PackFile: C:\SIERRA\Half-Life\valve\pak0.pak : sound/weapons/bullet_hit1.wav
+PackFile: C:\SIERRA\Half-Life\valve\pak0.pak : sound/weapons/bullet_hit2.wav
+PackFile: C:\SIERRA\Half-Life\valve\pak0.pak : sound/items/weapondrop1.wav
+PackFile: C:\SIERRA\Half-Life\valve\pak0.pak : sound/items/ammopickup2.wav
+PackFile: C:\SIERRA\Half-Life\valve\pak0.pak : sound/weapons/explode3.wav
+PackFile: C:\SIERRA\Half-Life\valve\pak0.pak : sound/weapons/explode4.wav
+PackFile: C:\SIERRA\Half-Life\valve\pak0.pak : sound/weapons/explode5.wav
+PackFile: C:\SIERRA\Half-Life\valve\pak0.pak : sound/common/npc_step1.wav
+PackFile: C:\SIERRA\Half-Life\valve\pak0.pak : sound/common/npc_step2.wav
+PackFile: C:\SIERRA\Half-Life\valve\pak0.pak : sound/common/npc_step3.wav
+PackFile: C:\SIERRA\Half-Life\valve\pak0.pak : sound/common/npc_step4.wav
+PackFile: C:\SIERRA\Half-Life\valve\pak0.pak : sound/debris/wood1.wav
+PackFile: C:\SIERRA\Half-Life\valve\pak0.pak : sound/debris/wood2.wav
+PackFile: C:\SIERRA\Half-Life\valve\pak0.pak : sound/debris/wood3.wav
+PackFile: C:\SIERRA\Half-Life\valve\pak0.pak : sound/plats/train_use1.wav
+PackFile: C:\SIERRA\Half-Life\valve\pak0.pak : sound/buttons/spark5.wav
+PackFile: C:\SIERRA\Half-Life\valve\pak0.pak : sound/buttons/spark6.wav
+PackFile: C:\SIERRA\Half-Life\valve\pak0.pak : sound/debris/glass1.wav
+PackFile: C:\SIERRA\Half-Life\valve\pak0.pak : sound/debris/glass2.wav
+PackFile: C:\SIERRA\Half-Life\valve\pak0.pak : sound/debris/glass3.wav
+PackFile: C:\SIERRA\Half-Life\valve\pak0.pak : sound/items/flashlight1.wav
+PackFile: C:\SIERRA\Half-Life\valve\pak0.pak : sound/common/bodysplat.wav
+PackFile: C:\SIERRA\Half-Life\valve\pak0.pak : sound/common/wpn_hudoff.wav
+PackFile: C:\SIERRA\Half-Life\valve\pak0.pak : sound/common/wpn_hudon.wav
+PackFile: C:\SIERRA\Half-Life\valve\pak0.pak : sound/common/wpn_moveselect.wav
+PackFile: C:\SIERRA\Half-Life\valve\pak0.pak : sound/common/wpn_select.wav
+PackFile: C:\SIERRA\Half-Life\valve\pak0.pak : sound/common/wpn_denyselect.wav
+PackFile: C:\SIERRA\Half-Life\valve\pak0.pak : sound/player/geiger6.wav
+PackFile: C:\SIERRA\Half-Life\valve\pak0.pak : sound/player/geiger5.wav
+PackFile: C:\SIERRA\Half-Life\valve\pak0.pak : sound/player/geiger4.wav
+PackFile: C:\SIERRA\Half-Life\valve\pak0.pak : sound/player/geiger3.wav
+PackFile: C:\SIERRA\Half-Life\valve\pak0.pak : sound/player/geiger2.wav
+PackFile: C:\SIERRA\Half-Life\valve\pak0.pak : sound/player/geiger1.wav
+PackFile: C:\SIERRA\Half-Life\valve\pak0.pak : sound/common/null.wav
+PackFile: C:\SIERRA\Half-Life\valve\pak0.pak : sound/items/suitchargeok1.wav
+PackFile: C:\SIERRA\Half-Life\valve\pak0.pak : sound/common/bodydrop3.wav
+PackFile: C:\SIERRA\Half-Life\valve\pak0.pak : sound/common/bodydrop4.wav
+PackFile: C:\SIERRA\Half-Life\valve\pak0.pak : models/hgibs.mdl
+PackFile: C:\SIERRA\Half-Life\valve\pak0.pak : models/agibs.mdl
+PackFile: C:\SIERRA\Half-Life\valve\pak0.pak : sound/debris/bustmetal1.wav
+PackFile: C:\SIERRA\Half-Life\valve\pak0.pak : sound/debris/bustmetal2.wav
+PackFile: C:\SIERRA\Half-Life\valve\pak0.pak : sound/debris/metal1.wav
+PackFile: C:\SIERRA\Half-Life\valve\pak0.pak : sound/debris/metal2.wav
+PackFile: C:\SIERRA\Half-Life\valve\pak0.pak : sound/debris/metal3.wav
+PackFile: C:\SIERRA\Half-Life\valve\pak0.pak : models/metalplategibs_green.mdl
+
+   RACC version [template1] - http://www.racc-ai.com
+   This program comes with ABSOLUTELY NO WARRANTY; see license for details.
+   This is free software, you are welcome to redistribute it the way you want.
+
+RACC: PrecacheSoundForBots(): wave file radio/elim.wav not found!
+RACC: PrecacheSoundForBots(): wave file radio/flankthem.wav not found!
+PackFile: C:\SIERRA\Half-Life\valve\pak0.pak : models/mechgibs.mdl
+HEAP[hl.exe]: Invalid Address specified to RtlFreeHeap( 13ba0000, 1470eb48 )
+The program 'C:\SIERRA\Half-Life\hl.exe' has exited with code 0 (0x0).
+
+--------------------------------------------------
+02/10/03 at 04:53:53  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+edit the mfclose function not to free anything, instead just set fp->ptr to NULL (wihtout freeing) and trying again.
+
+Also... I've noticed crashes before with fwrite, (when saving the bsp file to .map file) Since I also did this with my bot, I changed the code slightly and it doesnt crash there anymore (I think it had something to do with sizeof("[worldsize]") where I think it should be strlen("[worldsize]") because I've noticed they give different results... (not sure though)
+
+--------------------------------------------------
+02/10/03 at 05:15:19  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Yes; sizeof ("[worldsize]") will return the size in BYTES of the [worldsize] string, INCLUDING the final NULL character.
+strlen ("[worldsize]") will return the size in CHARACTERS (if you are on Unicode machines they will be 2 bytes, else 1 byte each) but WITHOUT the final NULL character.
+
+
+--------------------------------------------------
+02/10/03 at 14:15:46  Reply by: Gimli (sstephanoff@hotmail.com)
+--------------------------------------------------
+I get the same error I made it make it null and I changed that fwrite to have it do strlen instead of sizeof and I still get the same thing.
+
+RACC: PrecacheSoundForBots(): wave file radio/elim.wav not found! 
+RACC: PrecacheSoundForBots(): wave file radio/flankthem.wav not found! 
+
+is it possible I just need these sounds? Because I checked the folder and they arent there.
+
+[modified on 02/10/03 at 14:15:46]
+--------------------------------------------------
+02/10/03 at 14:22:58  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+oic
+
+I strongly advise you to unpack all your PAK files... To do that, move all the files BUT the PAK files from your MOD directory to a temporary folder, open the PAK files with a program such as PakExplorer or QPedII, extract all the files in your MOD directory, close the PAK file, delete it, and finally move the files from your temporary folder back to their original location (overwriting those of the PAK file if necessary).
+
+Tell me then but I bet it will work...
+
+
+--------------------------------------------------
+02/10/03 at 14:51:36  Reply by: Gimli (sstephanoff@hotmail.com)
+--------------------------------------------------
+Well I dont think that was it because I just commented out the code and now it still crashes but doesnt give me that error saying it couldnt precache.
+
+and could you explain that a little better about the pak files?
+
+[modified on 02/10/03 at 14:51:36]
+--------------------------------------------------
+02/10/03 at 17:30:32  Reply by: Gimli (sstephanoff@hotmail.com)
+--------------------------------------------------
+Ok made all the pointers for bsp stuff null instead of freed and it acctually loads...Now the bot joins the game then leaves lol I'll try and figure out whats going on. Also we should fix the code to make sure it gets freed right, right?
+
+--------------------------------------------------
+02/10/03 at 20:32:59  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+no, no, no. You are creating memory leaks !
+The pointers HAVE to be freed !
+
+Unpack your PAK files before messing with this code !
+
+
+--------------------------------------------------
+02/11/03 at 04:40:09  Reply by: Gimli (sstephanoff@hotmail.com)
+--------------------------------------------------
+Could you explain what you mean a little better? Move your stuff to a different folder unpak the files into the original and then move all the files into a pak file after moving them back into the folder? Or something else...
+
+--------------------------------------------------
+02/11/03 at 05:14:24  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Do you guys want to create a new thread (maybe in the Half-Life SDK coding section)?
+
+botman
+
+--------------------------------------------------
+02/11/03 at 11:00:09  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Sorry botman. Will do :)
+
+
+--------------------------------------------------
+02/14/03 at 06:15:37  Reply by: BrianL (halfkiller@hotmail.com)
+--------------------------------------------------
+Pierre-Marie Baty, 
+  Do you by any chance have ICQ, AIM, or MSN?
+If so please email me at: halfkiller@hotmail.com
+
+Or get in contact with me on:
+ MSN: halfkiller@hotmail.com
+ AIM: bjl66733
+ ICQ: 68814489
+
+I need to speak with you about your bot/source..
+
+--------------------------------------------------
+02/14/03 at 18:25:56  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Nope.
+I don't have any of those hacker popsicles installed on any of my puters, thanks God !
+
+
+--------------------------------------------------
+02/14/03 at 19:14:40  Reply by: BrianL (halfkiller@hotmail.com)
+--------------------------------------------------
+geez I didn't think your that sarcastic about software...
+
+My question was is why your bot is crashing I installed it fresh no source changes etc, followed the readme to installing no pak files etc... Still crashes before it even starts the server.
+
+I'll post some debug info little later...
+
+[modified on 02/14/03 at 19:14:40]
+--------------------------------------------------
+02/18/03 at 15:49:35  Reply by: Gimli (sstephanoff@hotmail.com)
+--------------------------------------------------
+Sounds like mine and cheesy's problem. Try making stuff null instead of free()ing it and it shouldnt crash. I wonder why its crashing though?
+

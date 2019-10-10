@@ -1,0 +1,243 @@
+--------------------------------------------------
+Subject: On bot debugging...
+--------------------------------------------------
+11/20/00 at 05:53:23  Posted by: theimann (theimann@stud.fh-heilbronn.de)
+--------------------------------------------------
+There is no software free of errors and especially programming dlls debugging sucks! It's quite normal that you spend more time debugging than actually implementing new features. I will start this tutorial-like thread with some tips on how to optimize bot debugging, maybe later on some others could add their experience and methods as well...
+
+1) If possible, develop crucial parts of your AI in a test environment: Program a driver that checks the functionality of your classes so you don't need to use HL. Generally you will do this by setting up a new project (a normal console application will do) and simulate in your main() the function calls that your BotThink() would perform on the tested classes. The big advantage is that you save a lot of time: you don't need to start a new HL-game for every test. Furthermore debugging is much easier this way. Try to keep your bot classes compatible to the driver program and the BotThink-function so that you can check them again after you made some changes.
+
+2) Use assert! The vast majority of all fatal errors are null-pointer problems that you can localize using assert. Otherwise you can search for hours and sometimes days to localize the line that causes the crash.
+Include "assert.h" in all your files. Make sure you have deleted "/D NDEBUG" of your project options. Search all your files for the pointer operator "->" and place a corresponding assert straight before that line. Last but not least make sure you initialize every pointer variable with NULL and reset it to NULL after deleting it.
+It sounds like a heap of work but you will make that in half an hour and save probably days of debugging time...
+
+That's the first part from me, I would be curious to know what the other developers do to simplify debugging. Maybe someone is using the JIT and could write about his experience?
+
+Tobias
+
+--------------------------------------------------
+11/20/00 at 09:22:04  Reply by: William (william@botepidemic.com)
+--------------------------------------------------
+Tobias,
+
+(a): I use asserts to test all kinds of parameter boundaries, not just pointers. Probably the most occuring statement is: 
+assert( node < CGF_Terrain_Node_GetCurrentNumberOfNodes() );
+I also use asserts on almost all file input (to check the struct just read for correct contents); that makes me find errors after changing file formats.
+
+(b): part of the problems are dynamic (see the 'bot only firing pistol once' example on the board). To provide more info, I have a text based log file, to which I send statements. All statements are prefixed by the game time, so I can keep track of bot behavior.
+Also logged in that file are map statistics, mission statistics and bot settings. If gamers report problems, I often ask them to run CGF with 'developer 1', and send me the log file.
+
+(c): I do use single-stepping for complex new code. I heavily use MSVC 'Edit-n-Continue' (your JIT?) to tweak parameters without having to relaunch Q2 over and over (HL starts even slower than Q2).
+
+(d): I always run Q2 in a window when developing. That enables me to look at both code and result.
+
+(e): I have a good amount of code to display lines between arbitrary points, and to display points. I use them, for example, to see in-game where bot's predict I'm going when they lose sight of me.  (Sometimes, that get's really scary, but that's another story).
+
+(f): I sometimes export data statistics as comma separated .csv text files, so I can analyze them in Excel (the spreadsheet).
+
+(g): I keep a log of things I change, and errors I detect. Makes testing for a problem easier.
+
+(h): I have modified the AQ2 cam code to also show the bot's team, state (from the state machine), nearest way point.
+
+(i): When stuck, I have the bots dump their goals, location, nearest way point, target way point, further plans, (and then I have them do suicide to speed up game play). This helps to debug way point files.
+
+William
+
+--------------------------------------------------
+05/09/01 at 06:37:52  Reply by: everyman (eric@gamershomepage.com)
+--------------------------------------------------
+Thought I'd add my two cents:
+
+(i) Develop using a source control repository (e.g. cvshome.org/CVS), even if you are the sole developer. The ability to view revision histories and backout your most recent changes will save you alot of time (not to mention the advantages of a formalized schematic for code branching or multi-developer integration).
+
+(ii) Automate the tasks of building and releasing your software. Being able to type 'make release' with confidence will save you the heartache of worrying about the minutiae of a multi-step build process. The devil is in the details.  ;]
+
+Eric
+
+--------------------------------------------------
+05/09/01 at 06:51:20  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+It is also helpful to be able to pause the bots in the game while you are free to run around and look at what they are doing.  Add a "botstop" and "botstart" command (in the ClientCommand function) to set a global "bot_stop" flag like so...
+code:
+int bot_stop = 0;
+
+//at the end of ClientCommand()...
+
+      else if (FStrEq(pcmd, "botstop"))
+      {
+         bot_stop = 1;
+
+         return;
+      }
+      else if (FStrEq(pcmd, "botstart"))
+      {
+         bot_stop = 0;
+
+         return;
+      }
+
+...then in StartFrame() modify the BotThink code like so...
+
+      if (bot_stop == 0)
+      {
+         for (bot_index = 0; bot_index < gpGlobals->maxClients; bot_index++)
+         {
+            if ((bots[bot_index].is_used) &&  // is this slot used AND
+                (bots[bot_index].respawn_state == RESPAWN_IDLE))  // not respawning
+            {
+               BotThink(&bots[bot_index]);
+
+               count++;
+            }
+         }
+      }
+
+...then bind a key to "botstop" and "botstart" to disable/enable bot movement.  When botstop is activated the bots won't move until you use botstart.  You can even start/stop them rapidly to slowly watch them advancing/turning/aiming, etc.  Just be aware that if you are using gpGlobals->time for timing events (like how rapidly to fire or timeouts when the bot is stuck) that the clock will keep running even when the bots aren't doing anything.  This could be resolved by creating a "bot clock" that only gets updated when the BotThink() function is being called so that the bots have their own time reference independant of the game time reference.
+
+botman
+
+--------------------------------------------------
+05/10/01 at 09:06:49  Reply by: theimann (killaruna@botepidemic.com)
+--------------------------------------------------
+Some new debugging features that I started using some time ago and have proven to be really helpful:
+
+1) A good botcam that follows single bots around in the map is great for analyzing bot behaviour. It's even better if this botcam gets activated automatically by certain conditions: E.g. you have added a new goal "useMultipleHostages", then the camera always switches to the bot that tries to reach this goal. Once you've implemented a thing like that you don't want to miss it!
+
+2) Extending Botman's "Stop"/"Go" add a "Step"-command which moves the bots for one frame and stops it again afterwards.
+
+3) Add breakpoints at crucial points of your goalfinder (where decisions for the bot actions are made) that you can trigger by pressing certain keys. The above-mentioned botcam is great for detecting misbehaviour, for resolving it you need to be able to inspect the code responsible for the wrong decision at that very moment. I've got one of these breakpoints in my weapon-system: Every time I am on botcam and the observed bot uses an inconvinient weapon for his special situation I press F11 and can inspect all parameters and evaluations which lead to the use of that weapon. I bet you can imagine similar situations where this kind of debugging is useful!
+
+Tobias
+
+
+--------------------------------------------------
+05/11/01 at 04:05:13  Reply by: bigjesus (holybigjesus@hotmail.com)
+--------------------------------------------------
+William isnt it true that the q2 engine is more stable then hl for debuging?
+
+--------------------------------------------------
+05/11/01 at 11:11:09  Reply by: William (william@botepidemic.com)
+--------------------------------------------------
+I can't compare q2 debugging with hl debugging, since I haven't spent much time with hl (despite the quotes at gamasutra.com and botepidemic, I'm still using q2).
+
+However, q2 offers better debugging means, notably for team behavior, because you can record, edit and playback movies of all behavior on a level. I regularly review behavior of multiple teams, moving the camera around the level, and moving the demo back in forth, fast forward, slow motion, or freeze frame.
+
+William
+
+--------------------------------------------------
+05/16/01 at 07:41:58  Reply by: CountFloyd (countfloyd_1999@yahoo.com)
+--------------------------------------------------
+This thread is far too important to let it fade away, don't you think ? ;)
+For fast debugging of the Bots I heavily use the 'say' function. In debug-mode I can force them to tell me about the actions & inner logic state. I do this instead of printing to the console because in CS there's this 'Now tracking xxx' bug which sadly makes it impossible to read anything printed to the console in developer mode (when spectating).
+For deeper debugging levels I removed the debug_engine functions from Botman and replaced it by a debug define with different levels. 1st Level just does a ClientPrint to the screen, 2nd logs most of the actions in BotThink and 3rd also logs all API Calls. Like Tobias, I wrote an external app where I can test basic changes to behaviour modifications, I would get mad without it. In addition if something goes wrong, in the debug compile it is logged to a file with a short description. Of course using asserts it's a must through the whole code. When I need to test out a function about Entities without any Bot Logic I have a 'testbed' function where I can stuff in these functions and can call it through a clientcommand. Furthermore if I want to tracewalk to Bot Code I have a clientcommand where you specify the Bot to debug and it then breaks into the code through the use of an invalid assert (I found out that this at least works with CS for 1 Frame to debug). 
+Btw. does somebody know if it's possible to have an own Exception Handler on top of the already existing HL Exception Handler to cover also major faults ?  
+
+
+--------------------------------------------------
+05/22/01 at 18:10:59  Reply by: CountFloyd (countfloyd_1999@yahoo.com)
+--------------------------------------------------
+^ bump ^
+
+--------------------------------------------------
+06/11/01 at 15:59:45  Reply by: CountFloyd (countfloyd@botepidemic.com)
+--------------------------------------------------
+Can't believe everybody else still seems to use Botman's debug_engine and isn't interested in some debugging ideas !! ;)
+O.k. some more debugging stuff:
+
+If I have a real low-level problem like an endless loop where I can't break out or I need to debug looking at the plain assembly code I used Soft-Ice a very good system debugger, you as a Developer should have bought anyway. Recently I stumbled upon TRW2000 from some chinese guys which has nearly as much power as SI and I found the biggest advantage of it to be that it can be loaded 'on demand' where SI needs to be loaded before Windows. You can get a trial version here:
+http://www.knlsoft.com
+If you convert the .map files from VC++ to .sym Files and use them with SI/TRW you can even look at your Labels & Variables in the assembly code so give it a try if your Bot keeps crashing. 
+
+--------------------------------------------------
+06/12/01 at 02:25:59  Reply by: William (william@cgf-ai.com)
+--------------------------------------------------
+I'm not disputing the statement and the SoftIce advise:
+QUOTE:
+
+If I have a real low-level problem like an endless loop where I can't break out or I need to debug looking at the plain assembly code... 
+
+
+
+
+but I use MSVC for both cases:
+- you can interrupt the program at all times from the debugger (by pressing the 'pause' button); works for all kinds of builds, though you want to have debug information available to be able to understand the stack frame;
+- (annotated) assembly code can be inspected using View, Debug Windows, Assembly
+
+(Unless there are some problems running HL from the debugger that I don't know).
+
+William
+
+--------------------------------------------------
+06/12/01 at 05:04:04  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+Count Floyd may not like using the MSVC debugger because Valve added in something that causes the game to exit if breakpoints are enabled in Counter-Strike.  The dedicated server (strangely enough) doesn't have this limitation, but it's kind of a pain to start the dedicated server, then start another instance of the Half-Life engine running the client code.
+
+botman
+
+--------------------------------------------------
+06/12/01 at 08:13:12  Reply by: CountFloyd (countfloyd@botepidemic.com)
+--------------------------------------------------
+"Count Floyd may not like using the MSVC debugger because Valve added in something that causes the game to exit if breakpoints are enabled in Counter-Strike."
+
+This is correct (and also my HL/CS is so unstable that I can't use the DS Server solution). I forgot to mention that you probably don't need to mess around with low-level debuggers if you don't face the debugger protection like it is present in CS since V1.0...
+
+--------------------------------------------------
+06/14/01 at 10:36:00  Reply by: theimann (killaruna@botepidemic.com)
+--------------------------------------------------
+OK, here come two questions:
+
+1.) If people send me error logs of Parabot-crashes ( which of course hardly ever occurs ;-) ) with the ASM-commands/Hexcodes of the corresponding function, how do I find the specific line in my source code?
+
+2.) Is it possible that a bot is responsible for errors in HL-internal display-libraries like HW.DLL or SW.DLL? In these cases the stack trace only shows a single line e.g. "!HW.DLL" and the debugger window obviously plain assembly code...
+I would like to know if these things could be caused by a bot at all or if it's just my buggy HL on a messed-up computer.
+
+Thanks, Tobias
+
+--------------------------------------------------
+06/14/01 at 13:10:58  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+1) Using the .map file from an MSVC build will help track down the function causing the error.  The addresses won't match up exactly but you can usually tell what function was called by looking for a match of the last 3 or 4 hex digits.
+
+2) If you have invalid pointers (for example edict_t pointers) set in the edict structure that the engine uses and the engine tries to dereference (access) those pointers, it can cause the crash to occur in hw.dll, sw.dll or other Half-Life engine modules.
+
+botman
+
+--------------------------------------------------
+06/23/01 at 11:21:23  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+now something really odd...
+
+what if the bot works, but at any time , moment or whatever, it will drop you back to the desktop, no error , nothing! Not even when running a DS, or A listen sever, or with a DEBUGer on or something..
+
+any hints for that?
+
+--------------------------------------------------
+06/23/01 at 14:08:40  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+1. Try uninstalling Half-Life & MODS, remove the Half-Life folder (to get rid of all files), reinstall Half-Life, update to latest version, reinstall MODs and bot.
+
+2. Reformat hard disk.  Reinstall Windows.  Go to step 1.
+
+botman
+
+--------------------------------------------------
+06/25/01 at 10:02:37  Reply by: jerry_stoel (jerry_stoel@hotmail.com)
+--------------------------------------------------
+Hi guys I have another bot debugging Tip:
+
+- Create a simple level in worldcraft if you know how to work with worldcraft :P. And put in the things you want to test so if you want to test a bot jumping over a gap, just create a level with 2 blocks and let them jump over it :).
+
+That's it. Short but effective.
+
+Seeya,
+
+--------------------------------------------------
+06/26/01 at 05:36:13  Reply by: Onslaught (None)
+--------------------------------------------------
+To CF: The 'Now Tracking Bug' in CS isn't really a bug, to remove it, find the code in the BotThink() function the makes the bots press attack when they die and remove the code that makes the bots press attack. (You don't need to use this code in CS since the bots doesn't need to press fire to respawn)
+
+--------------------------------------------------
+06/26/01 at 05:36:18  Reply by: Onslaught (None)
+--------------------------------------------------
+To CF: The 'Now Tracking Bug' in CS isn't really a bug, to remove it, find the code in the BotThink() function the makes the bots press attack when they die and remove the code that makes the bots press attack. (You don't need to use this code in CS since the bots doesn't need to press fire to respawn)
+

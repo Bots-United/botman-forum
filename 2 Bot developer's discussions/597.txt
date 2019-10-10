@@ -1,0 +1,69 @@
+--------------------------------------------------
+Subject: Newbie Q - New round code?
+--------------------------------------------------
+11/13/00 at 15:48:53  Posted by: eLiTe (ali@elitegamer.fsnet.co.uk)
+--------------------------------------------------
+I've implemented a basic waypoint following system for my bots, but I need it to reset every round, and I can't find any code which will be run at the start (and ONLY at the start) of each round.
+
+This will also be useful for when I add in buying code, but I can't find any function which is run at the start of every round - plz help me, I bet you ALL know the answer!!
+
+--------------------------------------------------
+11/13/00 at 16:07:37  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+I used the "Search" feature at the top of the forum to search for "round" and look what I found...
+
+http://dynamic.gamespy.com/~botman/yabb/YaBB.pl?board=2&action=display&num=240
+
+botman
+
+--------------------------------------------------
+11/13/00 at 16:16:43  Reply by: eLiTe (ali@elitegamer.fsnet.co.uk)
+--------------------------------------------------
+Hey, like I said, I'm just a newbie! I'll be sure to use the 'search' in future, thanx
+
+--------------------------------------------------
+11/14/00 at 01:51:39  Reply by: eLiTe (ali@elitegamer.fsnet.co.uk)
+--------------------------------------------------
+My dad helped me to trap the info_map_start entity, but I want to transfer info to my BotThink() code from the FindEntityByString() func. I've created ANOTHER func that has a static int in it, and I will change this to tell my BotThink() func that a newround has begun.
+   I need to tell this to EVERY bot, so I have set up a (static int) counter in my new function, and I pass the number of current players to this function every time BotThink() executes. I was thinking of making the number of current players a global variable, as the only other way I could detect it would be to count through all the bot that have been initialised EVERY time BotThink executes, which I think may be slower than using a global variable. 
+
+Is it bad practise to use global variables? Are they slower? Should I put it in the register to speed up access?
+
+--------------------------------------------------
+11/14/00 at 05:04:17  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+One thing you could do is create a new variable in the bot_t structure that indicates if this is the start of a new round (let's call it "bool new_round").  It would be set to TRUE when the bot is created (since it considers that the start of the round).  In the code where you detect the start of a round, just loop through each bot and set this flag to TRUE like this...
+
+for (int index=0; index < 32; index++)
+   bots[index].new_round = TRUE;  // set flag for each bot
+
+...then in the BotThink() function, just keep checking if this flag is set.  If so, do some special round start stuff and clear the flag like this...
+
+if (pBot->new_round)
+{
+   // do special new round stuff here!!!
+
+   pBot->new_round = FALSE;
+}
+
+botman
+
+
+--------------------------------------------------
+11/14/00 at 05:46:17  Reply by: theimann (theimann@stud.fh-heilbronn.de)
+--------------------------------------------------
+> Is it bad practise to use global variables? Are they slower? Should I put it in the register to speed up access? <
+
+Using global variables in a big project is not really recommendable since:
+1) they can be changed from any part of your code and you can't really control them (following the information-hiding principle)
+2) if you have too many global variables you can easily get confused with the contents and/or names
+
+However, global variables provide the fastest access to memory the system can offer. You can't use registers to store values since these probably get deleted at the next instruction.
+
+Tobias
+
+--------------------------------------------------
+11/14/00 at 06:46:58  Reply by: eLiTe (ali@elitegamer.fsnet.co.uk)
+--------------------------------------------------
+Thanks everyone. I know I shouldn't use too many globals, but I think that the number of bots is pretty important, most other waypoint and combat stuff can simply be passed through parameters for functions. Thanks for the advice, I'll try and help the other newbies when I've created a decent bot...
+

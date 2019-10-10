@@ -1,0 +1,77 @@
+--------------------------------------------------
+Subject: More linux problems, this time with waypoint.cpp
+--------------------------------------------------
+06/12/02 at 13:21:30  Posted by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+I know you'd probably know more about the waypoint stuff than me botman .. I get this error once I reach waypoint.cpp compiling under linux..
+
+code:
+
+gcc -Dstricmp=strcasecmp -Dstrcmpi=strcasecmp -m486 -O2 -w -I../engine -I../comm
+on -I../pm_shared -c util.cpp -o util.o
+gcc -Dstricmp=strcasecmp -Dstrcmpi=strcasecmp -m486 -O2 -w -I../engine -I../comm
+on -I../pm_shared -c waypoint.cpp -o waypoint.o
+waypoint.cpp: In function `void WaypointRouteInit()':
+waypoint.cpp:1880: implicit declaration of function `int access(...)'
+waypoint.cpp:1888: implicit declaration of function `int close(...)'
+waypoint.cpp:2050: implicit declaration of function `int unlink(...)'
+make: *** [waypoint.o] Error 1  
+
+
+
+Does this suggest they do not have a prototype? I thought these functions may have been included in library files told in the makefile or something... perhaps the system I'm compiling on do not have they library files... if not where could I find them?
+
+--------------------------------------------------
+06/13/02 at 04:20:58  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Did you remove the #ifdef __linux__ stuff from your version of waypoint.cpp?  It looks like you aren't including the necessary header files.  Here's the what the default one looks like...
+code:
+//
+// waypoint.cpp
+//
+
+#ifndef __linux__
+#include <io.h>
+#endif
+#include <fcntl.h>
+#ifndef __linux__
+#include <sys\stat.h>
+#else
+#include <sys/stat.h>
+#endif
+
+botman
+
+--------------------------------------------------
+06/13/02 at 04:40:43  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+nope I didn't remove them and they are exact same as that.. this is how mines looks, it think its the same...
+
+code:
+
+#ifndef __linux__
+#include <io.h>
+#endif
+#include <fcntl.h>
+#ifndef __linux__
+#include <sys\stat.h>
+#else
+#include <sys/stat.h>
+#endif
+
+
+
+The stat.h file exists, maybe it just isn't an up to scratch version..?
+
+--------------------------------------------------
+06/13/02 at 07:47:57  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+I did a "man 2 access" and it says it's defined in "unistd.h", so you may need to include that one also.
+
+botman
+
+--------------------------------------------------
+06/13/02 at 09:57:40  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+thanks I think thats sorted the problem :)
+

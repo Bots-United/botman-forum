@@ -1,0 +1,165 @@
+--------------------------------------------------
+Subject: catching a player firing
+--------------------------------------------------
+08/16/01 at 12:04:24  Posted by: [LW]Rob (rob@tfcautoop.cjb.net)
+--------------------------------------------------
+How is this done?, catching the +attack command does nothing. Is it a network message or is there some other way?
+
+--------------------------------------------------
+08/16/01 at 12:56:27  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+Check if the player's pev->buttons field has IN_ATTACK or IN_ATTACK2 set.
+
+botman
+
+--------------------------------------------------
+08/16/01 at 14:42:30  Reply by: [LW]Rob (rob@tfcautoop.cjb.net)
+--------------------------------------------------
+ah yes, that works. But how can I stop a person from firing, like restricting the weapon.
+
+--------------------------------------------------
+08/16/01 at 15:16:59  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+Intercept the ClientCommand() command where the player selects that weapon (i.e. in Half-Life deathmatch the player sends "weapon_shotgun" to select it).  If the command is for a weapon that you don't want them to use, just return to the engine and don't pass the command along to the MOD DLL code.
+
+botman
+
+--------------------------------------------------
+08/16/01 at 15:48:18  Reply by: [LW]Rob (rob@tfcautoop.cjb.net)
+--------------------------------------------------
+hmm, this would prove inpractical in my case, the ideal solution would be to block\override the actual firing of the weapon. But I'm not sure if this is possible in TFC. Is there some way of telling the client he has no weapon out?
+
+[modified on 08/16/01 at 15:48:18]
+--------------------------------------------------
+08/16/01 at 15:54:57  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+Maybe check to see if their model animation is an attacking animation?
+
+--------------------------------------------------
+08/16/01 at 16:17:20  Reply by: [LW]Rob (rob@tfcautoop.cjb.net)
+--------------------------------------------------
+oh doing the check is no prob, I got botmans pev->button thing he told me working. But its making it ignore the players command that I need. I tried blocking it in PlayerPreThink() but to no avail.
+
+--------------------------------------------------
+08/16/01 at 17:08:28  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+Whenever the player selects a weapon that you don't want them to use, just fake a command from that client to force them to switch to another weapon.
+
+I think you will do better blocking the selection of a weapon than you will to allow them to select it then trying to prevent them from firing it (unless you are trying to do something really weird).
+
+botman
+
+--------------------------------------------------
+08/17/01 at 11:44:49  Reply by: noskill (ownz0r@hotmail.com)
+--------------------------------------------------
+bad idea.
+Thats how i originally thought of my firearms weapon-banner.
+It can be hacked EASILY.
+Here is how i did mine:
+CLIENT_COMMAND(pEntity,"weapon_knife\n");
+someone could type:
+alias weapon_knife "say haha my gun didnt switch!"
+and h4x0r it :(
+
+--------------------------------------------------
+08/17/01 at 11:51:49  Reply by: noskill (ownz0r@hotmail.com)
+--------------------------------------------------
+bad idea.
+Thats how i originally thought of my firearms weapon-banner.
+It can be hacked EASILY.
+Here is how i did mine:
+CLIENT_COMMAND(pEntity,"weapon_knife\n");
+someone could type:
+alias weapon_knife "say haha my gun didnt switch!"
+and h4x0r it :(
+
+--------------------------------------------------
+08/17/01 at 12:02:53  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+But you are talking about creating an alias on the CLIENT side.  You can't create an alias on the SERVER side (which is where Rob is trying to make his change).
+
+If the client doesn't send a "weapon_shotgun" command, then so what?  It won't switch to a shotgun.  Rob appears to be trying to keep someone from being able to select and use a shotgun (or other "banned" weapon).
+
+Doesn't Admin-MOD have something like this to prevent people from selecting certain weapons?
+
+botman
+
+--------------------------------------------------
+08/18/01 at 06:34:25  Reply by: [LW]Rob (rob@tfcautoop.cjb.net)
+--------------------------------------------------
+I need the person to be able to hold the weapon, but not fire it. Strange as it may seem. So they would have the weapon out, but on pressing the +attack key, nothing would happen. Its easy to detect if someone has pressed fire with pev->button but it seems impossible to stop the person from shooting, I have a few more ideas which im throwing around at the moment but I havent had time to look at it much in the last day or 2.
+
+- Rob.
+
+--------------------------------------------------
+11/13/01 at 09:20:56  Reply by: mellowdrdisco (admin@archaeology.csumb.edu)
+--------------------------------------------------
+I know this is a bit late, but you could always hex edit the tfc.dll to change "+attack" and "+attack2" to something else.. this will eliminate all shooting tho :/
+
+--------------------------------------------------
+11/16/01 at 02:16:28  Reply by: hullu (hullu@jussikivilinna.cjb.net)
+--------------------------------------------------
+here's how to make weapon not to fire:
+
+void PlayerPostThink( edict_t *pThis )
+{
+
+  if (!RightPlayer || !RightWeapon) return;
+
+  if (pThis->v.button & IN_ATTACK)
+    {
+       //YourOwnWeaponCodeHere
+       
+       
+       //Set IN_ATTACK-flag off
+       pThis->v.button &= ~IN_ATTACK;
+    }
+
+    
+  if (pThis->v.button & IN_ATTACK2)
+    {
+       //YourOwnWeaponCodeHere
+       
+       
+       //Set IN_ATTACK2-flag off
+       pThis->v.button &= ~IN_ATTACK2;
+    }
+
+}
+
+--------------------------------------------------
+11/16/01 at 04:14:11  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+I think that would work fine for server side weapon code, but I don't think that would make any difference to client side weapons.
+
+botman
+
+--------------------------------------------------
+11/17/01 at 04:32:59  Reply by: [LW]Rob (rob@tfcautoop.cjb.net)
+--------------------------------------------------
+Yes, the client prediction would ignore that, in fact it causes inconsistencies when you do stuff like that and the client prediction speed shoots up (i.e you swing the crowbar like 10 times a second). But the effect is only on the client.
+
+--------------------------------------------------
+11/23/01 at 12:08:18  Reply by: jObE (jobe@ottawa.com)
+--------------------------------------------------
+Why not just put the entire PrimaryAttak () of your weapon into a if staement
+
+if (I_DO_NOT_WANT_YOU_TOO_FIRE == TRUE )
+{
+//play sound or display message or something
+
+}
+else
+{
+//put the primary attack code in here
+}
+
+that way you could turn it off and on
+
+I'm not a speacialist...but just an idea
+
+--------------------------------------------------
+11/23/01 at 13:28:35  Reply by: [LW]Rob (rob@tfcautoop.cjb.net)
+--------------------------------------------------
+It screws the client prediction, and players will moan and throw tantrums.
+

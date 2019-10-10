@@ -1,0 +1,101 @@
+--------------------------------------------------
+Subject: Cellular automatons and automatic waypoints...
+--------------------------------------------------
+11/13/01 at 10:51:41  Posted by: botman (botman@planethalflife.com)
+--------------------------------------------------
+I'm thinking of using some cellular automaton algorithms on my automatic waypoint generator to remove "unnecessary" waypoints after they have been plopped down at their grid locations.
+
+I was thinking about something along the lines of "The Game of Life" by John Conway, where waypoints with too many neighbors don't survive to the next generation.  I wouldn't be creating new waypoints, just removing existing ones, so I wouldn't need to run very many generations to weed them out.
+
+Waypoints with 2 or 3 neighbors would survive and waypoints with more than 3 neighbors would cause some of these waypoints to "die" from overcrowding.  Waypoints all by their lonesome in narrow hallways or on narrow ledges wouldn't be effected (i.e. they wouldn't die from loneliness).  Waypoints near walls would be given a higher priority (and survive longer) than waypoints out in the middle of open areas (to try to keep the bot from wandering out in the open where it has to contend with enemies approaching from all sides).
+
+Anybody have any thoughts on whether this might be a good idea or bad idea?
+
+botman
+
+[modified on 11/13/01 at 10:51:41]
+--------------------------------------------------
+11/13/01 at 11:22:59  Reply by: jldailey (jldailey@uchicago.edu)
+--------------------------------------------------
+Sounds like it might be too much work for a simple idea.
+The Game of Life producing interesting things really hinges on the fact that it spawns new points as part of its rules. You can think of the game as having two players, a Creator and a Reaper.  If you cut the game in half and never let the Creator play, you dont really have a game, you just have a one-pass filter... and one that could have been written easier without the Game in mind...
+
+my $0.02...
+
+now starting from scratch and running an automaton is an approach that sounds very right to me...
+letting a graph grow itself is something that i have been doing for a while with great success, though i never thought about it in the Game of Life category, and now that you've mentioned it it occurs to me that interesting things could be had if i let the graph grow forever, but also let the Reaper play, maybe making unused parts die off (waypoints that havent been used in a path in a long time would die off maybe?)...
+
+interesting line of thought...
+
+--------------------------------------------------
+11/13/01 at 12:08:59  Reply by: William (william@cgf-ai.com)
+--------------------------------------------------
+I used a similar approach to automatically detect and classify areas as rooms, roofs, door, alleys, streets, etc.
+The algorithm starts with every waypoint being a minimal area, and then allows all areas to expand, the most promising first. To correct any overly greedy areas, the growth process periodically is reversed, and each area is allowed to dump waypoints that don't fit well (because ugly things may have happened to the area due to neighboring areas consuming a few waypoints); again the most promising cleanups are accepted.
+My algorithm produces 'ok' results, but has been a bitch to develop and tune (I didn't know in advance what would work, and what wouldn't work, and that didn't improve a lot...).
+
+I expect your algorithm sec to work fine, since the problem is less complex. Shouldn't take that much time to write, nor to run.
+
+Rather than just looking at the neighbors, I would take into account distance to neighbor; especially the closely spaced waypoints are redundant. 
+The ones to remove are not necessarily the ones in the open with plenty of neighbors: a sole waypoint in the center of a swimming) pool would have plenty of incoming neighbors (all kinds of dives/jumps from nearby ledges, diving towers, whatever), but would be valid nevertheless.
+ 
+William
+
+--------------------------------------------------
+11/13/01 at 12:14:25  Reply by: Tub (tubpc@authmann.de)
+--------------------------------------------------
+I've had several attempts on filtering. Your idea sounds nice, but the success depends heavily on the definition of "neighbour".
+
+if a neighbour is just any waypoint that is connected, you can accidently remove access to a whole hallway, depending on the previous waypoint layout.
+
+if a neighbour is any connected waypoint in x units range, you'll have many unneeded waypoints on large open areas.
+
+
+I'm working on an autowaypointer too, and the basic question that has to be asked is: how shall the final grid look like? I came to the conclusion that placing waypoints at every corner would suffice for a good navigation. But for some other issues, at least a basic fill on larger areas is needed too.
+
+I wish I could access the bsp tree and still have the TraceLine/TraceHull/.. APIs. I didn't yet look at what you have done (got a 404 when downloading), but will try soon (-> when it works).
+
+--------------------------------------------------
+11/14/01 at 04:29:34  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+"I wish I could access the bsp tree and still have the TraceLine/TraceHull/"
+
+The BSP tools I created does allow you access to the BSP information (nodes, planes, faces, edges, vertexes, etc.) and provides a crude TraceLine function.
+
+I hope to eventually get the SV_RecursiveHullCheck (from the Quake I source code) working properly.  This would give a more efficient TraceLine and TraceHull function.
+
+botman
+
+--------------------------------------------------
+11/14/01 at 08:36:01  Reply by: Tub (tubpc@authmann.de)
+--------------------------------------------------
+I finally managed to download the tools. They look great! I hope I'll find time to play with the code this weekend to create an own autowaypointer with minimal waypoint usage from it.
+
+Good work botman!
+
+--------------------------------------------------
+11/16/01 at 04:20:31  Reply by: spatel (averburg@liacs.nl)
+--------------------------------------------------
+
+hi,
+
+William wrote :
+
+[I used a similar approach to automatically detect and classify areas as rooms, roofs, door, alleys, streets, etc.]
+
+And did it work ?
+I'm currently bussy trying to detect and classify different areas with a wide variety of different algorithms -- but so far I had no luck !
+So, If you have managed to do a better job then I did .. I'm really interrested in how it works !
+
+Regardz,
+
+De SpaTeL Man
+
+--------------------------------------------------
+11/16/01 at 14:13:12  Reply by: William (william@cgf-ai.com)
+--------------------------------------------------
+It works 'ok' (gets is 80% correct, which basically is good enough but necessitates manual inspection).
+However, the time I needed to (re)write the algorithm and tune it was a bit excessive (>1 month of late nights and weekends).
+
+William
+

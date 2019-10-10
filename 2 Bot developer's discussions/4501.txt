@@ -1,0 +1,394 @@
+--------------------------------------------------
+Subject: n00bish metamod compatability problems :@!!!!
+--------------------------------------------------
+06/07/03 at 06:22:24  Posted by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+Below not sorted yet.. new problems on my latest threads !! :-( .. *cry *cry*
+
+Yes... sorted, darnit metamod, why does it have to annoy me in this way, it seems to build okay after moving somethings around i.e.
+
+code:
+
+// dll.cpp
+//
+
+#include "extdll.h"
+
+#ifndef RCBOT_META_BUILD
+
+#include "enginecallback.h"
+#include "util.h"
+#include "cbase.h"
+
+#else
+
+#include "dllapi.h"
+#include "meta_api.h"
+#include "sdk_util.h"      // UTIL_LogPrintf, etc
+
+meta_globals_t *gpMetaGlobals;      // metamod globals
+
+#endif
+
+
+
+code:
+
+//rcbot_meta_api.cpp
+#ifdef RCBOT_META_BUILD
+
+#include "extdll.h"
+#include "meta_api.h"
+#include "sdk_util.h"      // UTIL_LogPrintf, etc
+
+#include "bot.h"
+
+extern enginefuncs_t g_engfuncs;
+...
+...
+// Global vars from metamod:
+extern meta_globals_t *gpMetaGlobals;      // metamod globals
+
+
+
+Again.. sorry for me being n00bish here, but I have a n00bish problem ;)
+
+I am trying to get my bot functions to work with metamod, for this I just made a new project setting and defined a pre-compiler statement so I know I want to build a DLL capable of running with metamod.
+
+Here is my n00bish problem!!
+
+QUOTE:
+
+dll.obj : error LNK2001: unresolved external symbol "struct meta_globals_s *  gpMetaGlobals" (?gpMetaGlobals@@3PAUmeta_globals_s@@A)
+HPB_bot___Win32_MetaMod_Debug/HPB_bot.dll : fatal error LNK1120: 1 unresolved externals
+
+
+
+
+Yes, an unresolved external ... !!! 
+
+[] Why the hell is an external meta_globals_s defined in meta_api.h right after the structure is defined??? 
+[] How the hell can you use it, if it needs to be currently in your globals? 
+
+[] And why do all the metamod sample plugins I see, do not have this problem, when the meta_globals variable is defined after including meta_api.h ???
+
+code:
+
+// dll.cpp
+//
+
+#include "extdll.h"
+
+#ifndef RCBOT_META_BUILD
+
+#include "enginecallback.h"
+#include "util.h"
+#include "cbase.h"
+
+#else
+
+#include "dllapi.h"
+#include "meta_api.h"
+
+#endif
+
+...
+...
+
+//Blahblah
+//Several RETURN_META's etc...
+
+
+
+code:
+
+// rcbot_meta_api.cpp
+#ifdef RCBOT_META_BUILD
+
+#include "extdll.h"
+#include "dllapi.h"
+#include "meta_api.h"
+#include "sdk_util.h"  // UTIL_LogPrintf, etc
+
+#include "bot.h"
+
+extern enginefuncs_t g_engfuncs;
+...
+...
+extern DLL_FUNCTIONS other_gFunctionTable;
+
+void WINAPI GiveFnptrsToDll (enginefuncs_t* pengfuncsFromEngine, globalvars_t *pGlobals); 
+
+struct meta_globals_s *gpMetaGlobals; 
+// or meta_globals_t *gpMetaGlobals, whatever....
+
+....
+....
+#endif
+
+
+
+??? Gah the horror
+
+I've even copied all the appropraite project settings from plugins that build okay !!!
+
+[modified on 06/06/03 at 17:07:27]
+
+[modified on 06/06/03 at 17:44:59]
+
+[modified on 06/07/03 at 06:22:24]
+--------------------------------------------------
+06/06/03 at 19:38:44  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+This is the template I use for every metamod plugins I make
+code:
+
+// START of Metamod stuff
+
+enginefuncs_t meta_engfuncs;
+gamedll_funcs_t *gpGamedllFuncs;
+mutil_funcs_t *gpMetaUtilFuncs;
+meta_globals_t *gpMetaGlobals;
+
+META_FUNCTIONS gMetaFunctionTable =
+{
+   NULL, // pfnGetEntityAPI()
+   NULL, // pfnGetEntityAPI_Post()
+   GetEntityAPI2, // pfnGetEntityAPI2()
+   NULL, // pfnGetEntityAPI2_Post()
+   NULL, // pfnGetNewDLLFunctions()
+   NULL, // pfnGetNewDLLFunctions_Post()
+   GetEngineFunctions, // pfnGetEngineFunctions()
+   NULL, // pfnGetEngineFunctions_Post()
+};
+
+plugin_info_t Plugin_info = {
+   META_INTERFACE_VERSION, // interface version
+   "CHEESEPLUGIN", // plugin name
+   "0.0", // plugin version
+   "xx/yy/2003", // date of creation
+   "Cheesemonster <cheesemonster@at-his-own-domain.com>", // plugin author
+   "http://www.cheesemonster-rocks.com", // plugin URL
+   "CHEESY", // plugin logtag
+   PT_ANYTIME, // when loadable
+   PT_ANYTIME, // when unloadable
+};
+
+
+C_DLLEXPORT int Meta_Query (char *ifvers, plugin_info_t **pPlugInfo, mutil_funcs_t *pMetaUtilFuncs)
+{
+   // this function is the first function ever called by metamod in the plugin DLL. Its purpose
+   // is for metamod to retrieve basic information about the plugin, such as its meta-interface
+   // version, for ensuring compatibility with the current version of the running metamod.
+
+   // keep track of the pointers to metamod function tables metamod gives us
+   gpMetaUtilFuncs = pMetaUtilFuncs;
+   *pPlugInfo = &Plugin_info;
+
+   // check for interface version compatibility
+   if (strcmp (ifvers, Plugin_info.ifvers) != 0)
+   {
+      int mmajor = 0, mminor = 0, pmajor = 0, pminor = 0;
+
+      LOG_CONSOLE (PLID, "%s: meta-interface version mismatch (metamod: %s, %s: %s)", Plugin_info.name, ifvers, Plugin_info.name, Plugin_info.ifvers);
+      LOG_MESSAGE (PLID, "%s: meta-interface version mismatch (metamod: %s, %s: %s)", Plugin_info.name, ifvers, Plugin_info.name, Plugin_info.ifvers);
+
+      // if plugin has later interface version, it's incompatible (update metamod)
+      sscanf (ifvers, "%d:%d", &mmajor, &mminor);
+      sscanf (META_INTERFACE_VERSION, "%d:%d", &pmajor, &pminor);
+
+      if ((pmajor > mmajor) || ((pmajor == mmajor) && (pminor > mminor)))
+      {
+         LOG_CONSOLE (PLID, "metamod version is too old for this plugin; update metamod");
+         LOG_ERROR (PLID, "metamod version is too old for this plugin; update metamod");
+         return (FALSE);
+      }
+
+      // if plugin has older major interface version, it's incompatible (update plugin)
+      else if (pmajor < mmajor)
+      {
+         LOG_CONSOLE (PLID, "metamod version is incompatible with this plugin; please find a newer version of this plugin");
+         LOG_ERROR (PLID, "metamod version is incompatible with this plugin; please find a newer version of this plugin");
+         return (FALSE);
+      }
+   }
+
+   return (TRUE); // tell metamod this plugin looks safe
+}
+
+
+C_DLLEXPORT int Meta_Attach (PLUG_LOADTIME now, META_FUNCTIONS *pFunctionTable, meta_globals_t *pMGlobals, gamedll_funcs_t *pGamedllFuncs)
+{
+   // this function is called when metamod attempts to load the plugin. Since it's the place
+   // where we can tell if the plugin will be allowed to run or not, we wait until here to make
+   // our initialization stuff, like registering CVARs and dedicated server commands.
+
+   // are we allowed to load this plugin now ?
+   if (now > Plugin_info.loadable)
+   {
+      LOG_CONSOLE (PLID, "%s: plugin NOT attaching (can't load plugin right now)", Plugin_info.name);
+      LOG_ERROR (PLID, "%s: plugin NOT attaching (can't load plugin right now)", Plugin_info.name);
+      return (FALSE); // returning FALSE prevents metamod from attaching this plugin
+   }
+
+   // keep track of the pointers to engine function tables metamod gives us
+   gpMetaGlobals = pMGlobals;
+   memcpy (pFunctionTable, &gMetaFunctionTable, sizeof (META_FUNCTIONS));
+   gpGamedllFuncs = pGamedllFuncs;
+
+   // print a message to notify about plugin attaching
+   LOG_CONSOLE (PLID, "%s: plugin attaching", Plugin_info.name);
+   LOG_MESSAGE (PLID, "%s: plugin attaching", Plugin_info.name);
+
+   // ask the engine to register the CVARs this plugin uses
+   CVAR_REGISTER (&cheesys_cvar_1);
+   CVAR_REGISTER (&cheesys_cvar_2);
+   CVAR_REGISTER (&and_so_on);
+
+   // ask the engine to register the server commands this plugin uses
+   REG_SVR_COMMAND ("cheesys_command_1", TheFunctionToHandleCheesysCommand1);
+   REG_SVR_COMMAND ("cheesys_command_2", TheFunctionToHandleCheesysCommand2);
+
+   return (TRUE); // returning TRUE enables metamod to attach this plugin
+}
+
+
+C_DLLEXPORT int Meta_Detach (PLUG_LOADTIME now, PL_UNLOAD_REASON reason)
+{
+   // this function is called when metamod unloads the plugin. A basic check is made in order
+   // to prevent unloading the plugin if its processing should not be interrupted.
+
+   // is metamod allowed to unload the plugin ?
+   if ((now > Plugin_info.unloadable) && (reason != PNL_CMD_FORCED))
+   {
+      LOG_CONSOLE (PLID, "%s: plugin NOT detaching (can't unload plugin right now)", Plugin_info.name);
+      LOG_ERROR (PLID, "%s: plugin NOT detaching (can't unload plugin right now)", Plugin_info.name);
+      return (FALSE); // returning FALSE prevents metamod from unloading this plugin
+   }
+
+   return (TRUE); // returning TRUE enables metamod to unload this plugin
+}
+
+
+C_DLLEXPORT int GetEntityAPI2 (DLL_FUNCTIONS *pFunctionTable, int *interfaceVersion)
+{
+   // this is one of the initialization functions hooked by metamod in the gamedll API
+
+   // keep track of pointers to the functions we use in the gamedll API
+   gFunctionTable.pfnAFunctionInTheGameDLLCheesyWantsToUse = AFunctionInTheGameDLLCheesyWantsToUse;
+   gFunctionTable.pfnAnotherFunctionInTheGameDLLCheesyWantsToUse = AnotherFunctionInTheGameDLLCheesyWantsToUse;
+
+   // copy the whole table for metamod to know which functions we are using here
+   memcpy (pFunctionTable, &gFunctionTable, sizeof (DLL_FUNCTIONS));
+   return (TRUE); // alright
+}
+
+
+C_DLLEXPORT int GetEngineFunctions (enginefuncs_t *pengfuncsFromEngine, int *interfaceVersion)
+{
+   // this is one of the initialization functions hooked by metamod in the engine API
+
+   // keep track of pointers to the functions we use in the engine API
+   meta_engfuncs.pfnAFunctionInTheEngineAPICheesyWantsToUse = AFunctionInTheEngineAPICheesyWantsToUse;
+   meta_engfuncs.pfnAnotherFunctionInTheEngineAPICheesyWantsToUse = AnotherFunctionInTheEngineAPICheesyWantsToUse;
+
+   // copy the whole table for metamod to know which functions we are using here
+   memcpy (pengfuncsFromEngine, &meta_engfuncs, sizeof (enginefuncs_t));
+   return (TRUE); // alright
+}
+
+// END of Metamod stuff
+
+
+define the functions you need before, also define
+code:
+
+enginefuncs_t g_engfuncs;
+globalvars_t  *gpGlobals;
+DLL_FUNCTIONS gFunctionTable;
+
+
+like you would do in any HL project, and everything should compile fine.
+
+
+--------------------------------------------------
+06/07/03 at 09:53:46  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+Update, update, update!
+
+It works now, no crashes.
+
+Some big problems though, My weapons selections don't appear, command mode goes all crazy, basically I think some engine functions are blocked by my bot.
+
+So.. Do I have to RETURN_META for all the engine functions too? arhh!!
+
+Edit: Yes looks like it, they seem to appear now after putting return metas in engine functions I made :P
+
+Edit: Darn wait, metamod didnt even load my bot, its doing the dumb "badf" (bad file) thing again ragghh!!! Why why ??? It was loading earlier, sometimes I build, it works, I build again, without doing anything and its a "bad file" wtf?
+
+Grr and this darn gpMetaGlobals thing is still bugging me, I can only make it build okay If I define it in dll.cpp while im including files for some reason and I have to extern it in rcbot_meta_api.cpp.
+
+QUOTE:
+
+Loaded 'D:\Half-Life\ns\dlls\ns.dll', no matching symbolic information found.
+Preloaded symbols may not match 'D:\Half-Life\rcbot\dlls\HPB_bot.dll'.
+Dll loaded for mod Half-Life
+Couldn't get server .dll studio model blending interface. Version mismatch?
+
+
+
+
+QUOTE:
+
+]meta list
+Currently loaded plugins:
+      description      stat pend  file              vers      src  load  unlod
+ [ 1] <hpb_bot.dll>    badf load  hpb_bot.dll       v -       ini   -     -   
+1 plugins, 0 running
+
+
+
+
+Edit Again: When it does actually load the DLL, it stops at console saying "Host_Error: DispatchUserMsg:  Illegal User Msg 183" :( Too many errors, I'm suire theres just something im missing
+
+
+[modified on 06/07/03 at 09:53:46]
+--------------------------------------------------
+06/07/03 at 10:26:29  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+To get user msg ID and names using metamod, use the macros GET_UESR_MSG_ID and GET_USER_MSG_NAME. Get rid of all your "int message_MyNetworkMessage = 0" global variables.
+
+QUOTE:
+
+Couldn't get server .dll studio model blending interface. Version mismatch?
+
+
+
+Your metamod API is incorrect. The function to exchange the studiomodel blending interface is provided in metamod 1.16.
+
+Could you post the code you're using ?
+
+
+--------------------------------------------------
+06/07/03 at 15:53:54  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+EDIT!::
+
+okay, forget all that cr*p you probably missed...
+
+I gotta say:
+code:
+
+@   @ @@@ @@@ @@@ 
+@ @ @ @ @ @ @  @  
+ @ @  @@@ @@@  @  
+
+
+
+(w00t!) Got it working, lets just hope it always loads this time :// 8) thxthx
+
+Thanks for helping :)
+
+I'm not using any studio stuff, so I've no idea whats cauing that, it happens sometimes, but not all the time.. still it shouldnt happen at all. Im using the latest metamod source + latest DLL.
+
+[modified on 06/07/03 at 15:53:54]

@@ -1,0 +1,47 @@
+--------------------------------------------------
+Subject: Footsteps sounds in CS 1.5
+--------------------------------------------------
+11/22/02 at 14:35:06  Posted by: W@NJIK (wanjik@voila.fr)
+--------------------------------------------------
+The way a players makes footsteps sounds has changed in CS 1.5 (or perhaps 1.4 I can't remember), in earlier versions a player made footsteps if he moved at more than 220 units speed and now a player makes sounds no matter his speed unless he presses the 'WALK' key.
+My problem is that pressing the key doesn't change at all the value of edict->v.button. old_buttons, impulse and iuser1 to 4 are neither affected. So how to detect that a player walks and how to tell the engine that your bot actually moves quietly?
+
+--------------------------------------------------
+11/22/02 at 15:31:44  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+I think the default WALK key is the SHIFT key.
+
+The SHIFT key sends "+speed" to ClientCommand() when depressed and "-speed" to ClientCommand() when released.  All you have to do is intercept ClientCommand() and check for "+speed" or "-speed".
+
+botman
+
+--------------------------------------------------
+11/22/02 at 17:40:25  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+yes, this is one of the main issues we fiddle with when it comes to bot hearing. Since the footstep sounds are generated from a client DLL (and bots have no client DLL obviously) you have to emulate it by the server side. However, unless you have the source code of the MOD you make your bot for, I don't think you will get someting convincing like this.
+I'm working on exactly the same issues, after having asked Tobias from Parabot how he did the footstep sounds capture... in HLDM it's very simple, anyway in some MODs his scheme just can't apply. I haven't found a way so far to get all the client sounds playing on the server. You have to list them all, list their conditions, and emulate them on your own. Of course, CS 1.5 doesn't go on the way of simplifying things.
+I'd be curious to hear from you if you get a good idea about how to simulate all this for bots.
+
+
+--------------------------------------------------
+11/23/02 at 14:44:29  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+replying to myself:
+
+I tested the behaviour you are talking about in Counter-Strike and damn, I still don't sound to make noises when I'm walking under 220 units fast. Try this: hold down your "run" key and head up to a wall. Then turn slightly so that your speed gets decreased. You'll notice that under 220 units speed, you don't make sounds at all.
+Idem, I don't sound to make any noise when I duck and run...
+
+
+--------------------------------------------------
+11/23/02 at 16:09:21  Reply by: W@NJIK (wanjik@voila.fr)
+--------------------------------------------------
+Well, thanks for the replies. After a closer look, it appears that all they did in CS 1.5 was to lower the 220 speed limit down to 150. To test that, draw an AWP and zoom once, then run normally straight forward on a flat ground, your speed is about 149.9 and you don't make sounds. Turn a little while running to make the speed slightly more than 150 and you'll make sounds.
+I couldn't reproduce what you said, Pierre-Marie Baty: in ANY case, moving on the ground with more than 150 units speed always produced footsteps sounds.
+The ClientCommand() thing is interesting, you could tell the engine that your bot is sneaking by sending a "+speed" FakeClientCommand, but I'll still use the trick of dividing the speed by 2 as I noticed that FakeClientCommand() was not always reliable.
+
+--------------------------------------------------
+11/23/02 at 17:54:01  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Not that FakeClientCommand() isn't always reliable. The deal is that you can't send "+something" commands to FakeClientCommands, since those commands rely on a key press, then its releasing (the equivalent "-something"). This work is done by the client side *and* the engine side, since it is about player inputs. You can't hook any of them on the server, nor can you force a client to reach such an input state that way.
+
+

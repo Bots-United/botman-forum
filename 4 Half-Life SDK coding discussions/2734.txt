@@ -1,0 +1,212 @@
+--------------------------------------------------
+Subject: CS Mod Idea
+--------------------------------------------------
+02/14/02 at 20:20:32  Posted by: curado (curado@kc.rr.com)
+--------------------------------------------------
+This isn't my first mod. HLDM mods are a picnic. I thought this was more challenging, and my lack of sleep in the past few days is definitely supporting that.
+
+I'm working on code to spawn things in Counter-Strike that could lead to some neat mod development. It uses botman's bot source code to get underneath CS's skin. You could conceivably spawn rockets, monsters, and make custom entities (imagine a barney bot that patrols the server for campers lol! You could even make it shout at people). I could have conceivably used metamod, but the bot code was more complete for quick integration.
+
+botman kindly responded to my questions, but I'm still stumped and I don't want any more involuntary help (I normally wouldn't even post on a forum even if it means shelving the project). I've spent a lot of time to get this far and I feel like I'm close to the solution, but I lack adaquate C++ experience.
+
+If you want to see where I've progressed to, go to this webpage: http://ezquiz.com/prob/
+I know it's not the best looking but it gets the point across.
+
+I essentially need the help and advice of a willing C++ programmer. The code is available but I don't think my problems are bad enough for an experienced programmer to have to open it. If you or someone you know enjoys coding for Half-Life, please email me: curado@kc.rr.com
+
+Thanks everyone who reads this! If anyone needs help with Visual Basic I can offer some advice. Lol, I know it's lame but I'm expanding my horizons. If this mod was in VB I'd be done with it by now :P
+
+THANK YOU SO MUCH!
+
+----- Update
+
+I think I've traced the problem down to the SetTouch() and SetThink() functions. I tried both the debug and non debug versions of these functions, and I tried removing them. I got the same results each time with the RPG rocket: NO sound or smoke trail (no set think) and CRASH on touch (no set touch). View this screenshot: http://ezquiz.com/prob/rpgcsboom.jpg That would explain why the RPG gave 2 Can't Find Address messages whereas the battery only gave one (battery doesn't think). Damn. What's wrong with this thing?
+
+Here's the call stack in dedicated server mode instead of listen server mode:
+
+NTDLL! 77f82829()
+KERNEL32! 77e969c6()
+KERNEL32! 77e96523()
+
+I also saved one of where it actually hits the think function but blows up later:
+
+DBG_EntOfVars(const entvars_s * 0x00000001) line 233 + 3 bytes
+ENT(const entvars_s * 0x00000001) line 101 + 18 bytes
+CBaseEntity::edict() line 327 + 24 bytes
+CGrenade::ExplodeTouch(CBaseEntity * 0x01a8ab38) line 192 + 8 bytes
+CBaseEntity::Touch(CBaseEntity * 0x01a8ab38) line 211 + 34 bytes
+DispatchThink(edict_s * 0x01a8ab38) line 269 + 10 bytes
+mm_DispatchThink(edict_s * 0x01a8ab38) line 88 + 664 bytes
+HW! 04eae2ab()
+
+[modified on 02/14/02 at 20:20:32]
+--------------------------------------------------
+02/15/02 at 14:54:35  Reply by: ReDucTor[FGW] (sjdtmv@tpg.com.au)
+--------------------------------------------------
+What is the code that is causing the error?
+
+--------------------------------------------------
+02/15/02 at 15:54:03  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+make sure the client dll is in the CL_DLL folder if you're using SDK 2.2
+
+--------------------------------------------------
+02/15/02 at 18:39:53  Reply by: curado (curado@kc.rr.com)
+--------------------------------------------------
+About the CL_DLL: This is a server side mod. I'll try it, but does it make a difference in this situation?
+
+Thanks very much for the replies! 
+
+Here is a screenshot of the editor while debugging a DispatchThink call that actually did make it in: http://ezquiz.com/prob/editor_explodetouch.jpg 
+
+Here's the callstack from that screenshot (notice the 0x00000001's): 
+
+DBG_EntOfVars(const entvars_s * 0x00000001) line 233 + 3 bytes 
+ENT(const entvars_s * 0x00000001) line 101 + 18 bytes 
+CBaseEntity::edict() line 327 + 24 bytes 
+CGrenade::ExplodeTouch(CBaseEntity * 0x01a8ab38) line 192 + 8 bytes 
+CBaseEntity::Touch(CBaseEntity * 0x01a8ab38) line 211 + 34 bytes 
+DispatchThink(edict_s * 0x01a8ab38) line 269 + 10 bytes 
+mm_DispatchThink(edict_s * 0x01a8ab38) line 88 + 664 bytes 
+HW! 04eae2ab() 
+
+Here's some of the actual code:
+void CRpgRocket :: Spawn( void )
+{
+      Precache( );
+      // motor
+      pev->movetype = MOVETYPE_BOUNCE;
+      pev->solid = SOLID_BBOX;
+
+      SET_MODEL(ENT(pev), "models/rpgrocket.mdl");
+      UTIL_SetSize(pev, Vector( 0, 0, 0), Vector(0, 0, 0));
+      UTIL_SetOrigin( pev, pev->origin );
+
+      pev->classname = MAKE_STRING("rpg_rocket");
+
+      SetThink( IgniteThink );
+      SetTouch( ExplodeTouch );
+.......
+.......
+}
+
+#define SetThink( a ) ThinkSet( static_cast <void (CBaseEntity::*)(void)> (a), #a )
+#define SetTouch( a ) TouchSet( static_cast <void (CBaseEntity::*)(CBaseEntity *)> (a), #a )
+
+class CBaseEntity 
+{
+public:
+.......
+.......
+    BASEPTR ThinkSet( BASEPTR func, char *name ) 
+    { 
+        m_pfnThink = func; 
+        FunctionCheck( (void *)*((int *)((char *)this + ( offsetof(CBaseEntity,m_pfnThink)))), name ); 
+        return func;
+    }
+    ENTITYFUNCPTR TouchSet( ENTITYFUNCPTR func, char *name ) 
+    { 
+        m_pfnTouch = func; 
+        FunctionCheck( (void *)*((int *)((char *)this + ( offsetof(CBaseEntity,m_pfnTouch)))), name ); 
+        return func;
+    }
+.......
+.......
+}
+
+The implementation is sort of like Metamod. It's set up as follows: 
+
+Half-Life -> Metamod (compiled from the source code to aid debugging purposes) -> HPB_BOT combined with the entire SDK; in coding conflicts, usually the HPB_BOT version was more correct for the situation and used instead of the SDK version; the funny little HPB_BOTs still work -> Counter-Strike 
+
+The truly odd thing about this situation is where HPB_BOT falls in the picture: it's not at the end of the chain, yet it's implementing its own classes with callbacks instead of linking to the end module's. I'm beginning to think this was a no-no and maybe CS will have to go without rockets after all? I can SPAWN the things but they just coast out into the world and crash the game once they hit something. 
+
+I also tried renaming the rpg_rocket entity because I thought it might conflict somehow (yes I remembered to link it in metamod), and it really doesn't behave any differently. 
+
+I have tried this as a listen server and as a dedicated server. 
+
+I tried taking metamod out of the picture, but it didn't change anything. 
+
+I have basically every other class linked to CS, mostly due to similar errors and version differences. 
+
+Also, all the links in my original post go to a site I set up strictly for debugging this code. I am developing this as a contribution to the coding society :)
+
+Thanks for helping
+-mark
+
+
+[modified on 02/15/02 at 18:39:53]
+--------------------------------------------------
+02/16/02 at 05:46:01  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+On your first screenshot it said "referenced memory at 0x00000000" which is NULL.
+
+You're obviously trying to read/wrtie a structure from a NULL memory location. Find this first.
+
+First check if pev->enemy != NULL before accessing it ... etc.
+
+also try using .Get() instead of ->edict for the grenades "Other" handle
+
+[modified on 02/16/02 at 05:46:01]
+--------------------------------------------------
+02/16/02 at 12:19:40  Reply by: curado (curado@kc.rr.com)
+--------------------------------------------------
+I tried simplifying things by using entirely original class code for the entities I'm dealing with. I linked in a function to the local class item_battery (an armor powerup from HLDM) and spawned one as a spectator. The console said "Could not find address xxxxxxxx." The message wasn't coming from any of the SDK code. I think the SetTouch function screwed up and it was telling me it didn't have a touch callback address once it was spawned. Then, when I joined a team and tried to pick up the battery, the game crashed and the debugger went to the DispatchTouch function of Metamod. There were valid entities being passed.
+
+But wait a second: if the pfnTouch function goes through metamod, doesn't that mean it has to end up at the CS dll?
+
+
+void DispatchTouch( edict_t *pentTouched, edict_t *pentOther )
+{
+   (*other_gFunctionTable.pfnTouch)(pentTouched, pentOther);
+}
+
+My code isn't receiving a touch?!
+
+--------------------------------------------------
+02/16/02 at 14:27:44  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+This...
+
+"Could not find address xxxxxxxx."
+
+...comes from the Half-Life engine code.  When you set up Think(), Touch(), or Use() functions, the cbase.h macros for these call NAME_FOR_FUNCTION() which is an engine call to verify that the function that is about to be set up as a think, touch or use function is actually exported from the GAME DLL code (which of course it is not and never will be since your DLL code is not the GAME DLL code).
+
+You can comment out the code in FunctionCheck() that's in cbase.h and it won't do this anymore.
+
+botman
+
+--------------------------------------------------
+02/16/02 at 23:25:56  Reply by: curado (curado@kc.rr.com)
+--------------------------------------------------
+I didn't do that yet but I did start coding hooks for the Touch Think Use Whatever functions. It's tricky: I had it spawning rockets but they didn't act quite like normal even with the functions completely ignoring counter-strike. For example, they would fly into a wall, hover for a second, and then explode but they wouldn't injure you. Perhaps this is because the worldspawn entity is in CS and the rockets are in my module. Getting the two to interact isn't natural. I am going to try moving the worldspawn to my module and set up a filter for those callback functions.
+
+Thanks everyone for helping! I'm really tired because I've been coding/schooling/working hard. I wonder if I ever would have noticed the passthrough calls for those functions if someone hadn't posted a reply.
+
+The next week or so will really tell what's going to come of this. I will definitely post the resulting code. Thank you!
+
+--- Speaking of filtering: when I relinked the worldspawn to my code I started having problems with the DispatchKeyValues function. What would be a good way to filter between what's related to my entities and what's related to CS? Any universally unused applicable flags?
+
+Oh and if I do link that worldspawn junk to my code, I expect counter-strike players to fall through the ground eh? Botman help! what will I do??? Hmm a pass-through entity? Is that possible?
+
+Well.. if (entity A in module A) touches (entity B in module B) what's causing the error when one module calls the function in the other module? A total inability to get the function address that can't be coded for? Some lack of trust between the DLLs (a windows GPF error type of thing)? 
+
+Or maybe one could conceivably pass in an entity belonging to Counter-Strike to simulate a collision? Sure beats me...
+
+[modified on 02/16/02 at 23:25:56]
+--------------------------------------------------
+02/17/02 at 05:29:03  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+"--- Speaking of filtering: when I relinked the worldspawn to my code I started having problems with the DispatchKeyValues function. What would be a good way to filter between what's related to my entities and what's related to CS? Any universally unused applicable flags?"
+
+Store the edict_t pointers for entities that you create.  The engine will always pass edict_t pointers to the game DLL functions (like DispatchThink, DispatchTouch, and DispatchUse).  Just save these in an array when you create them.  Scan the array to see if the edict being passed into the game DLL functions is for one of your entities and redirect the call to your code instead of letting the game DLL code handle it.
+
+DON'T try to make worldpspawn handled in your code.  It does a whole bunch of stuff that Counter-Strike will need (like precaching all the necessary models, sprites, etc.).  You don't need your own worldspawn entity and there's no reason to try to do this anyway.
+
+"Well.. if (entity A in module A) touches (entity B in module B) what's causing the error when one module calls the function in the other module?"
+
+The engine will call DispatchTouch() with the edict of what was touched and the edict of what was being touched (the "toucher" and the "touchee").  Examine the "touchee" edict pointer to see if your entity is being touched.  If so, redirect this to your own Touch() function and do what you want there, then return to the engine without calling the game DLL code.
+
+If you can wait a few weeks/months, I will be releasing the monster metamod plugin that I'm currently working on.  Many of your questions will be answered in the source code for it.  I'm not going to go over all the details here since it's fairly envolved and more complicated than I'd care to explain here.
+
+botman
+

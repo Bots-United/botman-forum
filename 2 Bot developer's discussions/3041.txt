@@ -1,0 +1,401 @@
+--------------------------------------------------
+Subject: detecting bullets
+--------------------------------------------------
+04/29/02 at 03:57:08  Posted by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+Hi all
+
+One thing I'd love to know, is how to detect bullets. It would be lovely to have the bot face back someone who shoots at him in his back and missed him. For this I think the only thing we can is detect bullet impact themselves, then it would be quite straightforward to estimate where it came from :
+code:
+
+Vector v_direction = pBot->pEdict->v.origin - v_impact_origin; // direction of shot
+BotSetIdealYaw (pBot, UTIL_VecToAngles (v_direction)); // make the bot face that direction
+
+
+However I don't know how to detect those impacts. Are they just standard entities ?
+
+Anyone has an idea ?
+
+
+--------------------------------------------------
+04/29/02 at 04:22:36  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+You can't detect the bullets themselves, since bullets (and other instant hit weapons) in Half-Life don't really exist.  For a bullet the MOD traces a line and then applies damage if the trace hit a player (nothing is ever actually "shot" out of the weapon).
+
+I'm not sure if it's possible to detect bullet ricochet sounds or not.  I couldn't ever determine how to intercept footstep sounds when I was trying to do that for the HPB bot, so I settled for checking the movement speed of a player (which is what's used to indicate if they are playing footstep sounds).  Good luck and let us know what you find.
+
+botman
+
+--------------------------------------------------
+04/29/02 at 05:29:41  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+WOW! Seeing your post just made an idea zap into my mind!
+
+If I remember right, you hook the pfnEmitSound calls to check if someone is calling a medic in TFC, right ? Why not use this method to detect bullet impacts ? We have all we need : the sound and its vector origin !
+
+Tell me what you think...
+
+--------------------------------------------------
+04/29/02 at 05:50:33  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+I think bullet ricochet sounds are just like footstep sounds.  They are generated on the client (from the client.dll) and thus aren't ever sent from the server to the client.  I think you will find that bullet sounds can't be intercepted (because they are never sent).
+
+botman
+
+--------------------------------------------------
+04/29/02 at 05:59:05  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+why is there always someone to ruin my fun ? :(
+
+--------------------------------------------------
+04/29/02 at 06:23:36  Reply by: Extrarius (cprgmsw@rietta.com)
+--------------------------------------------------
+There _HAS_ to be something sent between client/server for the client to know that somebody shot. In the unmoddified HL SDK it would seem to be an 'event' for some weapons and a temporary entity network message for others. Maybe use the tracer metamod to see what functions get called in what order.
+
+--------------------------------------------------
+04/29/02 at 07:10:56  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+thanks for the idea, let me d/l metamod.
+
+--------------------------------------------------
+04/29/02 at 08:37:39  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+try looking in CBasePlayer TakeDamage
+
+or look in your Bot_client.cpp and look in Botclient_CS_Damage or whatever. I think botmans already put some code in the HL_Damage function that makes bots face where the "damage" is coming from :p
+
+--------------------------------------------------
+04/29/02 at 09:02:06  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+No, not that, this is already working stuff...
+
+I wanted bots to detect bullet ricochet noises or bullet impacts... but not on themselves lol ;D
+
+
+
+--------------------------------------------------
+04/29/02 at 09:35:21  Reply by: CountFloyd (countfloyd@botepidemic.com)
+--------------------------------------------------
+Why not doing it simple by just checking if ATTACK is pressed ? I mean HL/CS simulates the bullet by shooting a traceline the very moment the weapon is fired (and the impact sounds also happen almost instantly). So I would think it's valid to check the button state (pEdict->v.oldbutton preferably) and apply weighting for distance, weapon used etc. you know the stuff.
+About the sounds: I was really surprised when Tobias showed me once how many of them are still played, wouldn't hurt to investigate into the ricochet sounds.
+
+--------------------------------------------------
+04/29/02 at 10:01:15  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+QUOTE:
+Why not doing it simple by just checking if ATTACK is pressed ?
+
+
+
+well HERE, HERE is the kind of method I call a hack ! and a "non-human like way of information retrieval about the environment"... that leads me to say OK, working hack, but I won't use your method unless I'm forced to ! I know I'm very demanding on the methods I allow bots to use or not, but this one....... it means the bot would know instantly the position of the attacker that attempted to shot him in the back !?!??
+
+;D
+
+
+(edited: btw, what do you mean with "...how many of them are still played" ?)
+
+[modified on 04/29/02 at 10:01:15]
+--------------------------------------------------
+04/29/02 at 11:09:39  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+"it means the bot would know instantly the position of the attacker that attempted to shot him in the back"
+
+Yes, but they already instantly know the location of someone that is doing damage to them.  They can see in pitch black areas as well.  They know exactly where every single player is on the map (teammates and enemies).  They already have more knowledge than most cheaters have access to!  8)
+
+Your job is to limit what they do with that information so that they don't seem super human.  The fact that bots and humans collect information in different ways shouldn't be that big of a deal (especially when there's no other way to get the information you want) as long as you don't allow the bots to do something that people can not do (like shooting through walls and getting kills all the time, etc.).
+
+botman
+
+--------------------------------------------------
+04/29/02 at 12:17:19  Reply by: theimann (killaruna@yahoo.com)
+--------------------------------------------------
+I don't have much hope concerning ricochet sounds either. A time ago I did some quite in-depth sound research, but I can't remember having found anything about shots.
+Regarding the ATTACK flag: CF did not propose you should use the origin of the attacker directly... But if you do a traceline from that origin in the viewing direction, you'll get the impact position of the bullet - exactly what you are after :)
+
+Tobias
+
+--------------------------------------------------
+04/29/02 at 12:29:42  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+Although it doesn't neccesarly mean that a bullet was fired if a player holds in the attack button. they could be out of ammo or it could be a melee weapon or something ;)
+
+--------------------------------------------------
+04/29/02 at 13:48:37  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+QUOTE:
+"it means the bot would know instantly the position of the attacker that attempted to shot him in the back"
+
+Yes, but they already instantly know the location of someone that is doing damage to them.  They can see in pitch black areas as well.  They know exactly where every single player is on the map (teammates and enemies).  They already have more knowledge than most cheaters have access to!  8)
+
+
+
+
+Yeah botman, that's why one of my first priorities has been to implement some BotCanSeeThis() and BotCanSeeThisBModel() functions that deal with as much "human" parameters I can, such as illumination, FOV width, distance, target moves and so on. In my code I try to *never* use the "omniscient" bot's a ability, that's what I mean with "forbidding of non human-like ways of information retrieval about their environment". It makes things harder to code, often, but the resulting behaviour is much more human-like.
+
+Anyway I will investigate Tobias' idea. Kinda interesting. However, I wonder how the imprecision of the trajectory of a bullet is computed ?
+
+
+[modified on 04/29/02 at 13:48:37]
+--------------------------------------------------
+04/29/02 at 14:30:06  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+"I wonder how the imprecision of the trajectory of a bullet is computed ?"
+
+It's a circular gaussian spread.  Take a look at the FireBullets() or FireBulletsPlayer() functions in the combat.cpp file of the SDK.
+
+botman
+
+--------------------------------------------------
+04/29/02 at 14:44:00  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+lol
+Botman
+This Man has answers for Everything
+(maybe except for the question about the purpose of life, but... dunno...)
+
+--------------------------------------------------
+04/30/02 at 00:22:30  Reply by: CountFloyd (countfloyd@botepidemic.com)
+--------------------------------------------------
+QUOTE:
+
+it means the bot would know instantly the position of the attacker that attempted to shot him
+
+
+
+If you would capture the sound origin it would be the same as the players origin, wouldn't it ? Tobias is right, I'm not proposing to use this exact vector but instead use it as a starting point. You can do lots of different things with that like skill based radius offsetting, doing tracelines using the endpositions. You're the programmer so it's up to you what you make out of it !
+
+About the trajectory:
+download the full HL SDK and use your free time to browse through it. I promise you'll find lots of things you didn't know and perhaps even get ideas. The gaussian spread is *very* obvious if you have a look at the source.
+
+QUOTE:
+
+Botman
+This Man has answers for Everything
+(maybe except for the question about the purpose of life, but... dunno...)
+
+
+
+Somehow I have the impression that Botman likes Douglas Adams (too bad he died recently) and his books so I think he also knows the answer to the meaning of life. It's 42 in case you want to know ;)
+
+--------------------------------------------------
+04/30/02 at 02:26:24  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+Well, why not expand your idea CF? Check if a player presses the ATTACK button, then trace a line forward and check if it hits something. If its a player, then don't care about it, but if it does not hit anything (worldspawn) it hits a wall. You know where it got hit and there you have your 'sound' which got hit from the wall. 
+
+It should work, the only thing is that its cpu consuming. Maybe let a bot only check for this 
+when it did not hear any 'sound' like this before near him? (so it does not do the same check over and over again when it already heared it).
+
+
+this also solves kind of the idea how  a bot knows where the shot came from, as it should only know the sound of the 'wall that got hit' and not the 'one who pressed the attack button'.
+
+[modified on 04/30/02 at 02:26:24]
+--------------------------------------------------
+04/30/02 at 04:02:54  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+But of course a bullet cannot always be fired when a player presses the attack button so you'll need to hack into the players ammo and find out when a player uses ammo instead of checking for the IN_ATTACK button.
+
+--------------------------------------------------
+04/30/02 at 08:49:00  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+QUOTE:
+If you would capture the sound origin it would be the same as the players origin, wouldn't it ? Tobias is right, I'm not proposing to use this exact vector but instead use it as a starting point. You can do lots of different things with that like skill based radius offsetting, doing tracelines using the endpositions. You're the programmer so it's up to you what you make out of it !
+
+
+
+Nope, I was hoping to know the origin of the hit point/ricochet sound, not the origin of the attacker... However your idea is good.
+
+To Cheesemonster: I think I'll be able to cope with that by checking the AmmoX message instead of checking the IN_ATTACK key. Wouldn't it be a good idea ?
+
+(Edited: Aaargh, I'm diving into the problem right now, but how the hell do I determine if the "ammo" that was fired is a bullet or some grenade, satchel or whatever non bullet-like ammo ?)
+
+(Edited (bis): Oh well, guess I'll have to apply that check for each type of weapon the MOD knows... phew... what a complicated stuff for a so little thing... but finally I think I'll succeed at this. You could use this method in your next HPB botman ?)
+
+[modified on 04/30/02 at 08:40:47]
+
+[modified on 04/30/02 at 08:49:00]
+--------------------------------------------------
+04/30/02 at 13:27:50  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+Okay, folks, seems like it's working :)
+Here's what I did:
+
+First let's declare a new prototype:
+code:
+
+void UpdateBulletSounds (edict_t *pEdict);
+
+
+
+...then in engine.cpp, function pfnMessageBegin():
+code:
+
+         // has someone fired a bullet ?
+         if (msg_type == message_AmmoX)
+            UpdateBulletSounds (ed); // call this so bots hear bullet sounds
+
+
+
+...and finally, the function itself:
+code:
+
+void UpdateBulletSounds (edict_t *pEdict)
+{
+   // check if this player is actually attacking something
+   if (((pEdict->v.button & IN_ATTACK) == IN_ATTACK)
+       || ((pEdict->v.button & IN_ATTACK2) == IN_ATTACK2))
+   {
+      // message indicates that the player is decreasing his ammo, was this ammo a bullet ?
+      if ((strcmp (STRING (pEdict->v.weaponmodel), "models/p_a_model_that_fires_bullets.mdl") == 0)
+          || (strcmp (STRING (pEdict->v.weaponmodel), "models/p_another_that_fires_bullets_too.mdl") == 0)
+          || (strcmp (STRING (pEdict->v.weaponmodel), "models/p_yet_another_one.mdl") == 0)
+          || (strcmp (STRING (pEdict->v.weaponmodel), "models/p_ok_heres_the_last_one.mdl") == 0))
+      {
+         // if so, determine the impact point
+         TraceResult tr;
+
+         UTIL_MakeVectors (pEdict->v.v_angle); // build base vectors
+         UTIL_TraceLine (GetGunPosition (pEdict), gpGlobals->v_forward * 9999, dont_ignore_monsters, ignore_glass, pEdict, &tr);
+
+         // cycle through all bots and alert those who saw the bullet ricochet
+         for (int index = 0; index < 32; index++)
+         {
+            if ((bots[index].pBotEnemy == NULL) && ((tr.vecEndPos - bots[index].pEdict->v.origin).Length () < 300)
+                && BotCanSeeThis (&bots[index], tr.vecEndPos) && FInViewCone (tr.vecEndPos, bots[index].pEdict))
+            {
+               Vector bot_angles = UTIL_VecToAngles (tr.vecEndPos - bots[index].pEdict->v.origin);
+               BotSetIdealYaw (&bots[index], UTIL_WrapAngle (bot_angles.y + 180));
+            }
+         }
+      }
+   }
+
+   return;
+}
+
+
+
+What do you think ? ;D
+
+
+--------------------------------------------------
+04/30/02 at 14:19:16  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+What if the bullet hits behind them and they can't see it?  They would still be able to hear it.
+
+I would think it would be better to trace a line from the bullet impact point to the bot to see if there isn't something blocking it (i.e. there is a clear line of sight between the bot and the impact point even though the bot might not be facing that way) and then use a max hearing distance to determine if the bot would have heard it or not.
+
+This doesn't handle the case where a ricochet occurs against a surface that is in front of the bot but out of the bot's line of sight.  Humans would still hear this, bot's wouldn't.  To cover this case you could create a "hearing radius" around the impact point to determine if the bot is close enough to it to hear it.
+
+botman
+
+--------------------------------------------------
+04/30/02 at 15:45:58  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+You may need to check that the AmmoX message is actually meaning a descrease in ammo, it could also mean an increase in ammo. You may need to hold the previous amount of ammo that a play had for their weapon (in m_rgAmmo) And check if it has decreased.
+
+--------------------------------------------------
+04/30/02 at 16:20:39  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+QUOTE:
+You may need to check that the AmmoX message is actually meaning a descrease in ammo, it could also mean an increase in ammo.
+
+
+
+That's just why I am checking for IN_ATTACK too, Cheesy... ;D
+
+Good idea, botman, your idea about a detection radius ! I'm gonna slap a server up and let my bots fire at me to let me see how this distance would look like ;D sounds like I'm not in bed yet lol...
+
+[edited: stupid smilies ! I never get the ones I want...]
+
+[modified on 04/30/02 at 16:20:39]
+--------------------------------------------------
+05/01/02 at 06:54:06  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+I guess that should work ;) I was about to imagine a scene where someone would pick up ammo whilst holding the attack button, but that should still work! ;)
+
+--------------------------------------------------
+05/02/02 at 16:02:35  Reply by: RedFox (redfox@nildram.co.uk)
+--------------------------------------------------
+found it! :)
+found all the hooks, and how HL itsself does the sounds/decals/bloodsprites etc etc
+
+heh, all I searched for is 
+ric1.wav
+in the sdk source :) go figure
+That'll take you to where it does all of the work you wanted to know.
+As to the hooks
+cl_dll\hl\hl_events.cpp
+their all at the bottom. obviously, thats just for HL, but if you check the 'events' dir in whatever mod ya want, those files are what you can hook :D
+so, still no exect sound to hook to, but atleast you can now see how halflife does all the work for that stuff
+
+gonna be looking into this soon, so thought I'd find it, hehe
+
+--------------------------------------------------
+05/02/02 at 16:23:07  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Ummm, the events files don't actually have anything in them.  They're just place holders for what would have been a client side scripting system if Valve had ever completed it.  Right now there just needs to be a file there for any weapon/event that is predicted on the client side.
+
+Here's the comments from hl_events.cpp...
+
+code:
+/*
+======================
+Game_HookEvents
+
+Associate script file name with callback functions.  Callback's must be extern "C" so
+ the engine doesn't get confused about name mangling stuff.  Note that the format is
+ always the same.  Of course, a clever mod team could actually embed parameters, behavior
+ into the actual .sc files and create a .sc file parser and hook their functionality through
+ that.. i.e., a scripting system.
+
+That was what we were going to do, but we ran out of time...oh well.
+======================
+*/
+
+
+botman
+
+[modified on 05/02/02 at 16:23:07]
+--------------------------------------------------
+05/03/02 at 05:34:36  Reply by: RedFox (redfox@nildram.co.uk)
+--------------------------------------------------
+The ones in the valve dir do...
+ahwell, teach me to search for somthing in 5mins :p
+So, even though they have nothing in them, are they still called? TFC certainly has alot of those event files..even though theirs nothing in them. heh
+
+--------------------------------------------------
+05/03/02 at 08:52:57  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+The files need to be their, but they don't actually do anything.  Like the comments say, Valve ran out of time when implementing the client side effect to create a scripting engine where MODs could create client side effects simply by modifying the .sc text files.
+
+botman
+
+--------------------------------------------------
+05/03/02 at 14:59:48  Reply by: RedFox (redfox@nildram.co.uk)
+--------------------------------------------------
+Ok, so found an alternative for the .sc files
+pfnPlaybackEvent
+It links quite nicely to the player firing/reloading/cocking their gun, and also seems to be triggered when grenades go off, so should be some help. 
+also come to the conclusion that the gun shot decals are all dealt with client side, which is why theirs no messages for them (perhaps someone already mentioned this, heh)
+except for those created when your effected by halucination grenades in tfc.
+
+--------------------------------------------------
+05/03/02 at 16:59:23  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+yes but then at this point there's no difference between checking for the AmmoX message or hooking your function, except that the AmmoX message seems more appropriate IMO. If I understood right the pfnPlaybackEvent 'plays events' for the client who fires his gun, but not for the bullet hitting the wall, so it won't be any use...
+
+
+--------------------------------------------------
+05/03/02 at 17:06:51  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+uhm, correcting myself:
+any use <b>unless</b> you want your bots to react to the sound a player makes when he's reloading his gun... sorry.
+
+
+--------------------------------------------------
+05/04/02 at 03:21:35  Reply by: RedFox (redfox@nildram.co.uk)
+--------------------------------------------------
+I suppose, but I want that :)
+It just seemed more useful in the fact that you don't have to check ammo levels/what gun is being used, as the event is only triggered if its actually fired (I think theirs events for 'out of ammo' clicks), and that the number passed in links to the weapon used.
+I suppose it doesn't make a difference as it still needs to run the trace line its self, heh
+

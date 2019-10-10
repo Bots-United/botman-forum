@@ -1,0 +1,113 @@
+--------------------------------------------------
+Subject: Linux compiling
+--------------------------------------------------
+11/11/02 at 10:55:12  Posted by: LeonThePro (sirgalahad@ozgn.com)
+--------------------------------------------------
+Im compiling a modified HPB_Bot source code on my linux redhat 7.3 machine, but when it compiled h_export.cpp I got: 
+h_export.cpp:73: ISO C++ forbids declaration of 'GiveFnptrsToDll' with no type. How can i fix that problem?
+
+--------------------------------------------------
+11/11/02 at 13:07:36  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+maybe disable the -ansi and -pedantic option with GCC ?
+
+
+--------------------------------------------------
+11/11/02 at 13:44:49  Reply by: LeonThePro (sirgalahad@ozgn.com)
+--------------------------------------------------
+Do you know how i could do that?
+
+--------------------------------------------------
+11/11/02 at 14:48:52  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Have a look in your Makefile.
+I don't know why these options would have been put there though.
+
+
+--------------------------------------------------
+11/11/02 at 15:20:27  Reply by: LeonThePro (sirgalahad@ozgn.com)
+--------------------------------------------------
+#
+# HPB_bot makefile for Linux
+#
+# created: 12/16/2000 botman (botman@mailandnews.com)
+#
+
+# the following specifies the path to your MOD...
+MOD_DIR = /usr/local/hlds_l/tfc
+
+CPP = gcc
+
+BASEFLAGS = -Dstricmp=strcasecmp -Dstrcmpi=strcasecmp
+
+CPPFLAGS = ${BASEFLAGS} -m486 -O2 -w -I../engine -I../common -I../pm_shared
+
+OBJ = dll.o engine.o mod.o h_export.o linkfunc.o util.o
+
+HPB_bot_i486.so: ${OBJ}
+      ${CPP} -fPIC -shared -o $@ ${OBJ} -ldl
+      cp -f HPB_bot_i486.so ${MOD_DIR}/dlls
+
+clean:
+      -rm -f *.o
+      -rm -f *.so      
+
+%.o:      %.cpp
+      ${CPP} ${CPPFLAGS} -c $< -o $@
+
+%.o:      %.c
+      ${CPP} ${CPPFLAGS} -c $< -o $@
+
+
+Thats teh make file im using, the one for HPB bot, the same error happened when I compiled the hpb_bot template unmodified
+
+--------------------------------------------------
+11/11/02 at 16:02:01  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+I don't see anything special in it...
+What's in your h_export.cpp, lines 70-75 ?
+
+
+--------------------------------------------------
+11/11/02 at 16:02:55  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+You can also try using "kgcc" instead of "gcc".  The kernel gcc compiler (kgcc) is an older non-ANSI standards version of the C++ compiler.  Just replace "gcc" with "kgcc" in your makefile, run "make clean", then "make" to rebuild everything (make sure to delete the old .o files before using kgcc since it's not cross compatible with the newer gcc).
+
+botman
+
+--------------------------------------------------
+11/11/02 at 17:16:50  Reply by: LeonThePro (sirgalahad@ozgn.com)
+--------------------------------------------------
+I get alot more errors in kgcc. im running the command "make -f makefile_linux", is that good? 
+
+#ifndef __linux__
+#ifdef __BORLANDC__
+extern "C" DLLEXPORT void EXPORT GiveFnptrsToDll(enginefuncs_t* pengfuncsFromEngine, globalvars_t *pGlobals)
+#else
+void DLLEXPORT GiveFnptrsToDll( enginefuncs_t* pengfuncsFromEngine, globalvars_t *pGlobals )
+#endif
+#else
+extern "C" DLLEXPORT GiveFnptrsToDll( enginefuncs_t* pengfuncsFromEngine, globalvars_t *pGlobals )
+#endif
+{ <-- line 73
+      FILE *fp;
+
+h_export.cpp:73: ISO C++ forbids declaration of 'GiveFnptrsToDll' with no type.
+Thats in GCC, same thing comes up in G++
+
+[modified on 11/11/02 at 17:16:50]
+--------------------------------------------------
+11/11/02 at 17:41:47  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Which version of gcc are you using ? I was told the bearded ones at the FSF were particularily angry against the ANSI compliance when they wrote the 3.x.x series. Maybe you should try with another compiler (older egcs)...
+
+Or instead, would you mind trying:
+extern "C" DLLEXPORT <b>void</b> GiveFnptrsToDll (enginefuncs_t* pengfuncsFromEngine, globalvars_t *pGlobals)
+in the Linux-specific part of your stuff ?
+
+
+--------------------------------------------------
+11/11/02 at 17:57:02  Reply by: LeonThePro (sirgalahad@ozgn.com)
+--------------------------------------------------
+yea i did that, i went back about a year in threads and found someone that had the same problem and he solved it, i got my .so now so i guess im good for now, thx guys.
+

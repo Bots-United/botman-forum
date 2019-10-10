@@ -1,0 +1,46 @@
+--------------------------------------------------
+Subject: DLL error during detach
+--------------------------------------------------
+02/06/02 at 11:46:48  Posted by: ocb (ocb1@earthlink.net)
+--------------------------------------------------
+I've been using www.acquerra.com.au/personal/bird/bbm/Birds Bot Manager to write bots.  BBM is adapted from the HPB source code.  I'd ask the author for help, but he wrote BBM for Linux and I'm using a VC++ port.  Anyway, I hope this is the right forum for posting this message.
+
+BBM.dll is playing the man-in-the-middle.  It works fine except when I quit from HL, in which case a dialog appears with "HL has caused an error in BBM.dll.  HL will now close."  This occurs in Windows 98/ME but not NT/2000.
+
+I tried putting in assert(0) statements to isolate the error.  The error seems to occur shortly after DllMain() gets the message DLL_PROCESS_DETACH:
+
+code:
+
+BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved)
+{
+   if (fdwReason == DLL_PROCESS_ATTACH)
+   {
+   }
+   else if (fdwReason == DLL_PROCESS_DETACH)
+   {
+      if (h_Library) FreeLibrary(h_Library);
+
+      if (h_global_argv)
+      {
+         GlobalUnlock(h_global_argv);
+         GlobalFree(h_global_argv);
+      }
+      assert(0);
+   }
+
+   return TRUE;
+}
+
+
+
+Does anyone know how I can get the man-in-the-middle DLL to exit more gracefully?  I'd be happy to share the VC++ source code.
+
+Oscar
+
+
+[modified on 02/06/02 at 11:46:48]
+--------------------------------------------------
+02/08/02 at 17:27:44  Reply by: CountFloyd (countfloyd@botepidemic.com)
+--------------------------------------------------
+Try removing the FreeLibrary Call. AFAIK Win98 doesn't allow freeing the Library while you're still in the process. Works with NT though...
+

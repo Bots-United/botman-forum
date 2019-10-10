@@ -1,0 +1,140 @@
+--------------------------------------------------
+Subject: YAQB (Yet Another Question to Botman)
+--------------------------------------------------
+11/14/02 at 15:14:37  Posted by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Hello botman!
+
+Thanks to the little info you provided me, I've finished the auditive system of my bots. Well, almost.
+Would you mind having a look at this ?
+code:
+
+   // considering a sound...
+   float attenuated_volume = volume * (MAX_HEARING_DISTANCE - (v_origin - pBot->pEdict->v.origin).Length () / MAX_HEARING_DISTANCE);
+
+
+You already guessed my question, I think. volume and v_origin are hooked from pfnEmitSound and pfnEmitAmbientSound, and assuming the sound has some attenuation (not ATTN_NONE), I want to know which fraction of the full loudness will be heard at which distance.
+
+Is it linear ?
+If so, then it requires probably a maximum hearing distance. In that case, what is the distance at which the engine completely discards the hearing of a sound for a player ?
+Or is it under the form 1/x whereas I have to change my formula ?
+
+...and optionally, could you tell us WTF are the differences between attenuations ATTN_NORM, ATTN_IDLE and ATTN_STATIC ? what are they used for ?
+
+I've found very little reference to sounds in the SDK. Of course, if another one has a clue, feel free to answer :)
+
+
+--------------------------------------------------
+11/14/02 at 15:38:25  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+I can solve the ATTN_NORM, ATTN_STATIC stuff, apparantly it looks like they determine the distance the sound will cease to be heard.
+
+from the FGD file..........
+
+code:
+
+      spawnflags(flags) =
+      [
+            1: "Play Everywhere" : 0
+            2: "Small Radius" : 0
+            4: "Medium Radius" : 1
+            8: "Large Radius" : 0
+            16:"Start Silent":0
+            32:"Is NOT Looped":0
+      ]
+
+
+
+from the SDK......
+
+code:
+
+      if ( FBitSet ( pev->spawnflags, AMBIENT_SOUND_EVERYWHERE) )
+      {
+            m_flAttenuation = ATTN_NONE;
+      }
+      else if ( FBitSet ( pev->spawnflags, AMBIENT_SOUND_SMALLRADIUS) )
+      {
+            m_flAttenuation = ATTN_IDLE;
+      }
+      else if ( FBitSet ( pev->spawnflags, AMBIENT_SOUND_MEDIUMRADIUS) )
+      {
+            m_flAttenuation = ATTN_STATIC;
+      }
+      else if ( FBitSet ( pev->spawnflags, AMBIENT_SOUND_LARGERADIUS) )
+      {
+            m_flAttenuation = ATTN_NORM;
+      }
+      else 
+      {// if the designer didn't set a sound attenuation, default to one.
+            m_flAttenuation = ATTN_STATIC;
+      }
+
+
+--------------------------------------------------
+11/14/02 at 16:57:04  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+thanks Cheesy, yes I saw that... however I need values. Unless firing up 2 PCs with Half-Life and making one player shoot a gun while the other PC's speakers volume are maxed out, I don't know how I can measure this.
+
+
+--------------------------------------------------
+11/15/02 at 07:06:13  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+Instead of firing two PCS you can make your own program to do it. I.e. making a sound <XYZ> distance from you and hearing the volume from that yourself, with some data showing you the type of sound it is, apparant volume Etc..
+
+--------------------------------------------------
+11/15/02 at 17:28:00  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+oh well....
+sure this would be an idea. Maybe I'll try this if I can't get the info I want.
+Anyway I still prefer to bug botman so that I get *actual* values (and in a certain manner, answers that show me the right way of doing things)
+
+However botman, if you don't think you can get the info, or if you don't know, or if you are lazy, just tell me please so that I know I have to look elsewhere...
+
+
+--------------------------------------------------
+11/16/02 at 18:10:12  Reply by: theimann (killaruna@nuclearbox.com)
+--------------------------------------------------
+I did all these tests, playing sounds at specified locations and trying to find the maximum distance and the volume formula, the sad truth is: there is none. The volume does not only depend on distance, but as well on the environment, i.e. closed rooms, walls etc... You can't simulate it with tracelines because the sound system works different. My best bet was that it had to do with the PAS (Potentially audible set), and I was not able to locate the necessary information for that one.
+
+Tobias
+
+--------------------------------------------------
+11/17/02 at 05:26:21  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+ouch
+*** [Parabot]Killaruna killed [RACC]PieM with a headshot from bad_news ***
+
+...and so, what are the headlines of the algorithm you use in Parabot for this ? if you don't mind telling your secrets once more :)
+I could set an arbitrary maximal value and make the sound attenuation linear but... I'd not be satisfied... hope you have (yet another) brilliant idea in your pocket
+
+/me insert coin in the Killaruna machine and waiting for the brilliant idea to come out ;D
+
+
+--------------------------------------------------
+11/17/02 at 09:49:56  Reply by: theimann (killaruna@nuclearbox.com)
+--------------------------------------------------
+I'm using two distance thresholds t1, t2 for each sound (t1<t2): If the sound source is nearer than t2 it becomes sensable, i.e. the bot notices there is something around but doesn't know where. If the source is nearer than t1 it becomes trackable, i.e. the bot can locate where it comes from. Different sounds have different thresholds, e.g.:
+code:
+
+// weapons and ammo
+#define AMMO_SENS_DIST                  400
+#define AMMO_TRACK_DIST                  200
+// chargers
+#define LOAD_SENS_DIST                   1200
+#define LOAD_TRACK_DIST                  800
+// platforms
+#define LIFT_SENS_DIST                  900
+#define LIFT_TRACK_DIST                  600
+// healthpacks and armor
+#define ITEM_SENS_DIST                  600
+#define ITEM_TRACK_DIST                  400
+// longjump, quad-damage etc.
+#define SPEC_ITEM_SENS_DIST             1200
+#define SPEC_ITEM_TRACK_DIST           1200
+
+
+All values are kind of arbitrarily chosen and the effects of walls are neglected completely, but it works quite convincingly nevertheless... The threshold values for step sounds depend on the material on which the players are walking.
+
+Tobias
+

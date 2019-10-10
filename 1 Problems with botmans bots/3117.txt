@@ -1,0 +1,133 @@
+--------------------------------------------------
+Subject: I've got a couple probs,. FLF 1.6 & BSP_tool ..
+--------------------------------------------------
+05/18/02 at 15:33:38  Posted by: Multch (13steps@naplesnews.net)
+--------------------------------------------------
+I'm useing FLF 1.6 that just came out..
+
+I waypointed the map flf_biohazard.bsp & then i added the bots so i could see what needed to be tweaked.. Well, at this point the map is not playable for the attackers, because they won't "use" the C4 to blow open the gate to go anywhere. The C4 thing looks exactly like one of the capture computers, but i guess it's entities are different? I tried useing BSP_tool to look at it, but i got this error message:
+************ ERROR ************
+Token too large on line 1
+Press <ENTER> to exit
+
+I have this in the BSP_tool.cfg:
+$spawnpoint info_frontline
+And my dos line was: BSP_tool -ent flf_biohazard.bsp>flf_biohazard.txt
+
+Well i opened the map up in Textpad & here's what i see for the C4:
+{
+"origin" "-2800 -752 -364"
+"pointname" "C4 Relay Switch"
+"target" "start"
+"capturetime" "5"
+"model" "models/antena.mdl"
+"classname" "secondary_point" <-- I guess this is the problem
+}
+
+Here's one of the other's
+{
+"origin" "-408 -1744 -224"
+"target" "dry"
+"pointname" "Water Supply"
+"capturetime" "9"
+"model" "models/antena.mdl"
+"classname" "capture_point" <-- secondary_point should be this instead.. :(
+}
+
+So i guess HPB dosen't know how to deal with it.. No wonder.. Is there any chance you could add that into there knowing?
+I waypointed flf_afghan.bsp & that plays Good.
+
+Oh, FLF did something with "Prone" & i had a "Prone Waypoint" in the map, they did not prone, they just stood there. When did you take out "jump waypoint" .. I coulda used that in a few spots.
+
+I'll send the problem waypoint file to ya via email.. Hey, if you don't add that "classname" i guess your stripper2_plugin should do it? Dam, but i really don't want to run extra .dlls in FLF.. FLF is a bit tough on my system. (And that's without bots even)..
+
+--------------------------------------------------
+05/19/02 at 04:28:52  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+This...
+
+Token too large on line 1 
+Press <ENTER> to exit 
+
+...is caused by a key/value pair being larger that 1024 bytes (it's probably the worldspawn key "wad" which can have some long pathnames for the WAD files needed by the map).  I should probably fix this bug in the BSP tools and release a new version of it to correct this.
+
+The problem with the entities in the FLF 1.6 map is correct.  The HPB bot doesn't know anything about the "secondary_point" entities, so they won't know how to capture it.
+
+If you change this from "secondary_point" to "capture_point", then FLF won't behave properly.
+
+I'll download FLF 1.6 and add the new entities to the HPB bot (so FLF will behave properly if there are any new entities) and take a look at how much work it would require to get the bots to use the C4 properly.
+
+botman
+
+--------------------------------------------------
+05/19/02 at 09:50:22  Reply by: Multch (13steps@naplesnews.net)
+--------------------------------------------------
+Thanks botman! 
+
+I know just 1 last thing that would be useful if you feel like doing it?
+Can you add a "wait for lift" command in the menu? I'm pretty sure i didn't recall seeing it.
+I know exactly were i can use that! In flf_ascension... ;D
+
+{
+"origin" "-312 -1248 -284"
+"angles" "0 180 0"
+"target" "bridge"  <-- "wait for bridge" hehe..
+"pointname" "Bridge Release"
+"capturetime" "10"
+"model" "models/mainframe.mdl"
+"classname" "secondary_point" <-- Which also has the infamous "secondary_point"
+}
+
+
+[modified on 05/19/02 at 09:50:22]
+--------------------------------------------------
+05/19/02 at 11:44:21  Reply by: Multch (13steps@naplesnews.net)
+--------------------------------------------------
+ACK.. I was looking into more maps & i see you do have the "wait for lift" in the menu, so nevermind..
+But if you can .. Can you please just add a "jump waypoint".
+flf_cky can really use it. So can flf_biohazard, i noticed when i did flf_biohazard (the waypoints i sent ya), they need one capture point in that map that is the "rug shop", well i notice they tend not to jump to much to try & get over the little wall there. Even though i put a crouch waypoint on the wall. But they don't try to jump then crawl through. That is probably going to be that maps downfall? Because their's a sign in the way plus the fact, so i put the crouch waypoints on the ends.
+But looking at flf_cky, theirs a capture point with the same kinda small wall that surrounds it & well i bet they might have some problems without a "jump waypoint" to get in & out.
+
+I hope this is something that maybe you can add.
+If not i know BoC-Bot support's FLF, but i don't know it's waypoint system & BoC-Bot is really rough on my system, unless Zneaker toned it down in that last version? I see he does have "addjump" wpt.. But i bet BoC dosen't support "secondary_point" yet.. And i noticed more maps with that in them like: flf_cheyenne .. hmmm..
+
+But i guess i'm going to have to try & learn BoC-Bot's waypoint system since i dl the newest FireArms 2.6 ..
+
+Anyway, i hope you can do the "Jump Waypoint" for HPB.. That would be Great & all that should be needed! 
+:crosses fingers: 
+
+--------------------------------------------------
+05/19/02 at 12:04:06  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+There already is a JUMP waypoint tag, but the menu item for it only shows up in HolyWars.
+
+I'll see if I can shuffle things around in the waypoint menus so that it's accessible for all MODs.
+
+Just so you know, the "WAIT FOR LIFT" waypoint menu tag doesn't do anything in the HPB bot code.  I never added any bot code that would actually wait for a lift to be at the lower position, so adding them won't cause the bot to wait.
+
+There's also a "GO PRONE" tag for FLF, but there isn't any bot code that makes use of that either.
+
+I'll probably never get around to implementing any of this stuff, so don't get confused if you set up the waypoints with these tags and the bots don't seem to do anything with them.
+
+botman
+
+--------------------------------------------------
+05/20/02 at 04:10:04  Reply by: Multch (13steps@naplesnews.net)
+--------------------------------------------------
+Ok, no "wait for lift" & no "Prone" .. No Problem! I can use "door waypoint" to slow them down. And i can use a "crouch waypoint" instead of "Prone", that'll work just as good! ;)
+
+But i do have 1 last problem. :-(
+I started waypointing flf_ebonysword, well there's 2 doors that the Attacker's need to open to get in the Genetics Lab. I put a waypoint in front of each button (so they go to button First, then door). But they won't push the button..
+I'll send you my waypoints agian via email & maybe you'll have a look at them.
+
+(here's the info on the door)
+
+classname/func_button
+spawnflags/1
+rendercolor/0 0 0
+target/doors1ab
+speed/5
+wait/3
+unlocked_sound/3
+model/*2
+

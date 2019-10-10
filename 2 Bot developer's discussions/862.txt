@@ -1,0 +1,86 @@
+--------------------------------------------------
+Subject: Help on jumping, ducking and algorithms.. >Botman
+--------------------------------------------------
+12/14/00 at 05:16:28  Posted by: freeman_666_86 (freeman_666_86@hotmail.com)
+--------------------------------------------------
+Botman, how might i get your Bots to jump or duck at certain waypoints.  I got the source code before you turned it into a template so i would have a place to start.  Also, how do i implement Floyd's algorythm so that i can have bots spawn and immediatly go to a good weapon.  Your help is apreciated..
+                      -Ruban
+
+
+--------------------------------------------------
+12/14/00 at 05:23:58  Reply by: eLiTe (ali@elitegamer.fsnet.co.uk)
+--------------------------------------------------
+Experiment with the v.button flags - setting IN_DUCK will make the bot duck, and setting IN_JUMP will make the bots jump. To get a bot to use a ladder, set IN_FORWARD (or something like that) or IN_BACKWARD (again, it might not be exactly that - you'll find a list of flags in one of the header files I think). I don't know about this, but I think CF mentioned using IN_FORWARD to make the bots swim too
+
+--------------------------------------------------
+12/14/00 at 05:30:38  Reply by: freeman_666_86 (freeman_666_86@hotmail.com)
+--------------------------------------------------
+I know all that, but I want them to do it at a waypoint.  I've tried i in the 
+"BotHeadTowardWaypoint" function but i've had no luck...
+
+--------------------------------------------------
+12/14/00 at 05:36:14  Reply by: eLiTe (ali@elitegamer.fsnet.co.uk)
+--------------------------------------------------
+I looked at the 'waypoint add' function, and if you are ducking wen you make the waypoints, I think it sets a flag like FL_WAYPOINT_DUCK or something - just check for that flag when you reach a waypoint, then set IN_DUCK on the bot... does that help? You could even add in a specific duck waypoint for making the bots duck. If you need examples of how to add in your own waypoints then email me at ali@airforce.net, or just wait till I release the alpha 1 source of my teambot - www.teambot.net
+
+--------------------------------------------------
+12/14/00 at 05:47:19  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+Correct, you can set a bit in the waypoint's "flag" field to indicate that the bot should jump here.  What you probably would also need is some indication of which way the bot should be heading before it jumps.  For example you might have a waypoint near a ledge and wish to jump a gap to the other side.  If the bot is approaching the waypoint from the "side" and running parallel to the ledge then jumping makes no sense in that case.  If the bot is approaching the waypoint at a 90 degree angle to the ledge then jumping is probably the way to go.
+
+You will probably need to store some additional information with that waypoint that says "if the bot is heading in this direction, then jump, otherwise don't jump".  Obviously the bot won't always be approaching at EXACTLY 90 degrees so you would need to have some delta angle (say +/- 10 degrees) and only jump if the bot is approaching at an angle within that range.  Getting the bots to sucessfully navigate places where they should jump over things is NOT a trivial task.  You might want to look at William's CGF web pages for some information on this and look at other bot AI sites for more info.  See the "Links" page on my web site for a link to William's page and other AI resources.
+
+botman
+
+--------------------------------------------------
+12/14/00 at 05:49:24  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+For an implemenation of Floyd's algorithm, search this forum for "Floyd" and you should find a previous post by me with a link to some source code that implements Floyd's algorithm.
+
+botman
+
+--------------------------------------------------
+12/14/00 at 06:40:06  Reply by: freeman_666_86 (freeman_666_86@hotmail.com)
+--------------------------------------------------
+I've tried all that with setting a flag on the waypoint... I believe it goes something like this... "waypoints[team][index].flags = W_FL_JUMP;"
+i defined the "W_FL_JUMP"
+the problem is i dont know were to put code that checks what kind of waypoint the bot is on.  I've tried it in "BotHeadTowardWaypoint" but in the game the bots just go to the jump waypoint and then go to another without jumping... :(
+
+--------------------------------------------------
+12/14/00 at 06:47:29  Reply by: eLiTe (ali@elitegamer.fsnet.co.uk)
+--------------------------------------------------
+You shouldn't use 
+
+waypoints[team][index].flags = W_FL_JUMP, 
+
+you should use
+
+waypoints[team][index].flags = W_FL_JUMP
+
+I think this ADDS the flag value onto the waypoint, so that all the other flags are kept too. Didn't exaplain that very well, but I hope you get the idea (I'm not very sure about C/C++ operators).
+
+You just need something like this in the BotHeadTowardWaypoint function:
+
+if (waypoints[team][index].flags & W_FL_JUMP)
+{
+   pBot->v.button = IN_JUMP
+}
+
+Botman - any comments?
+
+--------------------------------------------------
+12/14/00 at 11:04:04  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+I think you originally had the bit wise or operator in there (the shift backslash).  YaBB strips out the vertical bar because it uses it for  fields in the forum message file.  I'll have to come up with a workaround to allow the vertical bar in posts and use something else for the field separator in messages.
+
+You can use a bitwise or to set the bit that corresponds to W_FL_JUMP (which will preserve the state of any other bits in the flags field).
+
+What you probably want to have somewhere is a check to see how close the bot is to the desired waypoint.  Take the waypoint origin and subtract the bot's origin to form a vector.  Use the Length() function to get the length of that vector.  That will be the distance that the bot is currently from the waypoint.  When the bot gets close enough to be considered "touching" the waypoint (i.e. the distance is small enough), you can execute any special code you want for that type of waypoint by checking whick flags are set and doing whatever is appropriate (like ducking or jumping or pausing, etc.).
+
+botman
+
+--------------------------------------------------
+12/14/00 at 14:44:36  Reply by: eLiTe (ali@elitegamer.fsnet.co.uk)
+--------------------------------------------------
+Well, Ruban? Have these suggestions helped? Sorry if I posted stuff you already knew, but I'm just trying to help :/
+

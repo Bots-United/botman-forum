@@ -1,0 +1,48 @@
+--------------------------------------------------
+Subject: Once again, adding weapons without source
+--------------------------------------------------
+09/30/01 at 00:07:43  Posted by: PlasticWarrior (tigerstorm023@netscape.net)
+--------------------------------------------------
+Rememebr this? Ok, I can "add" weapons to CS with my enhancement dll, however hlds crashes immediatly after spawning the weapon. For simplicity's sake, I am using the default crowbar. Through debugging I haev determined that everythign goes as planned up to a certian point: precache and fall init (movetype, solid, origin, size, touch, fallthink, nextthink). On the client i can even see the weapon hanging in mid air as the server crashes. Perhaps this is a weapon id conflict? if so which of the 32 id's aren't used by the 29 items/weapons in cs?? Otehrwise, what do you think it is? I copied in the knife txt in teh sprites dir to weapon_crowbar.txt to no effect. Any suggestions would really really really be appreciated.
+
+--------------------------------------------------
+09/30/01 at 04:46:58  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+If you aren't intercepting the Think(), Touch() and Use() functions for this entity this can cause the game to crash.  The default SDK code thinks that there are CBaseEntity member variables for the think, touch and use functions.  Since you haven't created a CBaseEntity class (I'm not sure you can do this since you don't have the CS source code), the engine will call the DispatchThink(), DispatchTouch(), or DispatchUse(), functions when one of these events occur.  These will in turn call the MOD DLL code which will try to call the CBaseEntity version of the think, touch, or use function.  Since these don't exist, the game crashes.
+
+You are probably crashing when the weapon touches the player.  Check the edict_t pointer passed into DispatchTouch() to see if this edict is for the weapon you have just created.  If so, call your own version of the Touch() function instead, then return to the engine (bypassing the MOD DLL code for this one case).
+
+botman
+
+--------------------------------------------------
+09/30/01 at 08:58:20  Reply by: PlasticWarrior (tigerstorm023@netscape.net)
+--------------------------------------------------
+wonderfull, now the crowbar falls! but it crashes on:       
+if ( pEntity && pOther && ! ((pEntity->pev->flags | pOther->pev->flags) & FL_KILLME) )
+            pEntity->Touch( pOther );
+In Dispatch Touch when it hits the ground.
+Ideas?
+
+--------------------------------------------------
+09/30/01 at 09:04:28  Reply by: PlasticWarrior (tigerstorm023@netscape.net)
+--------------------------------------------------
+btw, if i spawn it at my origin, it crashes right after that code, on soemthign else, probably adding it to my inventory, becasue it dosen't appear like it used to when i do it
+
+--------------------------------------------------
+09/30/01 at 09:52:46  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Do you realize that even if you can create a weapon external to the MOD, you can't damage anyone with it because the TakeDamage() function is all internal to the MOD source code (i.e. there's no way for the Half-Life engine to cause damage to player's except through MOD internal code).
+
+botman
+
+--------------------------------------------------
+09/30/01 at 10:23:38  Reply by: PlasticWarrior (tigerstorm023@netscape.net)
+--------------------------------------------------
+yes
+
+
+--------------------------------------------------
+09/30/01 at 11:14:28  Reply by: PlasticWarrior (tigerstorm023@netscape.net)
+--------------------------------------------------
+btw, if i remove the problematic code the crowbar does everything correctly EXCEPT it cannot be picked up./
+

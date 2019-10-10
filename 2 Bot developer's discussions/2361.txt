@@ -1,0 +1,49 @@
+--------------------------------------------------
+Subject: Crash (overflow) on this function...
+--------------------------------------------------
+10/06/01 at 02:24:38  Posted by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+For some reason im overflowing my table of available radio commands here... I can't see anything wrong!
+
+code:
+
+void BotUseRadio( bot_t *pBot )
+{
+      edict_t *pEdict = pBot->pEdict;
+      int i = 0;
+      short int selects = 0;  
+      short int found_radio = 0;
+      
+      if ( pBot->radio_command != RADIO_NONE )
+      { 
+            ALERT(at_console, "\nentered radio function");
+            
+            while ( radio_commands[selects].radio_id != RADIO_TERMINATOR )
+            {
+                  selects ++;
+            }
+            
+            
+            for( i=0; i < selects; i++ )
+            {
+                  if ( radio_commands[selects].radio_id == pBot->radio_command )
+                  {
+                        found_radio = selects;
+                        ALERT(at_console, "\nFound a radio command!");
+                  }
+            }
+            
+            if( radio_commands[found_radio].radio_id != RADIO_TERMINATOR)
+            {
+                  ALERT(at_console, "\nTrying to use radio! (RADIO: %s) (ID: %d)", radio_commands[found_radio].radio_select, radio_commands[found_radio].radio_id);
+                  
+                  FakeClientCommand ( pEdict, radio_commands[found_radio].radio_select, NULL, NULL );
+                  FakeClientCommand ( pEdict, "menuselect", radio_commands[found_radio].radio_message_select, NULL );
+                  
+                  pBot->radio_command = RADIO_NONE;
+                  
+                  pBot->radio_time = gpGlobals->time;
+            }         
+}
+
+

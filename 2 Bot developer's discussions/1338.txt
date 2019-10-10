@@ -1,0 +1,146 @@
+--------------------------------------------------
+Subject: Seeing smoke in CS
+--------------------------------------------------
+03/10/01 at 13:04:05  Posted by: ExecutionStyle (c_brennan@hotmail.com)
+--------------------------------------------------
+I was just reading through the extensive readme.txt that comes with HPB template 3 and got to the part about messages that are sent from the Mod to the engine.
+
+In pfnMessageBegin(), there is a pointer to pass a vector related to the message.  The first thing I thought is "That's how they did 3D sound" because when the mod sends a sound message, it can send a vector representing the source and distance of the sound.  Does anyone know if this is true?
+
+Anyway, I really have no idea if this is true, but it also made me wonder if there are messages saying where to show the sprites for the smoke coming from a smoke grenade in CS.  
+
+Am I way off here, or is this already known?  I don't remember seeing any posts about it and I've read through the entire archive...
+
+ -Carl
+
+--------------------------------------------------
+03/10/01 at 13:21:25  Reply by: ExecutionStyle (c_brennan@hotmail.com)
+--------------------------------------------------
+In the same vein, when you pick up a gun off the ground, your client must receive a message informing you which gun.
+
+Remember our discussion of how to tell if the gun you pick up is silenced or not?  That would have to be sent to your client in the state part of the message.  Botman has an example in the readme that looks like
+
+pfnMessageBegin: edict=1e01e40 dest=1 type=76
+pfnWriteString: weapon_9mmhandgun   // state = 0
+pfnWriteByte: 2                     // state = 1
+pfnWriteByte: 250                   // state = 2
+pfnWriteByte: -1                    // state = 3
+pfnWriteByte: -1                    // state = 4
+pfnWriteByte: 1                     // state = 5
+pfnWriteByte: 0                     // state = 6
+pfnWriteByte: 2                     // state = 7
+pfnWriteByte: 0                     // state = 8
+pfnMessageEnd:
+
+so all we'd have to do is get into a game, join CT, throw pistol on the ground, pick it up, silence it, throw it on the ground and pick it up again, then quit and look at the messages to figure out which state bit changed.  I'd do it myself but I don't have a running bot yet.  (Working on that! :o)
+
+ -Carl
+
+--------------------------------------------------
+03/10/01 at 18:36:07  Reply by: CountFloyd (countfloyd_1999@yahoo.com)
+--------------------------------------------------
+Please correct me if I'm wrong, but I would think Smoke in CS is the same as in HL. This would mean several Temporary Entities (TE_SMOKE) would be created and messages would be broadcasted to all clients informing about radius,alpha etc.
+You would then have to extend Botman's Messaging System to allow capturing Tempentity (and broadcasted) messages. I think it's faster (but of course not that reliable) to check for a SmokeGrenade lying on the ground and then blocking the Bots viewing distance if it's in his Viewing Angle.
+About the silencer thingy:
+Again I could be wrong but I think if you pick up a (previously) silenced weapon it will be unsilenced again.
+
+--------------------------------------------------
+03/10/01 at 18:51:55  Reply by: impaqt (impaqt@online.no)
+--------------------------------------------------
+QUOTE:
+
+so all we'd have to do is get into a game, join CT, throw pistol on the ground, pick it up, silence it, throw it on the ground and pick it up again, then quit and look at the messages to figure out which state bit changed
+
+
+
+
+nice theory, maybe i'll try it out :)
+
+
+cf: the gun states are saved, pickup a previously silenced weapon and it still is silenced
+
+--------------------------------------------------
+03/10/01 at 20:40:18  Reply by: bigjesus (holybigjesus@hotmail.com)
+--------------------------------------------------
+The smoke is sorda like 3d studio max's particle system behaviors. It is similar to wind and spray however the sprite uses the information to know where it is at what duration then also as to how much opacity and the scale of the sprite which you probably already knew.Also it uses death of te entity too to simulate particle death in max. And as we all or most all of us know sprites in hl eng use a billboarding effect you can see how this is done with directx sdk well with the exeption to hud sprites. So you might beable to find out how it works even more by looking at some scorce code :) there are several plugins to max that have scource code releases one of them is particles 2.0 I forget who made it but it should help alot. :P
+
+--------------------------------------------------
+03/11/01 at 06:54:00  Reply by: eLiTe (ali@elitegamer.fsnet.co.uk)
+--------------------------------------------------
+Yes when you pick up a previously silenced weapon it is DEFINITELY still silenced and has the same amount of ammo in its clip, etc... even if the weapon was dropped by another player
+
+--------------------------------------------------
+03/11/01 at 09:52:14  Reply by: ExecutionStyle (c_brennan@hotmail.com)
+--------------------------------------------------
+CF: the reason I don't want to calculate the effect on the bot's vision based on the location of the grenade is that (at least in Counter-Strike) the smoke doesn't always drift the same way.  Sometimes the smoke wafts back and forth, alternately revealing and obscuring a hallway.
+
+ -Carl
+
+--------------------------------------------------
+03/12/01 at 08:27:08  Reply by: CountFloyd (countfloyd_1999@yahoo.com)
+--------------------------------------------------
+Yes, that's what I meant with "not that reliable" ;)
+I looked up the TE_SMOKE Message in the HL SDK and it doesn't give you a velocity, only the coordinates and radii for creation. I doubt that you will get the actual smoke waves then, but I'd be glad if you could prove me wrong. Perhaps one could use the scale or model index to get the drifts...
+
+Btw. your signature is quite amusing :)
+
+--------------------------------------------------
+03/12/01 at 15:48:28  Reply by: ExecutionStyle (c_brennan@hotmail.com)
+--------------------------------------------------
+The way I see it, there are three possibilities: 
+
+1)the server sends the client a message for each smoke sprite every frame 
+
+2)the server sends the client a message with info on where to start drawing a smoke sprite and how to move it afterwards
+
+3)the server sends the client a message to start a smoke sprite and the client decides where it should move to
+
+If either of the first 2 is true, we can analyze the messages and see where each smoke sprite is, somehow.  If the 3rd is true, then there would be no way to know, but in this case the smoke could be in different places on different client machines, which would be funny for sure.
+
+Also, considering the fact that smoke grenades add a lot of network traffic and are even dubbed "lag grenades", I think there must be some messages describing them in detail, and so some way to find them.  When I get a chance to compile botman's template and dumb out debug text I'll try and look into it.
+
+ -Carl
+
+
+
+--------------------------------------------------
+12/06/02 at 14:50:44  Reply by: RedFox (redfox@nildram.co.uk)
+--------------------------------------------------
+Ok, this is a really old thread, and not sure if anyones bothered anymore, but found the corrisponding message to the smoke (including the different directions) thats being sent to clients
+
+pfnPlaybackEvent: 0 0 25 0.000000 (50.330997 515.952209 -15.968750) (0.000000 0.000000 0.000000) 0.314277 -4.642597 284 4 0 6
+
+pfnPlaybackEvent: 0 0 25 0.000000 (50.330997 515.952209 -15.968750) (0.000000 0.000000 0.000000) 2.808663 -4.184154 293 4 0 6
+
+pfnPlaybackEvent: 0 0 25 0.000000 (50.330997 515.952209 -15.968750) (0.000000 0.000000 0.000000) 5.999277 -2.942751 195 4 0 6
+
+etc....
+
+note that playback event is also triggered with other things, not just smoke.. (you can detect muzzle flashes, and reload sounds from players with this aswell)
+probably the best way to test what vars produce what smoke is to send them to the HL (CS) engine and see what smoke appears, and what direction it goes in :)
+could be entertaining to have bots trail smoke 
+lol
+
+I should imagine other things like this that no one has been able to detect probably use the same meathod :D
+
+enjoy
+
+--------------------------------------------------
+12/06/02 at 15:55:16  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Thank you Tom for resurrecting this old thread :))
+
+BTW. I'm sending you my updated bot hearing crap. Let me just the time to pick up things in my messy code. Check your email in five minutes...
+
+
+
+--------------------------------------------------
+12/06/02 at 17:16:05  Reply by: RedFox (redfox@nildram.co.uk)
+--------------------------------------------------
+np, just tried sending the call myself, and I get cloads of smoke :)
+
+hmmm, wonder if theirs any other old threads I can solve 
+haha
+
+on with the bots vision system :)
+

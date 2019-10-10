@@ -1,0 +1,102 @@
+--------------------------------------------------
+Subject: Questions about BSP Tools sourcecode
+--------------------------------------------------
+05/10/03 at 07:01:05  Posted by: VH (VeruektesHuhn@gmx.de)
+--------------------------------------------------
+Hi all!
+I have read through the sourcecode of the BSP Tool (viewer) and I have got a question: I want to render the map with DirectX, but therefor I need the texture coordinates. I don't know where they are, after loading the map. Please help.
+
+--------------------------------------------------
+05/12/03 at 11:05:45  Reply by: VH (VeruektesHuhn@gmx.de)
+--------------------------------------------------
+Has no one any idea?
+
+--------------------------------------------------
+05/12/03 at 11:25:20  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+I think you're pretty much on your own on this one.
+
+botman
+
+--------------------------------------------------
+05/12/03 at 11:45:25  Reply by: VH (VeruektesHuhn@gmx.de)
+--------------------------------------------------
+Hmm, ok. Then I'll try to find out how to render this stuff with DirectX... if I'll find it out, I'll tell you.
+
+--------------------------------------------------
+05/12/03 at 13:30:50  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Perhaps search for some open source Quake I level viewers that supports Direct3D and that might give you the source code you need.
+
+botman
+
+--------------------------------------------------
+05/17/03 at 02:53:03  Reply by: VH (VeruektesHuhn@gmx.de)
+--------------------------------------------------
+hi again!
+I have found a quake 1 level loader, and I know where to find the texture coordinates there after loading the level. But there is another problem coming up: I don't understand much of the map loading process in this loader. This alone isn't a problem at all, I could only use the code and after this copy the data I want from the temporary arrays in my arrays. The real problem is, that in Quake 1 ther seem to be no entities, or the loader doesn't support entities. So I know how to get the texture coordinates out of a Quake 1 map file and I know how to load entities out of a Half Life map file. But I don't know how to translate the Quake 1 level loader code to the Half Life level loading situation :(
+
+I hope you understand my problem and help me solving it!
+
+--------------------------------------------------
+05/17/03 at 04:23:52  Reply by: VH (VeruektesHuhn@gmx.de)
+--------------------------------------------------
+Oh, I think I can't see very well ;) I have found something in the viewers source code:
+code:
+
+void Render::render_face(const face_t* face)
+{
+    if (textures[face->texture] == NULL)
+       return;
+
+    textures[face->texture]->bind();
+
+    glTexCoordPointer(2, GL_FLOAT, 0, st_array);
+    glDrawArrays(face->type, face->first, face->count);
+}
+
+
+
+glTexCoordPointer(2, GL_FLOAT, 0, st_array);
+This is the important line, I think.
+I don't know anything about OpenGL, so I have to ask wether this call sets the texture coordinates for the faces texture or not. If it sets the texture coordinates then they would be stored in the global array "st_array", or am I wrong?
+
+And another question:
+code:
+
+glDrawArrays(face->type, face->first, face->count);
+
+
+How can I translate this? "face->first" contains the index of the first edge of the face and "face->count" the number of counts, I think. The "dedge_t" structure looks as following:
+code:
+
+typedef struct
+{
+   unsigned short v[2];    // vertex numbers
+} dedge_t;
+
+
+"v[2]" contains the indices into the vertex array. But why two indices? I thought a edge consists of one vertex? Could you explain this to me, please?
+
+[modified on 05/17/03 at 04:23:52]
+--------------------------------------------------
+05/17/03 at 06:03:27  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+"But why two indices? I thought a edge consists of one vertex? Could you explain this to me, please?"
+
+An edge is a side of a polgon.  A 4 sided polygon will have 4 edges.  Since an edge is a line in 3D space, it must have 2 points (vertexes) to go between.
+
+I'm not sure of the details of many of the OpenGL functions, but you can find some tutorials on OpenGL examples on the NeHe website...
+
+http://nehe.gamedev.net/
+
+The simpler tutorials go into very good detail about what each OpenGL function does.  You might also be able to find some OpenGL API manuals on various websites that would explain the details of OpenGL functions (maybe use google.com to search for "opengl api manual" or "opengl programmers reference" or something similar.
+
+botman
+
+[modified on 05/17/03 at 06:03:27]
+--------------------------------------------------
+06/11/03 at 08:44:15  Reply by: JohnnyGotHisGun (jonnberg@telia.com)
+--------------------------------------------------
+yup I found Nehe's tutorials quite useful for these things (opengl..). Be sure to check out the rope tutorial :)
+

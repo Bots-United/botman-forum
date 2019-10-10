@@ -1,0 +1,258 @@
+--------------------------------------------------
+Subject: If you have a CS bot, you have hitbox issues...
+--------------------------------------------------
+05/08/03 at 05:25:56  Posted by: botman (botman@planethalflife.com)
+--------------------------------------------------
+This thread was started in the hlds_apps e-mail list yesterday...
+
+http://list.valvesoftware.com/mailman/private/hlds_apps/2003-May/000650.html
+
+...and then spilled over into the hlcoders e-mail list...
+
+http://list.valvesoftware.com/mailman/private/hlcoders/2003-May/006205.html
+
+The issue basically revolves around a function that should be exported by any hook-type DLL between the engine and Counter-Strike.  The function that's currently not being exported is Server_GetBlendingInterface().  If you have a non-metamod Counter-Strike bot, you will need to add this function to your DLL and link it to the Counter-Strike version (in a similar manner to the GiveFnptrsToDll(), GetEntityAPI(), or GetNewDLLFunctions().  This is NOT one of the functions you stick in the linkfunc.cpp file since you have to pass a different parameter back and forth (the ones in linkfunc.cpp all pass an entvars_t pointer back and forth).
+
+This function is required to support the 9 way animation blending system that Counter-Strike uses.  Without this function, the hitboxes on the clients WON'T match the hitboxes on the server and people will not get headshots on the server when they should be getting them.
+
+I haven't looked at the DoD v1.0 DLL yet to see if it also uses 9WB (and this function).  Basically, if the DLL for the MOD you are creating a bot for exports Server_GetBlendingInterface(), your DLL will need to hook it to the MOD DLL.
+
+The REALLY interesting thing is that (if I understand things correctly), you CAN'T export this function from your bot DLL code if the MOD doesn't export this function.  So if you have a bot that supports Counter-Strike and ANY other MOD that doesn't use 9WB, you will have to have 2 different (and separate) versions of your bot DLL.  One that only runs on 9WB MODs and one that only runs on non-9WB MODs.
+
+Fun, huh?
+
+botman
+
+--------------------------------------------------
+05/22/03 at 12:36:41  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+*bump*
+
+Now that I have a few time I want to give this tale a look. Unfortunately all the links you provide, botman, require an email and password; and I don't feel like seeing my mailbox flooded my more spam and announcments than it already has. Do you have other (public access) URLs ?
+
+One thing I'd like to have explanations on, especially, is
+QUOTE:
+
+The REALLY interesting thing is that (if I understand things correctly), you CAN'T export this function from your bot DLL code if the MOD doesn't export this function.  So if you have a bot that supports Counter-Strike and ANY other MOD that doesn't use 9WB, you will have to have 2 different (and separate) versions of your bot DLL.  One that only runs on 9WB MODs and one that only runs on non-9WB MODs.
+
+
+
+
+Will Day (metamod) seems to have the fix in, but there are not two versions of the metamod DLL, so what makes you say that botman ?
+
+[offtopic]
+...morality, everyone switches to metamod 1.16 compliance ;D
+[/offtopic]
+
+
+--------------------------------------------------
+05/22/03 at 14:29:17  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Will talked with the guys at Valve (Alfred and others) and determined that you only need to have a single DLL that will properly handle both cases (MODs that support 9-way blending and MODs that don't support 9-way blending).
+
+The metamod code has the fix implemented properly if you don't want to sign up on Valve's e-mail list to view those threads.
+
+Also check out the UA forum where there is a thread on this item...
+
+http://forums.unitedadmins.com/index.php?act=ST&f=187&t=26322
+
+botman
+
+--------------------------------------------------
+05/22/03 at 16:05:21  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Now I DEFINITELY don't want things like that to happen anymore. Can't they just notify people when they make changes in the game that don't reflect on the SDK ? Well, I'm definitively moving my bot to metamod, this time.
+
+Thanks for the info botman.
+
+
+--------------------------------------------------
+05/30/03 at 08:46:49  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+after reading all that stuff.. i am quite dizzy :)
+
+is there a 'simple' sollution for this? SO i can easily update my bot? 
+
+--------------------------------------------------
+05/30/03 at 08:55:59  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Hey Stefan, it's been a long time :D
+
+Duh no, there isn't any 'cut & paste' solution so far... would have been nice heh ? But metamod has the fix implemented in. If you feel the courage to dig into the metamod source code for it, you may eventually find what you want.
+
+Another solution would probably to ask to the guys who are making the 2 most known successors to POD-bot so far (POX bot and [E]POD-bot). Can't remember their names but if you haven't been feloned yet from nuclearbox for your political views ;) you may already know them hehe
+
+
+--------------------------------------------------
+05/31/03 at 04:46:08  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+In fact it's not as complicated as I thought first...
+
+1°) include studio.h
+
+2°) declare a global variable named
+code:
+
+SERVER_GETBLENDINGINTERFACE other_Server_GetBlendingInterface = NULL;
+
+
+just like the way other_GetEntityAPI, other_GetNewDLLFunctions and other_GiveFnptrsToDll are declared
+
+3°) of course you need to define
+code:
+
+// from Eric Smith himself, on Valve's hlcoders mailing list (not in the SDK, required)
+typedef int (*SERVER_GETBLENDINGINTERFACE) (int version, struct sv_blending_interface_s **ppinterface, struct engine_studio_api_s *pstudio, float (*rotationmatrix)[3][4], float (*bonetransform)[MAXSTUDIOBONES][3][4]);
+
+
+just like the way GETENTITYAPI and GIVEFNPTRSTODLL are defined
+
+then the function itself (you can put it just below GiveFnptrsToDll)
+code:
+
+DLLEXPORT_int Server_GetBlendingInterface (int version, struct sv_blending_interface_s **ppinterface, struct engine_studio_api_s *pstudio, float (*rotationmatrix)[3][4], float (*bonetransform)[MAXSTUDIOBONES][3][4])
+{
+   // this function synchronizes the studio model animation blending interface (i.e, what parts
+   // of the body move, which bones, which hitboxes and how) between the server and the game DLL.
+   // some MODs can be using a different hitbox scheme than the standard one.
+
+   static bool missing = FALSE;
+
+   // if the blending interface has been formerly reported as missing, give up
+   if (missing)
+      return (0);
+
+   // do we NOT know if the blending interface is provided ? if so, look for its address
+   if (!other_Server_GetBlendingInterface)
+      other_Server_GetBlendingInterface = (SERVER_GETBLENDINGINTERFACE) GetSymbolInDynamicLibrary (h_Library, "Server_GetBlendingInterface");
+
+   // have we NOT found it ?
+   if (!other_Server_GetBlendingInterface)
+   {
+      missing = TRUE; // then mark it as missing, no use to look for it again in the future
+      return (0); // and give up
+   }
+
+   // else call the function that provides the blending interface on request
+   return ((other_Server_GetBlendingInterface) (version, ppinterface, pstudio, rotationmatrix, bonetransform));
+}
+
+
+
+btw. I have these handy defines:
+code:
+
+#ifdef _WIN32
+   #define DLLEXPORT_void void DLLEXPORT
+   #define DLLEXPORT_bool bool DLLEXPORT
+   #define DLLEXPORT_char char DLLEXPORT
+   #define DLLEXPORT_float float DLLEXPORT
+   #define DLLEXPORT_int int DLLEXPORT
+   typedef HINSTANCE dll_t;
+   typedef FARPROC dll_symbol_t;
+   inline dll_t LoadDynamicLibrary (const char *filename) { return (LoadLibrary (filename)); }
+   inline dll_symbol_t GetSymbolInDynamicLibrary (dll_t dll_handle, const char *symbol_name) { return (GetProcAddress (dll_handle, symbol_name)); }
+   inline int CloseDynamicLibrary (dll_t dll_handle) { return (!FreeLibrary (dll_handle)); }
+#else
+   #include <dlfcn.h>
+   #define DLLEXPORT_void extern "C" EXPORT void
+   #define DLLEXPORT_bool extern "C" EXPORT bool
+   #define DLLEXPORT_char extern "C" EXPORT char
+   #define DLLEXPORT_float extern "C" EXPORT float
+   #define DLLEXPORT_int extern "C" EXPORT int
+   typedef (void *) dll_t;
+   typedef (void *) dll_symbol_t;
+   inline dll_t LoadDynamicLibrary (const char *filename) { return (dlopen (filename, RTLD_NOW)); }
+   inline dll_symbol_t GetSymbolInDynamicLibrary (dll_t dll_handle, const char *symbol_name) { return (dlsym (dll_handle, symbol_name)); }
+   inline int CloseDynamicLibrary (dll_t dll_handle) { return (dlclose (dll_handle)); }
+#endif // _WIN32
+
+
+let me know if something is missing.
+
+[edit]
+added comments :)
+
+[modified on 05/31/03 at 04:43:20]
+
+[modified on 05/31/03 at 04:46:08]
+--------------------------------------------------
+05/31/03 at 12:45:38  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+thanks PM ;) I guess I could also stick this in incase of any other Mods with hitbox  issues, anyone know of anymore? Or is it JUST CS??
+
+--------------------------------------------------
+05/31/03 at 13:10:13  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+CS and DoD are the only MODs that I'm aware of that use the 9 way blending system (which is what causes this problem).
+
+botman
+
+--------------------------------------------------
+05/31/03 at 13:13:26  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Nah, at least DOD uses 9wb too.
+
+I believe it is safe to let the code as is everywhere it can be put. After all all we are doing is completing the interfacing. And in case the MOD doesn't need it, well the function won't be called, that's all.
+
+[€: argh, botman again, that guy is too fast for me :D ]
+
+[modified on 05/31/03 at 13:13:26]
+--------------------------------------------------
+06/03/03 at 12:35:34  Reply by: botmeister (meister@telus.net)
+--------------------------------------------------
+If you use metamod with the hitbox fix but and use it to load a bot without the fix, such as POD, then the hitbox fix won't get passed on.
+
+I added the hit box function to my (mEAn) bot.admin mod by simply ignoring the loaded bot dll (which for old bots does not have the blending function hook) and loading the blending function straight from mp.dll (my mod only supports cstrike). If I understood things correctly, this will provide the hitbox fix even if the loaded bot does not support the fix. 
+
+
+
+--------------------------------------------------
+06/03/03 at 15:28:28  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Now that is a smart hack :)
+
+You could eventually use the same method to provide exports to the other missing functions too ; because the engine API has significantly changed from the time POD-bot 2.5 has been written. And I'm not sure POD-bot 2.6-based bots even checked it out.
+
+Things such as pfnVoice_GetClientListening(), pfnAddServerCommand(), pfnGetAuthId(), etc.
+
+I'm still waiting from Will Day to provide the standard DLL info in the MOD DLL info struct in metamod. It's overriden by mm_gamedll and hence we can't use it in plugins. That's the last thing I miss to finish a plugin to restore single player ability to all MODs.
+
+
+--------------------------------------------------
+06/04/03 at 15:11:44  Reply by: botmeister (meister@telus.net)
+--------------------------------------------------
+You can also get it to work for mods other than cstrike by specifying what mod.dll to get the missing functions from in a command line or ini file (for example).
+
+--------------------------------------------------
+06/04/03 at 15:35:33  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+going offtopic way beyond the horizon, but when will you finally decide to port your bot admin MOD to metamod ? It would save you famous headaches, I assure you.
+
+
+--------------------------------------------------
+06/06/03 at 09:59:28  Reply by: botmeister (meister@telus.net)
+--------------------------------------------------
+Convert to metamod? It's already on my "todo" list. I may give it a try after release 5.0 is finished, perhaps in a couple of weeks or so. It would also be nice to have it work for mods other than cstrike ... then there's the linux version ... I'm going nuts already. If only this was my day job <sigh>
+
+
+--------------------------------------------------
+06/12/03 at 02:55:46  Reply by: JohnnyGotHisGun (jonnberg@telia.com)
+--------------------------------------------------
+
+QUOTE:
+
+Now that I have a few time I want to give this tale a look. Unfortunately all the links you provide, botman, require an email and password; and I don't feel like seeing my mailbox flooded my more spam and announcments than it already has. Do you have other (public access) URLs ?
+
+
+
+
+Sorry for being OT, but why then do you post your email address in every post.
+
+--------------------------------------------------
+06/12/03 at 06:06:55  Reply by: Cheesemonster!!! (cheeseh@houstondod.com)
+--------------------------------------------------
+because it's his sig ;D
+
+He means he'll need to subscribe to something, and he's already subscribed to enough things, its getting spammed with loads of consumer info from subscriptors. ;)
+

@@ -1,0 +1,151 @@
+--------------------------------------------------
+Subject: need help with a random fakeclientcommand system
+--------------------------------------------------
+12/31/00 at 16:59:41  Posted by: NESticle (kefkarules@yahoo.com)
+--------------------------------------------------
+I need some help creating a fakeclientcommand system that is random numbers 1 - 7, that doesnt cause an overflow... here is an error i get
+
+HL caused an invalid page fault in
+module WHLBOT.DLL at 0167:685c4b2b.
+
+and the code below
+
+if (RANDOM_LONG(1, 10) <= 7)
+      FakeClientCommand(pEdict, "menuselect", "3", NULL);
+else if (RANDOM_LONG(1, 10) <= 6)
+      FakeClientCommand(pEdict, "menuselect", "5", NULL);
+else if (RANDOM_LONG(1, 10) <= 5)
+      FakeClientCommand(pEdict, "menuselect", "2", NULL);
+else if (RANDOM_LONG(1, 10) <= 4)
+      FakeClientCommand(pEdict, "menuselect", "6", NULL);
+else if (RANDOM_LONG(1, 10) <= 3)
+      FakeClientCommand(pEdict, "menuselect", "7", NULL);
+else if (RANDOM_LONG(1, 10) <= 2)
+      FakeClientCommand(pEdict, "menuselect", "4", NULL);
+else if (RANDOM_LONG(1, 10) <= 1)
+      FakeClientCommand(pEdict, "menuselect", "1", NULL);
+
+
+--------------------------------------------------
+12/31/00 at 17:23:32  Reply by: Suikun (Phoenix.Tschache@t-online.de)
+--------------------------------------------------
+I would do it that way:
+
+code:
+
+int random = RANDOM_LONG(0,6);
+if(random == 0)
+ FakeClientCommand(pEdict, "menuselect", "3", NULL);
+else if(random == 1)
+ FakeClientCommand(pEdict, "menuselect", "5", NULL);
+else if(random == 2)
+ FakeClientCommand(pEdict, "menuselect", "2", NULL);
+
+...
+
+
+It's a much more secure way to do, what you want to do.
+In your code, almost every else if clause can be true as you calculate different numbers in each one and that way cause your overflow.
+
+--------------------------------------------------
+12/31/00 at 17:20:48  Reply by: NESticle (kefkarules@yahoo.com)
+--------------------------------------------------
+thank you alexander, you've been most helpfull
+
+--------------------------------------------------
+12/31/00 at 17:25:54  Reply by: Suikun (Phoenix.Tschache@t-online.de)
+--------------------------------------------------
+I guess I made a logical mistake in that possibility code and it doesn't work that way, so I deleted it. If you want to work with them, then post it and I will think about it and write the code here.
+
+
+--------------------------------------------------
+12/31/00 at 17:35:46  Reply by: NESticle (kefkarules@yahoo.com)
+--------------------------------------------------
+It still doesnt like it, it crashes with the same message
+
+HL caused an invalid page fault in
+module WHLBOT.DLL at 0167:685c4acb.
+
+I dont understand whats so hard about giving a single random fakeclientcommand with 7 possible outcomes, damn... can you figure it out?
+
+--------------------------------------------------
+12/31/00 at 17:45:28  Reply by: Suikun (Phoenix.Tschache@t-online.de)
+--------------------------------------------------
+The code is correct, so the error must be somewhere else.
+Have you previously checked, if a menu has been opened; is pEdict valid and so on?
+Or haven't you completly rebuilt your DLL or not copied it so the error remains?
+
+--------------------------------------------------
+12/31/00 at 17:53:02  Reply by: NESticle (kefkarules@yahoo.com)
+--------------------------------------------------
+It is all good, i'm trying another method. THanks alot for helping me through this.
+
+--------------------------------------------------
+12/31/00 at 18:39:21  Reply by: NESticle (kefkarules@yahoo.com)
+--------------------------------------------------
+this method of menu selection obviously does not work, i'll need to do another method, my bot is based on wasteland, and when you start WHL there is a menu with skin selection, 7 choices, then there is a menu with secondary weapon selection, that is 6 choices, and the third menu is primary weapon selection, there are 8 choices (i'm leaving out the 8th (lots of ammo!)) so basically there are three menus in a row, i want to make three menu choices with 6-7 selections per choice its not VGUI, its regular menu, any ideas?
+
+--------------------------------------------------
+12/31/00 at 19:30:39  Reply by: Suikun (Phoenix.Tschache@t-online.de)
+--------------------------------------------------
+I'm posting very much today, hopefully, I don't do something wrong...
+When you start Wasteland, you should turn on the debug_engine before you get the first menu. Then go through them and quit HL. In the bot.txt you should now find the bytes sent when a menu appears.
+Then you define some constants which represent that bytes (#define SECONDARY_WEAPON [byte you found out]).
+Somewhere in the bot code there is a function in which the messages are cought; BotStartGame() would be a good place, I guess.
+When you catch the message by it's byte sent you initialize your random stuff for the according (right word?) message and make your selection. Be sure, that you set pBot->not_started = 1, until you made the last selection in the last menu.
+
+Well, I hope, that this is correct and that I'm able to help you with this. I don't know about the Mod Wasteland, so you might have to adjust some things...
+
+(I'm talking too much, right?)
+
+--------------------------------------------------
+12/31/00 at 22:19:49  Reply by: NESticle (kefkarules@yahoo.com)
+--------------------------------------------------
+An example of what you described would be nice.. there is TONS of stuff and its extremely confusing to me...
+
+--------------------------------------------------
+01/01/01 at 05:00:30  Reply by: Suikun (Phoenix.Tschache@t-online.de)
+--------------------------------------------------
+Ok, let's say, you got the bytes 47, 48 and 49 for each menu, so you define them in bot.h:
+code:
+
+#define MENU1 47
+#define MENU2 48
+#define MENU3 49
+
+
+
+After that, you got to the bot.cpp into the BotStartGame() function. There you check, whether the bot already has started the game and if not, what commands he has to perferm. And there we go.
+Perhaps you notice the join team code there, maybe you deleted it...but here is, what to do.
+
+code:
+
+if(pBot->start_action == MENU1) //first menu shown when you start the game
+{
+  int result = RANDOM_LONG(0,6); //that random stuff
+  pBot->start_action = MSG_WL_IDLE; //Yo'll have to find out this on too
+  if(result == 0)
+    FakeClientCommand(pEdict, "menuselect", "3", NULL); //first possibility
+  else if(result == 1)
+    FakeClientCommand(pEdict, "menuselect", "5", NULL);
+   
+   //continue this pattern until you reach 6, so 7 possibilities are given
+  }
+  else if(pBot->start_action == MENU2) //second menu is shown
+  {
+    pBot->start_action = MSG_WL_IDLE; 
+    //random stuff for the second menu
+
+  }
+  //check for the last menu 
+
+  return;
+
+
+
+Don't forget to set pBot->not_started to 0 in the last menu, so the bot will start the game.
+
+I hope, that this was right, anyone correct me please, if I did something wrong.
+I hope, this will help you.
+
+

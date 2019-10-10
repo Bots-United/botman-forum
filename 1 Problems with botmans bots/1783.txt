@@ -1,0 +1,158 @@
+--------------------------------------------------
+Subject: 3 Bugs I found in 1.5a
+--------------------------------------------------
+06/11/01 at 15:26:26  Posted by: CountFloyd (countfloyd@botepidemic.com)
+--------------------------------------------------
+All of this happened while I was playing the DMC MOD, I don't know if it's also true for other MODs:
+1st) A weird one: sometimes some of the characters in a chatmessage of the Bots are swapped. I wouldn't believe it myself if I hadn't seen & verified it.
+
+2nd) If Bots are very close to a Player (or Bot) they won't attack. They just stand there and do nothing (not even trying to unstuck themselves). Only happens when they are nearly 'stuck' in a player but then it happens about 50% of the time.
+
+3rd) HPB-Bot crashed on my machine after some time with a Division by Zero Error. This is the assembly dump of the function:
+code:
+
+6B66DF0   push        ebx
+06B66DF1   push        ebp
+06B66DF2   push        esi
+06B66DF3   push        edi
+06B66DF4   mov         edi,dword ptr [esp+14h]
+06B66DF8   or          ecx,0FFh
+06B66DFB   xor         eax,eax
+06B66DFD   xor         ebp,ebp
+06B66DFF   repne scas  byte ptr [edi]
+06B66E01   mov         ebx,dword ptr [esp+18h]
+06B66E05   not         ecx
+06B66E07   sub         edi,ecx
+06B66E09   mov         eax,ecx
+06B66E0B   mov         esi,edi
+06B66E0D   mov         edi,ebx
+06B66E0F   shr         ecx,2
+06B66E12   rep movs    dword ptr [edi],dword ptr [esi]
+06B66E14   mov         ecx,eax
+06B66E16   xor         eax,eax
+06B66E18   and         ecx,3
+06B66E1B   rep movs    byte ptr [edi],byte ptr [esi]
+06B66E1D   mov         edi,ebx
+06B66E1F   or          ecx,0FFh
+06B66E22   repne scas  byte ptr [edi]
+06B66E24   not         ecx
+06B66E26   dec         ecx
+06B66E27   mov         edi,ecx
+06B66E29   call        06B67F85
+06B66E2E   cdq
+06B66E2F   idiv        eax,edi
+06B66E31   mov         esi,edx
+06B66E33   dec         esi
+06B66E34   movsx       ecx,byte ptr [esi+ebx]
+06B66E38   push        ecx
+06B66E39   call        06B678FB
+06B66E3E   add         esp,4
+06B66E41   test        eax,eax
+06B66E43   je          06B66E57
+06B66E45   movsx       edx,byte ptr [esi+ebx+1]
+06B66E4A   push        edx
+06B66E4B   call        06B678FB
+
+
+
+The crash of course happened at the idiv line.
+
+Hope that this will be of some help... 
+
+--------------------------------------------------
+06/11/01 at 16:48:24  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+1. They're supposed to do that.  :)  They will also occasionally drop characters and will occasionally convert everything to lower case.  It is supposed to simulate a human typing on the keyboard.
+
+2. I'll look into this in the next few days.  I may not have the min and max distance values set correctly for the weapons.
+
+3. It's NOT supposed to do this!  :(  I'll check the .map file to see if I can determine where this divide by zero error is coming from.
+
+botman
+
+--------------------------------------------------
+06/12/01 at 06:02:14  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+I've searched for divide by zero problems in the code and there's only 2 places where this could happen.  One is the code in waypoint.cpp where a deliberate divide by zero is done when a waypoint linked list has too many nodes (this code is only enabled when I compile in debug mode, which the release version of HPB bot is not, so it can't be there).  The other could happen if the max_health setting for a TFC player is zero somehow (which should never happen).  This shouldn't effect DMC.
+
+I can't seem to match the above code to anything similar in my .map file from the Release build of the HPB bot.  This code looks like it's doing some kind of string move and/or compare.  I'm assuming this is one of the standard C functions, like strncmp() or similar.  There may still be a bug in the chat modifications that I made for the humanizer stuff.  I'll have to go back through that code and double check some of the string manipulations that I am doing.  It's SO easy to screw up memory if you aren't careful when playing with text strings in C.
+
+If you continue to experience this problem or others, it would be helpful if you could run Dr. Watson and send me the Watson log.  If you don't play DMC very much then that's okay too.  I'll see if I can reproduce this problem.
+
+P.S. If you edited the bot_chat.txt file maybe you could e-mail me a copy of it.  Maybe there's something in there that's causing this bug.
+
+botman
+
+--------------------------------------------------
+06/12/01 at 08:24:33  Reply by: CountFloyd (countfloyd@botepidemic.com)
+--------------------------------------------------
+"1. They're supposed to do that."
+
+ROTFL ! I'm sorry, I didn't know that the 'bug' is actually a feature ;)
+It's a funny thing didn't see it in the feature list of HPB...
+
+"I'm assuming this is one of the standard C functions, like strncmp() or similar"
+
+Yes, I believe it too. Unfortunately the VC++ Debugger didn't let me see the memory so I can't tell you more. I used the clean install without any modified chats and it only happened once after already playing some maps before so I don't think it's a really annoying problem.
+However the not-attacking-bug is happening quite often here and it's probably either a distance check which goes wrong (or a weapon not assigned) or the Viewing Cone check doesn't work quite right. 
+
+
+--------------------------------------------------
+06/12/01 at 09:10:19  Reply by: kh138 (pizzamonkeyboy@yahoo.com)
+--------------------------------------------------
+I did see them not attacking on DMC as well.  A few times they were just standing there face to face, not doing anything.  Does anyone know how to use different player models in DMC?  
+
+--------------------------------------------------
+06/12/01 at 13:13:45  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+You can select your player model just like you can in regular Half-Life in the Multiplayer->Customize screen.
+
+botman
+
+--------------------------------------------------
+06/12/01 at 14:11:06  Reply by: kh138 (pizzamonkeyboy@yahoo.com)
+--------------------------------------------------
+It seems to use the valve/models directory, I can make the bots use the models i want if i put it in the bot.cfg.  Is there a way to make the bots randomly pick any old player model that is in the valve folder though?  Its seems if i let them be random they just pick the standard models.
+
+--------------------------------------------------
+06/12/01 at 14:12:57  Reply by: Poppydog3 (Poppydog3@hotmail.com)
+--------------------------------------------------
+I dont think many people know that.
+I was playing on a server where about 6 people were using the HLHevsuit model :)
+
+
+
+--------------------------------------------------
+06/12/01 at 14:43:15  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+"It seems to use the valve/models directory"
+
+Yes, mods will use the valve\models\player folder for player models if they don't have their own mod\models\player folder.
+
+"Is there a way to make the bots randomly pick any old player model that is in the valve folder though?"
+
+No, there isn't any code right now that will scan the valve\models\player folder and look for folders that contain a .mdl file with the same name as the model folder name.  There is a hard coded list of "standard" Half-Life models that get used for Half-Life deathmatch or DMC.  If you want to specify custom models then you have to provide that on the console "addbot" command or in the bot.cfg "addbot" command.
+
+botman
+
+--------------------------------------------------
+06/12/01 at 16:18:55  Reply by: kh138 (pizzamonkeyboy@yahoo.com)
+--------------------------------------------------
+ok, i just made seperate mapname_bot.cfg's so that the models change on every map.  I just get bored of fragging the same faces over and over.  Here is an amusing picture of that Bug that Count Floyd was talking about in action.
+
+http://www.geocities.com/pizzamonkeyboy/mayi.html
+
+
+
+--------------------------------------------------
+06/13/01 at 05:05:40  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+I think that's the Tango! :)
+
+botman
+
+--------------------------------------------------
+06/29/01 at 04:42:13  Reply by: housemuzic (palmerandrew@hotmail.com)
+--------------------------------------------------
+one way to stop them from standing face to face is to pull out the rocket launcher ;-)
+

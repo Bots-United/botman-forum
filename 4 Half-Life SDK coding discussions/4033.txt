@@ -1,0 +1,61 @@
+--------------------------------------------------
+Subject: DMC linux compiling
+--------------------------------------------------
+01/13/03 at 00:18:58  Posted by: DiVeBoMbeR (free_fall@attbi.com)
+--------------------------------------------------
+I am trying to get the dmc_i386.so to compile for linux dedicated server, I am using gcc 2.91.66 on redhat 8.0. It compiles with no errors but when i try to use it on my server I get this error, and the server dies.
+dmc_i386.so: undefined symbol: cos
+I tried to get it to do a core dump, but it did not generate one. even with the -debug in the command line.
+Any help would be much appreciated.
+Thanks
+<-=F=-*DiVeBoMbeR*-=F=->
+
+--------------------------------------------------
+01/13/03 at 05:41:59  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+This question has already been worked out, I think you miss an include file. Add "-lm" to the compiler flags in order to include the GCC math library.
+
+
+--------------------------------------------------
+01/13/03 at 16:34:43  Reply by: DiVeBoMbeR (free_fall@attbi.com)
+--------------------------------------------------
+Thanks :)
+But can someone give me an exapmle of what the line in the makefile should look like and where it needs to go? I am kind of a noob at this stuff, I can't seem to get it to work, I always get this error when it starts to compile.
+
+linker input file unused
+since linking not done
+
+sorry i'm sure it's something dumb.
+:)
+<-=F=-*DiVeBoMbeR*-=F=->
+
+--------------------------------------------------
+01/13/03 at 16:56:42  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+The Makefile for the SDK 'dlls' directory has the following lines in it...
+code:
+$(DLLNAME)_$(ARCH).$(SHLIBEXT) : neat $(OBJ)
+      $(CC) $(CFLAGS) $(SHLIBLDFLAGS) $(LDFLAGS) -o $@ $(OBJ)
+
+This is what produces the .so shared library file.  It runs $(CC) (which is defined at the top of the Makefile as 'gcc'), and uses $(CFLAGS) (which is $(BASE_CFLAGS) plus "-w -m486 -O1") and that gets followed by ($SHLIBLDFLAGS) (which is defined as "-shared" at the top of the Makefile).  This is all followed by $(LDFLAGS) (which expands to nothing since it doesn't have anything assigned to it at the top of the Makefile).
+
+If you change this line...
+code:
+LDFLAGS=
+
+...to this...
+code:
+LDFLAGS=-lm
+
+...it will include "-lm" on the command line when running the linker to build the .so shared library file and that will get rid of your "undefined symbol: cos" error message.
+
+botman
+
+[modified on 01/13/03 at 16:56:42]
+--------------------------------------------------
+01/13/03 at 17:36:43  Reply by: DiVeBoMbeR (free_fall@attbi.com)
+--------------------------------------------------
+Thank you very much botman
+Worked like a charm:)
+<-=F=-*DiVeBoMbeR*-=F=->
+

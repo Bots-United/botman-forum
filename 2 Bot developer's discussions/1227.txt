@@ -1,0 +1,176 @@
+--------------------------------------------------
+Subject: Problem of debugging
+--------------------------------------------------
+02/15/01 at 12:08:52  Posted by: Seaman (seaman@tula.net)
+--------------------------------------------------
+    When I try to start in debugger MSVC a botman's template, right after loadings of a map the server stops work without the error message. Build, Start Debug, Attach to Process gives the same result. 
+
+Here's what I'm using: 
+
+  In the menu for Project, Settings: 
+   C:\Half-Life\hl.exe 
+
+  Working directory: 
+  C:\Half-Life 
+
+  Arguments: 
+  -game cstrike-sw-developer-w 640-console
+
+Somebody can help?
+
+
+--------------------------------------------------
+02/15/01 at 13:20:36  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+Check out this thread on debugging with MSVC...
+
+http://dynamic.gamespy.com/~botman/yabb/YaBB.pl?board=2&action=display&num=1075
+
+botman
+
+--------------------------------------------------
+02/15/01 at 16:07:54  Reply by: Seaman (seaman@tula.net)
+--------------------------------------------------
+ > Check out this thread on debugging with MSVC...
+
+   I have not seen there anything, that would help to solve a problem :(
+
+--------------------------------------------------
+02/16/01 at 04:41:15  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+Did you read the tutorial on Wavelength and do what it says?
+
+http://planethalflife.com/wavelength/coding/tutorials/34.htm
+
+botman
+
+--------------------------------------------------
+02/16/01 at 05:56:34  Reply by: Seaman (seaman@tula.net)
+--------------------------------------------------
+ > Check out this thread on debugging with MSVC...
+
+ > http://dynamic.gamespy.com/~botman/yabb/YaBB.pl?board=2&action=display&num=1075
+
+Did precisely how there it is specified.
+
+Ok. I try as follows:
+  1) I start " hl.exe-sw-console-developer "
+  2) I start game - " Multiplayer-> Lan game-> Create game "
+  3) In MSVC Build-> Start Debug-> Attach to Process
+  All is normal.
+
+Other experiment:
+  1) I change \cstrike\liblist.gam
+      ..
+       // the Boat is not used!!!
+       // gamedll "dlls\HPB_bot.dll"
+       gamedll "dlls\mp.dll"
+      ..
+  2) I start hl.exe-game cstrike-sw-console-developer
+  3) I start game - " Play CS-> LAN Games-> Create Game "
+  4) In MSVC Build-> Start Debug-> Attach to Process
+  The server stops work....: (
+  There can be a problem consists in CounterStrike?
+
+  My configuration:
+    Windows2000 Prof (SP1)
+    MSVC6.0 (SP2)
+    CounterStrike v. 1.0
+    Half-Life Exe version 1.1.0.4, 
+     Exe build: 10:37:25 Oct 23 2000 ( 1460 )  
+
+  To Botman: how you debug bot for CounterStrike?
+
+
+
+--------------------------------------------------
+02/16/01 at 06:53:31  Reply by: theimann (tobias.heimann@cl.cam.ac.uk)
+--------------------------------------------------
+If you are using HL1104, there isn't really any difference of debugging a HL or a CS game. You should (under projectConfiguration - debug) change the additional dlls that get loaded and include your bot-dll in the cstrike/dlls folder. That's it.
+I don't get your current situation: are you able to debug HL and it's just a CS problem or can't you debug any of them? Did you set the DEF-file correctly? When you are trying to debug CS, do you use the 1.0-version or the older one that you load from HL?
+
+Tobias
+
+--------------------------------------------------
+02/16/01 at 10:45:09  Reply by: Seaman (seaman@tula.net)
+--------------------------------------------------
+> I don't get your current situation: are you able to debug HL and it's just a CS problem or can't you debug any of them? 
+My current situation consists in the following: I can not start CS in a debugger (with HL - there are no problems) is not dependent on, whether I use bot-dll or standard mp.dll. After loading a map, game is finished as if on command "quit" in console.
+> Did you set the DEF-file correctly? 
+Yes. The problem is shown at debugging HL with the command line "-game cstrike ".
+> When you are trying to debug CS, do you use the 1.0-version or the older one that you load from HL? 
+HL1104
+
+Seaman
+
+
+--------------------------------------------------
+02/16/01 at 13:26:39  Reply by: zoom (fu@shai.com)
+--------------------------------------------------
+I have the same problem starting a debug session for CS.  I can, however, attach to the process once it's up and running.
+
+
+--------------------------------------------------
+02/16/01 at 14:38:41  Reply by: CountFloyd (countfloyd_1999@yahoo.com)
+--------------------------------------------------
+It's the same on my computer. HL starts, Cs does all the necessary initialisation and right when the Server is started CS exits just as if you typed "quit" into the console. This always happen if I have some breakpoint inserted or if I attach it as process. 
+Here's how I'm able to debug a single routine:
+1) I'm placing a non-valid assert condition into the line I want to start debugging
+2) I run CS just like normally
+3) CS breaks on the assert line and asks me if I want to debug
+4) I'm able to debug with MSVC as long the routine doesn't get back to Startframe
+
+My best guess is that either HL 1.1.04 or CS 1.0 has some kind of debug protection to prevent Lamers from hacking some more cheats. Does anybody know how to patch it so debugging works ?
+
+--------------------------------------------------
+02/16/01 at 20:47:36  Reply by: yotaku (acoates@uci.edu)
+--------------------------------------------------
+Whats this def-file thing?
+
+is it just this line in the project settings?
+or do I have to create a .def file myself?
+/debug /machine:I386 /def:".\HPB_bot.def" 
+
+--------------------------------------------------
+02/17/01 at 09:21:08  Reply by: theimann (tobias.heimann@cl.cam.ac.uk)
+--------------------------------------------------
+The DEF-file is already included in the HPB-template so you don't have to create it yourself. The only thing you have to do is to copy the correspongin option from the release project settings to the debug project settings.
+
+Tobias
+
+--------------------------------------------------
+02/20/01 at 14:32:15  Reply by: CountFloyd (countfloyd_1999@yahoo.com)
+--------------------------------------------------
+Ahem...the problems I'm having with debugging surely has nothing to do with a missing .def File.
+
+--------------------------------------------------
+02/27/01 at 04:50:31  Reply by: theimann (tobias.heimann@cl.cam.ac.uk)
+--------------------------------------------------
+I suspect the problems of debugging CS 1.0 have something to do with the fact that you can't run it in a window anymore. For debugging HL you have to use windowed mode as well (AFAIK) otherwise you won't be able to switch between HL and the debugger.
+
+Tobias
+
+--------------------------------------------------
+02/27/01 at 06:51:18  Reply by: CountFloyd (countfloyd_1999@yahoo.com)
+--------------------------------------------------
+No, I can run CS 1.0 in windowed mode (and of course do this for debugging) without any problems and it doesn't make a difference if I turn on software rendering or even turn off mouse handling. It has to be something else, maybe coming with the newest update.
+
+
+
+--------------------------------------------------
+02/28/01 at 04:31:46  Reply by: theimann (tobias.heimann@cl.cam.ac.uk)
+--------------------------------------------------
+You are right. I managed to get in windowed mode too (finally found the "-win" param...) but in the moment the debugger gets activated the game exits. There must be something in CS causing that because I can debug HL1004 as well as TFC without any problems.
+Another question: Does anybody know how to set the default debugger in Win98? I installed Delphi5 after MSVC and if I try the invalid assert as proposed by CF, the sh**ty Delphi-debugger starts up every time. I had a search in the registry but didn't find any "debugger" keys...
+
+Tobias
+
+--------------------------------------------------
+02/28/01 at 04:56:55  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+I would suggest uninstalling MSVC then reinstall it to make it be the default debugger.
+
+There was something on the www.mingw.org site about a "just-in-time" debugger that explained how the "default" debugger stuff worked, but I can't seem to find it now.
+
+botman
+

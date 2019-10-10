@@ -1,0 +1,190 @@
+--------------------------------------------------
+Subject: pBot->current_weapon.iId Problem
+--------------------------------------------------
+12/23/03 at 00:47:04  Posted by: Akz (-)
+--------------------------------------------------
+I have another problem with my PVK bot again:
+Always when i call pBot->current_weapon.iId, it just returns NULL. What can cause this?
+
+--------------------------------------------------
+12/23/03 at 01:42:34  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+The bot probably doesn't catch the right network messages that are sent when players switch weapons, and thus the current_weapon pointer is never filled and stays NULL.
+
+When porting your bot to another MOD, you have to ensure each network message that is caught in bot_client.cpp still works exactly the way it's meant to (and this is most often NOT the case).
+
+If you want to see another (more generic) method of handling weapons, easily portable to other games and MODs, look in the RACC template 2 source code (d/l available from my website).
+
+--------------------------------------------------
+12/23/03 at 03:14:46  Reply by: Akz (-)
+--------------------------------------------------
+The message looks exactly same as in normal Half-Life:
+
+pfnMessageBegin: edict=5816774 dest=1 type=65
+pfnWriteByte: 1
+pfnWriteByte: 7
+pfnWriteByte: 6
+pfnMessageEnd:
+
+[modified on 12/23/03 at 03:14:46]
+--------------------------------------------------
+12/23/03 at 04:38:05  Reply by: Cheesemonster!!! (cheeseh(at)rcbot(dot)net)
+--------------------------------------------------
+You still need to update your engine.cpp file to catch the weapon messages if the mod is PVK, and not just normal half life
+
+--------------------------------------------------
+12/23/03 at 05:47:01  Reply by: Akz (-)
+--------------------------------------------------
+Ahh, got it to work already.
+
+--------------------------------------------------
+12/23/03 at 06:38:30  Reply by: Akz (-)
+--------------------------------------------------
+Oh, I have another weird question:
+PVK has two classes what uses a reloadable weapon, a captain pirate and a sniper. I'm trying to get my bot to reload when ammo is reduced to 0 even if the bot is in combat, but only the captain pirate will reload his weapon in combat. Sniper reloads if he doesn't see his enemy when starting to reload. Sniper has actions for attack key 1 and 2, Captain's weapon uses only attack key 1. Really weird, isn't it?
+
+[modified on 12/23/03 at 06:38:30]
+--------------------------------------------------
+12/23/03 at 13:20:47  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Waitwaitwait.
+
+Do you want us to post the whole heap of code that should do what you want in a copy'n'paste fashion, or is there something in particular in this approach you don't understand, and on which, specifically, you request help ?
+
+Hint number 1. If you're using botman's template, the function you should mess with is BotFireWeapon(). In this function there are already a good heap of examples for different combat behaviours based on weapon and player class.
+
+
+--------------------------------------------------
+12/23/03 at 13:30:28  Reply by: Akz (-)
+--------------------------------------------------
+I have wasted lots of time trying to fix this, but nothing seems to work.
+code:
+
+if(pBot->current_weapon.iClip <= 0)
+{
+    pBot->pEdict->v.button = IN_RELOAD;
+}
+
+
+That's my reload code in BotFireWeapon() function. Just read my previous post better if you think that i don't need help in this. It's so weird problem that i just can't figure out what causes that?
+
+--------------------------------------------------
+12/23/03 at 22:50:42  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+What causes what ?
+I may be completely dumb, but once again I don't understand what you want.
+
+Let's say you've got a function to tell the class of a player, PlayerClass().
+code:
+
+// if captain pirate or sniper AND in combat AND ammo = 0, reload
+if (((PlayerClass (pBot->pEdict) == PVK_CLASS_CAPTAINPIRATE)
+     || (PlayerClass (pBot->pEdict) == PVK_CLASS_SNIPER))
+    && !FNullEnt (pBot->pBotEnemy)
+    && (pBot->current_weapon.iClip == 0))
+{
+   pBot->pEdict->v.button |= IN_RELOAD;
+   return;
+}
+
+
+is it that you want ?
+
+Also note that the clip ammo is not correctly handled in botman's template, you need to apply a few fixes. Especially the clip ammo is not reported right for the last clip (i.e. when there is no other ammo left than what's already in the clip).
+
+Now be specific. Is it that the code you posted does not work, or do you not know how to do what you want.
+
+
+--------------------------------------------------
+12/24/03 at 00:55:18  Reply by: Akz (-)
+--------------------------------------------------
+"I'm trying to get my bot to reload when ammo is reduced to 0 even if the bot is in combat". Ahh, I'm just trying to get my bot to reload his weapon. That's all what I want.
+
+--------------------------------------------------
+12/24/03 at 01:15:44  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Well, if your question is "how do I make a bot reload its weapon ?", then the answer is, "to make a bot reload its weapon, ensure the 'button' parameter in RunPlayerMove is bitmasked with IN_RELOAD". This is the base truth. After that, if you want to take this to a higher level, you ensure your bot's pEdict->v.button is correctly handled everywhere, and you put stuff in BotFireWeapon() or whatever function that is supposed to make your bot behave in combat.
+
+Geez, I'm still amazed with the difficutly to make people realize we're not looking in their back when they code...
+
+
+--------------------------------------------------
+12/24/03 at 02:26:11  Reply by: Akz (-)
+--------------------------------------------------
+Ok, ok. I don't want to be a fool. I'll try to fix it  myself. Actually, my bot does reload his weapon already, but only if he doesn't see me.
+
+Edit: Got it to work now. Just putted the reload code  after if (use_primary) and if (use_secondary).
+
+[modified on 12/24/03 at 02:26:11]
+--------------------------------------------------
+12/24/03 at 07:56:35  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+sounds to me you use botmans way of handling stuff:
+
+if enemy()
+fight enemy
+else
+do everything else (including reloading)
+
+instead you should split the things more:
+
+if (i have enemy)
+ fight enemy()
+else
+ find goal to move to or something
+
+think_about_stuff_you_always_should_think_about();
+
+even more abstract:
+sense();
+think();
+act();
+
+;) @ pierre :D
+
+--------------------------------------------------
+12/24/03 at 08:02:59  Reply by: Cheesemonster!!! (cheeseh(at)rcbot(dot)net)
+--------------------------------------------------
+if ( task->timeout )
+  task fail;
+
+switch ( task )
+{
+task_reload:
+  Reload();
+  done task;
+break;
+task attack:
+  m_pEnemy = task->edict;
+
+  look_task = FACE_ENEMY;
+
+  if ( !EntityIsAlive(m_pEnemy) )
+  {
+    done task;
+    break;
+  }
+
+  if ( m_pCurrentWeapon->OutOfAmmo() )
+      AddTask(task_reload);
+  else
+      PrimaryAttack();
+break;      
+}
+
+my method-ish :D
+
+
+
+[modified on 12/24/03 at 08:02:59]
+--------------------------------------------------
+12/24/03 at 10:56:35  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+lol guys, stop it, you're just puzzling the guy ;D
+
+
+--------------------------------------------------
+12/24/03 at 13:34:13  Reply by: Akz (-)
+--------------------------------------------------
+As i said in my previous message, i have already fixed it.
+

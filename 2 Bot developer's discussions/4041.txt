@@ -1,0 +1,432 @@
+--------------------------------------------------
+Subject: Navigation Meshes
+--------------------------------------------------
+01/14/03 at 06:05:43  Posted by: botman (botman@planethalflife.com)
+--------------------------------------------------
+I recently bought "AI Game Programming Wisdom" and have been reading through many of the chapters in this book.  This is an EXCELLENT resource for anyone doing any kind of AI programming for games.  William van der Sterren has several good sections on squad tactics.  There's some in depth discussion of A* pathfinding and A* performance enhancements as well as some great sections on navigation, flocking, fuzzy logic, neural nets and genetic algorithms.
+
+One article that really impressed me was the one about Navigation Meshes (NavMesh) by Paul Tozour (from Ion Storm).  Paul details a procedure for taking polygons in a 3 dimensional world and merging them and creating navigation nodes from these.  Neighboring nodes are merged when possible into a single larger node to create a network of nodes that can easily be used for navigation purposes.
+
+Polygons that are too small to be useful are filter out and he gives a techinque for subdividing nodes that contain obstacles (such as tables or crates) that aren't part of the world's floor geometry but need to be excluded because they would be obstacles during navigation.
+
+If you haven't at least looked through this book at your nearest bookstore, I highly recommend taking a look and buying yourself a copy.
+
+I have liked the "Game Programming Gems" series for quite a while, but it's nice to see an entire book with articles dedicated to AI programming from some of the leading AI developers in the gaming industry.  :)
+
+botman
+
+--------------------------------------------------
+01/14/03 at 06:59:55  Reply by: William (william@cgf-ai.com)
+--------------------------------------------------
+FYI, Paul Tozour was responsible for the solid AI in the Mechwarrior games (up until Mechwarrior2).
+He then moved to Ionstorm Austin, and is responsible for the AI library and tools for shared by the upcoming Thief3 and Deus Ex 2 games. He also wrote many great articles for the game programming gems series.
+
+Steve Rabin (editor of AIWisdom) has pointers to the cheapest on-line shops for AI Wisdom: see http://www.aiwisdom.com
+
+Later this year, a sequel to AIWisdom will be published - it's currently being written.
+
+--------------------------------------------------
+01/14/03 at 12:32:04  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+I am dreaming after this book for ages.
+If only I had enough money to afford it. That's all :(
+
+
+--------------------------------------------------
+01/14/03 at 14:17:21  Reply by: RedFox (redfox@nildram.co.uk)
+--------------------------------------------------
+Interestingly, I reinvented this wheel before I got the book. Was after reading the Q3 docs tho. Decided I could do it better
+Its what the bots use (well, the unreleased/half finished ones) to navigate at the moment..demo on my site of them useing it
+
+If I'd finished the theory a few months before christmas, I would have writtern an article for the next AI wisdom book :p
+Uses a new (as far as I know) system for navigation...not A* but with better results (can take any route, but always heads towards its goal)...it isn't NP and it can be pre computed (working on that at the mo)...worst case for the precomputed data is 8meg, under maps like dod_cean2 (covers the map with 3000 areas)
+
+The first version just ran as it was needed (extreamly quickly..atleast comprable to A*), but I want to be able to work out complete routes before running them
+gonna use it to let the bots predict where an enemy that went out of site might end up..hence needing full routes and using pre computed data..heh
+
+ok, rambling now
+
+if theirs an AI wisdom 3 I'll try submitting an article on it then :)
+
+--------------------------------------------------
+01/14/03 at 14:34:02  Reply by: William (william@cgf-ai.com)
+--------------------------------------------------
+Tom,
+
+are you sure you need 8MB for 3,000 areas/waypoints?
+
+With a straightforward pre-computed NxN table, you would need only 4.5MB, if you do the following:
+- per area/waypoint, record all outgoing areas/waypoints
+- limit path-finding to use the first 15 outgoing areas/waypoints only (you may need to change the order of the outgoing waypoints to prevent isolating areas)
+- for each from-to pair in the NxN table, record the index to the next waypoint/area to visit (which is in [0, 0xe], or 0xf to signal there is no path available.
+
+That way, you only need 3000 * 3000 * 1/2 byte = 4.5MB. You can't lookup paths much faster than this.
+
+--------------------------------------------------
+01/14/03 at 16:33:32  Reply by: RedFox (redfox@nildram.co.uk)
+--------------------------------------------------
+it has a little bit more than that to work out :)
+but your right, in that case it'll be closer to 4meg..
+just over estimating, cus of a few other things that go with it
+heh
+
+hmm, good idea, I like that
+
+hey will, any idea if they'll be a AI wisdom 3?
+
+--------------------------------------------------
+01/14/03 at 17:21:38  Reply by: CountFloyd (countfloyd@botepidemic.com)
+--------------------------------------------------
+@ Botman:
+
+I should re-read that article, doesn't it build something like a 2d representation of the world ? Can it build ladder/teleport Navigation nodes somehow ?
+ 
+@ Tom:
+
+AI Wisdom 2 isn't even out ?!? See here:
+http://www.aiwisdom.com/
+--------------------------------------------------
+01/15/03 at 00:41:07  Reply by: CountFloyd (countfloyd@botepidemic.com)
+--------------------------------------------------
+Sorry disregard my post above, just read that article again and yes it's very impressive. Did you try doing that already Botman ? I feel brainwashed now and consider trashing my autowaypointing method...is it possible to divide the resulting navigation mesh easily into rooms somehow ? If not, is there a better way to do this than using visibility info ?
+
+[modified on 01/15/03 at 00:41:07]
+--------------------------------------------------
+01/15/03 at 01:59:52  Reply by: William (william@cgf-ai.com)
+--------------------------------------------------
+>hey will, any idea if they'll be a AI wisdom 3? 
+
+That's primarily a commercial decision by the publisher, and it problably depends on:
+- sales figures for AI Wisdom 2
+- expected "reduction in content" compared to AI Wisdom 1 and 2
+- Steve Rabin's availability as an editor (he installed a solid review process, and put in a tremendous amount of time for the first book)
+
+The second point refers to the fact that the best articles tend to be submitted first, leaving the more exotic, less common articles for later books.
+Many people perceived a drop in value going from Game Programming Gems 1 to 3.
+
+I'll be contributing an article about "Path look-up tables: small is beautiful" to AIWisdom 2.
+
+--------------------------------------------------
+01/15/03 at 05:07:14  Reply by: RedFox (redfox@nildram.co.uk)
+--------------------------------------------------
+@will
+should be interesting, definatly getting book 2 anyway
+
+the stuff on the blackboard achitecture in the current books great, definatly useing that
+
+your stuff was great aswell (uhm, you are the same william I take it..perhaps I made a mistake :p )
+going to use somthing very similar, just with no internal communications
+they'll have a system for letting them figure out what a players doing, so humans can be involved :)
+
+@count
+on maps like 2fort, its pretty good at defining rooms
+but when you get onto maps like dod_cean2, that idea goes out the window
+
+will, you did somthing on this didn't you? just using wpts...checking bounds and if the sky was visible
+
+perhaps if you do stuff like define a room as several areas it would help
+
+as to my nav lookup table, I'd forgot to mention it doesn't list the next area to goto
+given a start and end destination, each area has a weight, so that the bot can take any route it decides on (without having a fixed one alread) as it needs it
+
+think of the areas being aranged into a funnel, with the destination at the bottom, and the start at the top..
+put the bot at the start, and it'll have to move towards the end..
+it can take any route through the areas, but only ever towards the end :p
+
+started working on this when I started the bots, only recently got it to work well and efficiently :D
+
+why have every route? say a scout drops of the balcony in 2fort, a hwguy appears the other side, it can change its route with no extra processing atall (to go via the water)
+
+if the whole routes been already worked out, it can be pre run and given extra weights for distance..danger..light levels..cover..or a mix of all of them
+
+the final reason, and the best one if yah ask me
+if a bot sees a player go out of sight, it can guess some destinations for it, and know every route it can possibly take
+humans can do this extreamly easily, so thought it was time a bot could aswell :)
+giving them the ability to guess (without cheating) where players could be given how long its been
+could also be used to work out if it was same to rush on de_dust or not
+
+
+
+oh, the nav meshes...I'd guess they'd be scalable to upto thinks like tribes2 landscapes, so that should be interesting to try at some point :)
+I found that if you build the meshes by buulding the whole map, and taking the smallest areas, and looping, that you can remove details and end up with huge areas with smaller ones around detailed geometry
+building can be a lill time consuming, but the results are really good
+
+--------------------------------------------------
+01/15/03 at 05:44:46  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+CF, I haven't tried to implement anything yet, but I definitely will make use of this for a new "super secret" game that Gearbox is working on (to be announced sometime around the time Halo PC comes out).
+
+Paul Tozour just barely touches on the fact that you can create "links" between NavMesh nodes.  I would assume this is a post-processor that loops through all the entities in the world of this type (ladders, teleporters, elevators, etc.) and adds additional "portals" between NavMesh nodes at each end of these.
+
+One thing that wasn't discussed was how to handle "portals" between NavMesh nodes like windows or ledges (where you have a one way path going from a higher point to a lower point and no path back the other way).  I would assume this is another case of a portal between 2 NavMesh nodes.  He does mention something about filtering out places where you don't want to create nodes (like the window sills of windows, or the upper part of railings on starways, etc.).
+
+One of the things that impressed me what how you could keep combining polygons to get down to the minimal amount of space necessary to represent the world's walkable surfaces.  Reducing the amount of memory used can be a big factor especially when you are building games for consoles like XBox, PS2, etc. (hint, hint! ;D).
+
+Perhaps somebody can take a crack at creating a generic tool for Half-Life maps that will generate a NavMesh and make that publicly available.  This will save some people some time in implementing it and they can use the time to try to improve it or add to it (unless you REALLY want to implement it yourself so that you fully understand exactly what's happening at a lower level).
+
+botman
+
+[modified on 01/15/03 at 05:44:46]
+--------------------------------------------------
+01/15/03 at 05:53:19  Reply by: RedFox (redfox@nildram.co.uk)
+--------------------------------------------------
+perhaps I should release the compiler and the file specs then :p (won't be released until alls working well)
+as to the file sizes...
+
+dod_cean2..3000+areas 75k file
+thats with links between areas aswell...
+that small enoughf for consoles?
+
+not got as far as 1way links...or the ability to dorp of ledges..teleporters etc
+but I have dealt with water and ladders (hmm, the screen shots should still be on the news pages somewhere)
+
+ladders and water have stacked areas...so thats solved them :)
+
+teleporters and dropping paths will just need a patch added to the nav system
+as their can be lots, I'll limit how many can be done in 1 complete route
+
+--------------------------------------------------
+01/15/03 at 06:00:42  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Tom, don't forget that not all ladders are straight up and down vertically.
+
+I seen many maps where ladders are used to navigate sloped surfaces that are normally to steep for the player to walk on.
+
+botman
+
+--------------------------------------------------
+01/15/03 at 07:42:12  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Computing, assembling and delimiting navigation meshes is one point, linking them together through portals is another.
+
+I have to put my 2 cents in once again. I still consider myself as a n00b in game programming, but I don't see why you would always consider these two steps as an indissociable part of the same process (building an usable representation of the 3D virtual world, that is).
+
+First point is creating and delimiting the zones.
+
+There are basically two methods. The first one resembles the one used by Jean Paul van Waveren in his Quake 3 Arena bot, ie, fattening the world and having the empty space divided into zones by a BSP algorithm, which will sorta be the complementarity of the world divided into BSP by the map compiler algorithm. The "zones" are then convex blocks of free space.
+The second method is what I am using, ie instead of considering 3D space, consider 2D space and only take in account the faces in the map BSP data a player can stand on. The "zones" are then convex faces of material.
+Each method has its advantages and drawbacks.
+The first method's main advantage is that it obviously takes in account the third dimension, thus enabling efficient reachability calculations. But its first drawback is that its layout is highly dependent on how the BSP algorithm splits the free space. One can have for example, several of these "zones" overlapping each other along the vertical axis, which is obviously not what we want, since players are more likely to move at flat than vertically, unless the game features some sort of Jetpack ala Duke Nukem 3D. Moreover, the reachability calculations can be wrong because of this bad splitting (ie, a whole zone being recorded as "reachability through crouching (or proning)" just because one of the walls delimiting that zone is bent so as forcing the player to crouch when he wants to get close to it (hope you see the case I mean).
+The second method's main advantage is that it is much more fast, and much more easy. We just have to define the rules that make faces walkable, then pick them up in the world data and possibly interpret them through one's own (portable) structure for describing them, joining the adjacent ones altogether so as to easily create hierarchical zones (very handy for pathfinding). Its main drawback is that it doesn't obviously take in account the vertical dimension, and thus many faces are listed as potentially walkable whereas no player could stand upon then (because of ceiling too low, or because of no reachability at all).
+
+However I wouldn't dare to tell which one is the best, because as this is the first point (delimiting zones, that is) both of them do the job reliably enough.
+
+The second point then, is how to link these zones altogether. I am making this one distinct of the first, see why.
+
+Also, there are two ways of building this database. The first one is pre-processing, which goal aims at having the complete database built and ready for use as soon as the first bot spawns. I will skip over the detail of the complicated computations involved. Advantage: pathfinding data ready to use, drawback: data often inaccurate, and long preprocessing time.
+
+But why on earth doesn't anybody seem to consider worthy the second way around ?
+
+Player motion tracking.
+
+Player motion tracking has been used countless different ways for automatic waypointing, with passable to good results. It's a very common thing. But it's not the point here.
+
+Why not using player motion tracking in order to record the reachabilities between the zones ? I mean, instead of having the players laying waypoints all around, why not just keeping track of the last zone the player was in, comparing it to the zone he is currently in, and given his past actions and his current movement state, deducing the type of reachability between both these zones ?
+
+You can SIMPLY and ACCURATELY keep track of
+- walk reachabilities
+- crouch reachabilities
+- jump reachabilities
+- water reachabilities
+- ladder reachabilities
+- elevator reachabilities
+- teleporter reachabilities
+- door reachabilities
+- WHOLE SERIES of COMPLEX BUTTON MANIPULATION reachabilities
+
+darn what the hell would you want more ?
+While you're at autowaypointing, at least do it a clever way !
+
+If you're disappointed by keeping tracks of players laying waypoints all around because you can't get your bots to use teleporters and such, don't throw the whole player motion tracking concept away ! It's 100 times better worth the go than preprocessing computation. If you intend to develop a commercial game, just have the game testers spend a few hours wandering through the levels so as to build your AI its pathfinding database that way. Ain't I right ?
+
+I wish I could show you a demo of my bots performing all the pathfinding actions I mentioned, unfortunately I've still problems with my quadtree. I will also update my BSP stuff on these forums when I'll get everything working and that will possibly fit the "open source nav mesh library" botman was talking about.
+
+
+--------------------------------------------------
+01/15/03 at 08:14:28  Reply by: RedFox (redfox@nildram.co.uk)
+--------------------------------------------------
+@botman
+
+I know :)
+so far the stacking of zones seems to work
+
+I think of ladders like water, spaces that you can move in any direction in..
+
+just with ladders, you have to stay on the ladder its self
+
+waits to be seen if the meathods any good
+
+@PM
+
+My areas could be considered faces..in that their flat
+
+I'll probably use a mix between pre computed and motion tracking for linking them
+
+So far linking normal/steped areas is easy... (theirs a demo of a bot running an entirely computer generated pre processed route on my site....the actual planning of the route isn't pre processed (well some is), but will be soon)
+
+Falling paths are a lill harder (not done that yet)...teleporters also seem easy, but not implemented them yet
+
+Rocket jumps and concs are the hardest..
+I've seen player jump accross the entire open area on well with a conc...
+so precomputing those paths would be pointless
+
+I should be able to pre compute some conc/rocket paths (next to walls..the reverse of falling paths)..and the rest can be added as players play the map :)
+
+What might be kewl is to try and give the bot the ability to work new paths out..by trial and error
+Have them conc and see where they end up :p
+
+
+Another thought/reason for pre processing an entire route (getting of paths/connections here)
+is buttons
+Say the bot starts with the main goal infront of of them down a long coridor. But theirs a door in the way..the buttons behind it in a small room at spawn.
+Going to the goal takes it no where near the button for the door..so knowing all of the route in advance is kinda useful, as it will stop the bot looking foolish by getting to the door, and having to go back for the button.
+
+--------------------------------------------------
+01/15/03 at 09:09:23  Reply by: CountFloyd (countfloyd@botepidemic.com)
+--------------------------------------------------
+QUOTE:
+
+Paul Tozour just barely touches on the fact that you can create "links" between NavMesh nodes.  I would assume this is a post-processor that loops through all the entities in the world of this type (ladders, teleporters, elevators, etc.) and adds additional "portals" between NavMesh nodes at each end of these.
+
+One thing that wasn't discussed was how to handle "portals" between NavMesh nodes like windows or ledges (where you have a one way path going from a higher point to a lower point and no path back the other way).  I would assume this is another case of a portal between 2 NavMesh nodes.  He does mention something about filtering out places where you don't want to create nodes (like the window sills of windows, or the upper part of railings on starways, etc.).
+
+
+
+Yes it's a bit sparse in that area. I re-read the Q3 Thesis once more and the Q3 Bots seem to be able to simulate most of it using the physics engine. I'm not sure we can do that for HL, is there a way to do a TraceHull for i.e. a crouched Player ? I'd think assigning the additional node links (or Portals if you like) isn't the big deal once you know there is a reachability. The hardest reachability I could think of would be moving platforms...omg how I hate them. Also the railing on stairways can often be jumped over, so the areas which could be reached relatively easy would be split up again. I guess player monitoring will be needed to cover this.
+
+QUOTE:
+
+One of the things that impressed me what how you could keep combining polygons to get down to the minimal amount of space necessary to represent the world's walkable surfaces.
+
+
+
+Yes, he's presenting a lot of nice algos I'd have never ever cared to even research. That said, I'm not at his 3->2 conversion but hopefully I'll be there by tomorrows coding session.
+
+QUOTE:
+
+Reducing the amount of memory used can be a big factor especially when you are building games for consoles like XBox, PS2, etc. (hint, hint! ).
+
+
+
+You hinted because I know how to code for Xbox ? Hm...not probable. Oh, I think I know! The "super secret" game will be console exclusive and based on the Halo engine ? That must be it...
+
+Btw. say hi to Jake if he's still there and didn't lose his sense of humour :D
+
+[modified on 01/15/03 at 09:09:23]
+--------------------------------------------------
+01/15/03 at 09:36:01  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+"is there a way to do a TraceHull for i.e. a crouched Player?"
+
+Sure, the UTIL_TraceHull takes the hullNumber as a parameter (0=point hull, 1=player standing hull, 2=large hull (64x64x64), 3="head" hull which is same as crouched player).
+
+But do you REALLY want to use the Half-Life engine to walk through the world polygons and do hull traces?  The Quake I source code has the SV_RecursiveHullTrace() function that will do tracelines (with the point hull) and hull traces.  With a little bit of work, it could be modified to work properly with the HAlf-Life BSP map format.
+
+Jake's doing fine (as far as I know).  We shuffled our offices around now that the construction on the new office area is complete and he's in an office with Erik D. right now.
+
+botman
+
+--------------------------------------------------
+01/15/03 at 10:44:13  Reply by: RedFox (redfox@nildram.co.uk)
+--------------------------------------------------
+I'd forgotten about lifts/platforms..well in the post :p
+
+ok, my solution (un tested as yet)
+make the areas on the lift or whatever, seperate from the nav mesh...it is a nav mesh, but of a different sort
+
+first off, it should move with the platform..if the platform moves, it should stay perfectly ontop (will work with rotating objects and even trains..to some extent)
+
+when your working out all the paths from area to area, given you know how the plat can move (given its bounds etc) you can work out what areas will be close too it at certain points..store all these
+
+as the plat moves in game, path will become available/unavailable depending on the distance :)
+
+finally, the routing algorithm
+well, mine will use 'hops' for dropping/rocket jumps etc
+which is a patch to the main alg code..might aswell be considered a different start point
+nav (start->end) + (rocket jump landing point -> end)
+should be able to treat paths to plats as 'hops'..just remeber to limit the number of hops per type, else the nav alg will get bogged down
+
+perhaps if your using an A*, a hop path would have a high weight, until its useable, when its weight becomes lower?
+
+this (in theory) could be used for vehicles (can you say halo). In that case though, all paths to the vehicle will be all nav meshes that the vehicle can reach
+:p
+
+certainly gonna implement it for trains on hl
+and possible the old vehicles for cs
+
+--------------------------------------------------
+01/15/03 at 22:28:33  Reply by: CountFloyd (countfloyd@botepidemic.com)
+--------------------------------------------------
+QUOTE:
+Sure, the UTIL_TraceHull takes the hullNumber as a parameter (0=point hull, 1=player standing hull, 2=large hull (64x64x64), 3="head" hull which is same as crouched player).
+
+
+
+Thanks ! Reminds me that things aren't what they seem to be. I always thought "head" hull might be the head hull. How stupid I am...
+
+QUOTE:
+But do you REALLY want to use the Half-Life engine to walk through the world polygons and do hull traces?  The Quake I source code has the SV_RecursiveHullTrace() function that will do tracelines (with the point hull) and hull traces.  With a little bit of work, it could be modified to work properly with the HAlf-Life BSP map format.
+
+
+
+You're certainly right. Honestly, I'm unsure what to do right now. Using the Q1 function would mean to limit this to HL only, using the HL in-game functions means this too and parsing BSP Version 0x30 isn't exactly what I would call engine independant. I think I'll try first to use my already existing player recording...if this doesn't turn out well I can still fall back on preprocessing.
+
+Tom, what do you mean by "it should move with the platform..if the platform moves, it should stay perfectly ontop" ?
+Are we talking static nav mesh or wpts again ? With a navigation mesh you'd just annotate that 1 plane is reachable from the other if the moving entity (platform) is at a specific position. I'd think since you've got the moving boundaries of a platform/elevator you could check for connected edges. The hard part I was thinking about is players could jump off that platform during the movement to reach otherwise unreachable positions. I'd think that's difficult to process but I've proven wrong for quite some times...   
+
+--------------------------------------------------
+01/16/03 at 06:40:32  Reply by: RedFox (redfox@nildram.co.uk)
+--------------------------------------------------
+Navigation meshes..
+if you have a mesh built ontop of a lift...if navigation mesh was static..and the lift went up, the mesh would be where it was built
+
+if the mesh tracked with the lift, it would still be ontop of the lift..and not where it was built
+
+hopethat makes sense :)
+
+if not, I'll try coming up wif some pics
+
+your right about the boundires, thats what I was thinking of doing to check for connections..
+just step the mesh within the bounds (from top to bottom..or bottom to top) to check for falling/jumping paths
+you could record the streight line distances when it was reachable, and use those as triggers to say when its available or not..
+
+hmmm...that prolly didn't make much sense..heh
+
+--------------------------------------------------
+01/16/03 at 13:29:13  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Moving objects can only be entities, right ?
+Why would you want to assign nav meshes to such entities ?
+You can get all the info you need just from the entity itself : the coordinates of the lower and higher point of an elevator, and I assume it is the same for bobbing platforms.
+Considering the case where the player jumps out of a bobbing platform to reach a special location while the platform is still on midtrack, you still can tell how to make the bots perform the same move by checking the difference of dates between the date of leaving and the date of reaching of the platform. That's what I intend to do (bot memory helps).
+
+
+--------------------------------------------------
+01/16/03 at 15:32:35  Reply by: RedFox (redfox@nildram.co.uk)
+--------------------------------------------------
+The higher and lower points of a bobing platform are fine....
+But, what about lifts with bit above or below the platform you stand on?
+The messed up my bots nav so many times
+
+So..thats why I'm considering meshes for lifts :D
+
+Take the ones on well, leading to the flag
+the top of their bounding box is outside the level..heh
+
+It is just the meathod I've chosen for platform nav tho..so it may be useless
+hehe
+
+--------------------------------------------------
+01/18/03 at 18:58:30  Reply by: theimann (killaruna@nuclearbox.com)
+--------------------------------------------------
+> If you're disappointed by keeping tracks of players laying waypoints all around because you can't get your bots to use teleporters and such, don't throw the whole player motion tracking concept away !
+
+Indeed, especially since using teleporters isn't that big a problem with player tracking. 
+
+PM: Instead of checking the difference of dates on platforms, try to let your bots memorize the position of the platform at the moment the player gets on and off. You'll have to take into account the time to perform the moves, but it was the best method I could come up with - and it works nice for Parabot.
+
+> as the plat moves in game, path will become available/unavailable depending on the distance
+If you are planning entire routes (like e.g. A-Star does) the path must always be available. The problem is to let the bots wait for a right amount of time at the right positions. As mentioned above, this can be done by comparing platform positions to the recorded or precalculated values.
+
+Tobias
+

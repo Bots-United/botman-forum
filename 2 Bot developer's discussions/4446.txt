@@ -1,0 +1,59 @@
+--------------------------------------------------
+Subject: Draw beam at tracelines ?
+--------------------------------------------------
+05/26/03 at 02:44:13  Posted by: martin (lobo@diku.dk)
+--------------------------------------------------
+Hallo 
+
+I need some help.
+How do i draw a beam that shows the bots tracelines ?
+
+I tried this but it dident work.
+
+float BotCheckRight( bot_t *pBot, int p_tracelength )
+{
+edict_t *pEdict = pBot->pEdict;
+   Vector v_src, v_right;
+   TraceResult tr;
+
+   UTIL_MakeVectors( pEdict->v.v_angle );
+
+   // do a trace to the right...
+
+   v_src = pEdict->v.origin;
+   v_right = v_src + gpGlobals->v_right * 300;//p_tracelength;  
+   UTIL_TraceLine( v_src, v_right, dont_ignore_monsters,
+                   pEdict->v.pContainingEntity, &tr);
+
+   WaypointDrawBeam(pEdict, v_src, v_right, 30, 0, 0, 0, 255, 250, 5);
+
+   // check if the trace hit something...
+   return tr.flFraction; 
+}
+
+
+Martin
+
+--------------------------------------------------
+05/26/03 at 04:32:23  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+Its not working because you put "pEdict" into WaypointDrawBeam() which is the Bots pEdict, meaning the beam is ONLY going to draw on the bots screen, so you can't see it, (and the bot doesn't have a screen anyway!)
+
+Instead, put your listenserver_edict in
+
+extern edict_t *listenserver_edict;
+
+if ( listenserver_edict )
+{
+WaypointDrawBeam(listenserver_edict, v_src, v_right, 30, 0, 0, 0, 255, 250, 5);
+}
+
+
+--------------------------------------------------
+05/26/03 at 05:36:43  Reply by: martin (lobo@diku.dk)
+--------------------------------------------------
+Perfect. 
+Thanks a lot 8-)
+
+/Martin
+

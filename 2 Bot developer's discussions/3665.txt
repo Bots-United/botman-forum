@@ -1,0 +1,71 @@
+--------------------------------------------------
+Subject: changing player's view direction
+--------------------------------------------------
+09/08/02 at 05:28:58  Posted by: Integrator (integrator@triasoft.com)
+--------------------------------------------------
+Maybe this is a stupid question but where can I find a variable which stands for player's look direction and change it? For example if a player stands between two objects and looks at one of them (x1, y1, z1) how can I make player look at another one (x2, y2, z2)?
+I think it shold be something like
+pPlayer->v.view_ofs = new_direction;
+but nothing happens...
+Thanks for any help! 
+
+--------------------------------------------------
+09/08/02 at 06:18:52  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+The look directions are as follows:
+
+pPlayer->v.v_angle <--- HEAD ANGLES
+pPlayer->v.angles <---- BODY ANGLES
+
+To make it point to a new direction use:
+code:
+
+Vector point_to_face = Vector(100.0,100.0,100.0);
+Vector point_to_start = (pPlayer->v.origin + pPlayer->v.view_ofs);
+Vector composite = point_to_face - point_to_start;
+Vector angles = UTIL_VecToAngles(composite);
+
+// Need to fix angles
+
+if( angles.x > 180.0 )
+    angles.x -= 360.0;
+else if( angles.x < -180.0 )
+    angles.x += 360.0;
+
+if( angles.y > 180.0 )
+    angles.y -= 360.0;
+else if( angles.y < -180.0 )
+    angles.y += 360.0;
+
+if( angles.z > 180.0 )
+    angles.z -= 360.0;
+else if( angles.z < -180.0 )
+    angles.z += 360.0;
+
+pPlayer->v.v_angle = angles;
+pPlayer->v.v_angle.x = -pPlayer->v.v_angle.x;
+pPlayer->v.angles = pPlayer->v.v_angle;
+pPlayer->v.angles.x /= 3;
+pPlayer->v.angles.z = 0;
+
+
+
+  
+
+[modified on 09/08/02 at 06:18:52]
+--------------------------------------------------
+09/08/02 at 06:12:21  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+For players, you'll also need to set pev->fixangle = TRUE
+
+botman
+
+--------------------------------------------------
+09/08/02 at 16:25:32  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Hmmm.
+
+I would have mentioned you still can get some issues.
+Use the 'search' feature of this forum and look for the angles thingy. You'll see why, amongst others, the pev->angles.x should not be > to 89 and < to -89, and why there is a special way of wrapping the angles due to freeze issues for very large values (overflowing) of the angles. Look in the SDK, also, for UTIL_AngleMod (don't remember the name, but I think that's it).
+
+

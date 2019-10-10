@@ -1,0 +1,107 @@
+--------------------------------------------------
+Subject: Okay just one last metamod thing I hope.Well sorta
+--------------------------------------------------
+06/08/03 at 06:42:30  Posted by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+<<Dammit I always sort out these!>>
+
+The solution is...
+code:
+
+CALL_GAME_ENTITY(PLID,"player",VARS(pEdict));
+
+
+
+Trusty Fakefull metamod plugin source, thx Olo!
+
+--------------------------------------------------
+
+Yeah... ;D Just another thing
+
+I'm trying to get my bot to work as a plugin for metamod, everything is working so far, except I ahve no bots yet!! So I need to make my Addbot function.
+
+I came across this function in the Addbot function, which I guess is needed.
+
+player( entvars_t *pev )
+
+used by : player(VARS(BotEnt))
+
+How can I use this in metamod? As that function uses the H_Library (the mod DLL typically loaded by the bot, but not this time, by metamod) and it uses LINK_ENTITY_TO_FUNC calls, which I can't seem to use with metamod anyway...
+
+So.. uh.. what can I do ;D ?!
+
+
+[modified on 06/08/03 at 06:42:30]
+--------------------------------------------------
+06/08/03 at 08:37:44  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Cheesy, in case you meet other problems with metamod, just have a look in the metamod conversion I made of botman's HPB_bot, everything you need is there...
+
+Source code is included of course, it's on botman's downloads page. :)
+
+
+--------------------------------------------------
+06/08/03 at 12:02:34  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+Thx PM, I can't see the download though, unless I'm blind 8) Im sure it will help...
+
+Again I just built earlier and I get new link errors
+
+code:
+
+HPB_bot.def : error LNK2001: unresolved external symbol GiveFnptrsToDll
+HPB_bot___Win32_MetaMod_Debug/HPB_bot.lib : fatal error LNK1120: 1 unresolved externals
+LINK : fatal error LNK1141: failure during build of exports file
+Error executing link.exe.
+
+
+
+I don't understand why, since it built fine earlier and I made no changes to the metamod code what-so-ever.
+
+Is there some reason as to why it does this? It sometimes says this, or comes up with about 6 unresolved extrenals which it wasn't complaining about earlier.
+
+There must be something like, the order in which each file is built, and the dependancies of each file. Can you change them?
+
+note: the external errors always seem to arise when I do a "rebuild all"
+
+Think I found out how to change dependancies, in project settings, select your files, always use custom build, custom build, dependencies... etc :)
+
+And, amazing, shuffle some things about and "rebuild all" links everything fine this time, lets just hope it holds... ho-hum..
+
+(Still coming up with that studio problem again... but the bot runs okay)
+
+[modified on 06/08/03 at 12:02:34]
+--------------------------------------------------
+06/08/03 at 12:25:22  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+I think PM meant the metamod download on the HPB bot web page...
+
+http://planethalflife.com/botman/hpb_bot.shtml
+
+botman
+
+--------------------------------------------------
+06/08/03 at 12:49:24  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Yes, that's it :)
+
+Cheesy, you need to export GiveFnptrsToDll() even in a metamod plugin, even if the function does basically very little. The ONLY thing this function needs to do, is to save a copy of 2 pointers passed by the engine: one to the gpGlobals globalvars structure, and one to the g_engfuncs enginefuncs. Of course, it is even better when you directly make a copy of all these function pointers, like botman does. In extenso:
+code:
+
+void WINAPI GiveFnptrsToDll( enginefuncs_t* pengfuncsFromEngine, globalvars_t *pGlobals )
+{
+   // get the engine functions from the engine...
+   memcpy(&g_engfuncs, pengfuncsFromEngine, sizeof(enginefuncs_t));
+
+   // get the global vars from the engine...
+   gpGlobals = pGlobals;
+
+   // then here, eventually, you do some initialization stuff. Or whatever.
+
+   return; // and that's it.
+}
+
+
+Note: NO need to RETURN_META here.
+
+

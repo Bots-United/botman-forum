@@ -1,0 +1,150 @@
+--------------------------------------------------
+Subject: an array that dynamically allocate objects? 
+--------------------------------------------------
+06/14/02 at 06:33:54  Posted by: dosap29 (dosap24@msn.com)
+--------------------------------------------------
+code:
+
+Instrument* A[] = {
+Wind,
+new Percussion,
+new Stringed,
+new Brass 
+};
+
+this is the code i found in a book for allocating objects in an array...
+the problem is that when i compile it,
+it says i need to put ; at the end of each new statement...
+how would i go forth of using an array to hold the objects?
+code:
+
+
+//: C15:Wind4.cpp
+// Extensibility in OOP
+#include <iostream>
+using namespace std;
+enum note { middleC, Csharp, Cflat }; // Etc.
+class Instrument {
+public:
+      virtual void play(note) const {
+            cout << "Instrument::play" << endl;
+      }
+      virtual char* what() const {
+            return "Instrument";
+      }
+      // Assume this will modify the object:
+      virtual void adjust(int) {}
+};
+class Wind : public Instrument {
+public:
+      void play(note) const {
+            cout << "Wind::play" << endl;
+      }
+      char* what() const { return "Wind"; }
+      void adjust(int) {}
+};
+class Percussion : public Instrument {
+public:
+      void play(note) const {
+            cout << "Percussion::play" << endl;
+      }
+      char* what() const { return "Percussion"; }
+      void adjust(int) {}
+};
+class Stringed : public Instrument {
+public:
+      void play(note) const {
+            cout << "Stringed::play" << endl;
+      }
+      char* what() const { return "Stringed"; }
+      void adjust(int) {}
+};
+class Brass : public Wind {
+public:
+      void play(note) const {
+            cout << "Brass::play" << endl;
+      }
+      char* what() const { return "Brass"; }
+};
+class Woodwind : public Wind {
+public:
+      void play(note) const {
+            cout << "Woodwind::play" << endl;
+      }
+      char* what() const { return "Woodwind"; }
+};
+// Identical function from before:
+void tune(Instrument& i) {
+      // ...
+      i.play(middleC);
+}
+// New function:
+void f(Instrument& i) { i.adjust(1); }
+
+int main() {
+      Wind flute;
+      Percussion drum;
+      Stringed violin;
+      Brass flugelhorn;
+      Woodwind recorder;
+      tune(flute);
+      tune(drum);
+      tune(violin);
+      tune(flugelhorn);
+      tune(recorder);
+      f(flugelhorn);
+} ///:~
+
+
+
+
+[modified on 06/14/02 at 06:33:54]
+--------------------------------------------------
+06/14/02 at 06:44:20  Reply by: Jedi_Master (jimhunterjr@bellsouth.net)
+--------------------------------------------------
+AFAIK you can't use new in an initializer list for an array, since the initialization is done at compile-time.  To create objects for your array, you'd need something like this:
+code:
+
+Instrument* A[MAX_INSTRUMENTS];
+A[0] = new Wind;
+A[1] = new Percussion;
+A[2] = new Stringed;
+A[3] = new Brass;
+
+
+And, of course, you'd need to call delete on each member of the array before exiting.
+
+
+--------------------------------------------------
+06/14/02 at 07:17:21  Reply by: BrianL (halfkiller@hotmail.com)
+--------------------------------------------------
+Or delete [] A; // to delete the entire list :P
+
+--------------------------------------------------
+06/17/02 at 09:09:31  Reply by: Entropy (half_life_jedi@bellsouth.net)
+--------------------------------------------------
+QUOTE:
+Or delete [] A; // to delete the entire list
+
+
+No, that would be used to delete an array that was created with new, not to delete the elements of the array.  For example:
+code:
+
+new float A[10];
+...
+delete [] A;
+
+
+would be correct.  In the example I posted before, the array is allocated at compile time, but holds pointers to dynamically allocated objects.  The correct way to delete them would be:
+code:
+
+for (int i=0; i < MAX_INSTRUMENTS; i++)
+{
+   if (A[i])
+      delete A[i];
+}
+
+
+Of course, you could allocate the array dynamically, but that's not what my example showed.
+
+[modified on 06/17/02 at 09:09:31]

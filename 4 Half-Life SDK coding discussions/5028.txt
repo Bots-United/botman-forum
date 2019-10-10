@@ -1,0 +1,127 @@
+--------------------------------------------------
+Subject: ping
+--------------------------------------------------
+12/24/03 at 11:28:31  Posted by: Blood_Dust (di@html.com)
+--------------------------------------------------
+ok i have my runes on player.cpp
+CBasePlayer
+
+if i made them in item.cpp
+CBaseEntity
+
+would it be less lagg or same??
+
+--------------------------------------------------
+12/24/03 at 12:07:33  Reply by: LazyOne (the_lazy_one_09@hotmail.com)
+--------------------------------------------------
+... Quoting myself from the other thread.
+
+QUOTE:
+
+I'm going to ask you aswell to take the time and learn c++. 
+
+
+
+
+It makes no difference where they are so long as they compile. Where you put what will have no or very little effect on the outputted dll.
+
+
+
+
+--------------------------------------------------
+12/25/03 at 16:48:31  Reply by: FierceRecon (infected2506@hotmail.com)
+--------------------------------------------------
+actually, I think that if you put them into CBaseEntity, then your runes will use more memory, most enitities in the game are derived from CBaseEntity, so all the other entities will have your rune functions, on the other hand CBasePlayer isn't a class that anything derives from...
+
+But then again I could be wrong...
+
+[modified on 12/25/03 at 16:48:31]
+--------------------------------------------------
+12/25/03 at 16:54:39  Reply by: Cheesemonster!!! (cheeseh(at)rcbot(dot)net)
+--------------------------------------------------
+Is a rune a player? No.
+
+Is a rune an entity? Yes.
+
+Make it inherit CBaseEntity
+
+--------------------------------------------------
+12/25/03 at 17:06:03  Reply by: LazyOne (the_lazy_one_09@hotmail.com)
+--------------------------------------------------
+As long as the class is defined you can derrive from it anywhere.
+
+You should inherit from CBaseEntity and your entity should have it's own source file.
+
+
+--------------------------------------------------
+12/26/03 at 11:13:04  Reply by: Blood_Dust (di@html.com)
+--------------------------------------------------
+k thats what i did it made a big diff ty all
+
+--------------------------------------------------
+12/30/03 at 22:21:45  Reply by: Blood_Dust (di@html.com)
+--------------------------------------------------
+ok i have hud text when you get a rune but it also causes lagggggg can someone explain why and a hint on fixxing it.
+
+in CBasePlayer::PostThink()
+code:
+
+if(m_iPlayerRune & RUNE_HEALTH)
+
+{
+
+RuneHeal( );
+CBasePlayer *pPlayer = (CBasePlayer *)CBasePlayer::Instance( pev );
+OZHud(pPlayer, "Regen Rune - blah blah!" );
+}
+
+
+
+code:
+
+void CBasePlayer :: OZHud(CBasePlayer *pPlayer,char szText[201])
+{
+
+      // tell them on screen they have it
+      hudtextparms_t     hText;
+            
+      memset(&hText, 0, sizeof(hText));
+      hText.channel = 88;
+      // These X and Y coordinates are just above
+      //  the health meter.
+      hText.x = 0.02;
+    hText.y = 0.90;
+    
+      hText.effect = 0;    // Fade in/out
+                  
+      hText.r1 = 0; 
+      hText.g1 = 5;
+      hText.b1 = 255;
+      hText.a1 = 255;
+      
+      hText.r2 = 0;
+      hText.g2 = 0;
+      hText.b2 = 255;
+      hText.a2 = 255;
+      
+      hText.fadeinTime = 5;
+      hText.fadeoutTime = 1;
+      hText.holdTime = 9999;
+      hText.fxTime = 50;
+      
+      UTIL_HudMessage(pPlayer ,hText, szText);
+
+}
+
+
+--------------------------------------------------
+12/31/03 at 06:15:12  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Lag (high latency) is caused by sending TOO MUCH data back and forth between the server and the client (or the client and the server).
+
+Are you perhaps calling your OZHud function during every frame?  Or are you only calling it when something changes?
+
+If you are calling it during every frame, change the code so that you only call it when something changes (like when a rune is picked up).  If there is something that needs to be displayed continuously on the HUD (like the way the health and armor are always displayed), you will need to create a network message (using REG_USER_MSG) and send the rune information to the client using this network message, then add code to the client that will continuosly display this info.  Look at the "Health" message, the "Battery" message or the "AmmoX" message in the server and client as an example of how to do this.
+
+botman
+

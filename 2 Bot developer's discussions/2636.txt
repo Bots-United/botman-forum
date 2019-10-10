@@ -1,0 +1,143 @@
+--------------------------------------------------
+Subject: [plz help] grenade identification
+--------------------------------------------------
+01/10/02 at 10:23:31  Posted by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+Hi all, another question for ya...
+
+How can I make the bot tell which type of grenade he sees on the ground ? Currently my bots avoid grenades by checking the pEntity->v.classname "grenade" but I would like them not to fear smoke grenades, which stay for quite a time on the ground before disappearing...
+
+I have tried to retrieve the model from the edict infobuffer, but things like:
+code:
+
+// where pGrenade is the grenade edict...
+char grenade_model[32];
+strcpy (grenade_model,
+        g_engfuncs.pfnInfoKeyValue ((*g_engfuncs.pfnGetInfoKeyBuffer) (pGrenade), "model")));
+UTIL_printf ("%s\n", grenade_model);
+
+
+ ... don't display anything (either grenade_model is not retrieved or void)...
+
+How can I do ?
+
+
+[modified on 01/10/02 at 10:23:31]
+--------------------------------------------------
+01/10/02 at 11:01:28  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+Eurêka !
+
+code:
+
+// check if this grenade is NOT a smoke grenade neither the C4 (not to confuse w/ bomb)
+if ((strstr (STRING (pGrenade->v.model), "smoke") == NULL)
+    && (strstr (STRING (pGrenade->v.model), "c4") == NULL))
+
+
+
+
+--------------------------------------------------
+01/12/02 at 08:13:43  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+my function:
+//////////////////////////////////
+// UTIL_getGrenadeType function // - Stefan
+//////////////////////////////////
+int UTIL_GetGrenadeType(edict_t *pEntity)
+{
+ 
+      char model_name[32];
+ 
+      strcpy(model_name, STRING(pEntity->v.model));
+
+      if (strcmp("", model_name) == 0)
+      {
+            //BotDebug("Exploded Grenade!\n");
+      }
+      //BotDebug(model_name);
+      
+      if (strcmp(model_name, "models/w_hegrenade.mdl") == 0)
+            return 1;            // He grenade
+      if (strcmp(model_name, "models/w_flashbang.mdl") == 0 )
+            return 2;            // FlashBang
+      if (strcmp(model_name, "models/w_smokegrenade.mdl") == 0)
+            return 3;            // SmokeGrenade
+      if (strcmp(model_name, "models/w_c4.mdl") == 0)
+            return 4;            // C4 Explosive
+
+      return 0;
+
+}
+
+
+--------------------------------------------------
+01/12/02 at 09:16:35  Reply by: @$3.1415rin (joebot@botepidemic.com)
+--------------------------------------------------
+yes, i think stefan's solution is better then the one from Pierre-Marie Baty, because i think strstr is slower then strcmp and additionally, strstr may produce more errors, e.g. if there is "smoke" in the path. That's not probable, but i think if this happens, it's not easy to debug, cause you are not thinking of something like that ... ( at least /me not )
+
+--------------------------------------------------
+01/12/02 at 13:28:04  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+I thought ...
+
+code:
+
+if( pEntity != NULL )
+{
+   if( IsAlive( pEntity ) )
+   {
+     // do stuff
+   }
+   // Else - exploded grenade..???
+}
+
+
+
+would do the trick
+
+[modified on 01/12/02 at 13:28:04]
+--------------------------------------------------
+01/15/02 at 02:12:14  Reply by: sackless (hi_freq@)
+--------------------------------------------------
+Can I check who attacked the bot with the hegrenade when damaged( exploded )???
+
+--------------------------------------------------
+01/15/02 at 02:15:48  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+Look in the Damage Functilons in bot_client, It will have an origin where the damage came from. Search within a small region from that radius for a grenade. Once you found the grenade, you might be able to get the owner from it which will tell who throw the grenade.
+
+--------------------------------------------------
+01/15/02 at 04:30:14  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+When the grenade explodes and does damage, it gets removed from the game (there is no longer an entity there).
+
+You would probably have to "catch" the grenade being spawned and then search a small radius around that location for the person who threw (created) the grenade.  See the last part of the ReadMe.txt file in the HPB bot source code to see how to "catch" entities being created.
+
+botman
+
+--------------------------------------------------
+01/16/02 at 09:26:09  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+i didnt comment it out for nothing guys ;).
+
+For exploding grenades, i think once a grenade is spawned some timer should be set off and just before it explodes (so set the timer like - time to explode - 0.5) you do your code when it explodes. Oh well.
+
+
+--------------------------------------------------
+01/16/02 at 10:53:54  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+Well maybe you could tell the bot which way the grenade was thrown at them and the could move to where it was thrown.
+
+Or something like, getting the velocity of the grenade to get it's direction and move to where it thought it came from
+
+--------------------------------------------------
+01/16/02 at 19:58:09  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+this would be a more human-like way of thinking
+
+--------------------------------------------------
+01/18/02 at 09:45:57  Reply by: sackless (hi_freq@)
+--------------------------------------------------
+thx for infos
+

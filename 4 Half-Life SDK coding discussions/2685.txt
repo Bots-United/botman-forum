@@ -1,0 +1,107 @@
+--------------------------------------------------
+Subject: How to check if line is cutting with box?
+--------------------------------------------------
+02/01/02 at 10:25:46  Posted by: hullu (hullu@jussikivilinna.cjb.net)
+--------------------------------------------------
+how to check if line is cutting with box? .. in 3D of course.
+
+I know ending points(vectors) for line and dimensions of box and center point.
+
+--------------------------------------------------
+02/01/02 at 10:54:53  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+u mean a traceline?
+
+I think this should work...
+
+code:
+
+    TraceResult pTrace;
+    Vector v_src, v_dest;
+      
+    edict_t *pEdict = m_pPlayer->edict();
+    char *Classname;
+
+    float traceline_length = 512; // Make traceline 512 units long (approx)
+
+    v_src = pEdict->v.origin + pEdict->v.view_ofs;    
+    v_dest = v_src + (gpGlobals->v_forward * traceline_length);
+
+    // 'Draw' traceline from the player forwards...
+
+    UTIL_TraceLine( v_src, v_dest, ignore_monsters, pEdict->v.pContainingEntity, &pTrace );
+
+    if ((pTrace.pHit) && (pTrace.flFraction >= 1.0))    
+    {             
+      float actual_length = (pTrace.vecEndPos - v_src).Length();
+
+      if( actual_length < traceline_length ) // If the traceline did NOT finish in mid-air
+      {
+            Classname = (char *)STRING(pTrace.pHit->v.classname);            
+
+            if (pTrace.pHit->v.solid == SOLID_BSP) // Hitting worldspawn brush
+            {                                                
+                  // Do stuff here
+            }
+            else        // Hit an entity I believe
+            {
+                  if( strcmp("func_breakable",Classname) == 0 ) // Hit a breakable object
+                  {
+                        // Do stuff here
+                  }            
+                  else if( strcmp("func_pushable",Classname) == 0 ) // Hit a pushable object
+                  {
+                        // Do stuff here
+                  }
+            }
+      }
+   }
+
+
+
+Okay, I have no idea if this is what you're looking for!!! :(
+
+[modified on 02/01/02 at 10:54:53]
+--------------------------------------------------
+02/01/02 at 10:50:14  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+If you want to see if a line intersects with a plane, there are several algorithms for doing this.  Just use www.google.com to search for "line intersect plane" or something similar.
+
+botman
+
+--------------------------------------------------
+02/02/02 at 01:34:55  Reply by: hullu (hullu@jussikivilinna.cjb.net)
+--------------------------------------------------
+"line intersect triangle" worked better .. thx :)
+
+--------------------------------------------------
+02/02/02 at 09:53:45  Reply by: hullu (hullu@jussikivilinna.cjb.net)
+--------------------------------------------------
+But HEY! .. Can I use CBaseEntity:Intersects?
+
+--------------------------------------------------
+02/02/02 at 10:23:56  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+You can if you have two entites with bounding boxes (like a player and a spawned weapon, or a grenade and a snark, etc.).
+
+botman
+
+--------------------------------------------------
+02/08/02 at 17:40:20  Reply by: CountFloyd (countfloyd@botepidemic.com)
+--------------------------------------------------
+Btw. does the skybox block tracelines ? I somehow think it doesn't ?!?
+
+--------------------------------------------------
+02/09/02 at 03:46:08  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+I somehow think it doesn't either!
+
+My bots can fly apache helicopters and Ive added some traceline stuff to make them know if they are about to hit something so they will move away. But they usually go straight into the sky and blow up :)
+
+--------------------------------------------------
+02/09/02 at 05:19:51  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+You may have to use UTIL_PointContents() on the result of the traceline to see if it's CONTENTS_SKY or not.
+
+botman
+

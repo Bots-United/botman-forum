@@ -1,0 +1,52 @@
+--------------------------------------------------
+Subject: desparately need new-round detection code plz!!!!!
+--------------------------------------------------
+04/02/01 at 12:00:43  Posted by: Dobbs (stephen.dobbs@btinternet.com)
+--------------------------------------------------
+I'm working on a bot, but I can't get them to buy guns and obey freezetime because I don't know how to detect when a new round starts! Could someone please donate some code to help me? I'm trying to use CVAR_GET_FLOAT("sv_restartround") to detect the round change but I can't get it to work. Help PLZ!
+
+--------------------------------------------------
+04/02/01 at 12:02:37  Reply by: Zneaker (boc@digitalrice.com)
+--------------------------------------------------
+Hi
+I myself have had some problems with that,you should be able to find a lot of topics about that using the search function (i found really useful ones)
+
+--------------------------------------------------
+04/02/01 at 17:33:10  Reply by: eLiTe (ali@elitegamer.fsnet.co.uk)
+--------------------------------------------------
+sv_restartround is for starting a new round yourself - if you set sv_restartround to 1 it will restart teh game in 1 second, if you set it to 30, it will restart the game in 30 seconds, etc.
+
+Count Floyd told me a newround detection idea and my dad showed me how to get it to work, but since then I have been able to work things out myself (you just have to understand how the HPB bot gets it's information from Half-Life, by intercepting all the DLL calls to the mod DLL you are using).
+
+There is a very good way of getting the bots to observe freezetime AND proper movement speeds at the same time - just wait while I find it :)...
+
+Ah here it is: http://dynamic.gamespy.com/~botman/yabb/YaBB.pl?board=2&action=display&num=1363
+
+Also if you need to see how any of this works in practice you can download the FULL source for my bot at www.teambot.net.
+
+I do my newround detection by interepting the 'info_map_parameters' entity in the 'FindEntityByString' function which is in engine.cpp.     A simpler (but less reliable) way of detecting a newround would be to check if any player has gone moved more than 300 units in the last frame (that is how the SWATbot and KnifeBot authors do it)
+
+--------------------------------------------------
+04/09/01 at 06:10:22  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+actually, detecting a new round is very simple. I dont know if the url of CF already points this out. 
+
+In the engine.cpp
+
+edict_t* pfnFindEntityByString(edict_t *pEdictStartSearchAfter, const char *pszField, const char *pszValue)
+{
+//   if (debug_engine) { fp=fopen("bot.txt","a"); fprintf(fp,"pfnFindEntityByString: %s\n",pszValue); fclose(fp); }
+         if (strcmp(pszValue,"info_map_parameters") == 0) 
+      {
+
+<<<CODE>>>
+
+here you detect a new round... so simply see if the info_map_parameters are captured and you can reset everything for a round :)
+
+
+
+--------------------------------------------------
+04/09/01 at 16:24:53  Reply by: eLiTe (ali@elitegamer.fsnet.co.uk)
+--------------------------------------------------
+That's exactly what I do, but call another function so that I can check in BotThink whther a new round has just started instead of adding a lot of code into engine.cpp (then I can just add one function call into engine.cpp and have all the work done in a separate teambot_utils file)
+

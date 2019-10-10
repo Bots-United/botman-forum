@@ -1,0 +1,185 @@
+--------------------------------------------------
+Subject: Botmenu(i'm bored!)
+--------------------------------------------------
+04/27/02 at 02:08:43  Posted by: eRgUn[TR] (bydata@hotmail.com)
+--------------------------------------------------
+Hi;
+code:
+ else if (FStrEq(pcmd, "botmenu"))
+      {
+              UTIL_ShowMenu(pEntity, 0x07, -1, FALSE, menu);
+
+  return;
+        }
+
+This command called :
+code:
+char *menu = 
+      {"Matadorbot Menu\n\n1. Addbot\n2. Killbots\n3. Kickbots 3"}; 
+
+
+And this is my bot kicking code:
+code:
+         else if (FStrEq(pcmd, "kickbots"))
+      {
+               for (int i = 0; i < 32; i++)
+              {
+               if (bots[i].is_used)  // is this slot used?
+               {
+                  char cmd[80];
+
+                  sprintf(cmd, "kick \"%s\"\n", bots[i].name);
+
+                  SERVER_COMMAND(cmd);  // kick the bot using (kick "name")
+
+            }
+         }
+            ClientPrint(pEntity, HUD_PRINTNOTIFY, "Bots removed!\n");
+         return;
+      }
+
+Guys(and botman) i realy need a botmenu,please make a working menu for me(basicaly when i pressed the slot1 add bot to game or when i pressed the slot3 remove allbots from game)
+Thank you!
+(or give me a tutorial about botmenu)
+
+[modified on 04/27/02 at 02:08:43]
+--------------------------------------------------
+04/27/02 at 04:48:55  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+The responses to pressing a key in a menu will not be "kickbots" it will be "menuselect" followed by the number in the menu...
+code:
+else if (FStrEq(pcmd, "menuselect") && FStrEq(arg1, "3"))
+{
+   for (int i = 0; i < 32; i++)
+   {
+      if (bots[i].is_used)  // is this slot used?
+      {
+         char cmd[80];
+
+         sprintf(cmd, "kick \"%s\"\n", bots[i].name);
+
+         SERVER_COMMAND(cmd);  // kick the bot using (kick "name")
+
+      }
+   }
+   ClientPrint(pEntity, HUD_PRINTNOTIFY, "Bots removed!\n");
+return;
+}
+
+botman
+
+--------------------------------------------------
+04/27/02 at 06:00:23  Reply by: eRgUn[TR] (bydata@hotmail.com)
+--------------------------------------------------
+Botman please look at these screenshots:
+http://bot.sandwaves.org/gfx/ss1.jpg
+http://bot.sandwaves.org/gfx/ss2.jpg 
+(i writed some comments in screenshots)
+Whats wrong in my code?
+code:
+else if (FStrEq(pcmd, "botmenu"))
+      {
+              UTIL_ShowMenu(pEntity, 0x07, -1, FALSE, menu);
+
+  return;
+        }
+else if (FStrEq(pcmd, "menuselect") && FStrEq(arg1, "1")) 
+{ 
+
+              BotCreate( pEntity, arg1, arg2, arg3, arg4 );
+              
+              bot_check_time = gpGlobals->time + 10.0;
+        
+              return;
+      }
+else if (FStrEq(pcmd, "menuselect") && FStrEq(arg1, "2")) 
+{
+              for (int i = 0; i < 32; i++)
+              {
+
+                    if (bots[i].is_used)
+                    {
+                          ClientKill(bots[i].pEdict);
+                    }
+              }
+
+              ClientPrint(pEntity, HUD_PRINTNOTIFY, "Tum botlar olduruldu!\n");
+              return;
+      }
+
+
+        else if (FStrEq(pcmd, "menuselect") && FStrEq(arg1, "3")) 
+{ 
+  for (int i = 0; i < 32; i++) 
+  { 
+     if (bots[i].is_used)  // is this slot used? 
+     { 
+        char cmd[80]; 
+
+        sprintf(cmd, "kick \"%s\"\n", bots[i].name); 
+
+        SERVER_COMMAND(cmd);  // kick the bot using (kick "name") 
+
+     } 
+  } 
+  ClientPrint(pEntity, HUD_PRINTNOTIFY, "Bots removed!\n"); 
+return; 
+}
+
+
+--------------------------------------------------
+04/27/02 at 08:48:13  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+you can hardly read the red wrtiring againts the red blended background ;D I suggest changing the color of the text to yellow/white :)
+
+--------------------------------------------------
+04/27/02 at 09:26:44  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Cheesy, the problem he is having is that when he adds the code above, other menus won't work properly (i.e. if you bring up the radio menu and try to select a radio message, like #3, it doesn't do anything).
+
+This is because you aren't checking to see if your bot has presented a menu and is waiting for a response.  You need to do something like this pseudo code...
+code:
+// global flag to see if waiting for bot menu...
+bool waiting_for_menu_repsonse = FALSE;
+
+// function that displays bot menu...
+void BotShowMenu(void)
+{
+   // display the bot menu here...
+   UTIL_ShowMenu(blah, blah, blah);
+
+   waiting_for_menu_response = TRUE;
+}
+
+// stuff inside ClientCommand...
+   if (waiting_for_menu_response &&
+       FStrEq(pcmd, "menuselect"))
+   {
+      waiting_for_menu_response = FALSE;
+
+      if (FStrEq(arg1, "1"))
+      {
+         // bot menu 1 stuff here!!!
+      }
+      else if (FStrEq(arg1, "2"))
+      {
+         // bot menu 2 stuff here!!!
+      }
+      else if (FStrEq(arg1, "3"))
+      {
+         // bot menu 3 stuff here!!!
+      }
+   }
+
+botman
+
+--------------------------------------------------
+04/27/02 at 16:03:08  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+QUOTE:
+Cheesy, the problem he is having is that when he adds the code above
+
+
+
+...Yeah... I know!!! I just didn't know what his text was saying cos I couldnt read it... I guess it was saying what was meant to happen.......??
+

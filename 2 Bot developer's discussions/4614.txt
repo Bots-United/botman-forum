@@ -1,0 +1,54 @@
+--------------------------------------------------
+Subject: Dedicated or not
+--------------------------------------------------
+07/06/03 at 21:59:45  Posted by: Zycat (blackeagle@gamebox.net)
+--------------------------------------------------
+What is the difference (botmaking wise) between dedicated server and not?
+
+--------------------------------------------------
+07/07/03 at 04:21:18  Reply by: Cheesemonster!!! (cheeseh@houstondod.com)
+--------------------------------------------------
+The only difference I know is that regular client command commands won't be picked up trhough typing commands in the dedicated server, because it ain't a client command anymore! 
+
+What you might want to do is set up a CVAR like botman does called "sv_bot" which is the command "bot" and you have to type in your bot commands as "bot addbot" in the dedicated server to add a bot. 
+
+Making up server command functions is easier e.g.
+
+// somewhere like in GameDllInit function
+(*g_engfuncs.pfnAddServerCommand)("mybot", MyBot_ServerCommand);
+
+if using metmod you can put it in the meta_ttach function.
+
+And you'll need a function like :
+
+void MyBot_ServerCommand ( void )
+{
+  char *pcmd = CMD_ARGV(1);
+  char *arg1 = CMD_ARGV(2);
+  char *arg2 = CMD_ARGV(3);
+  char *arg3 = CMD_ARGV(4);
+  char *arg4 = CMD_ARGV(5);
+
+  // do whatever you want depending on the command (pcmd) 
+  // and arguments (arg1 - arg4)
+
+}
+
+
+
+
+
+--------------------------------------------------
+07/07/03 at 05:50:48  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Yep, like Cheesemonster said, the only significant difference is that you don't have a client in a dedicated server, so you can't use the ClientCommand() function to issue commands.
+
+You can use the pfnAddServerCommand() to register your own command and handle arguments the exact same way that ClientCommand() would.  So you could create a server command called "bot" that does everything.  "bot addbot" would add a bot.  "bot setskill" would set the default skill level.  "bot kickall" would kick all bots, etc.
+
+You can issue these server commands from the dedicated server console, or you can use an 'rcon' interface to send these commands from another machine to the dedicated server.
+
+The only other big difference between a dedicated server and a listen server is that you can't actually see what the bots are doing unless you connect with another client to observe them.
+
+botman
+
+[modified on 07/07/03 at 05:50:48]

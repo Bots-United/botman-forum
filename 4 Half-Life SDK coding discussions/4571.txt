@@ -1,0 +1,165 @@
+--------------------------------------------------
+Subject: help with cvar
+--------------------------------------------------
+06/24/03 at 22:13:52  Posted by: airsoftasa (airsoftasa@hotmail.com)
+--------------------------------------------------
+void CBasePlayer :: roundtime( void )
+{
+
+float flRoundTime = CVAR_GET_FLOAT("mp_roundtime"); 
+
+if ( flRoundTime = 1 )
+return;
+         
+g_pGameRules->RoundRestart();
+pev->nextthink = -1;
+}
+
+here is what im trying to do.. Im trying to make a server based in time. I want the round to restart "g_pGameRules->RoundRestart();" when the time gets to "1" and if the cvar is "0" then there is no rounds at all. Can some one help me make this thing happen? I tried global+time stuff but im no good with this i need some clearification ty all laters.
+
+--------------------------------------------------
+06/24/03 at 22:28:29  Reply by: airsoftasa (airsoftasa@hotmail.com)
+--------------------------------------------------
+ehh also tried this..
+
+void CBasePlayer :: RoundTime( void )
+{
+
+float flRoundTime = CVAR_GET_FLOAT("mp_roundtime"); 
+
+int m_RoundTime;
+
+if ( gpGlobals->time >= ( m_RoundTime + 2 ))
+
+{
+flRoundTime += 1; 
+
+return;
+}
+
+if ( gpGlobals->time <= ( m_RoundTime + (flRoundTime += 2)) )
+return;
+
+g_pGameRules->RoundRestart();
+pev->nextthink = -1;
+}
+
+Ya alot of this i saw on a deadtime tut i figured it could be used for my roundtime i feel that im getting closer
+
+--------------------------------------------------
+06/25/03 at 02:05:14  Reply by: RobGP (rob@planetfortress.com)
+--------------------------------------------------
+Try something like:
+
+void CBasePlayer :: roundtime( void ) 
+{ 
+   float flRoundTime = CVAR_GET_FLOAT("mp_roundtime");
+
+   if(flRoundTime == 0.0)
+      return;
+   else if ( gpGlobals->time >= flRoundTime ) 
+   {        
+      g_pGameRules->RoundRestart(); 
+      pev->nextthink = -1; 
+   }
+} 
+
+
+--------------------------------------------------
+06/25/03 at 02:06:36  Reply by: RobGP (rob@planetfortress.com)
+--------------------------------------------------
+but why do you have this code in the player class? Its not player specific stuff, you could end up with each player entity restarting the round. The gamerules is a better place for this stuff.
+
+--------------------------------------------------
+06/25/03 at 02:56:17  Reply by: airsoftasa (airsoftasa@hotmail.com)
+--------------------------------------------------
+Ya i was using the player just to test the idea of it using pev pretaining to the player. Well i tried robs still no go. I know the g_pGameRules->RoundRestart(); works fine scince i call it upon flag capture to restart the round. Im not very well with time stuff but it seems this would work but no go ill keep trying ty guys lates.
+
+--------------------------------------------------
+06/25/03 at 03:03:17  Reply by: RobGP (rob@planetfortress.com)
+--------------------------------------------------
+check mp_roundtime is set to the appropriate value, and you actually registered it in your MOD code.
+
+--------------------------------------------------
+06/25/03 at 04:24:31  Reply by: airsoftasa (airsoftasa@hotmail.com)
+--------------------------------------------------
+ya im sure i did. I have made cvars in the past. here is my proof.
+
+in game.h - extern cvar_t      roundtime;
+
+in game.cpp - cvar_t      roundtime      = {"mp_roundtime","30", FCVAR_SERVER };
+
+in game.cpp -  CVAR_REGISTER (&roundtime);
+
+Ty for helping me this far i hope we can get this shiz its bugging the heck outa me. ) =
+
+--------------------------------------------------
+06/25/03 at 10:32:35  Reply by: RobGP (rob@planetfortress.com)
+--------------------------------------------------
+try using a variable to store gpGlobals->time + roundtime_cvar_value and just check against it in the gamerules think, when gpglobals->time is > the variable, then restart the round and change the vairables value to gpGlobals->time + round_time_cvar again.
+
+--------------------------------------------------
+06/25/03 at 13:10:24  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Exactly what RobGP said :)
+
+The only way you can measure time on the server is through the gpGlobals->time global variable. This variable describes the time elapsed on the server *since it booted*, that means it is not reset at each start of a new round. It will continue elapsing until you shutdown your server, or you load a new map, in this case it will be reset to zero.
+
+Hence you need a way to predict when the round will end. A simple way is to compute, at each start of a new round, the relative date when the round should stop. For example, if your rounds are supposed to last 2 minutes, you can do, each time a round starts:
+code:
+
+  flRoundEndTime = gpGlobals->time + flRoundDuration;
+
+
+flRoundEndTime being here a global variable, and flRoundDuration a variable (perhaps a CVAR) tellind you the time in seconds a round lasts, which in this case would be set to 120.
+
+Then, periodically do a check to know if the round time has elapsed, for example, in StartFrame().
+code:
+
+   // has the round elapsed ?
+   if (gpGlobals->time > flRoundEndTime)
+   {
+      // yes, the round is just over !
+      gpGameRules->RoundRestart(); // so just restart it
+
+      // and set the new date at which the new round will end...
+      flRoundEndTime = gpGlobals->time + flRoundDuration;
+   }
+
+
+
+[modified on 06/25/03 at 13:10:24]
+--------------------------------------------------
+06/26/03 at 08:14:59  Reply by: airsoftasa (airsoftasa@hotmail.com)
+--------------------------------------------------
+ahhhk hehe I get this far 
+
+float flRoundEndTime = CVAR_GET_FLOAT("mp_roundtime"); 
+ float flRoundDuration = gpGlobals->time;
+
+  if (gpGlobals->time > flRoundEndTime) 
+  {
+
+   g_pGameRules->RoundRestart(); 
+
+   flRoundEndTime = gpGlobals->time + flRoundDuration; 
+  
+}
+
+It works exept It counts donwn the time fine but then i respawn and respawn and respawn infinite times isntead of just respawn and then reset time
+
+
+CHalfLifeMultiplay :: PlayerThink < is where i put the func so it would get checked or so i think?
+
+--------------------------------------------------
+06/26/03 at 08:46:50  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Ummm, aren't these backwards?...
+
+float flRoundEndTime = CVAR_GET_FLOAT("mp_roundtime"); 
+float flRoundDuration = gpGlobals->time; 
+
+...you want the RoundDuration to be the value of your CVAR (how long the round lasts).  You want the RoundEndTime to be the floating point time when this round is over.
+
+botman
+

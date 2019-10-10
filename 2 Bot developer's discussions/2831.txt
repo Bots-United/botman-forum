@@ -1,0 +1,95 @@
+--------------------------------------------------
+Subject: How to detect if player has flag in OP4CTF??
+--------------------------------------------------
+03/11/02 at 00:04:29  Posted by: hullu (hullu@jussikivilinna.cjb.net)
+--------------------------------------------------
+How to detect if player has flag in OP4CTF?
+
+I need to check it on every playerthink so what way is fastest?
+
+
+--------------------------------------------------
+03/11/02 at 04:09:53  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+What I do in the HPB bot is search for "item_ctfflag" entities and check who the pev->owner field is.  If a bot edict is the same as the pev->owner field then I know that that bot "owns" that flag (i.e. it is carrying it).  See the bot_navigate.cpp file in the HPB bot 1.8a source code for details.
+
+You can check for it as often as you like.  I check once every call to BotThink(), but you could just as easily check every 1/10th of a second or so.
+
+botman
+
+--------------------------------------------------
+03/12/02 at 10:10:55  Reply by: bluesy (bluesy@bezeqint.net)
+--------------------------------------------------
+There is also another method to detect if a bot is holding a flag (and also has a nice side-effect causing the bots to cover flag carriers).
+
+Modify the BotFindItem() function so that the bots would pickup the flag entity (you can check here if the flag is 'owned' by someone but that will elliminate the cover side-effect).
+
+Then - you only need to 'listen' to the status icon message. This is the message that draws the icon indicating a player is holding the flag.
+
+code:
+
+void BotClient_TFC_StatusIcon(void *p, int bot_index)
+{
+      static int state = 0;
+      static int activate = 0;
+      
+      if (state == 0)
+      {
+            //draw or erase the icon
+            activate = *(int *)p;
+            state++;
+      }
+      else if (state == 1)            //icon to show
+      {
+            state ++;
+            if (strncmp("flag_",(char *)p,5) == 0)
+            {
+                  if (activate)
+                  {
+                        bots[bot_index].bot_has_flag = TRUE;
+                        reset_waypoints(&bots[bot_index]);
+                        bots[bot_index].destination_waypoint = -1;
+                  }
+                  else
+                  {
+                        bots[bot_index].bot_has_flag = FALSE;
+                        reset_waypoints(&bots[bot_index]);
+                        bots[bot_index].destination_waypoint = -1;
+                        state = 0;
+                  }
+            }
+      }
+      else if (state == 2) //red
+      {
+            state ++;
+      }
+      else if (state == 3) //green
+      {
+            state ++;
+      }
+      else if (state == 4) //blue
+      {
+            state = 0;
+      }
+}
+
+
+
+
+Notes:
+1. the RGB values aren`t really neccessary
+2. this is what I use in TFC, Op4CTF is probably the same
+
+[modified on 03/12/02 at 10:10:55]
+--------------------------------------------------
+03/15/02 at 03:00:59  Reply by: hullu (hullu@jussikivilinna.cjb.net)
+--------------------------------------------------
+After losing flag pev->owner doesn't reset to NULL .. so pEdict==pev->owner is quite useless :(
+
+--------------------------------------------------
+03/15/02 at 03:57:09  Reply by: hullu (hullu@jussikivilinna.cjb.net)
+--------------------------------------------------
+found fix for that now .. just check if origins are same too..
+
+(pent->v.owner==pEdict && pent->v.origin==pEdict->v.origin)
+

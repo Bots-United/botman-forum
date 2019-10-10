@@ -1,0 +1,89 @@
+--------------------------------------------------
+Subject: Botclient Help
+--------------------------------------------------
+06/15/01 at 22:19:55  Posted by: Noodles (lancecoleborne@mad.scientist.com)
+--------------------------------------------------
+{
+   if ((*(int *)p) == 2)  // is it a team select menu?
+
+      bots[bot_index].start_action = MSG_CS_TEAM_SELECT;
+
+   else if ((*(int *)p) == 26)  // is is a terrorist model select menu?
+
+      bots[bot_index].start_action = MSG_CS_T_SELECT;
+
+   else if ((*(int *)p) == 27)  // is is a counter-terrorist model select menu?
+
+      bots[bot_index].start_action = MSG_CS_CT_SELECT;
+}
+
+--------------------
+What does the xx represent in ((*(int *)p) == xx) and how do you get xx
+
+--------------------------------------------------
+06/16/01 at 02:38:46  Reply by: mark (mark.pfrengle@gmx.de)
+--------------------------------------------------
+the xx is the unique menu-id of the VGUIMenu you see on your screen. it is included in the Message with the name VGUIMenu (Msg-ID 110)
+ 
+such a message looks like the following:
+
+pfnMessageBegin: edict=176f304 dest=1 type=110
+WriteByte: 2 //this is the menu-id
+WriteShort: 51 // this is a bitmap of the selectable menufields
+WriteChar: ÿ //?
+WriteByte: 0 //?
+WriteString:  
+MessageEnd
+
+so (for my understandig of the source) it would be better to only scan the first value for the message id and not all values - to do a skip for the others like done in BotClient_CS_ShowMenu() where the FIRST 3 fields are left out. It seems to be a little bug in the templatecode checking all values.. - what do you mean, botman? 
+(I think, it only works, cause 2, 26, 27 doesnt appear in the other fields..)
+
+bye, mark
+
+--------------------------------------------------
+06/16/01 at 05:23:53  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+Read through the entire ReadMe.txt file included with the HPB bot template code.  The ReadMe.txt file explains how to determine what the VGUI menu values are for yourself.
+
+The template code DOES NOT handle the CS VGUI commands properly.  The code SHOULD look like this...
+code:
+// This message is sent when the Counter-Strike VGUI menu is displayed.
+void BotClient_CS_VGUI(void *p, int bot_index)
+{
+   static int state = 0;   // current state machine state
+
+   if (state == 0)
+   {
+      if ((*(int *)p) == 2)  // is it a team select menu?
+
+         bots[bot_index].start_action = MSG_CS_TEAM_SELECT;
+
+      else if ((*(int *)p) == 26)  // is is a terrorist model select menu?
+
+         bots[bot_index].start_action = MSG_CS_T_SELECT;
+
+      else if ((*(int *)p) == 27)  // is is a counter-terrorist model select menu?
+
+         bots[bot_index].start_action = MSG_CS_CT_SELECT;
+   }
+
+   state++;
+
+   if (state == 5)  // ignore other fields in VGUI message
+      state = 0;
+}
+
+botman
+
+--------------------------------------------------
+06/16/01 at 05:40:39  Reply by: Noodles (lancecoleborne@mad.scientist.com)
+--------------------------------------------------
+yeah i worked that out, i had trouble finding out the weapon id for the knife and Unknown weapon id for "9" and the vgui id # for team select (this is for firearms)
+--------
+i just used the cs vgui as a example
+-------------------------
+firearms spits out a lot of numbers in it's vgui menus
+
+
+
+

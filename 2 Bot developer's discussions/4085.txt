@@ -1,0 +1,154 @@
+--------------------------------------------------
+Subject: Bot Design / Engine Independance
+--------------------------------------------------
+01/28/03 at 10:33:43  Posted by: CountFloyd (countfloyd@botepidemic.com)
+--------------------------------------------------
+As Tobias suggested I'm starting a new thread dedicated to generalized Design Questions.
+On with quotes from the other thread:
+
+QUOTE:
+
+Can't you just use a function on your world class which returns the distance between 2 vectors?
+
+
+
+It's not really about doing the distance stuff alone. I'll try to explain:
+This is a simple function in the bot which guards a leader
+code:
+
+bool CCSBot::guardLeader()
+{
+      float fDistance = g_BotManager.getClientDistance(this,m_pLeader);
+      // Still within Distance ?
+      if(fDistance > 96.0f)
+            return true;
+      m_MovementParams.iButtons = BUTTON_CROUCH;
+      return false;
+}
+
+
+
+The BotManager class does the distance evaluation instead of the Bot since this class does already do the world monitoring and it should be faster that way. However doing so means that the BotManager class has to find these 2 clients in the list and this may mean slow execution again. I didn't do profiling with this yet though. 
+
+QUOTE:
+
+No, it's rather the other way round: Perception::scanEnvironment() uses World::findEntity() to update its list of perceipts. What the bot knows of the world is there in this list
+
+
+
+Thanks for explaining.
+Ok, so it's similar to my approach. Do perceiptions just mean entities or also abstract things associated with entities like 'get out of here 'cos bomb might explode' ? Does the world do the enemy sensing as well ? What I mean is a Bot just calls the worlds function to retrieve the number of enemies visible ? I'm still unsure if this would have to go into the Bots class or into a Manager class.
+
+QUOTE:
+In my design the perceipts take the role of entities, so I just have to pass pointers to them. All the validations can be done in the Perceipt class (At least that's what I guess because I haven't implemented much of the design yet).
+
+
+
+Would specific perceiptions be derieved from the base perceiption class or would there be just 1 class which handles all different types ?
+
+QUOTE:
+And I thought the big improvement was to have it frame independant?!?
+
+
+
+Yes, I meant being frame-dependant to achieve frame-independance :)
+Confused you enough ? Ok I'll try to explain it with the stuck timer again:
+Probably all of us have some sort of timer to check if a Bot has been stuck for some time. This timer is hardcoded and bound to the world time. This world time doesn't care about the machine speed meaning on slower machines the Bots are 'thinking' less often than on faster ones. This also means that they would think they're stuck more often on slow machines. When adding 16 Bots to a ParaBot game it seems to me as if they believe to be stuck a lot (my machine's slow) and they definitely do more jumping and weird stuff as with less bots. Same with reaction times imho. We already have frame independant turns where the Bot tries to compensate for lost frames. We don't have this for reaction times and similar timers so far. A bot with a reaction time of static 0.3 secs is harder to beat on a slow machine than with a fast computer because also the human player can't carry out so many actions during that time window. So I've been thinking those hardcoded timers should be dynamically adjusted to the users frame speed as well, that's what I tried to do with this
+code:
+m_fTimerStuckTolerance = g_BotManager.getWorldTime() + 2.0f * g_BotManager.getGameSpeedMultiplier();
+
+
+getGameSpeedMultiplier returns 1.0 if the current FPS matches the maximum framerate. It will be higher if the users computer is lagging. That way I'm trying to compensate for frame differences, perhaps this should be applied to reaction times as well.
+
+Thanks for the thumbs up about the messaging system. It's the 3rd time I started over with it and it finally seems to do its purpose right. Not 100% sure because you have me thinking again with your perceiption class ;)
+
+code:
+There's a handy function in the HL engine as well, that can save you of working with EHANDLEs.
+
+
+I knew about this function however what's the advantage in using this function over the EHANDLE class ?
+
+[modified on 01/28/03 at 10:33:43]
+--------------------------------------------------
+01/29/03 at 15:54:30  Reply by: theimann (killaruna@nuclearbox.com)
+--------------------------------------------------
+QUOTE:
+Do perceiptions just mean entities or also abstract things associated with entities like 'get out of here 'cos bomb might explode' ? 
+
+
+In my case it's just entities and damage (which is caused by entities not yet perceived). The 'get out of here' seems more like a goal (or task) that is activated by the bomb-perception.
+
+QUOTE:
+What I mean is a Bot just calls the worlds function to retrieve the number of enemies visible ?
+
+
+Sorry, I can't follow you here ;-) Do you have another example?
+
+QUOTE:
+Would specific perceiptions be derieved from the base perceiption class or would there be just 1 class which handles all different types ?
+
+
+That's a good question. I'm not 100% sure about it yet, although I think I will have at least one subclass for enemies. I don't want to go so far to create a subclass for each possible perceipt, although this is one of the possibilities as well.
+
+QUOTE:
+This world time doesn't care about the machine speed meaning on slower machines the Bots are 'thinking' less often than on faster ones.
+
+
+Not in my implementation. I've switched to a 10Hz think rythm with Parabot some versions ago and will maintain that system. Moreover, I think that users on a slow machine have to get used to it, on a LAN party the others won't play slower either, so why should the bots? You can always lower the skill if they are too good.
+
+Tobias
+
+--------------------------------------------------
+01/30/03 at 17:36:48  Reply by: CountFloyd (countfloyd@botepidemic.com)
+--------------------------------------------------
+QUOTE:
+The 'get out of here' seems more like a goal (or task) that is activated by the bomb-perception.
+
+
+
+You're right. So Goals are triggered by Entities in your Bot ? Interesting...
+
+QUOTE:
+Sorry, I can't follow you here ;-) Do you have another example?
+
+
+
+Ok, hmmm usually a Bot has a function to detect entities like enemy players or items on the ground, right ? I'm asking if you totally removed this out of the Bot class and if you let the world class do this work (the Bot 'asks' the world class for this information).
+
+QUOTE:
+Not in my implementation. I've switched to a 10Hz think rythm with Parabot some versions ago and will maintain that system. Moreover, I think that users on a slow machine have to get used to it, on a LAN party the others won't play slower either, so why should the bots? You can always lower the skill if they are too good.
+
+
+
+You're right, at least with the skill subject. I'm more interested in the other important timers though like a stuck tolerance. What happens if code execution is that slow that your bots routine isn't even called at 10Hz ? Not the whole time (playing would be senseless then) but at certain bottlenecks (new player enters game, bot gets created, whatever). Bots would believe they are stuck or what else you're using hardcoded timers for. I hope I explained good enough what I'm up to this time :)
+
+--------------------------------------------------
+02/02/03 at 13:02:14  Reply by: theimann (killaruna@nuclearbox.com)
+--------------------------------------------------
+QUOTE:
+I'm asking if you totally removed this out of the Bot class and if you let the world class do this work 
+
+
+OK, now I see your point. This work is done by Perception::scanEnvironment(), so it's technically neither in the bot nor in the world class. But since each bot has its own perception object, I'd think it's closer to the bot.
+
+QUOTE:
+Bots would believe they are stuck or what else you're using hardcoded timers for
+
+
+Not more than frame-based reasoning bots. My stuck timer rings alarm if the bot is stuck for more than one second, and even humans would think they are stuck after that time :-)
+Surprisingly, I didn't notice any problems after changing to the constant 10Hz reasoning, but the performance increase was astonishing.
+
+Tobias
+
+--------------------------------------------------
+02/05/03 at 01:18:33  Reply by: CountFloyd (countfloyd@botepidemic.com)
+--------------------------------------------------
+QUOTE:
+[quote]Bots would believe they are stuck or what else you're using hardcoded timers for
+
+
+Not more than frame-based reasoning bots. My stuck timer rings alarm if the bot is stuck for more than one second, and even humans would think they are stuck after that time :-)[/QUOTE]
+
+My point is exactly that 1 second :)
+If the server is lagging really badly 1 second could have passed without the Bots being called during that timeframe (the timer's advancing without counting frames). So the Bots would think they are stuck without being stuck. As I said I *believe* I saw ParaBots thinking they were stuck when they weren't just because my framerate was really low.
+

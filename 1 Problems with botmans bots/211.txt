@@ -1,0 +1,115 @@
+--------------------------------------------------
+Subject: Red team snipers really can't aim
+--------------------------------------------------
+10/07/00 at 07:40:30  Posted by: botman (botman@mailandnews.com)
+--------------------------------------------------
+I just finished making a simple waypoint file for the map "sniprwar" and quickly noticed that the Red team's score was REAL BAD.  I kicked all the Blue team bots off and joined the Blue team.  They couldn't hit me at all.  The laser would occasionally be on me but when the Red sniper fired the shot would hit the wall to the sniper's left.  I also noticed that the Red team snipers twitched back and forth while aiming (the yaw is getting screwed up somewhere).  It seems that most of the time when they let the fire button up they are aiming too far to the left of the target.  Out of about 120 shots I only got hit once (and it didn't kill me).
+
+I'll have to poke around in the weapons and targeting code to see what's going on and why it only effects the Red team.  There's nothing in the weapons or targeting code that cares what team a bot is on (i.e. one team isn't supposed to do anything different than another team).
+
+botman
+
+
+
+--------------------------------------------------
+10/07/00 at 09:44:57  Reply by: Yollin (yollin@hotmail.com)
+--------------------------------------------------
+Ag!  All these bugs will just slow down the production of the HPB bot.  Yuk.  Bugs suck.
+Instead of waiting 3 weeks to release a bot with all new waypoint code and features and stuff, botman, could you instead release a version of the beta 1.0 bot but with less bugs?
+
+Or was that what you're all ready doing?
+
+--------------------------------------------------
+10/07/00 at 10:24:05  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+If they are simple fixes then I will probably release minor versions as things get fixed.  If it requires major changes then things won't get fixed until the next major release.
+
+botman
+
+--------------------------------------------------
+10/07/00 at 13:13:37  Reply by: BeatMeatSquad (one_winged_soul@hotmail.com)
+--------------------------------------------------
+maybe try making the offset less in the bot_combat.cpp file. I tried doing that but since the bots didn't follow the waypoints, I didn't know if it worked.
+
+--------------------------------------------------
+10/07/00 at 14:35:53  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+I found the aiming bug.  It had to do with the way I store the ideal_yaw and how VecToAngles() works.
+
+Here's the fix (in bot_combat.cpp, BotShootAtEnemy)...
+
+code:
+old code...
+
+   pEdict->v.v_angle = UTIL_VecToAngles( v_enemy );
+ 
+   // Paulo-La-Frite - START bot aiming bug fix
+   if (pEdict->v.v_angle.x > 180)
+      pEdict->v.v_angle.x -=360;
+ 
+ 
+...new code...
+
+   pEdict->v.v_angle = UTIL_VecToAngles( v_enemy );
+ 
+   if (pEdict->v.v_angle.y > 180)
+      pEdict->v.v_angle.y -=360;
+ 
+   // Paulo-La-Frite - START bot aiming bug fix
+   if (pEdict->v.v_angle.x > 180)
+      pEdict->v.v_angle.x -=360;
+ 
+
+
+Note that I am having to check for a v_angle greater than 180 degrees since I keep all angles between -180 and 180 degrees.
+
+Now both the Blue AND the Red team snipers can kick some buttocks!
+
+I'll probably release this fix with a few other minor tweaks tommorrow afternoon (Eastern time).
+
+I've got a waypoint file for crossover2 and sniprwar now and hope to have one for rock2 and well by tommorrow afternoon.
+
+botman
+
+
+--------------------------------------------------
+10/07/00 at 14:55:42  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+I was gonna tell ya not to bother your "buttocks" to make waypoints fro crossover2 and rock2 if you think my ones will suffice at http://www.waypointwarehouse.8k.com
+
+God, I bet you wish I'd stop trying to advertise my site like this... My rock2 waypoint 0wns, i still have to fix many things in crossover2 though :)
+
+I've been makin the well waypoints for ages to and I still have to fix loads of stuff, there is a bug somewhere in the waypoint where the bots press the button to open the doors, they always seem to run back and forward between the waypoint where the button is and the nearest one to it!
+
+If you can, could you sort these out for the next release.
+
+1) Only snipers goto sniper waypoints
+2) Add the Visit Location script ready
+
+Is it possible for tommorow..???? ;)
+
+--------------------------------------------------
+10/07/00 at 15:17:13  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+The next release will fix things so that only snipers will pause at sniper waypoints, but changing things so that they are the only class to get to them is more involved.  That will have to wait until later.
+
+The reason I'm releasing a few more waypoint files is I've added a "sniper aiming waypoint".  When you set the "sniper" tag on a waypoint, it will create a little bitty waypoint in mid-air (in the direction the player is currently facing).  The bot will use that to figure out which way it is supposed to be facing when waiting at a sniper waypoint.
+
+I don't mind you listing your waypoint site since it keeps people from asking me for other waypoint files.  The "Waypoint Files" page that I will put up tommorrow will have waypoint files that I've created, waypoint files that others have created and links to other sites with waypoint files.
+
+I think I can squeeze the "visit waypoint" thing in before tommorrow's release also.  That will allow bots to roam around the levels a little bit more (now they either stay in one spot or head straight for the flag).  I'll probably also change things so that bots carrying the flag don't chase after enemies.  They'll just run straight for the capture point (no detours).
+
+I wanted to wait on the "visit waypoint" stuff until I had class specific waypoints working (so you could set up waypoints that would be visited by specific classes).  That way you could keep the HWguy in the base (for example) by restricting the points that he can visit.  But I'll try adding in a "generic" visit waypoint and see how that effects things.
+
+botman
+
+--------------------------------------------------
+10/07/00 at 16:11:47  Reply by: keola (Jguitar22@aol.com)
+--------------------------------------------------
+        Ah, i was wondering why my team always kicked the reds ass at snipering
+
+--------------------------------------------------
+10/09/00 at 05:41:36  Reply by: housemuzic (palmerandrew@hotmail.com)
+--------------------------------------------------
+yes i can really understand that bit of coding......not!
+

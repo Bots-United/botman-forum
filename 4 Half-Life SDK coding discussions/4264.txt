@@ -1,0 +1,142 @@
+--------------------------------------------------
+Subject: New Muzzle Flashes?
+--------------------------------------------------
+03/29/03 at 09:48:15  Posted by: Lazer (lazer@devin-afshin.com)
+--------------------------------------------------
+I'm trying to make a weapon like the Plasma Rifle in Halo. Everything's done, I just can't figure out how to display my custom blue muzzle flash I made for it.
+
+--------------------------------------------------
+04/01/03 at 13:32:07  Reply by: Lazer (lazer@devin-afshin.com)
+--------------------------------------------------
+anyone know?
+
+--------------------------------------------------
+04/01/03 at 15:30:13  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Muzzle flashes are typically done in the models .qc file.  They are just sprites that are displayed from the client side.  See cl_dll\ev_common.cpp and cl_dll\ev_hldm.cpp
+
+botman
+
+--------------------------------------------------
+04/02/03 at 11:34:36  Reply by: Lazer (lazer@devin-afshin.com)
+--------------------------------------------------
+In the .qc file I have:
+
+$sequence "idle" "idle1" fps 14
+$sequence "shoot" "shoot" fps 80 { event 5001 0 "11" } 
+$sequence "draw" "draw" fps 10
+
+Then in my ev_hldm.cpp file I have this:
+
+void EV_PRifleFire( event_args_t *args )
+{
+      int idx;
+      vec3_t origin;
+      idx = args->entindex;
+
+      if ( EV_IsLocal( idx ) )
+      {
+            // Add muzzle flash to current weapon model
+            EV_MuzzleFlash();
+      }
+
+      // Shooting sound
+      gEngfuncs.pEventAPI->EV_PlaySound( idx, origin, CHAN_WEAPON, "weapons/prifle_fire-1.wav", gEngfuncs.pfnRandomFloat(0.8, 0.9), ATTN_NORM, 0, PITCH_NORM );
+
+      if ( EV_IsLocal( idx ) )
+      {
+            V_PunchAxis( 0, -0.75 );
+      }
+}
+
+Everything works, and the model lights up a little like a muzzle flash, but not actual sprite is displayed.
+
+--------------------------------------------------
+04/02/03 at 12:20:53  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+See this...
+
+http://www.planethalflife.com/hlsdk2/sdk/graphics_efx2.htm
+
+Event 5001 in your .qc file is the muzzle flash, I believe.  I think the "11" is the muzzle flash sprite index.
+
+botman
+
+--------------------------------------------------
+04/02/03 at 16:20:58  Reply by: Lazer (lazer@devin-afshin.com)
+--------------------------------------------------
+Ok, I read more on it and I found this out:
+11 is how many frames to display it for. 5001 is the sprite index basically. It reads 5001 5011 5021 and 5031. Then it does this when the qc file tells it to:
+
+void DLLEXPORT HUD_StudioEvent( const struct mstudioevent_s *event, const struct cl_entity_s *entity )
+{
+      switch( event->event )
+      {
+      case 5001:
+            gEngfuncs.pEfxAPI->R_MuzzleFlash( (float *)&entity->attachment[0], atoi( event->options) );
+            break;
+      case 5011:
+            gEngfuncs.pEfxAPI->R_MuzzleFlash( (float *)&entity->attachment[1], atoi( event->options) );
+            break;
+      case 5021:
+            gEngfuncs.pEfxAPI->R_MuzzleFlash( (float *)&entity->attachment[2], atoi( event->options) );
+            break;
+      case 5031:
+            gEngfuncs.pEfxAPI->R_MuzzleFlash( (float *)&entity->attachment[3], atoi( event->options) );
+            break;
+      case 5041:
+            gEngfuncs.pEfxAPI->R_MuzzleFlash( (float *)&entity->attachment[4], atoi( event->options) );
+            break;
+      case 5002:
+            gEngfuncs.pEfxAPI->R_SparkEffect( (float *)&entity->attachment[0], atoi( event->options), -100, 100 );
+            break;
+      // Client side sound
+      case 5004:            
+            gEngfuncs.pfnPlaySoundByNameAtLocation( (char *)event->options, 1.0, (float *)&entity->attachment[0] );
+            break;
+      default:
+            break;
+      }
+}
+
+*I added the 5041.
+
+entity->attachment[x] is what determines what sprite to display. (i think) There is a problem though. I can't figure out where I would go to add the "attachment[4]". I search for "attachment" and came up with nothing besides those things there. No index of sprites. Any idea where I could look and define more?
+
+[modified on 04/02/03 at 16:20:58]
+--------------------------------------------------
+04/03/03 at 05:29:01  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+The 50x1 stuff is "Which attachment point do I want to use for the muzzle flash?"  You can create up to 5 different attachment points on the models (the weapon view model and player model) where you want to "attach" a muzzle flash to.  If you want to use attachment point 0, you use 5001.  If you want to use attachment point 2, you use 5021, etc.
+
+5002 is a spark effect (like the broken HEV and Health chargers in single player have shooting little sparks out).
+
+5004 is playing a sound at attachment 0 location.
+
+You'll have to ask your weapon modeler which attachment point has been set up for the muzzle flash and then make sure your .qc file is using 5001, 5011, 5021, 5031, or 5041 based on whether the model attachment point is index 0, 1, 2, 3, or 4 respectively.
+
+botman
+
+[modified on 04/03/03 at 05:29:01]
+--------------------------------------------------
+04/03/03 at 05:45:13  Reply by: Lazer (lazer@devin-afshin.com)
+--------------------------------------------------
+Thanks, that clears some stuff up, but thats not my problem. Where do I define the new muzzle flash? I've search all over the sdk for muzzlelfash1.spr trying to find where the muzzleflashes are defined. There appears to be 3 different flashes defined in halflife right now, and they are called in the qc file. Either 0 1 or 2, but I don't know where it reads that variable and then gives the correct flash according to it.
+
+--------------------------------------------------
+04/03/03 at 08:40:35  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+The muzzle flashes are in the valve\pak0.pak file (in the 'sprites' folder).  Look for sprites\muz*.spr in the .pak file.
+
+You'll need a pak tool (like PakExplorer) and a sprite viewer (like SprView).
+
+botman
+
+--------------------------------------------------
+04/03/03 at 11:37:44  Reply by: Lazer (lazer@devin-afshin.com)
+--------------------------------------------------
+No, I don't have a problem finding the sprites, the problem is where do I declare what sprites to use when I change the variables in the qc file? I can say 0 for one type of flash, 1 for another, and 2 for another. I want to make 3 be a fourth type of muzzle flash sprite. Where does it read this variable to determine what kind of flash?
+
+I'm talking about:
+{ event 5001 x "11" }  where x is the variable for what kind of flash.
+

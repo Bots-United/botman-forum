@@ -1,0 +1,164 @@
+--------------------------------------------------
+Subject: Ricochet Arrows
+--------------------------------------------------
+03/30/03 at 22:06:08  Posted by: ScoBra7 (alabuschagne@grintek.com)
+--------------------------------------------------
+Hi
+
+This weekend I’ve wrecked my brain trying to figure out how to code a ricocheting arrow.  I’ve looked at the Gauss Gun code but in vain.
+
+I’ve got it to work for nice “flat” surfaces (90 deg to the normal x,y,z).  I think this function is not correct but saw something that puzzles me.  When you change the velocity vectors in BoltTouch from (x, y, z) to (–x, y, z) then next move you get (0, y, z). E.g. The values was (-2000,200,10) then change it to (2000,200,10) and got (0,200,10).  All I can think is that the engine use the angle to correct the velocity.
+
+Any case thinking in 3D is more difficult than I thought.  So here is how I see it:
+A) Calculate arrow angle using velocity for x, y:   +45deg (E.g.)
+B) Thus Impact on Zero Surface (x,y): 180 + A = 180 + 45 = 225deg
+C) Exit angle for arrow from Zero Surface (x,y): 360 – A = 360 – 45 = 315deg
+D) Calculate Impacted Surface angle to Zero Surface: +20deg (E.g.)
+E) Exit angle for arrow from Impacted Surface: C + D = 315 + 20 = 335deg
+F) If E > 360 then E – 360 until E <= 360.
+
+Now I think I have to do it for x, z and y, z.  But how do I then go from angles back to velocity?  Because I will have three angles, one for each (x,y), (x,z) and (y,z).
+
+I would guess there is a better way (Vector Algebra) that would yield an answer?
+
+Thanx
+ScoBra7
+
+
+--------------------------------------------------
+03/31/03 at 02:41:57  Reply by: ScoBra7 (alabuschagne@grintek.com)
+--------------------------------------------------
+Hi, again
+
+I've read up a bit and here is what I think:
+The dot product can be used to find the angle between two vector:
+
+V1*V2 = |V1||V2|cos(a)
+Thus a = acos(V1*V2/(|V1||V2|)
+
+Where V1 is the velocity vector of the arrow and V2 is the Normal vector of the plane.
+
+Now...
+A) How / to what do I change the angle between V1 and V2? (multiply by -1?)
+B) How do I get from the answer in A to a new V1?
+
+(I've looked, again, to the code in gauss.cpp but don't understand it completly)
+
+Thanx
+
+--------------------------------------------------
+03/31/03 at 03:26:49  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+Heres some code thanks to laser (rc mod), I tried to translate it into get it to work with your arrow. 
+
+code:
+
+//bounce function
+Vector UTIL_Bounce( Vector vecDir, Vector vecNorm ) 
+{
+      float n = -DotProduct(vecNorm, vecDir);
+      return 2.0 * vecNorm * n + vecDir;
+}
+
+//some rebound stuff.. dunno if it works try..
+
+Vector vecAngles = pev->angles;
+UTIL_MakeVectors(vecAngles);
+
+Vector vecSrc = pev->origin;
+Vector vecDir = gpGlobals->v_forward 
+Vector vecEnd = vecDir * 8192.0;
+
+Traceresult tr;
+
+UTIL_Traceline(vecSrc,vecEnd,ignore_monsters,edict(),&tr);
+
+float fDist = (vecEnd - vecSrc).Length() * (1.0 - tr.vecPlaneNormal);
+
+Vector vecDir = UTIL_Bounce(vecDir, tr.vecPlaneNormal);
+
+pev->angles = vecDir * pev->velocity.Length();
+
+
+[modified on 03/31/03 at 03:26:49]
+--------------------------------------------------
+03/31/03 at 03:32:01  Reply by: ScoBra7 (alabuschagne@grintek.com)
+--------------------------------------------------
+Ok So I when a full cirlce.  The code in gauss.cpp seem to yield the correct values.  I've done it in a spread sheet, as follows:
+
+Arrow (A): 200, 100, 50
+Normal to Plane (NP): 1,0,0
+Dot product: 200 ((200*1) + (100*0) + (50*0))
+NDot product: -200 (200*(-1))
+2.0*NP*NDot: -400,0,0
+Add A: -200,100,50  (200+-400,100+0,50+0)
+
+Which seems good.  The NP is a unit vector (lenght = 1) so for another plain:
+
+Arrow (A): 200, 100, 50
+Normal to Plane (NP): 0.5,0.5,0.707
+Dot product: 185.35 ((200*0.5) + (100*0.5) + (50*0.707))
+NDot product: -185.35 (185.35*(-1))
+2.0*NP*NDot: -185.35,-185.35,-262.08
+Add A: 14.65,-85.35,212.08  (200-185.35,100-185.35,50-262.08)
+
+Anybody with a cad program that can check this?
+
+--------------------------------------------------
+03/31/03 at 04:37:14  Reply by: ScoBra7 (alabuschagne@grintek.com)
+--------------------------------------------------
+Ok here is what i've done, I'll test it later (got some work to do)
+in void CCrossbowBolt::BoltTouch( CBaseEntity *pOther )
+
+I've added this:
+/*Mod Begin*/
+if(m_usBulletMode == TYPE_TUNGSTEN)
+{
+if(m_iRicNumber > 0)
+{
+TraceResult tr = UTIL_GetGlobalTrace();
+float n = -DotProduct(tr.vecPlaneNormal, pev->velocity);
+Vector r = 2.0 * tr.vecPlaneNormal * n + pev->velocity;
+m_iRicNumber--;
+CCrossbowBolt *pBolt = CCrossbowBolt::BoltCreate(m_usBulletMode,m_pOwner,m_iRicNumber);
+pBolt->pev->origin = pev->origin;
+pBolt->pev->angles = UTIL_VecToAngles(r);
+pBolt->pev->owner = pev->owner;
+if (pev->waterlevel == 3)
+{
+pBolt->pev->velocity = r * BOLT_WATER_VELOCITY;
+pBolt->pev->speed = BOLT_WATER_VELOCITY;
+}
+else
+{
+pBolt->pev->velocity = r * BOLT_AIR_VELOCITY;
+pBolt->pev->speed = BOLT_AIR_VELOCITY;
+}
+pBolt->pev->avelocity.z = 10;
+}
+}
+/*Mod End*/
+
+I've changed BoltCreate to take a few parameters, the important part is that when an arrow touch some thing it will A) spawn a new arrow in a ricochet dir and B) explode.
+
+I'll play around with it a bit and then post the final ver.  The idea is that the arrow ricochet off wall and pass through player (causing damage).
+
+[modified on 03/31/03 at 04:37:14]
+--------------------------------------------------
+03/31/03 at 23:52:35  Reply by: ScoBra7 (alabuschagne@grintek.com)
+--------------------------------------------------
+It's weird.
+
+The arrow ricochet off walls, but always goes up (z)?  I forogt to do the set thingy so after the first ricochet it explodes 4 times in the air.
+
+Any ideas why the math don't add up?
+
+--------------------------------------------------
+04/01/03 at 03:12:43  Reply by: ScoBra7 (alabuschagne@grintek.com)
+--------------------------------------------------
+Ok I've tested it some more...  The arrows does not always go up BUT it does not ricochet correctly either.  E.g. When aiming directly at wall (90deg) the arrow ricochet to the right (very) not straight back.
+
+Second, it still does the explode in the air bit.
+
+Any Ideas?
+

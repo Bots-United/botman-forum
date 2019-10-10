@@ -1,0 +1,357 @@
+--------------------------------------------------
+Subject: Tactical Game progression
+--------------------------------------------------
+06/03/01 at 09:25:08  Posted by: DarkYouth (darkyouth@planetannihilation.com)
+--------------------------------------------------
+I think I have finally clicked why no bot really plays humanly. Currently its all head to objective, find new objective, head to objective and find new all the time. There is no actual dynamic to the gameplay, it just happens.
+
+This is where it (Bot AI) is going wrong I feel.
+
+What if a tactical objective tree were created?
+
+Click www.planetannihilation.com/images/tactic.gifhere to view the tactical progression zones for cs_siege. Its very simple stuff isnt it. This table can be created like a smaller waypoint table. At most 20 progression zones, linked by the waypointer. This data could then be calculated using the floyd algorythym to determine the next logical zone to visit.
+
+This still wouldnt change gameplay YET. But when we choose our objective as the office (start at CT start) then its a clear cut path to the office. But what if the valley was a no-go? The team was slaughtered and nothing learnt. The next round the same happens. Nothing learnt. 
+
+But if we used tactical game progression we could say that the valley is not a good place to be, lower its value multipler (multiply the distance by VALUE/100 to get the "cost" between tactical zones) and recalculate our mini-navigation table it would make the sewers more appealing. The next round after a humilating defeat, the valley route is devalued and the data recalculated. Now it is no longer the true best path. The tunnel, building, sewers route is.
+
+This could probably be implemented on a more widespread scale for the waypoints themselves, but the cpu requirements devalue such a venture. However it would suitably alter the gameplay to give the impression of learning.
+
+Any given area would have its value increased naturally as rounds go by, allowing for such areas to "regenerate" and become viable once again in future. So in the test case given, after about 5 rounds attacking via the sewers the upper level/valley is now more viable once more at it is worked into the route.
+
+Such implementations can be personal to a bot, squad or team. Its not costly in terms of cpu cycles for a 7 or even a 20 node fromto table to be made for each bot, for for each squad. Then the bots can have "opinions" on tactical zones, with this affecting their personal route in a non-squad situation. In squad situations, if several members keep dying near one area, their opinion shifts and could in turn affect the squad rating of a path.
+
+Also, at "run-time" where the squad are moving between their chosen objectives via the zones, the team that defends could learn from deaths/kills and victories what are the best zones to defend at. Imagine walking into a garage with 10 awp snipers beating down on you. Its all very simple in therory.
+
+I hope I have presented my ideas in an understandable way, and appreciate any feedback want to give. However this ends up, its going into my bot. 
+
+
+
+
+--------------------------------------------------
+06/03/01 at 12:47:07  Reply by: actionhank (clandday@hotmail.com)
+--------------------------------------------------
+I guess it would work but I think your cpu will get a bit too much over head trying to culculate each bots move every time
+
+--------------------------------------------------
+06/03/01 at 14:09:50  Reply by: DarkYouth (darkyouth@planetannihilation.com)
+--------------------------------------------------
+Thats the beauty of it. It only has to be done once at the start of every round, and as squads get bigger the CPU overhead is small.
+
+A quick test function I wrote took no visible delay to calculate a 20 point floyd table 20 times. Possibly quarter/half a second at most.
+
+One table (at nodes^3 time) took 5 seconds for 300 nodes. So, at 20 x (20^3) ticks it wont be that long, a fraction of 1x(300^3)
+
+
+
+--------------------------------------------------
+06/03/01 at 15:03:33  Reply by: wildcat_dunny (wildcatdunnynu@icqmail.com)
+--------------------------------------------------
+Your idea sounds like it could be promising. It seems like this would be a good way to lower the predictability of the bots’ behavior in an intelligent manner (as opposed to simply trying to randomize path finding.)
+
+One complication that that might arise is actually illustrated in the cs_siege example:  The garage is a chokepoint that must be passed before advancing to the office. If the entire team is slaughtered in the garage every round, then the garage will simply keep getting devalued. But since the garage must be passed in order to reach the objective, this will not change the approach that the bots use to attack the garage.
+
+A scheme would have to be devised to devalue the path that was taken to reach the garage. But devaluing the entire path equally might be inappropriate. Perhaps something like the garage getting devalued by one unit and each step in the path taken to reach the garage being devalued in proportion to how close it is to the garage? For example, consider the case where the CT travels the path: start -> valley -> building -> sewer -> garage, but then is killed in the garage. You might devalue the garage by 1, the sewer by 1/2, the building by 1/4, and the valley by 1/8.
+
+In any case, this is a good idea that certainly warrants experimentation. I’m very interested in these "broader" approaches to navigation and would love to see something like this succeed. 
+
+
+--------------------------------------------------
+06/03/01 at 15:19:57  Reply by: DarkYouth (darkyouth@planetannihilation.com)
+--------------------------------------------------
+I suppose that the garage could be done in more detail. But Im clueless on that one. The garage is the choke point of that level. With it being secure the objective is impossible.
+
+However the way the bot takes into the garage will have an affected value too. i.e. sewer->garage->death = bad sewer and garage. Its all that can be done really. The office progression points could be better defined too, but thats another matter. Its just the premise of the idea.
+
+I too despise randomizing navigation in very offbeat ways, I use them but it doesnt solve the underlying issue. The premise with force recon's pathing is more complex, but yields improved results:
+
+Old Method
+---------
+1) Get nearest waypoint
+2) Get waypoint nearest objective
+3) Find the next one in the fromto table
+4) Head there
+5) Repeat till done
+
+The new method
+--------------
+1) Get nearest waypoint
+2) Get nearest progression marker.
+3) Find objective
+4) Find nearest progression marker to that
+5) Choose the next progression zone to head to
+6) Choose a waypoint that is nearer to this zone than any other.
+7) Head there via the shortest path.
+8) Repeat until at destination
+
+Its the same premise, but broken up a lot more, and giving a hopefully more human approach to navigation. This can give some odd paths probably, but fine tuning never hurt anyone.
+
+--------------------------------------------------
+06/04/01 at 03:38:17  Reply by: holybigjesus (holybigjesus@hotmail.com)
+--------------------------------------------------
+ugh :P you people need more then the one year supply of jolt cola ive got...
+
+--------------------------------------------------
+06/04/01 at 06:47:12  Reply by: William (william@botepidemic.com)
+--------------------------------------------------
+Good analysis.
+
+This will work. It's an abstracted influence map of the terrain. This need not be CPU intensive in itself.
+
+Note that this will work solely after:
++ you have created such a map (and can relate it to actual waypoints in the game); _and_
++ you have the force AI capable of occupying & holding positions, etc.
+However, most of the real work is in the two points mentioned above.
+
+Second issue is that most players won't notice what's happening unless you spend a good amount of code to use the few sound bites available to inform the player. Hopefully, the next HL patch and the corresponding voice communicating offer some more to the AI as well. Otherwise, it's just the technology push I myself am interested in, but few gamers will notice.
+
+I look forward to your thoughts and results
+
+William
+(I addressed these two points, but haven't completed the AI as you describe it).
+
+--------------------------------------------------
+06/04/01 at 09:26:37  Reply by: theimann (killaruna@botepidemic.com)
+--------------------------------------------------
+Yep, this high-level path/zone rating is a good idea. Pathfinding would proceed hierarchically, first chosing the zones to traverse, then the actual waypoints that lead you from one zone to the other.
+If you want to use a maximum number of 20 zones you could also use Dijkstra's algorithm for pathfinding along the zones, giving even more flexibility. You could refine your zone-values in the course of each round: if three players got killed in the tunnel this round, the other two will take the valley although it proved to be more dangerous in your overall statistics...
+
+Tobias
+
+--------------------------------------------------
+06/04/01 at 12:17:59  Reply by: DarkYouth (darkyouth@planetannihilation.com)
+--------------------------------------------------
+Wow...You like the ideas.
+
+My feeling is that this will fix the predicatable navigation, while still taking a good route. Zone to zone, defining sniper spots within the bounds of a zone will definately allow the squad to effectively defend and area combined with the tactical zones.
+
+These zones could be labelled (i.e. building) and the bots could incorperate them into chat. i.e. Squad rush the tunnel! being spammed by a llama and others saying no because they like the surface. I suppose if the overall objective was hostages a "storm the front" could be used but other than that we are limited until voice chat is truely here.
+
+As for securing areas, besides flagging optimal defence points there is the calculation side of things. However, the calcs would probably use the waypoint visibility data I precaculate. Any ideas on how to determine this at run time using:
+
+1) A visibility table between waypoints
+2) A shortest path table
+
+I am thinking that an area that has very few reachable nodes, but can see a large amount of nodes is probably a good guess. That gives us places like the rocks at the valley mouth on seige, where you can only get on it by climbing the rocks one at a time, but it can see the majority of the terrain.
+
+Any thoughs on this. Also, Im looking at supression vectors. The idea beign if a squad sees and enemy but the enemy dives for cover, they fire into that area for a while, leading slightly for the movement to shoot thru walls.
+
+The movement prediction calculations were actually quite easy for basic grenade throwing. I can get the direction, but the angle/hieght of throw is a bitch :)
+
+
+--------------------------------------------------
+06/04/01 at 22:30:56  Reply by: William (william@botepidemic.com)
+--------------------------------------------------
+in general (around the corner grenade tossing), computing the launch angle is too expensive to do at run-time:
+see: http://www.cgf-ai.com/docs/grenadehandling.pdf (1.3MB)
+
+William
+
+--------------------------------------------------
+06/05/01 at 09:26:08  Reply by: DarkYouth (darkyouth@planetannihilation.com)
+--------------------------------------------------
+On a flat surface, if I run in a straight line they will sometimes land the grenade at my feet. The gren useage is a debugging feature, and a proper implementation is best left to later.
+
+--------------------------------------------------
+06/06/01 at 08:57:26  Reply by: William (william@cgf-ai.com)
+--------------------------------------------------
+Some more thoughts, after reading the above postings more carefully.
+
+The tactical objective tree will be a great means for the AIs to understand the battle situation, provided you are able to make the right abstraction of the terrain (in terms of areas and their connections). Figuring out the right areas and connections is trivial for some maps (cs_siege, de_dust), and troublesome for others (backalley, mansion - at least, I have problems building a mental picture for these maps).
+
+Not using the objective tree isn't the only problem for most bot AI's today... If you don't annotate such a map with force (CT or T) specific info, you still have bots going to free hostages at location X immediately after having rescued the hostages at location X.
+
+The objective tree will not help you fix the predictable navigation (if you think that's a problem). To the contrary, bots are more inclined to pick the same path to an objective than before (since they ignore shorter paths in favor of paths through a progression zone). 
+Predictable or not, that's the way humans pick paths as well.
+
+Having bots defend an area does not need to involve sniping. At cs_siege, the garage is a troublesome area, but if the T's want to be successful, they ambush the two entrances to the office with shotguns and Minimi's. No sniping involved at all. They might send out a few lone T's via the tunnel to distract and annoy CT's from the rear.
+
+To deal with paths between zones while taking into account the 'costs' of each zone, I recommend using A* (rather than Dijkstra, as suggested by Tobias, though I suspect he meant A*). A* is very efficient, allowing you to compute zone progression paths on the fly. A* is easily extended to take into account other costs than just travel time.
+
+William
+
+--------------------------------------------------
+06/07/01 at 05:27:49  Reply by: DarkYouth (darkyouth@planetannihilation.com)
+--------------------------------------------------
+or I could just compute a mini-floyds algo table for each bot. 20 nodes ^3 for 20 bots (or 4 squads, just use averaged cost modifiers)
+
+i.e. zone x has 50% rating...so its distance is taken as 100/50 x distance.
+
+I can then beat the table to death with data requests as needed. i.e. get a node, move to the next nearest to the objective.
+
+--------------------------------------------------
+06/07/01 at 07:25:59  Reply by: William (william@cgf-ai.com)
+--------------------------------------------------
+You could.
+
+But the tactical picture should be reconstructed about every 2 seconds (is the garage secure? did we get reports of T's moving in the building with the elevator? where are the hostages being escorted?).
+The average bot needs less than 1 path per second (otherwise, your movement code is bad). That's less than 40 paths per 2 seconds. 
+In other words, I see little need to precompute results, and suggest to compute paths on demand and using the latest battle situation. 
+Relying on info that's 2s old wouldn't be that bad, but in that case you'd need to take care that you don't ignore info submitted recently by the same bot you plan a path for: if bot X reports that T's are spotted in area A, you should not send that bot X through area A.
+
+You will need A* at some time to do tactical planning and path finding. Why not now?
+
+William
+
+
+--------------------------------------------------
+06/07/01 at 14:07:38  Reply by: DarkYouth (darkyouth@planetannihilation.com)
+--------------------------------------------------
+The reason actually is because Ive never been able to make A* work for me.
+
+
+
+
+--------------------------------------------------
+06/12/01 at 07:43:23  Reply by: ExecutionStyle (c_brennan@hotmail.com)
+--------------------------------------------------
+I only had a chance to skim this thread but I have a few things to say.  First of all, good work Dark Youth and thanks for sharing these thoughts with people.  My comment on your plan is related to the 4th post by Greg Dunham where he points out a particular problem case that belong to a common class of problem: fitness testing.  If you want to analyze a dynamic collection to find the 'best' of the things in the collection, you need to do fitness testing.  The hard part with fitness testing is that as the complexity of the collection increases, fitness becomes harder and harder to determine exactly.  In Greg's sample case, analyzing the fitness of a path is hard because the fault point in the bot's chosen path (the garage) is not necessarily where the change in strategy needs to be made.  In general, it's very hard to properly reward or punish a certain choice when the reason for failure or success depends on many other choices.  
+
+If want more background on what I'm trying to explain, read about genetic algorithms and a-life.  John Holland's "Hidden Order" would be a fantastic book for you to read if you haven't already.  It talks about exactly this kind of thing and I wouldn't have nearly as many ideas about how Execution Bot will work if it wasn't for that book.
+
+more later... 
+
+--------------------------------------------------
+06/12/01 at 08:17:19  Reply by: DarkYouth (darkyouth@planetannihilation.com)
+--------------------------------------------------
+lol yeah,
+
+I did mention that I would devalue the choice of route, not just the last "zone" in the path taken in one of my other messages though.
+
+--------------------------------------------------
+06/13/01 at 14:47:57  Reply by: William (william@cgf-ai.com)
+--------------------------------------------------
+Is anybody here familiar with (academic) work on state-space planners and/or STRIPS? I like to known which techniques and planners work best for 'terrain oriented' situations as discussed here (as opposed to solving 'towers of Hanoi' or 'robot arm and stack of 4 cubes' problems).
+
+After Dark-Youth triggered me with his tactical progression using zones/areas, I looked into the problem some more. I originally developed a region based system for CGF (for Action QuakeII) so I could start using influence maps, but I never completed it, partially because Action Quake2 doesn't have static (terrain related) goals such as bomb sites and hostage positions (often static).
+
+If I can:
+
+dissect the terrain in regions and portals; and
+
+model/simulation the game's state, for T and CT, every 2 or 3 seconds, as follows:
+
+T using a simplified spread out model
+
+CT using planned actions
+
+
+pick a few actions, such as:
+
+
+rush to neighboring region;
+
+conquer and clear region;
+
+defend portal(s);
+
+split / join team;
+
+provide support fire;
+
+
+evaluate each state wrt
+
+
+CT team(s) state and positions;
+
+likely T state;
+
+meeting the goal (reaching hostages);
+
+time to completion;
+
+risk taken (exposed rears, flanks);
+
+force cohesion and mutual support;
+
+terrain known to be clear and safe;
+
+intel gather about enemy movement;
+
+likely successfull defense;
+
+
+
+I can have A* do a forward state-space search, and come up with an attack plan in terms of rush moves, combat moves, splits and joins, flank defenses, etc.
+Compared to today's CS bots, such a plan brings the following benefits:
+
+it tells the bots when they can rush, and when it is time to be cautious and pick combat positions (i.e., they don't immediately start sniping to defend their spawn spot);
+
+it keeps the bots closer together, at meaningful positions, than the current 'I'm deathmatching in CS' approach.
+
+
+As discussed in this thread, the plan can easily be influenced by incorporating region based feedback from previous rounds (and enemy densities at specific times).
+
+To stimulate discussion, and illustrate the problem/aim, you can find a 70KB 60s gif animation here, displaying a hand made plan for cs_siege (to get a feel for the problem):
+www.cgf-ai.com/images/planner/cs_siege_assaultplan.gifClick to see the animation of an assault plan for simplified cs_siege
+(I apologize for leaving one hostage behind in frame 19).
+
+I guess it will be feasible to come up with a decent assault plan to reach the hostages/bomb sites on maps with two or three bottlenecks (siege, dust, italy). However, I think it will be harder for open maps such tundra (the state space explodes).
+I also expect it to be harder to create plans when the goals are harder to simulate and measure (setting up a good defense of dust, siege, militia).
+
+I don't have a clue on the expected performance of the planner (whether it stalls the processor for .2, 2, or 20 seconds).
+
+I love to hear some feedback and ideas.
+
+William
+
+p.s. Picking good regions for movement and defense shouldn't be too big a problem. I've done that for waypoints.
+
+
+
+
+--------------------------------------------------
+06/14/01 at 13:05:12  Reply by: theimann (killaruna@botepidemic.com)
+--------------------------------------------------
+First off: very nice animation, William ;-) 
+Although I'm not that much of a CS-player that I knew all maps from memory, the presentation of the problem is very clear...
+
+I don't know what you mean by "state-space planners and/or STRIPS", but looking at the animation the comparison to a game of chess came to my mind... The actions each team member should take would just be a certain move in the game, leading to a different situation. Thus the time necessary for the planner would nearly exponentially depend on the number of moves you want to plan in advance and the number of different actions that can be taken.
+Although the scenario doesn't look too complicated (I counted about 40 zones) I bet you can't do the planning of the entire operation for each bot in less than a minute (very rough estimate). But if I understood you right the point was to run the planner frequently and calculate only a couple of moves in advance, wasn't it?
+
+Implementing a thing like that for CS or any other tactical shooter would give really interesting results I suppose and sounds very promising to me. You could use all the chess tree-searching techniques like alpha-beta pruning and iterative deepening to get the most out of that, and the bots would think as much ahead as the amount of time the AI gets from the CPU. Which means on fast computers - here we go! :-)
+
+Tobias
+
+
+Some time and one dinner later...
+
+I realized that it is impossible to plan the moves for the individual team members with the tree-searching method. The fact that you don't know the position of the enemy players until the first contact lets your search space explode - with or without bottleneck in the map. Just think about it: a situation where 8 enemy team members could be in any of 15 potential zones already gives you millions of different possibilities - and that's not the worst-case scenario...
+If you made restrictions in the form of "Teams split up into a maximum of two subteams" it would still work, but you can't guarantee those rules, can you?
+
+
+--------------------------------------------------
+06/14/01 at 13:54:10  Reply by: William (william@cgf-ai.com)
+--------------------------------------------------
+Tobias, thanks for your questions.
+
+The aim is to come up with an acceptable plan that:
+
+
+gets closer to CS multi-player combat where you have stand-off engagements at one, two or three bottleneck areas (for example, de_dust is contested in the T-junction hallway, and in the tunnel, and the majority of the fighting occurs there);
+
+gives more guidance to bots (and player)wrt their position and role (snipe, suppress, attack);
+
+ and *nothing* more
+
+
+The plan should be computed at the start of the mission, and maybe one or two times during the remainder of the round (teams normally are pretty bad at syncing tactics during a round).
+
+Even if it were possible, it wouldn't be fun to have an AI commander who creates better plans than the opposing team; the lonely player wouldn't notice.
+He might notice a coordinated effort around him, and he might appreciate being asked to lay down suppression fire for a team attack.
+
+I'm not that familiar with chess AI, but I understand the concepts 'ply', min-max, alpha-beta. In this case, I rather not include 'optimal' opponent behavior (which would require min-max), but rather a "physics" based progress of enemy occupation through unopposed terrain. That would greatly simplify matters.
+I also plan to plan in terms of up to 3 or 4 teams that move one sector at a time, and occupy a full sector. Again, for simplification.
+
+The A* search would search for the 'cheapest' series of actions leading to a state where both pair of hostages (theoretically) would be rescued.
+Today's pathfinding simply is a search with only one allowed action per state: move to another region.
+In this case, I'll start out that way, but I'll include 'spreading out opponent physics' and will include more actions such as 'split' (up to 2 to 4 teams', 'support fire' (leading to faster and safer movement for the supported team),...
+These actions all will have costs associated with them.
+Still, 40 regions x 10 actions per region...
+I will need to design a greedy, non-optimal heuristic for A* to cut down on computation time.
+
+I first need to clean up my automated region detection, but I'll let you know if something nice comes out.
+
+William
+

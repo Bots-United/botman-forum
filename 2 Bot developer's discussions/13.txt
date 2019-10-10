@@ -1,0 +1,131 @@
+--------------------------------------------------
+Subject: some ideas for cs-bot
+--------------------------------------------------
+08/26/00 at 01:37:22  Posted by: Guest (bitch_is_mine@iobox.com)
+--------------------------------------------------
+why doesnt these cs-bots buy any guns or shields???try please fix this little problem!!!!!
+best bots in half-life!!!!!
+
+Jussiu
+
+--------------------------------------------------
+08/26/00 at 05:23:56  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+Since I don't play Counter-Strike that much, I probably won't be spending much time trying to improve the CS part of the HPB bot.
+
+You do better to use Android or Rambot or SwatBot if you want a bot that's designed for Counter-Strike.
+
+botman
+
+--------------------------------------------------
+09/01/00 at 06:59:24  Reply by: Stealth (stealth@atozasia.com)
+--------------------------------------------------
+I did try to make a CS bot using your source code and the only thing that i can do is to modify a bit of your code, and have been trying to add a new function for buying weapons. How do you really know all the entities of each menuselect and the weapons ( i mean making the bot press the menuselect button and buy a weapon ). Can someone teach me how to do it?
+
+Thanks
+
+
+
+--------------------------------------------------
+09/01/00 at 10:23:38  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+You have to look for messages being sent to the clients.  Look at how the MessageBegin checks messages to see if a "team join" message or a "model select" messages is being sent.
+
+These messages are sent at the start of a game and when a recognized message ID is seen, it checks if the client is a bot.  If so, it sets a flag in the bot's variables that indicates that this message is being displayed on the bot's "HUD" (even though they don't have a HUD).  The bot then sees that this flag was set and sends the proper "menuselect" command via the FakeClientCommand() function.
+
+Anything that gets displayed on the HUD will have a message from the server to the client (health, ammo, weapons, money, buyzones, smoke bombs, etc.).  You can use the "debug_engine" flag to turn on engine debugging during a game and messages will be written to a "bot.txt" file in the Half-Life directory.
+
+Turn on debug_engine by using the console and enter "debug_engine" (without the quotes) then play the game and do something (like throw a grenade).  Exit the game then go look at the bot.txt file to see what got sent to any clients.
+
+The bot.txt file WILL NOT get overwritten each time you use debug_engine.  It will add stuff to the end of the file (and it can get pretty BIG if you let the game run for a long time).  You will probably want to delete the bot.txt file each time you do something (and figure out what is being sent), before you start the game again.
+
+botman
+
+--------------------------------------------------
+09/02/00 at 07:51:17  Reply by: Stealth (stealth@atozasia.com)
+--------------------------------------------------
+Thanks botman for the tip :). I have this final problem (hope this is the last one), the game crashes after i kick a bot to win the game(because my bot is too accurate =P). When it starts to load the second round, it just crashed. I saw this line in the dll.cpp
+
+-----
+
+        else if (strcmp(cmd, "addbot" ) == 0)
+            {
+               BotCreate( NULL, arg1, arg2, arg3, arg4 );
+      
+               // have to delay here or engine gives "Tried to write to
+               // uninitialized sizebuf_t" error and crashes...
+      
+               pause_time = gpGlobals->time + 1;
+      
+               break;
+----
+And i changed to this
+----
+
+        else if (strcmp(cmd, "addbot" ) == 0)
+            {
+               BotCreate( NULL, arg1, arg2, arg3, arg4 );
+      
+               // have to delay here or engine gives "Tried to write to
+               // uninitialized sizebuf_t" error and crashes...
+      
+               pause_time = gpGlobals->time + 10;
+      
+               break;
+
+----
+What value should i put or what should i do?
+
+
+
+
+--------------------------------------------------
+09/02/00 at 08:13:49  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+The one second delay I had was to keep BotCreate() from being called too quickly.  If you want to see what happens when you add too many bots too quickly, you can do this from the console.
+
+Rename the bot.cfg file (so bots won't be automatically created), start a game and pull down the console.  Then type this...
+
+bind x addbot
+
+...then return to the game.  If you press the 'x' key rapidly enough, the game will crash.  This is an engine bug where something is getting overwritten before the bot has a chance to get created by the engine.  You can recreate them more slowly than once per second (as in your case of every 10 seconds), but if you go any faster than that, the engine will crash.
+
+It doesn't sound like this is your problem though, it sounds like you've got a pointer out of whack somewhere and the engine is trying to use something that's not valid.  You can verify this by only creating 1 bot and letting it respawn at the start of the next round.  If the engine still crashes, it has nothing to do with the engine spawning problem.
+
+botman
+
+--------------------------------------------------
+09/02/00 at 09:27:50  Reply by: Stealth (stealth@atozasia.com)
+--------------------------------------------------
+botman,
+
+can you send me the HPB_Bot_Alpha_3.exe to stealth@atozasia.com . If i'm not wrong, your HPB_Bot Alpha 3 source code has the same error that i had mention. I compiled the original and tested it out and it turned out to be what i had mentioned. Your downloading site has an error saying :
+
+Microsoft OLE DB Provider for ODBC Drivers error '80040e14' 
+
+[Microsoft][ODBC SQL Server Driver][SQL Server]The log file for database 'fileplanet' is full. Back up the transaction log for the database to free up some log space. 
+
+/dl/redir.asp, line 28 
+
+
+
+--------------------------------------------------
+09/02/00 at 09:48:31  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+Gamespy is having some server problems, just use this link to download the file instead of going through the gamespy scripts...
+
+http://ftp2.gamespy.com/pub/cdrom/planethalflife/botman/HPB_bot_Alpha_3.exe
+
+botman
+
+--------------------------------------------------
+09/02/00 at 18:29:44  Reply by: Stealth (stealth@atozasia.com)
+--------------------------------------------------
+I've tried out the Alpha 3 game and it has the problem too. This is what happened:
+
+I loaded 3 bots, 2 on CounterTerrorist and 1 on Terrorist. I joined the Terrorist. I planted the bomb, and went to kill Counter Terrorist Bots. I kiled one and then I kicked the surviving Counter Terrorist Bot. When it finishes the round, and starting the second round. It has the error message "Tried to write to uninitialized sizebuf_t" and crashes.
+
+So does it matters with the re-spawning or the kicking part?
+
+
+

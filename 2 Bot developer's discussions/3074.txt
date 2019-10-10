@@ -1,0 +1,52 @@
+--------------------------------------------------
+Subject: bot problem
+--------------------------------------------------
+05/04/02 at 07:20:02  Posted by: no_one (milli_vinilli68@hotmail.com)
+--------------------------------------------------
+When I add bots to our mod, they play great, the only problem I am having now is that every once in awhile whenever I try to change weapons it will put up on console unknown command:
+and it won't let you change weapons. After a few minutes of this then it will work again. Any suggestions would be great ??
+
+--------------------------------------------------
+05/05/02 at 05:28:21  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Sounds like you have a block of code in your ClientCommand() function that's not doing a "return;" after it checks the string and executes it.  In this case, it's falling though to the default code (in the MOD DLL) which sees the command and prints out the "unknown command" string.  For example...
+code:
+   elseif (strcmp(pcmd, "addbot") == 0)
+   {
+      // add the bot...
+      BotCreate(blah, blah, blah);
+      // opps, I forgot a return; here!
+   }
+
+...whenever you do "addbot", it will add a bot and then print out "unknown command" (because you aren't returning to the engine after the command you've added).
+
+botman
+
+--------------------------------------------------
+05/05/02 at 20:10:26  Reply by: no_one (milli_vinilli68@hotmail.com)
+--------------------------------------------------
+but, the problem I am having is it doesn't even execute the command, you are stuck with 1 weapon, you can't switch weapons, you can't use the say command or any of the other commands. The only thing that it does do is reload and fire. After a few minutes everything works fine, then a few minutes later the samething happens. I have not added any commands into the clientcommand func. in the bot dll.
+
+--------------------------------------------------
+05/05/02 at 22:49:43  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+I know the reason of this bug because I already experienced it.
+
+There is a bug in your bot DLL that makes it issue a huge amount of ClientCommands, probably with no effect (wrong command ?). Your DLL overtakes the ''bandwidth'' of ClientCommands that's the reason why you can't issue yours. I bet you are issuing a team selection the engire refuses and you keep issuing the ClientCommand, or something like that. May be a bot weapon selection problem, too (that was the case for me).
+
+
+--------------------------------------------------
+05/05/02 at 23:21:31  Reply by: no_one (milli_vinilli68@hotmail.com)
+--------------------------------------------------
+so what would be the best method of tracking it down?
+
+--------------------------------------------------
+05/06/02 at 02:29:45  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+double-check all your FakeClientCommands to make sure they are issued correctly, on purpose and not several times at once, that's all.
+
+--------------------------------------------------
+05/08/02 at 06:16:44  Reply by: no_one (milli_vinilli68@hotmail.com)
+--------------------------------------------------
+that was it, thanks for the help..
+

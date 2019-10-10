@@ -1,0 +1,164 @@
+--------------------------------------------------
+Subject: Walking one way while looking another way...
+--------------------------------------------------
+07/28/01 at 14:55:15  Posted by: I_Luv_Bots! (robotix2000@hotmail.com)
+--------------------------------------------------
+Hi,
+Are there seperate v.angles I can use to have my bots pivot their torso and look one way while they are continuing to walk in a different direction, like toward a waypoint?  Or do I have to calculate straff modification percents like (-1.0 to 1.0 * f_move_forward) and (-1 to 1 * straff)?  I use mouse and keys when I play, so when I want to look behind or to the side, I just switch to straff left while looking right with mouse to continue walking forward, etc.  If I remember correctly, it's possible to look with mouse while walking with joystick, or is this just straff/f_move modification too?  TIA
+
+
+--------------------------------------------------
+07/28/01 at 17:02:19  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+You can twist the body at the waist, but the Half-Life engine limits how far the body can twist.  If you want to try some experiments, try modifying the bot code so that they don't set the body angles (pev->angles.y) and view angles (pev->v_angle.y) to the same thing.  The bot will look one way while turning the body in a slightly different direction.  You can't pivot the body all the way around though (so that the head is facing towards the back of the body).
+
+When you are playing the game and you are side strafing while looking another direction, you are simply adjusting the sideways movement to the left or right while facing right or left.  You can get the bots to do this as well by doing like you said (increase the sidemove value and decrease the forwardmove value).
+
+botman
+
+--------------------------------------------------
+07/29/01 at 03:32:49  Reply by: @$3.1415rin (as3.1415rin@gmx.de)
+--------------------------------------------------
+I solved this problem in a mathematical way. U should have the difference vector between bot origin and vector it wants to run to and the difference vector to the origin it wants to look at. Now u can divide the "runningto"-Vector in two orthogonal vectors (using dot and crossproduct) of which one is linear dependent to the view vector. One of these vectors is the amount to strafe, the other the speed forward.
+
+( sorry, I'm not really sure about the english vocabulary for the mathematical terms, I just know the german expressions :( )
+
+--------------------------------------------------
+07/29/01 at 14:09:36  Reply by: I_Luv_Bots! (robotix2000@hotmail.com)
+--------------------------------------------------
+ah ok, so the torso is v_angle.y and the legs are angles.y?  Yea the limitation to the angle of view by pivoting the torso probably wont be helpful, so I'll just use the straff and f_move vars.  Rin, I think it can be simpler by just using a trig circle and determining the sin, cos, tan for the degree of straff + f_move, using the vectors as the axis.  Thanks both you guys for the input...
+
+
+--------------------------------------------------
+07/29/01 at 14:13:23  Reply by: @$3.1415rin (as3.1415rin@gmx.de)
+--------------------------------------------------
+the dot product is in some way similar to cos, so I think it might be faster using the vectors ( if u already have them ) and then have 2 multiplications and one addition instead of cos. But I'm not sure.
+
+--------------------------------------------------
+07/29/01 at 14:16:00  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+The head turns to look in the direction of the view angles (pev->v_angle.y).  The body turns in the direction of the model angles (pev->angles.y).  Don't ask me what Valve defines as "the body".  I assume it's the chest but I'm not all that familiar with the bone controller code so I can't tell you for sure.
+
+botman
+
+--------------------------------------------------
+07/29/01 at 14:20:53  Reply by: @$3.1415rin (as3.1415rin@gmx.de)
+--------------------------------------------------
+FSIN takes 16-126 cycles, FMUL 1-3 and FADD 1-3 ... I dunno what's faster, I think that would have to be tested, cause I don't know when FSIN needs 126 cycles, but I think the dotproduct version is faster although u need a crossproduct, too
+
+[modified on 07/29/01 at 14:20:53]
+--------------------------------------------------
+07/29/01 at 20:19:38  Reply by: I_Luv_Bots! (robotix2000@hotmail.com)
+--------------------------------------------------
+Unless the compiler is using SSE for the floats in which case the hit would be minimal either way I suppose.  rin, would you mind providing a code example of your solution?  TIA
+
+
+--------------------------------------------------
+07/29/01 at 20:20:51  Reply by: I_Luv_Bots! (robotix2000@hotmail.com)
+--------------------------------------------------
+Ah ok, aspirin.  got it <grin>  ;)
+
+
+--------------------------------------------------
+07/30/01 at 00:40:40  Reply by: William (william@cgf-ai.com)
+--------------------------------------------------
+QUOTE:
+
+FSIN takes 16-126 cycles, FMUL 1-3 and FADD 1-3
+
+
+
+
+QUOTE:
+
+Unless the compiler is using SSE
+
+
+
+
+We really are talking about a computation that is done once per bot per tick. In other words, any effort spent on optimization here is wasted time.
+
+William
+p.s. using SSE for computation of a single value is more expensive (it is meant for vector operations, and requires some setup code), and the result is less accurate. Besides, today's compilers do not generate SSE code; it requires manual work.
+
+--------------------------------------------------
+07/30/01 at 01:12:44  Reply by: @$3.1415rin (as3.1415rin@gmx.de)
+--------------------------------------------------
+lol, i'm using sin and cos each one time too, to convert the viewing angle .... ok, but here's some code ( only for cs, for dod, u've to use a bit other code, cause there u cannot strafe as fast as u can run )
+
+code:
+if(!pBot->bReplay && pBot->f_LookTo + .3 > gpGlobals->time){
+            float f_newspeed;
+            float f_newstrafe;
+            float f_Dot;
+            float f_DotMin = -.5;
+            Vector VLDiff,VRDiff;
+
+            if(pBot->f_GoBack>gpGlobals->time){
+                  f_DotMin = -1.0f;
+            }
+            
+            VLDiff = Vector(cos(pEdict->v.v_angle.y * M_PI / 180.0)
+                        ,sin(pEdict->v.v_angle.y * M_PI / 180.0),0);
+            
+            VRDiff = pBot->VRunningTo - pEdict->v.origin;
+            VRDiff.z = 0.0;
+            VRDiff = VRDiff.Normalize();
+            
+            f_Dot = DotProduct(VRDiff,VLDiff);
+            if(f_Dot > f_DotMin){
+                  Vector VCross = CrossProduct(VLDiff,VRDiff);
+                  
+                  f_newspeed = f_Dot * pBot->f_move_speed;
+                  f_newstrafe = sqrt(pBot->f_move_speed*pBot->f_move_speed-f_newspeed*f_newspeed);
+                  if(VCross.z>0.0)
+                        f_newstrafe = -f_newstrafe;
+                  
+                  pBot->f_strafe = f_newstrafe;
+                  pBot->f_move_speed = f_newspeed;
+                  
+                  if(pBot->f_LookTo > gpGlobals->time){
+                        HeadToward(pEdict,pBot->VLookTo);
+                  }
+                  else{
+                        HeadToward(pEdict,pBot->VRunningTo);
+                  }
+            }
+            else{
+                  pBot->f_LookTo = gpGlobals->time;
+            }
+      }
+
+
+ok, there is still something to optimize, e.g i don't have to calculate all components of the cross product, only z, but as william said ...
+
+--------------------------------------------------
+07/30/01 at 07:08:19  Reply by: theimann (killaruna@botepidemic.com)
+--------------------------------------------------
+QUOTE:
+Are there seperate v.angles I can use to have my bots pivot their torso and look one way while they are continuing to walk in a different direction, like toward a waypoint?
+
+
+
+You don't need any calculations at all for that. Let's assume moveAngle is the direction you want to move to, viewAngle the one you want to look at.
+code:
+
+ent->v.v_angle = viewAngle;
+ent->v.angles.y = viewAngle.y;
+ent->v.angles.x = -viewAngle.x / 3;
+ent->v.angles.z = 0;
+g_engfuncs.pfnRunPlayerMove( ent, moveAngle, 
+            speed, 0, 0, action, 0, msec() );
+
+
+As you can see you just set view- and bodyangle to your viewAngle but pass moveAngle in your runPlayerMove() - that's all.
+
+Tobias
+
+--------------------------------------------------
+07/30/01 at 22:44:06  Reply by: I_Luv_Bots! (robotix2000@hotmail.com)
+--------------------------------------------------
+Ah yea, very cool.  The best formula in the end is always the KISS formula ;)
+Thanks for putting in the time to answer guys.  Thanks aspirin.
+
+

@@ -1,0 +1,329 @@
+--------------------------------------------------
+Subject: Trying to add a damage field
+--------------------------------------------------
+07/03/03 at 14:06:52  Posted by: Pratt (pratt@planethalflife.com)
+--------------------------------------------------
+trying to add to standard valve map (crossfire) a toxic/fire/whatever field that slowly gives damage if you go into a certain area ... any help would be appreciated thx 
+
+peace, 
+-p.
+
+--------------------------------------------------
+07/03/03 at 16:57:40  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Try using a 'trigger_hurt'...
+
+http://collective.valve-erc.com/index.php?ent=trigger_hurt
+
+You would set it up in the same way the 'trigger_teleport' is set up in the crossfire_str.cfg example Stripper2 config file.
+
+botman
+
+--------------------------------------------------
+07/03/03 at 20:36:42  Reply by: Jellric (jellric@yahoo.com)
+--------------------------------------------------
+Also, as I've just discovered, trigger_hurts are brush-based entities which means you will have to clone an existing one. There is one in crossfire( the air raid blast), so I believe you'd have to clone it, then change its damagetype to what you want. 
+
+--------------------------------------------------
+07/05/03 at 18:56:45  Reply by: Pratt (pratt@planethalflife.com)
+--------------------------------------------------
+thanks for the suggestions guys ... I'm on the hunt ... will let you know how I do
+
+peace,
+-p.
+
+--------------------------------------------------
+07/07/03 at 11:46:55  Reply by: clad11 (clad1@hotmail.com)
+--------------------------------------------------
+hey botman, i have tried the trigger_hurt also and can't seem to get it to work. any other ideas ? Thanks ClaD
+
+--------------------------------------------------
+07/07/03 at 12:14:17  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Did you create a brush for it or just create the entity?
+
+Like Bruce said, they are brush based, so you have to have a brush the the players will be "inside" of.
+
+botman
+
+--------------------------------------------------
+07/07/03 at 13:48:31  Reply by: clad11 (clad1@hotmail.com)
+--------------------------------------------------
+are you talking about the  bbox_min and the bbox_max  as being the brush ?
+
+--------------------------------------------------
+07/07/03 at 15:52:03  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+No, I don't think the bbox_min and bbox_max will work in this case.  They are used to set the size of an entities bounding box.  The trigger_hurt is a brush based entity.  The engine needs a brush model to check to see if the player is inside that brush or not.
+
+You can clone an existing brush (search this forum for "clone brush model") or you can create a transparent model of the size that you want using Milkshape to create a .mdl file as use that as your brush model.
+
+botman
+
+--------------------------------------------------
+07/07/03 at 22:39:34  Reply by: clad11 (clad1@hotmail.com)
+--------------------------------------------------
+i got a mdl i was going to use. it's the in_teleport.mdl
+  will it work ? i went to a server and the guy has a flower from H/L and when you go up to it , it gives a little health  at a time.thats what i was going to do with the teleporter  mdl .
+
+--------------------------------------------------
+07/08/03 at 05:24:36  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+"will it work?"
+
+Did you try it?
+
+botman
+
+--------------------------------------------------
+07/08/03 at 11:12:48  Reply by: clad11 (clad1@hotmail.com)
+--------------------------------------------------
+yes i tried it , and it's not working.THis is what i have and what it's doing.i have the mdl set up  and when you touch it the game closes out.
+
+{
+classname/env_sprite
+ PRECACHE_MODEL(models/in_teleport.mdl) 
+frame/1
+framerate/10
+rendermode/5
+renderamt/200
+scale/0.50
+spawnflags/1 // SF_SPRITE_STARTON
+model/models/in_teleport.mdl
+origin/0 0 -460
+}
+
+{
+   classname/trigger_multiple
+   wait/1.0    
+   target/health
+//   spawnflags/4
+   PRECACHE_SOUND(items/medcharge4.wav) 
+   speak/items/medcharge4.wav
+   message/ GOT HEALTH ?
+//  sounds/0
+   origin/0 0 -450      
+   bbox_min/-40 -30 -50
+   bbox_max/40 30 50
+}
+ {      
+  classname/trigger_hurt   
+  spawnflags/2    
+  team_no/0  
+  dmg/-10    
+  targetname/health  
+  origin/0 0 0
+ } 
+
+--------------------------------------------------
+07/08/03 at 11:30:00  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+You're not specifying a "model" key in the trigger_hurt entity.  Try adding a model key with the .mdl file your using and see if that helps.
+
+I've not actually done this myself, so I can't tell you if it will work or not.
+
+botman
+
+--------------------------------------------------
+07/09/03 at 03:02:01  Reply by: clad11 (clad1@hotmail.com)
+--------------------------------------------------
+botman , thanks for the help ... i tried that still no luck. so i add team_no/   and it works. here is what i have for others to see.
+NOTE: i have mine set up to give health , not to give damage. to do so put a  - sign before the # in the dmg field.
+
+{
+classname/env_sprite
+ PRECACHE_MODEL(models/med-disp.mdl) 
+targetname/heal
+frame/1
+angles/0 180 0
+framerate/10
+rendermode/5            //keep
+renderamt/190           //keep
+renderfx/4               //was 15
+scale/0.20
+spawnflags/1                //was 1
+model/models/med-disp.mdl
+origin/0 0 -402
+}
+{       
+  classname/trigger_hurt   
+  spawnflags/1
+  team_no/1  // the BLUE team  
+  dmg/-5    
+  targetname/heal
+  origin/0 0 -430
+}  
+{       
+  classname/trigger_hurt    
+  spawnflags/1   
+  team_no/2  // the RED team   
+  dmg/-5    
+  targetname/heal
+  origin/0 0 -430
+ } 
+
+--------------------------------------------------
+07/09/03 at 13:02:49  Reply by: WFB (williamfbuckleyjr@yahoo.com)
+--------------------------------------------------
+QUOTE:
+i went to a server and the guy has a flower from H/L and when you go up to it , it gives a little health  at a time.thats what i was going to do with the teleporter  mdl .
+
+
+  I'm guessing that I'm the guy that added the H/L plant to that map on that server.  It's an "classname" "info_tfgoal" that gives 7 units of health.  Just make a similar entity with a teleport model and the minus health value you want.
+
+
+--------------------------------------------------
+07/09/03 at 14:30:47  Reply by: clad11 (clad1@hotmail.com)
+--------------------------------------------------
+thats a really cool server Buckley.....  ty  for the help.
+1 question also. i have it so a mdl can be picked up ,when it's picked up it's really hard to see the mdl . meaning the player almost covers up the whole mdl they just picked up.They don't really look like the mdl they just picked up, you might see a leg or a arm sticking out of the player that just picked it up the mdl.
+
+[modified on 07/09/03 at 14:30:47]
+--------------------------------------------------
+07/09/03 at 17:05:17  Reply by: Buckley (williamfbuckleyjr@yahoo.com)
+--------------------------------------------------
+If you want a player to pickup a mdl and you want the mdl to cover the player it has to be a large mdl of a certain type.  Other mdls will just morph with the player, sometimes giving an interesting effect.  I’m not sure if this is something you’d be interested in but RobGP's shiver mod allows TFC players completely change mdls via a console cmd. 
+
+
+
+[modified on 07/09/03 at 17:05:17]
+--------------------------------------------------
+07/09/03 at 19:05:32  Reply by: clad11 (clad1@hotmail.com)
+--------------------------------------------------
+yes i am aware of that one.  it's nice. i just wanted to add these in and have all the extras(quad,added nades1and2,etc..).yes it's the same thing,i run adminmod tho.
+
+QUOTE:
+"If you want a player to pickup a mdl and you want the mdl to cover the player it has to be a large mdl of a certain type.  Other mdls will just morph with the player, sometimes giving an interesting effect"
+
+can you explain more on this ?
+  TY...clad
+
+--------------------------------------------------
+07/10/03 at 13:54:42  Reply by: Buckley (williamfbuckleyjr@yahoo.com)
+--------------------------------------------------
+It's mainly trial and error.  Try different models associated with item_tfgoals and see what it looks like when a player picks it up. We use a huge Homer mdl for the ball in murderball which essentially covers the tfc player mdl making the “ball' holder look like Homer.  We also use a Marvin the Martian mdl to give speed to the activating player, but in that case Marvin morphs with the player making it look as though the tfc player has big Marvin sneakers on his feet and a Marvin head and helmet above his head – silly, but very funny.
+
+
+[modified on 07/10/03 at 13:54:42]
+--------------------------------------------------
+07/10/03 at 16:58:36  Reply by: clad11 (clad1@hotmail.com)
+--------------------------------------------------
+I c....  ok   thanks.  :-)could i ask 2 more question plz?
+ 1st.. where are some good sites for models in this case ?
+ 2nd.. i've been to your server, it's a really cool setup ! ( If you don't mind me asking )   How did you get the lifts in the corner? Looks like the lifts in rock2 with a fade... hehe  
+
+[modified on 07/10/03 at 16:58:36]
+--------------------------------------------------
+07/11/03 at 04:47:05  Reply by: Buckley (williamfbuckleyjr@yahoo.com)
+--------------------------------------------------
+1.  other than the models that are included with HL you can try here (but don't forget that the client will have to dl this stuff): http://www.hlskins.free-online.co.uk/
+
+2.  the lifts in the corners are clones of the lifts in the bases. botman posted this guide: http://dynamic.gamespy.com/~botman/yabb/YaBB.pl?board=6&action=display&num=2687
+
+--------------------------------------------------
+07/12/03 at 17:00:50  Reply by: clad11 (clad1@hotmail.com)
+--------------------------------------------------
+hey again Buckley,  about that info_ftgoal where you have the flower model. I tried that and the flower doesn't move . Any idea what i'm doing wrong ?
+
+--------------------------------------------------
+07/12/03 at 17:42:06  Reply by: Buckley (williamfbuckleyjr@yahoo.com)
+--------------------------------------------------
+There are two entities involved, one for the mdl and one for the health (or in your case loss of health).  If you want the plant to disapear until it's re-triggerable combine the two entities into one entitiy.  Here they are:
+
+{
+"origin" "-326 523 -150"  
+"framerate" "2"
+"mdl" "models/uplant3.mdl"
+"classname" "info_tfgoal"
+}
+{
+"origin" "-326 523 -150" 
+"noise" "items/health1.wav"
+"health" "7"
+"wait" "3"
+"g_e" "1"
+"g_a" "1"
+"classname" "info_tfgoal"
+}
+
+Example of where plant disappears (like an ammo pack, etc) when triggered:
+
+{
+"origin" "167 -6 370"                   
+"noise" "buttons/blip1.wav"
+"wait" "10"
+"ammo_cells" "50"
+"ammo_rockets" "30"
+"ammo_nails" "200"
+"ammo_shells" "50"
+"armorvalue" "50"
+"health" "25"
+"mdl" "models/uplant3.mdl"
+"goal_effects" "1"
+"goal_activation" "1"
+"skin" "1"
+"goal_state" "2"
+"framerate" "2"
+"classname" "info_tfgoal"
+}
+
+
+[modified on 07/12/03 at 17:42:06]
+--------------------------------------------------
+07/12/03 at 19:27:16  Reply by: clad11 (clad1@hotmail.com)
+--------------------------------------------------
+Noo...  hehe. you misunderstood, when i was using the trigger_hurt code you have to put the  - sign before the # in the health slot. so if you did not put the  - sign in there it would hurt you like normal. I like the way you have it setup.When your near the flower it does not disappear. and on mine the flower does not move, where yours sways back and forth.what makes it sway ?
+
+P.S.    do you put your stuff in  via... ripent.exe, or  stripper2 ?   I see the  " ".
+
+[modified on 07/12/03 at 19:27:16]
+--------------------------------------------------
+07/13/03 at 09:46:06  Reply by: Buckley (williamfbuckleyjr@yahoo.com)
+--------------------------------------------------
+framerate" "2"  makes it move.
+
+This is ripent.
+
+
+--------------------------------------------------
+07/13/03 at 14:14:14  Reply by: clad11 (clad1@hotmail.com)
+--------------------------------------------------
+ thanks.....now they move..... hehe  Oh.. ok , i've been tring to get this lift working in stripper2, crap. i know a guy and he said you put it all in with stripper2, so i didn't even think about asking you.
+
+--------------------------------------------------
+07/13/03 at 17:09:49  Reply by: RobGP (rob@planetfortress.com)
+--------------------------------------------------
+"RobGP's shiver mod allows TFC players completely change mdls via a console cmd"
+
+Yes.. but Shiver cheats, I was shown enough of the TF code to be able to write a proper solution. It doesn't use existing entities (or entities at all for that matter). So its probably useless to you.
+
+[modified on 07/13/03 at 17:09:49]
+--------------------------------------------------
+07/14/03 at 09:25:04  Reply by: WFB (williamfbuckleyjr@yahoo.com)
+--------------------------------------------------
+Clad, to what bsp are you making these modifications?
+
+--------------------------------------------------
+07/15/03 at 17:00:39  Reply by: clad11 (clad1@hotmail.com)
+--------------------------------------------------
+I am mainly using stripper2, and was just wanting them to have.I dunno really yet.What got me looking into it was a friend wanted something like that and i thought. hmm........ not a bad idea, and then i see yours..  i'll try different things out on different maps.  :-)
+
+ But you said the lifts have to be put it Via ripent ?
+
+--------------------------------------------------
+07/16/03 at 06:58:32  Reply by: WFB (williamfbuckleyjr@yahoo.com)
+--------------------------------------------------
+
+QUOTE:
+ But you said the lifts have to be put it Via ripent ?
+
+
+
+
+No.  Did you read botman's post on how to clone?
+
+--------------------------------------------------
+07/16/03 at 16:56:01  Reply by: clad11 (clad1@hotmail.com)
+--------------------------------------------------
+yes, i did.but i guess it's going right over my head . i tried it but i still don't understand it.   :-(
+

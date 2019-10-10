@@ -1,0 +1,118 @@
+--------------------------------------------------
+Subject: stripper. or is it adder?!
+--------------------------------------------------
+04/12/01 at 17:35:42  Posted by: camus (bgwannabe@yahoo.com)
+--------------------------------------------------
+Is it theoretically possible to add weapons to a mod just as you add bots? I was thinking about the stripper addon and though, why could'nt you add items too? How hard would this be to do?
+
+--------------------------------------------------
+04/12/01 at 18:34:43  Reply by: eLiTe (ali@elitegamer.fsnet.co.uk)
+--------------------------------------------------
+Um this is one of the basic things that you do in a mod I'm pretty sure. How do you think they got the new weapons into CS?? Look at how the normal weapon work in the SDK. The hardest thing about adding weapons is finding models and sound effects for the weapons!!
+
+--------------------------------------------------
+04/12/01 at 18:36:46  Reply by: camus (bgwannabe@yahoo.com)
+--------------------------------------------------
+Thats not what I mean!! Im talking about adding them externally. without access to the source code. Mods for mods. The same way the HPB Bot works.
+
+--------------------------------------------------
+04/13/01 at 01:05:35  Reply by: William (william@botepidemic.com)
+--------------------------------------------------
+Nope, in practice you'll find that almost all mods and 3D action games have been implemented with hard-wired weapon names, animations, "ammo physics", etc. (the exception being the game Rainbow Six: Rogue Spear (Urban Operations) by Red Storm).
+That makes it impossible to add weapons without access to the source code, and still hard to add weapons even if you do have access to the source code.
+
+William
+
+
+--------------------------------------------------
+04/13/01 at 01:39:22  Reply by: pikachu (emperorstuart@hotmail.com)
+--------------------------------------------------
+You can add weapons to the mod that you can use easily :-)
+hehe... a bfg in counter-strike :D
+
+
+--------------------------------------------------
+04/13/01 at 03:40:19  Reply by: William (william@botepidemic.com)
+--------------------------------------------------
+Pikachu,
+
+are you serious? 
+
+You can replace the models CS refers to by other models. You cannot, however, introduce new weapons (for example, have opponents correctly display an M4 with or without silencer).
+
+William
+
+--------------------------------------------------
+04/13/01 at 05:17:03  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+I don't believe adding new weapons to a MOD is quite as easy as Pikachu thinks it is.  Until somebody shows me something I can download that proves me wrong, I'll continue to believe this.
+
+The reason that I believe this is that if you look through the SDK you'll notice that damage done by weapons is all INTERNAL to the MOD source code.  There isn't an external function that the Half-Life engine (or other DLLs) can call to inflict damage on the players.
+
+The biggest problem with adding weapons to a MOD is handling the user interface to the weapons in the client.dll.  You'll have to have some method of selecting the weapons and you'd have to modify the client to support this.  You could probably swap one weapon sprite out for another weapon sprite, but the MOD code will still treat the weapon model and weapon ID bits as the old weapon.
+
+It's a lot easier to prevent something from showing up than it is to add something completely new.
+
+If someone wants to try to modify TFC or CS to add a new weapon then that would be great.  I'd LOVE to have an egon gun in Counter-Strike!  :)
+
+botman
+
+--------------------------------------------------
+04/13/01 at 11:48:34  Reply by: camus (bgwannabe@yahoo.com)
+--------------------------------------------------
+Well, it would be hard. You would have to emulate portions of the Client and Server DLLs completely. That would take some knowledge and guess work of the source. Maybe you could start by trying it on HL deathmatch? Your DLL would be pretty large. It would have to send information to the engine and clients on its own. not just pass stuff back and fourth. That would be interesting... Mmmm. BFG in CS. :)
+
+--------------------------------------------------
+04/13/01 at 20:45:02  Reply by: DT_ShadowWolf (demon_shadowwolf@yahoo.com)
+--------------------------------------------------
+Hmm...what about if you added a dll file that instructed the main dll file to #include the new weapon.cpp (and/or weapon.h) files and then passed everything back over to the original dll file with the new one in there?
+
+
+--------------------------------------------------
+04/14/01 at 05:57:56  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+It doesn't work that way.
+
+botman
+
+--------------------------------------------------
+04/14/01 at 11:17:59  Reply by: DT_ShadowWolf (demon_shadowwolf@yahoo.com)
+--------------------------------------------------
+I figured that was too easy...
+
+anyways, there has to be a way... I mean you can add bots without access to the source code so there's probably some sort of bug in the Half-life or quake2b engine that allows you to spawn & create outside weapons
+
+/me is too lazy to try
+
+--------------------------------------------------
+04/14/01 at 13:17:06  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+Yes, I never said you can't create brand new entities, what I said was that IF you create brand new entities it will be difficult to get the MOD to handle them as though they are part of the original MOD.
+
+For example, if you create a new weapon you will have to modify the HUD to display it.  You will have to find some way to get it to cause damage to players in a way such that the player gets credit for the kill.  Damage and credit for kills are all handled internal to the MOD.  You can effect players health (pev->health) and you can effect players frags (pev->frag), but if the MOD keeps track of these things separate from the Half-Life edict values then no matter what you change them to, the MOD will just reset them to it's values the next time the client is updated.
+
+You can add models to a MOD and precache them so that they show up in the level, but getting them to actually do something is not trivial.
+
+Bots are kind of a separate case because I'm not adding any new entities to the MOD.  All I'm doing is creating a "player" entity (which already existed in the MOD) local to the server.  Bots interact with the MOD (jumping, ducking, firing weapons), by setting bits in a variable used by the Half-Life engine.  This variable then gets passed along to the MOD by the Half-Life engine.  I'm not directly accessing anything inside the MOD (which would be required to have weapons causing damage resulting in frags for the player).
+
+You can do other types of effects besides weapons.  For example, you could create a jetpack for TFC that would allow players to fly.  All you have to do to fly is set "pev->movetype" to "MOVETYPE_FLY".  That's it!  You could create a new server command that allows players to toggle the jetpack on or off by setting "movetype" to "MOVETYPE_FLY" or "MOVETYPE_WALK".  Of course you can't add anything to the HUD display to show that the jetpack is on or off (you could play a sound to the client though).
+
+Basically you can only make certain types of changes and you usually can't display anthing on the client (other than text messages) when something new is being used.  You probably won't really be able to tell what it possible and what isn't possible until you actually try to do it.
+
+botman
+
+--------------------------------------------------
+04/14/01 at 19:56:44  Reply by: DT_ShadowWolf (demon_shadowwolf@yahoo.com)
+--------------------------------------------------
+Oh ok, I get it now!
+
+Thanks for clarifying...heck with all that, it would take a while to figure out how to do something like adding a simple weapon (and all of it's effects)...but you could make a "thing" that did damage & killed soemone, but you wouldn't get a frag/point for it, right?
+
+--------------------------------------------------
+04/23/01 at 13:36:47  Reply by: pikachu (emperorstuart@hotmail.com)
+--------------------------------------------------
+Erm
+All you have to do with weapons basically is create a new source file, export the weapon create func, and precache it.
+
+You can use any bullet id you like.
+

@@ -1,0 +1,187 @@
+--------------------------------------------------
+Subject: waypoint ideas...
+--------------------------------------------------
+03/01/01 at 11:11:51  Posted by: jldailey (jldailey@uchicago.edu)
+--------------------------------------------------
+so i was thinking last night about waypoints, and the kind of emphasis they do/should have in game play for a bot...
+
+in taking botman's advice, I was trying to think about how a player navigates a map... now we throw out a certain amount of realism because humans dont actually use any intermediate waypoints, we simply know where things are on the map, and everything in between is continuous... so we are already approximating, but nonetheless, here's my idea...
+
+waypoints are in effect only useful for two things, indicating a goal and managing to get tehre... but in order to be as flexible as possible in game play, a bot shouldn't have a series of clear routes defined for a map, in other words you shouldnt run through the best rush lines in a map placing waypoints, infact you shouldn't really run through _any_ clear paths placing waypoints.  waypoints are for an abstract kind of path-finding, not path dictating...
+
+special waypoints should be around to indicate where special items are, but every where else in the map should be a fairly homogenous spread of waypoints that can be used to calculate paths to unseen goal waypoints by way of the homogenous grid... (an approximation of the continuous nature of human mapping)
+
+so ditch this linear autowaypoint nonsense... when a human player runs into a room, they scan the room placing mental waypoints about what kind of surfaces they can reach (WaypointReachable) and on surfaces (like the floor and ledges and other surfaces) that are homogenous mapping them into memory... so why shouldn't a bot do the same... run into a room, send a kind of waypoint 'ping' through the room mapping waypoints onto all reachable surfaces at a grid like interval... these are then stored and remembered for the next rounds... it may not get you everywhere, but that depends on how well you determine reachability (a non-trivial consideration)...
+
+for efficiencies sake waypints arent stored for each bot individually, which simply means they have a shared memory... but thats another issue of realism... 
+
+the idea then is really to implement this waypoint pinging for general navigational waypoints... since they should be homogenous, there's relatively little need for human intervention...
+
+and to avoid even having to manually place goal waypoints when the map starts, you intercept goal item spawn requests and map them (every time you see a func_hostage spawn somewhere, place a waypoint there, etc.)...
+
+an effective implementation could then take very little time to produce valid navigational grids around a map, with then tuning to add things like crouch waypoints and sniper spots and other behavior changing waypoints...
+
+--------------------------------------------------
+03/01/01 at 12:03:21  Reply by: Zneaker (Hobermai@gmx.de)
+--------------------------------------------------
+Hi
+This could probably be managed by placing wpts along a traced line until it hits something..the only problem is that it will need a lot of memory (see other bots with only 100 wpts and imagine that each room is full of wpts according to your theory).
+
+--------------------------------------------------
+03/01/01 at 12:36:53  Reply by: jldailey (jldailey@uchicago.edu)
+--------------------------------------------------
+sure, but remember that "full of" is a relative term...  you could easily adjust the spacing in the grid to adjust performance, testing would bare out the right balance... you always have to balance performance against realism... 
+
+in an ideal world (with no limitations on memory or CPU time) you should store a very dense, dynamic grid, unique to each bot... but since we are far from that point, leave it sparse and global, but the point remains valid... a couple 100 waypoints is simply not enough information for a bot to make even a "reasonable approximation" of human navigation...
+
+how fun is it when a level starts, the bots gear up and then they all run straight for the big door, and in to the waiting sniper... and then do it again next round... what good is that?
+
+how realistic is it that a bot can only cross an open field on maybe one or two different paths?
+
+
+
+--------------------------------------------------
+03/01/01 at 12:48:21  Reply by: theimann (tobias.heimann@cl.cam.ac.uk)
+--------------------------------------------------
+The problem isn't really memory in this case: on a standard HL-map you could place waypoints on a 64-unit-grid (which is quite dense) and get a maximum number of 128*128 = 16384 waypoints per floor - that's not too memory consuming, even if you are using larger structures...
+However, you will have to use dynamic routing (a Floyd-Table indeed would be too big), preferably hierarchically organized or using a cache for better CPU performance.
+The problem might rather be the "ping"-procedure that (at least as I understood) should be performed ingame. Tracelines are a possibility but to get good results the number of tracelines has to be fairly large which would favourize an extra waypoint-extraction-module/procedure that can be executed outside the game rounds.
+Do you already have a plan for the ping, Jesse? And which kind of routing did you think of? Are you planning on just storing waypoint-info or additional path-info as well?
+Regarding the general navigation you got the right ideas: bots using waypoint-systems as you described it are indeed more realistic than the ones using only a very limited number of paths.
+
+Tobias
+
+
+--------------------------------------------------
+03/01/01 at 13:04:02  Reply by: jldailey (jldailey@uchicago.edu)
+--------------------------------------------------
+I wasnt thinking of using anything near that dense... i had already tried to fathom the size of the path table with units at least twice that far apart... but im not a data structures expert, and i want to stick with Floyd tables since im not up to re-writing the whole navigation code yet... 
+
+but no, the grid generation would not be done 'ingame' by this i assume you mean live, while people are playing... but merely during an autowaypoint kind of mode... for the ping i had planned a series of tracelines, though not as Zneaker implied (one traceline, many points) but rather a slower but more grid-like one trace per waypoint through the room... (actually, it occured to me just now that you can still get a clean grid with multiple points per trace, but only for traces at multiples of 45 from normal, the rest you do one at a time)... for some reason my brain says it is important to have as regular a grid as possible... (it might never be perfect, and one could even allow for it by placing waypoints right next to an obstacle instead of simply dropping that point from the grid entirely, etc)
+
+       -  -  -
+       | /  /
+    -  -   -
+     \ |  /
+<- <- (b) -> -> 
+
+anyway, you get the idea... i hadnt thought of the fact that the floyd matrix might be _too_ large, only that it would start being large, and taking a long time to compute the paths...
+
+
+--------------------------------------------------
+03/01/01 at 13:05:15  Reply by: jldailey (jldailey@uchicago.edu)
+--------------------------------------------------
+ok, please forgive the html mangling of my ascii picture :)
+
+
+--------------------------------------------------
+03/01/01 at 18:27:36  Reply by: bigjesus (holybigjesus@hotmail.com)
+--------------------------------------------------
+or scince the bot is a mod in its self u could precache them into memory using some sort of prematch mode but you would have to have a large amount of memory :)
+
+--------------------------------------------------
+03/01/01 at 18:29:52  Reply by: bigjesus (holybigjesus@hotmail.com)
+--------------------------------------------------
+Ive been trying to do this in my bot but the cordanants that land on bsp faces that i get from the bsp tree some times decide they want to go on celings and other things ill have to make another way of implementing but its a damn good idea!
+
+--------------------------------------------------
+03/02/01 at 06:33:50  Reply by: William (william@botepidemic.com)
+--------------------------------------------------
+I've been using a heavily waypoint based approach, using waypoints not only for navigation, goal annotation, but also to do reasoning.
+
+Even using a coarse grid proves to be rather effective.
+
+I recommended to even pre-compute the 'pinging' Jesse describes. Though tracelines on Quake based engines are quite efficient, looking up potential lines of sight is 100 x faster. Also note that to ping accurately, you'd need to issues multiple tracelines to determine, for example, partial cover.
+It isn't that hard to patch the resulting 'line of sight' / 'line of fire' table at run-time for predictable dynamic entities such as doors (you can also precompute these patches, but you need to issue a few trace lines to check a few conditions if a door opens or close).
+The disadvantage is in:
+- dealing with unpredictable dynamic entities (the CS APC)
+- the size of the data structure to record line-of-sight / line of fire
+
+William
+
+ps 1: a lot has been said about waypoints in this thread:
+http://dynamic.gamespy.com/~botman/yabb/YaBB.pl?board=2&action=display&num=1104
+starting read at Count Floyd's second post
+ps 2: you also might want to read the following (old - 1998?) article:
+http://www.botepidemic.com/aid/navigation/navigation_findingcover.html
+
+
+--------------------------------------------------
+03/02/01 at 09:24:25  Reply by: jldailey (jldailey@uchicago.edu)
+--------------------------------------------------
+so i wrote a little test ping procedure last night, and i decided to simply skip all the tracelines altogether... (at least for findign the placement)... instead i just do
+(approx, not quoted, just remembered)
+
+for(int i = -3; i < 4; i++) {
+      for(int j = -3; j < 4; j++) {
+            Vector v_pos = PEdict->v.origin
+                        + (VEC_FORWARD(i * spacing))
+                  //edited: accidentally put VEC_UP, typo here...
+                        + (VEC_RIGHT(j * spacing));
+            if( FVisible(v_pos,pEdict)) {
+                  WaypointAdd(v_pos); // I overload waypointadd to take aposition instead of just an Edict
+            }
+      }
+}
+
+and this produces a nice grid on all side of the player... but it has several limitations... like never adjusting height to make sure that the wayupoint is actually on a surface (stand on a ramp and it throws waypoint out into the air)... so i tried to write a simple DropOrigin function, and ive having some problems... anyone know why this wouldnt work? (p.s. Im not totally comfortbale with tracelines so it might be obvious)
+(again, this is from memory, no cut and paste, so dont criticize typos please)
+UTIL_TraceLine(v_pos, (v_pos - VEC_UP(34)), ......, &tr);
+
+while( tr.flFraction == 1.0 ) { //TraceResult struct says that == 1.0 mean we did not hit anything
+      v_pos = (v_pos - VEC_UP(10)); //move it doen
+      UTIL_TraceLine(v_pos, (v_pos - VEC_UP(34)), ......, &tr);
+}
+
+
+so i realize that this is pretty simple, but its all just something that i dont understand about the TraceLines... oh and btw tr.flFraction is ALWAYS 1.0 in this case, no matter where the waypoint is... so we loop forever... any help?
+
+
+--------------------------------------------------
+03/02/01 at 09:09:38  Reply by: jldailey (jldailey@uchicago.edu)
+--------------------------------------------------
+btw, the previous uses the following defines
+#define VEC_UP( a ) (gpGlobals->v_up * a)
+#define VEC_FORWARD( a ) (gpGlobals->v_forward * a)
+#define VEC_RIGHT( a ) (gpGlobals->v_right * a)
+
+--------------------------------------------------
+03/02/01 at 09:23:26  Reply by: theimann (tobias.heimann@cl.cam.ac.uk)
+--------------------------------------------------
+Here we go:
+1) I assume you called UTIL_MakeVectors() before the code you posted
+2) You don't check if the traceresult returned is valid: there are some variables (e.g. startSolid) that you should query before continueing
+3) Why do you use that loop at all? Better (and more efficient) would be using a longer line (not only 34 units but maybe 500) and place the waypoint around tr.endVec (or similar name) which is the point where the line actually stopped (hitting something or not).
+That should solve your problem.
+
+Tobias
+
+--------------------------------------------------
+03/02/01 at 09:27:46  Reply by: jldailey (jldailey@uchicago.edu)
+--------------------------------------------------
+no, i dont know what UTIL_MakeVectors() does... ive seen it, but never had to use it yet...
+
+thanks for the idea about fixing this problem, but i guess my question still remains, why does flFraction == 1.0 even when i change the dest vector to be 100 points down, and the waypint is only 34 off the ground?  (which i did try, although never checking vecEndPos, only flFraction)
+
+
+--------------------------------------------------
+03/02/01 at 09:41:01  Reply by: theimann (tobias.heimann@cl.cam.ac.uk)
+--------------------------------------------------
+UTIL_MakeVectors initializes gpGlobal->v_up and the other vectors. If you haven't called this method before v_up may contain anything (inclusive the null-vector) which would explain why your line never hits anything. Another possibility is that your origin for the line is already within the ground (hill side on a slope) in which case the traceline-function doesn't give reliable results.
+Hope that clears things up a bit.
+
+Tobias
+
+--------------------------------------------------
+03/02/01 at 10:54:42  Reply by: jldailey (jldailey@uchicago.edu)
+--------------------------------------------------
+grassy-ass tobias... 
+
+that makes sense, i had always wondered how it figured out what 'forward' was relative to a given entity... with that and the idea about just dropping a 500 vec down and then checking vecEndPos, this should work beautifully...
+
+--------------------------------------------------
+03/02/01 at 15:17:09  Reply by: CountFloyd (countfloyd_1999@yahoo.com)
+--------------------------------------------------
+For all people who can't figure out Tracelines the one and (l)onely Botman did a Mini-Tut here:
+http://dynamic.gamespy.com/~wavelength/ubb/Forum3/HTML/000775.html 
+

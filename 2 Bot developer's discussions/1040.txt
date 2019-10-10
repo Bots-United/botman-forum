@@ -1,0 +1,62 @@
+--------------------------------------------------
+Subject: The Final Bug :)
+--------------------------------------------------
+01/10/01 at 21:03:55  Posted by: Spyro (theoddbot@hotmail.com)
+--------------------------------------------------
+Hi,
+
+I think I have tracked down the final "crash on map change" bug in the hpb_bot. In startframe:
+
+code:
+
+      if ((gpGlobals->time + 0.1) < previous_time)
+      {
+         char filename[256];
+         char mapname[64];
+                         
+                         pfnCVarSetString("bot", "");
+                         
+                         welcome_index = -1; //new line
+
+
+
+this will stop it from crashing when you change the map form spectator mode.
+
+-Spyro
+
+--------------------------------------------------
+01/11/01 at 05:09:55  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+Why do you believe that clearing the bot CVAR and changing the welcome_index will prevent the "map" command from causing a crash?
+
+The crashes that I have seen during map change all occured inside the TFC DLL code (which I assumed had something to do with players having bad pointers or players that were not properly kicked from the level beforehand).
+
+botman
+
+--------------------------------------------------
+01/11/01 at 13:32:00  Reply by: Spyro (theoddbot@hotmail.com)
+--------------------------------------------------
+Hi,
+
+the welcome_index is the only change i made. This crash occurs when you change the map from spectator mode, after you have connected. The hpb_bot code stores the index of the first client to connect, and sends them the welcome message when the come out of observer, if you stay in observer, the message never gets sent.
+
+When you change maps, the client is disconnected and then startframe is run (with no clients) so this call:
+code:
+
+  if (IsAlive(clients[welcome_index]))
+
+
+
+accesses an invalid pointer (there are no clients) and causes an error in hpb_bot.dll
+
+thats what i think anyway,
+-Spyro
+
+
+--------------------------------------------------
+01/12/01 at 05:16:50  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+Oh, okay, that makes sense.  I wasn't entirely clear what map change bug your were talking about in your original post but now I understand.  Yes, that would be a problem if the listen server client connected and always stayed in observer mode the welcome message would never get sent and, like you said, when the next map loads the clients would disconnect and the pointer would no longer be valid.
+
+botman
+

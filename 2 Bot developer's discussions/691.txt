@@ -1,0 +1,211 @@
+--------------------------------------------------
+Subject: current_weapon
+--------------------------------------------------
+11/26/00 at 14:39:44  Posted by: Spyro (b2.mccarthy@student.qut.edu.au)
+--------------------------------------------------
+Hi everyone,
+
+I have a question about pBot->current_weapon.
+Have a look at this code:
+It makes medics and engies heal you.
+
+
+            if (mod_id == TFC_DLL && strcmp(itemName, "player") == 0) {
+                  int bot_team = UTIL_GetTeam(pBot->pEdict); //see if they called for a medic
+                  int player_team = UTIL_GetTeam(pent);
+                  int player_max_health=10000;
+                  int player_max_armor;
+                  if (pent == pBot->pEdict) continue; //skip self
+                  if (bot_team != player_team && (((1<<player_team) & tf_allies[bot_team])==0) ) continue; //ignore those pricks
+                  if (pBot->bot_class != TFC_CLASS_MEDIC && pBot->bot_class != TFC_CLASS_ENGINEER) continue;
+                  player_max_health = tfc_stats[pent->v.playerclass].maxHealth;
+                  player_max_armor = tfc_stats[pent->v.playerclass].maxArmor;
+                  if (player_max_health > pent->v.health && pBot->bot_class == TFC_CLASS_MEDIC) {
+                        if (pBot->current_weapon.iId == TF_WEAPON_MEDIKIT) { // it's not a medikit this is right don't know why -my question
+                              FakeClientCommand(pBot->pEdict, "tf_weapon_medikit", NULL, NULL);
+                              pBot->pickupItemTime = gpGlobals->time + 10.0;
+                              pBot->weaponChargeTime = gpGlobals->time + 1.0; //changing, not charging
+                        } else {
+                              if (pBot->weaponChargeTime < gpGlobals->time) 
+                                    pBot->pEdict->v.button = IN_ATTACK;
+                        }
+                        foundEnt = TRUE;
+                        break;
+                  }
+
+This code is inside a FindEntityInSphere loopy bit and once you set foundEnt to TRUE the bot goes towards the entity. The timing stuff is in case they get stuck. This version works fine, but why?
+
+The first version of this code had a != instead of == on the line marked "my question". Then they just shot you with the supernail instead. It seems that pBot->current_weapon is holding the previous weapon, not the current one. Whats going on here? Did i take the wrong pill this morning? Has the world gone mad?
+
+any help/suggestions would be appreciated.
+
+PS. Gunman chronicals looks awesome and it's based on the half-life engine. The current hpb wouldn't work, but it shouldn't take too much effort to port it.
+thanks
+
+
+
+--------------------------------------------------
+11/27/00 at 01:25:42  Reply by: eLiTe (ali@elitegamer.fsnet.co.uk)
+--------------------------------------------------
+I think that there are some old topics on this - try looking through the older topics or using the 'search' menu command.
+
+BTW Botman - I can't get the search to work, as I think the JavaScript or whatever you wrote it in is restricted by my school network... grrr
+
+--------------------------------------------------
+11/27/00 at 19:31:41  Reply by: Spyro (theoddbot@hotmail.com)
+--------------------------------------------------
+Alistair,
+
+nope, i looked through all 160 matches :(
+
+Thanks anyway,
+
+
+--------------------------------------------------
+11/28/00 at 02:48:28  Reply by: theimann (theimann@stud.fh-heilbronn.de)
+--------------------------------------------------
+Hi Brendan,
+
+I'm currently programming my bot's weapon system. Wait a few days and you get the answer to your question, I'll check this current_weapon thing as soon as possible...
+
+Tobias
+
+--------------------------------------------------
+11/28/00 at 05:32:08  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+Hmmmm, this is quite a poser.
+
+When you use FakeClientCommand to select a weapon, it will send the "tf_weapon_medikit" to the MOD which will in turn send a "CurrentWeapon" network message to the bot, which will call the BotClient_TFC_CurrentWeapon() function which will set pBot->current_weapon to the proper ID.
+
+The code you had (with the !=) would have worked correctly EXCEPT for one thing.  You have this...
+
+pBot->weaponChargeTime = gpGlobals->time + 1.0;
+
+...right after the FakeClientCommand.  The next time it comes into this function, the ID will be the medikit (so it will skip the first part), but the weaponChargeTime will be in the future (NOT less than gpGlobals->time), so the bot WON'T press the ATTACK button until 1 second after switching to the medikit.  Was that what you wanted?  Otherwise it looks like things should have worked the way you had them.
+
+You might want to turn on the "debug_engine" console command, join a game with 1 medic bot on your team, hurt yourself, then let it try to heal you, then go look at the "bot.txt" file log to verify that things are happening in the proper sequence.
+
+botman
+
+--------------------------------------------------
+11/28/00 at 07:35:35  Reply by: theimann (theimann@stud.fh-heilbronn.de)
+--------------------------------------------------
+> Hmmmm, this is quite a poser.
+
+???
+
+Tobias
+
+--------------------------------------------------
+11/28/00 at 09:07:57  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+Look up "poser" in a dictionary.
+
+Here's a REAL good pop-up dictionary/spell checker for those of use that kan't spel so gud...
+
+http://www.wordweb.co.uk/
+
+botman
+
+--------------------------------------------------
+11/28/00 at 14:14:18  Reply by: Spyro (theoddbot@hotmail.com)
+--------------------------------------------------
+Hi botman,
+
+I put that in so they're supposed to wait for the weapon to change before they hold down the button.
+
+In S&I:
+
+if (mod_id == SI_DLL && pBot->gotFlag == FALSE && strcmp(itemName, "monster_scientist") == 0) {
+  if (UTIL_GetTeam(pBot->pEdict) != UTIL_GetTeam(pent)) {
+    if (pBot->current_weapon.iId != SI_WEAPON_BRIEFCASE) {
+      FakeClientCommand(pBot->pEdict, "use", "weapon_briefcase", NULL);
+      pBot->pickupItemTime = gpGlobals->time + 10.0;
+    }
+    pBot->pEdict->v.button I= IN_ATTACK;
+    foundEnt = TRUE;
+    break;
+
+
+works just fine. I'll have a look at the messaging stuff today.
+
+thanks,
+
+
+
+
+--------------------------------------------------
+11/28/00 at 14:00:02  Reply by: cooldude (Cooldude158@excite.com)
+--------------------------------------------------
+www.m-w.com is a much better dictionary, plus you dont have to type in so much.
+
+--------------------------------------------------
+11/28/00 at 19:44:59  Reply by: Spyro (theoddbot@hotmail.com)
+--------------------------------------------------
+hi,
+
+I figured it out. look at the debug file here:
+
+ClientCommand: tf_weapon_medikit
+pfnMessageBegin: edict=1de5e44 dest=1 type=35
+pfnWriteByte: 5
+pfnWriteByte: 0
+pfnMessageEnd:
+pfnMessageBegin: edict=1de5e44 dest=1 type=65
+pfnWriteByte: 1
+pfnWriteByte: 3 //medikit
+pfnWriteByte: -1
+pfnMessageEnd:
+pfnMessageBegin: edict=1de5e44 dest=1 type=65
+pfnWriteByte: 0
+pfnWriteByte: 11 //supernails
+pfnWriteByte: -1
+pfnMessageEnd:
+
+it is the same for all the mods that i tried (valve, TFC, SI).
+The meaning of iState is probably 1 for the new weapon and 0 for the old one. I don't know why they bother sending the old one though...
+
+That means the pBot->current_weapon is storing the last weapon used.
+
+In BotClient_Valve_CurrentWeapon() you should add this:
+
+
+else if (state == 2)
+{
+  state = 0;
+  if (iState != 1) return; // ignore
+
+  //rest of the code goes here
+
+
+thanks for the help everyone,
+
+--------------------------------------------------
+11/29/00 at 05:13:58  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+Ah, YES!  That's an "old" bug.  Sorry about that.  See this thread...
+
+http://dynamic.gamespy.com/~botman/yabb/YaBB.pl?board=2&action=display&num=498
+
+(I LOVE the new Search stuff!) 8)
+
+botman
+
+--------------------------------------------------
+11/29/00 at 05:36:11  Reply by: theimann (theimann@stud.fh-heilbronn.de)
+--------------------------------------------------
+Botman, it isn't the meaning of the word "poser" that I don't understand but your reasons using it in this situation.
+If I read a question which nobody has answered yet and I am working on the same thing, just needing some test runs to finish, what's so "posing" about writing that the answer will come later on? I think it's better to let the guy know that he will get help soon than not writing anything.
+In this case (as in most others) you were faster in solving the question, but I think it's in your interest as well that other bot programmers provide answers so that you don't have to do all the work alone. 
+So please don't mock at people willing to help.
+
+Tobias
+
+--------------------------------------------------
+11/29/00 at 05:47:43  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+I wasn't mocking, it just wasn't clear from your post what '???' meant.  Sorry if you took my post the wrong way.  I'm just trying to help.  :)
+
+botman
+
+

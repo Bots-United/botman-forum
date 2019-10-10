@@ -1,0 +1,95 @@
+--------------------------------------------------
+Subject: New round clean up, help!
+--------------------------------------------------
+04/12/03 at 02:40:33  Posted by: gladers (gladers@ntlworld.com)
+--------------------------------------------------
+If theres already a thread, then my appologies, can I have the link?
+
+On the start of a new round I need all the entities removed, decals, and sounds half way through playing to go. I can implement it myself I just need the code to loop through and remove entities.
+
+Thanks!
+
+--------------------------------------------------
+04/12/03 at 03:23:31  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+try...
+
+code:
+
+
+int i;
+
+// make i begin above where players are stored, so you dont kill players from the engine.
+for ( i = gpGlobals->maxClients + 1; i <= gpGlobals->maxEntities; i++ )
+{
+   if ( want_to_destroy )
+   {
+     INDEXENT(i)->v.flags = FL_KILLME;
+   }
+}
+
+
+
+--------------------------------------------------
+04/12/03 at 04:05:47  Reply by: gladers (gladers@ntlworld.com)
+--------------------------------------------------
+It crashes, does it only work on the lastest SDK?
+
+Doesn't like:
+INDEXENT(ANY_VALUE)->v.flags = FL_KILLME;
+
+--------------------------------------------------
+04/12/03 at 05:59:50  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Are you trying to destroy ALL entities or are you checking the classname field to only destroy the ones you want?
+
+To remove decals (since they aren't entities), you can set the the mp_decal cvar down to 1, wait a second, and then set it back to the default value.
+
+botman
+
+--------------------------------------------------
+04/12/03 at 06:11:00  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+QUOTE:
+It crashes, does it only work on the lastest SDK?
+Doesn't like:
+INDEXENT(ANY_VALUE)->v.flags = FL_KILLME;
+
+
+
+Normal, I guess Cheesy wrote this in a rush ;)
+Try
+code:
+
+edict_t *pEntity;
+int i;
+
+// make i begin above where players are stored, so you dont kill players from the engine.
+for ( i = gpGlobals->maxClients + 1; i <= gpGlobals->maxEntities; i++ )
+{
+  pEntity = INDEXENT (i); // link a pointer to entity #i
+
+  if (FNullEnt (pEntity))
+    continue; // reliability check, not all entity slots are always taken
+
+  if (want_to_destroy)
+    pEntity->v.flags |= FL_KILLME;
+}
+
+
+Should work a lil better.
+
+
+--------------------------------------------------
+04/12/03 at 11:25:42  Reply by: gladers (gladers@ntlworld.com)
+--------------------------------------------------
+Thanks so much!
+
+Playing with this new nugget of information all day!
+
+I can't come to a method of making sure that only entites that are not in the map disappear.
+
+What I mean is, I want the weapon that belongs to the map to stay and the one the player drops at death to disappear.
+
+The only meathod I can think of is very messy coding.
+

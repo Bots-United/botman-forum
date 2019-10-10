@@ -1,0 +1,187 @@
+--------------------------------------------------
+Subject: TraceHull, weapons & lightlevels
+--------------------------------------------------
+04/11/01 at 07:55:09  Posted by: CountFloyd (countfloyd_1999@yahoo.com)
+--------------------------------------------------
+While browsing through the HL SDK, I found some things which I'm quite curious about:
+1) There's a variable called 'weapons' in the Edict Structure which does contain the bitmasks of the weapons the Player has. If this is also true for Fakeclients (which I didn't try out yet) why is there a need for the bot_weapons variable in the Bot Structure ? If it's valid for all clients (including Fakeclients) couldn't this also be used to check the enemies weapon ?
+Even if it's not valid, couldn't the update function in StartFrame just overwrite the existing Entity Variable ?  
+2) I did experiment a lot with the TraceHull Function. However there's not much info in the SDK and I'm unsure what to use as the 'center' origin to use for player collision detection. I now use the Entities Origin (the waist) and 'human_hull' for a standing player. Is this correct or do I have to start from the feet or head ? Also which Hull do I need to use when the Bot is crouched (there's not such a thing like a 'crouch_hull' or 'duck_hull') ? Despite its name 'head_hull' seems to work but does anybody know a bit more about it ?
+3) As we all know GetEntityIllum returns always the same number for the current light level. Now I've heard a rumour that it actually works if you're in third person (having the camera outside of the Entity). This would make sense to me, because in the HL SDK the Cockroaches use this function and I believe they are in 3rd person mode. I just can't seem to switch to a 3rd person view in CS, so could someone please investigate ?
+
+Thanks in advance...
+
+--------------------------------------------------
+04/11/01 at 08:25:42  Reply by: theimann (killaruna@botepidemic.com)
+--------------------------------------------------
+To 3) That would be great, but I can't really believe it... I spent an entire afternoon hacking through the SDK and I did not only try GetEntityIllum() but as well the engine-function behind at; I got through the 3D-structures until I reached polygon- and texture level (with a lot of really promising variable-names concerning lightlevels) but all values I found were complete crap. I don't think all this will change by just switching to 3rd person mode... What I believe is that the Cockroaches are using this function because it was supposed to be implemented later on and the guys at Valve just left it there even when the function was not working: Since it always returns constant values, the results should be ok. However, if anybody knew more about this it would be great to hear...
+
+Tobias
+
+--------------------------------------------------
+04/11/01 at 12:31:29  Reply by: eLiTe (ali@elitegamer.fsnet.co.uk)
+--------------------------------------------------
+Yeah there's also the 'light_level' variable in the pEdict->v.light_level that is always 0. It seems stupid that we can't get the light_levels, they are obviously in there somewhere. I suppose they don't have to be sent over the network as the light_level calculations will be done on the machine that is viewing the model. So maybe we are looking in the wring place! Maybe we will have to reverse the rendering pipeline or something (sorry, I've been readin about OpenGL recently!!), to check what light levels were assigned to a particular entity when rendering
+
+And does the tracehull function allow you to check if ANY part of and enemy is visible? Something like that? It would be very usefull. I managed to hack the HudMessage thing to work after I was PODbot used it :)     I don't know much about network messages and stuff tho, I just copied the function from the HL engine and modified it to work the way I wanted it to...
+
+--------------------------------------------------
+04/11/01 at 14:06:02  Reply by: CountFloyd (countfloyd_1999@yahoo.com)
+--------------------------------------------------
+QUOTE:
+
+And does the tracehull function allow you to check if ANY part of and enemy is visible?
+
+
+
+TraceHull is quite similar to TraceLine, except that it as the name states traces the complete hull of a player. You could also use it for Enemy Detection but I wanted to use it for having a better collision detection.
+
+Btw. the post about lightlevels & 3rd person can be found here:
+http://dynamic.gamespy.com/~wavelength/ubb/Forum3/HTML/006012.html
+(and some of these guys are MOD Veterans so I think they are telling the truth).
+Any comments on my question in 2) above ?
+
+--------------------------------------------------
+04/11/01 at 14:25:21  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+1) Some MODs may use the edict weapons fields and some may not.  You'd have to check to see if the MOD author used this field.  There is a "team" field in the edict structure too and Gooseman didn't use it to indicate which team a player was on in Counter-Strike.
+
+2) TraceHull allows you to detect a collision with the bounding box of a player.  There is a standing hull (VEC_HUMAN_HULL_MIN, VEC_HUMAN_HULL_MAX) and a ducking hull (VEC_DUCK_HULL_MIN, VEC_DUCK_HULL_MAX).  See util.h in the Standard SDK for these constants.  Again, MOD authors can change the size of the hull so don't assume that these are global to all MODs.
+
+3) My understanding was that the GetEntityIllum() function was never fully implemented in the engine.  I'm not sure if 3rd person mode works correctly for this function or not.  Some rumors persist about GetEntityIllum() working for weapon models attached to the player, but not for player models.  I've never seen any code that proves this statement (although it should be pretty easy to add a quick impulse command to the Standard SDK to test this).
+
+botman
+
+--------------------------------------------------
+04/11/01 at 14:44:50  Reply by: CountFloyd (countfloyd_1999@yahoo.com)
+--------------------------------------------------
+1) O.k. I'll look it up and post the result here.
+
+2) Umm...Botman ? The TraceHull Function I know doesn't use Vector Coordinates but predefined Hull Types (that's why I said there's no ducking hull, I know about the Vector Constants). Taken from util.h:
+code:
+
+typedef enum { point_hull=0, human_hull=1, large_hull=2, head_hull=3 };
+
+Still my question remains, which Vector to use as a starting position,bottom, center, or top of the player...
+3) I tried switching to 3rd person in CS typing these console commands:
+cam_command 1
+cam_idealyaw 0
+Didn't work for me...might work with standard HL.
+
+
+--------------------------------------------------
+04/11/01 at 18:17:43  Reply by: eLiTe (ali@elitegamer.fsnet.co.uk)
+--------------------------------------------------
+I've used third person in normal HL but I think they disabled it in CS. (you can get the view to be behind the player if you bind keys to the +camera_yaw or whatever the commands are - just cycle through the commands with TAB till you get one that looks likely)
+
+Since the computer running the bots is the server there must be a simpler way of getting the players illumination than reading the BSP data and checking the position of the player in the map. I could try finding the place that it renders the graphics but I don't know if they included that with the SDK (although there seems to be some rendering stuff in the Quake3 SDK so I think there may be similar things for the HL SDK).
+
+--------------------------------------------------
+04/12/01 at 05:40:23  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+"The TraceHull Function I know doesn't use Vector Coordinates but predefined Hull Types"
+
+Yep, I'm not sure what I was thinking of.  My understanding (from discussions on the hlcoders list) is that "point_hull" is the same thing as a TraceLine (you trace to a single point).  "human_hull" is the bounding box of a player.  I would assume the Half-Life engine would take into account whether the player was currently standing, ducking or swimming for the orientation and size of the bounding box.  "human_hull" should be 32x32x72 when the player is standing.  "head_hull" is, I believe, 32x32x32 for tracing collisions with the bounding box of the head.  The crowbar in Half-Life deathmatch uses the head_hull for collisions (see crowbar.cpp for details).  The "large_hull" is for large monsters (like the garg).  I believe it's bounding box is 64x64x256, but I can't remember for sure.
+
+Since the origin of the player is at the center of the bounding box, I would assume that the TraceHull engine function would use the center when tracing for collisions.  For example if I was tracing a head_hull (32x32x32) the engine would trace a line from my start vector to my end vector and offset from that line 16 units in each direction (checking for collisions against the outside of that box, 16 units to the left, 16 units to the right, 16 units up and 16 units down from the center which would be the trace line from start to end).
+
+This would probably be a good topic to post to the hlcoders list on www.topica.com.  Go there and join topica and add the hlcoders e-mail list to your profile, then post this question as a message and ask Valve for details on the point_hull, human_hull (standing, ducking & swimming), head_hull, and large_hull to see what the response from Valve is.
+
+botman
+
+--------------------------------------------------
+04/12/01 at 06:36:44  Reply by: theimann (killaruna@botepidemic.com)
+--------------------------------------------------
+CF, I had a look at the Wavelength forum: Someone there assumes 3rd person would work because the player doesn't get lit in first person mode... I tried the EntityIllum with other entities that the player could see and that were definitely lit, with the same result (128). Regarding switching to 3rd person: That's only possible in single-player mode in HL, maybe that's why it doesn't work for CS?
+I had a look at TraceHull as well: The only examples I have found in the SDK use the entity center (origin) and head_hull. Could you find any differences between human_hull and head_hull or why do you use the later?
+
+Tobias
+
+--------------------------------------------------
+04/12/01 at 09:21:35  Reply by: CountFloyd (countfloyd_1999@yahoo.com)
+--------------------------------------------------
+To the question regarding weapon bits in CS:
+I checked it out and this is the first time that CS does set something correctly ;)
+So everybody who codes a Bot for CS ONLY, you can safely remove the bot_weapons variable and get rid of a lot of code like the one in StartFrame:
+code:
+
+if (client_update_time <= gpGlobals->time)
+{
+client_update_time = gpGlobals->time + 0.5;
+for (i=0; i <MAXBOTSNUMBER; i++)
+{
+if (bots[i].is_used)
+{
+memset(&cd, 0, sizeof(cd));
+UpdateClientData( bots[i].pEdict, 1, &cd );
+// see if a weapon was dropped...
+if (bots[i].bot_weapons != cd.weapons)
+{
+bots[i].bot_weapons = cd.weapons;
+}
+}
+}
+}
+
+
+For all weapon checks you then can use the weapon bitmask in the Edict Structure like this:
+code:
+
+Previous Code:
+if(pBot->bot_weapons & (1<<CS_WEAPON_HEGRENADE))
+{
+dosomegrenstuff();
+}
+After changes:
+if(pBot->pEdict->v.weapons & (1<<CS_WEAPON_HEGRENADE))
+{
+dosomemoregrenstuff();
+}
+
+
+
+About TraceHull:
+
+Thanks Botman, guess I really should join Topica by now. So what do you think, is the TraceHull Function influenced by Hull Changes done with SET_SIZE or are the Vector Coords hardcoded so that using them with CS could be meaningless ?
+
+Tobias:
+I've also checked GetEntityIllum on other Entities than players. I somehow still have hopes it could work in 3rd Person, because even if you're trying with other Entities the camera is still inside your player.
+Since I couldn't find a constant for a ducked Hull and I assumed the human_hull would always be the standing hull, I fumbled around with the head_hull. Ironically it gives not that bad results. Should try out if the human_hull really will be changed according to your current movement. Thanks for all your replies !
+
+--------------------------------------------------
+04/12/01 at 13:45:27  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+"So what do you think, is the TraceHull Function influenced by Hull Changes done with SET_SIZE or are the Vector Coords hardcoded..."
+
+I don't think the hull sizes can be changed with the SET_SIZE() function.
+
+Valve has stated that in order to change the size of the 3 hulls (human, head, large), you HAVE to make a change to the hull size parameter when COMPILING the map.  Apparantly the BSP tree spliting takes the player hull sizes into account and this cannot be changed without recompiling the map.  Again, www.topica.com has this information and you can search the topica archive for "hull size" to find the relevant discussions.
+
+botman
+
+--------------------------------------------------
+06/12/01 at 11:20:00  Reply by: ExecutionStyle (c_brennan@hotmail.com)
+--------------------------------------------------
+Sorry I'm responding to such an old thread but I'm just getting here in my explorations of the engine details.  My comment is on lighting.  Since the rendering engine has to draw all the other players on the server, the client dll must be receiving enough info from the server to draw models with the right lighting.  I'm almost 100% sure that there is a single light level for the entire player model (incl. weapon) and that this is a point on the ground directly beneath the center.  This means that either the server sends the client the light level at which to render the model, or the client uses the location info sent by the server to calculate the light level.  Of these two, my guess is that the client renderer figures out the light level since it is already doing that calculation for the polygon that contains the point directly beneath the player model that the light level is sampled from.
+
+I'm a little under-educated about the rendering engine, but as far as I know, hlrad creates a lightmap in patches.  Patches have adjustable size so they can be different from one map to the other.  Patches appear to apply to faces (see below) but I don't know if the relationship is 1 to 1.
+
+
+I'm just now looking in the half-life sdk source code under /utils/bspinfo project and 
+code:
+typedef struct
+{
+      float            mins[3], maxs[3];
+      float            origin[3];
+      int                  headnode[MAX_MAP_HULLS];
+      int                  visleafs;            // not including the solid leaf 0
+      int                  firstface, numfaces;
+} dmodel_t;
+
+
+makes me think that the headnode int implies the engine needs to know where your head is to draw 1st person separately from whatever info tells it what point on the ground you are standing over. ( I think firstface is the relevant field since dface_t is the only struct mentioning a light level.  
+
+Sorry I didn't give a concrete answer (have to get back to work!) but hopefully these thoughts can help you.  Podbot rocks! :)
+
+
+

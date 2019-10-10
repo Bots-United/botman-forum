@@ -1,0 +1,122 @@
+--------------------------------------------------
+Subject: Sentry Gun Owner?
+--------------------------------------------------
+05/21/01 at 05:25:31  Posted by: [LW]Rob (rob@tfcautoop.cjb.net)
+--------------------------------------------------
+Thanks to botmans Bot10 source I managed to make an SG cam, but atm the players must cycle through the SGs on their team. I want to implement a command thet looks through the eyes of _their_ SG, but I have no idea how to get the owner of a sentry gun, the ->owner of the Sentry does not point to the edict of the engy as far as my tests tell me.
+
+Any help greatly appriciated
+
+- Rob.
+
+--------------------------------------------------
+05/21/01 at 08:59:18  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+I imagine the TFC sentrygun class has a member variable that keeps track of the owner for this sentry gun (so that the owner gets credit for the kills).
+
+You can intercept the #Sentry_ text messages to find out when a sentry gun is finished being built, upgraded, or destroyed, but you can't find the entity for the sentry gun from this text message (just the fact that one was built).  However, shortly before this network message is sent, a sentry gun entity will be created and spawned.  You could intercept those messages to grab an entity pointer, but this also has problems if multiple people build sentry guns at the same time (you can't tell one from the other).
+
+You CAN check which team a sentry gun belongs to (using the pent->v.colormap) and only cycle through sentry guns that belong to the same team as the player.
+
+botman
+
+--------------------------------------------------
+05/21/01 at 12:09:38  Reply by: [LW]Rob (rob@tfcautoop.cjb.net)
+--------------------------------------------------
+Well I mailed VALVe, this is the reply I got
+
+"You need to use "real_owner".  For example:
+
+// sentry.cpp
+void CTFSentrygun::SomeFunction( void )
+{
+CBasePlayer *pOwner = ( CBasePlayer* )CBaseEntity::Instance(
+real_owner->pev );
+.
+.
+.
+}
+
+or 
+
+// engineer.cpp
+void CBasePlayer::SomeFunction( void )
+{ 
+CBaseEntity *pEnt = UTIL_FindEntityByClassname( NULL,
+"building_sentrygun" );
+while ( pEnt )
+{
+// if the player owns this sentry gun...
+if ( pEnt->real_owner == this )
+{
+// do whatever
+.
+.
+.
+}
+
+pEnt = UTIL_FindEntityByClassname( pEnt,
+"building_sentrygun" );
+}
+.
+.
+.
+}
+
+-Eric"
+
+so If I had a pointer to a person 'pEngy' and the Gun, 'pSG' would I just do:
+
+If(pSG->real_owner == pEngy)  ??
+
+I'm not sure exactly how to use this info, any ideas?
+
+- Rob.
+
+
+
+--------------------------------------------------
+05/21/01 at 13:06:37  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+I think that the problem you posted was "I have a player and I want to find his sentry gun (so I can set his view to it)".
+
+Loop through the sentry gun entities looking for a sentry gun "real_owner" that matches the value of the player...
+code:
+edict_t *sentry_gun = NULL;
+edict_t *pent = NULL;
+
+while ((pent = UTIL_FindEntityByClassname( pent, "building_sentrygun" )) != NULL)
+{
+   if (pent->v.real_owner == pPlayer)
+   {
+      sentry_gun = pent;
+      break;  // break out of while loop
+   }
+}
+
+if (sentry_gun != NULL)
+   CreateSentryCam(pPlayer, sentry_gun);
+
+
+botman
+
+--------------------------------------------------
+05/22/01 at 00:27:00  Reply by: LeeCA (leeca@stargatesg-1.com)
+--------------------------------------------------
+sentry cam... :D isn't that cheating?
+
+--------------------------------------------------
+05/22/01 at 00:27:23  Reply by: LeeCA (leeca@stargatesg-1.com)
+--------------------------------------------------
+sentry cam... isn't that cheating? i'd like to see a (CS) hostage cam soon... :D
+
+--------------------------------------------------
+05/22/01 at 05:25:03  Reply by: [LW]Rob (rob@tfcautoop.cjb.net)
+--------------------------------------------------
+Well I tried your suggestion botman, replacing the edict_t's with CBaseEntity's, then I got a prob with real_owner not being in the entvars_s struct, I dont think it s possible to modify this, so is there a way around?
+
+And it could be seen as cheating, but oh well :)
+
+- Rob.
+
+

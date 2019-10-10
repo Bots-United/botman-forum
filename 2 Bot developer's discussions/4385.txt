@@ -1,0 +1,134 @@
+--------------------------------------------------
+Subject: N00b Here, need some enlightenment...
+--------------------------------------------------
+05/06/03 at 05:09:00  Posted by: Akira (akira666@btinternet.com)
+--------------------------------------------------
+A simple Yes/No, or a brief explanation would suffice! Thanks for your help! =)
+
+1)
+// pBot->pEdict->v.angles.x = 0;
+// pBot->pEdict->v.angles.y = 0;
+// pBot->pEdict->v.angles.z = 0;
+I've messing around with these V angles (vector or view??), and it seems to rotate the Bots physically (defies gravity), whats the point in this?
+
+2)
+UTIL_MakeVectors (pBot->pEdict->v.v_angle)
+
+Makes a 3D vector from the Bot's current viewing Angle? Also, what are the ranges with these vectors? Or do they depend on the actual map? since it specifies a particular 3D point :
+
+3)
+Also, is there a kinda difference between where  a Bot is aiming it's gun and the direction it's character model is viewing? I seem to get this impression from look at P's code :\ maybe i'm just hallucinating from too much caffeine...
+Ahh, nm this, been doing searches and seem to get the gist, soz ppl!
+
+4)...Algorithm for searcing Items near a Bot, basically i know Tracer lines are an integral part to a Bot's navigations system, but is it even feasible to use T lines to attempt to scan for relatively small items? Having said i've been seeing people using Sphere shaped scans around a Bot, is this one of the better search methods?
+
+
+Thats it for now lol, but rest assured plenty is to come, because my deadline is in 24hours time, and i have no intention on sleeping :(
+
+Ak.
+
+[modified on 05/06/03 at 00:48:57]
+
+[modified on 05/06/03 at 01:16:37]
+
+[modified on 05/06/03 at 05:09:00]
+--------------------------------------------------
+05/06/03 at 05:21:56  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+First, the Vector class is used to store both vectors and angles.  Vectors represent magnitude and direction in 3D space.  Angles represent a rotation for pitch (the .x component), yaw (the .y component) and roll (the .z component).
+
+vectors and angles are both floating point values in the Half-Life engine, but they are NOT interchangable (i.e. you can't just copy a set of angles to a variable used to store a vector and you can't just copy a vector to a variable used to store an angle).
+
+1. There are 2 types of angles associated with each player.  There is the view angle (or v_angle) which is the direction the player/bot is looking/aiming (this is the angles you are using to point your gun).  There is also the angle of the player body itself relative to the ground.  A player that is leaning to the side or leaning front to back will have non-zero angles for the body angles (which is pev->angles or pEdict->v.angles in the Half-Life SDK).
+
+2. UTIL_MakeVectors() is used to convert a set of angles to 3 vectors.  The function stores the 3 vectors in the gpGlobals->v_forward, gpGlobals->v_right and gpGlobals->v_up vector variables.  This allows you to convert the angles that store which direction the player is aiming to vectors indicating forward direction, direction to the right, and direction upwards.
+
+3. The angles of the body and the angles where the player/bot is aiming have a 1:3 ratio (i.e. if you adjust the aiming angles by 30 degrees, you only need to adjust the body angles by 10 degrees).  You will see some code in the HPB bot source code that takes the current view/aiming angles and divides by 3 and sets the body angles based on that.  The aiming direction and the viewing direction are one and the same (there aren't separate variables for the aiming and viewing since you can't change your aim without also changing your view and vice-versa).
+
+4. Tracelines are a VERY poor way to search for items (since you can only examine one point in space at a time, and space is composed of millions of billions of points).  It is much more efficient to search through all the entities in the world and examine the classname of each entity to see if it is something that you are interested in.  If so, check to see if the item is visible to the bot (within the bot's view cone and not hidden behind any walls).  Unfortunetly, you can't use this method for finding walls, or edges of ledges, etc.  The only way to avoid walls or ledges on the fly, is to use tracelines to shoot out in front of the bot as they move around to see if you are about to hit anything and then turn to avoid it.
+
+botman
+
+--------------------------------------------------
+05/06/03 at 07:31:50  Reply by: Akira (akira666@btinternet.com)
+--------------------------------------------------
+Thanks for the reply Botman!
+
+At the moment i'm just messing around with some navigation code, basically when a Bot hits a wall it randomly turns in a new direction to travel in, but on StalkYard where there are loads of crates, the bots are unable to avoid them because of the crates are just under eye level; the tracer point of origin, i changed the view_ofs to origin so that the lines trace from the waist area? But it gets even worse; it doesn't avoid walls at all now :\
+
+Tried searching for a "waist"/"center" tracer point, but couldn't find one :/
+
+Ak.
+
+--------------------------------------------------
+05/06/03 at 07:38:11  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Use 3 tracelines.  One from the EyePosition(), one from the origin, and one from knee level (half-way between the origin and the feet).  All of these should be going straight outwards (which is not the same direction as the direction they are aiming since they could be aiming upwards or downwards).
+
+botman
+
+--------------------------------------------------
+05/06/03 at 08:07:20  Reply by: Akira (akira666@btinternet.com)
+--------------------------------------------------
+I've been doing traces from the origin, i must be something wrong cos they still walk into crates:
+
+   v_src = pBot->pEdict->v.origin + pBot->pEdict->v.origin;//v.view_ofs; //v.originn; //v.view_ofs; // EyePosition()
+   v_forward = v_src + gpGlobals->v_forward * 150; // distance 150
+
+   v_src = pBot->pEdict->v.origin + pBot->pEdict->v.view_ofs;    v_forward = v_src + gpGlobals->v_forward * 150; // distance 150
+   // trace from the bot's eyes straight forward...
+   TraceResult tr, tr1;
+   UTIL_TraceLine (v_src, v_forward, ignore_monsters, pBot->pEdict->v.pContainingEntity, &tr);
+   UTIL_TraceLine (v_src, v_forward, ignore_monsters, pBot->pEdict->v.pContainingEntity, &tr1);
+   // check if the trace hit something...
+   if ((tr.flFraction < 1.0) || (tr1.flFraction < 1.0))
+      return TRUE; // bot can't see forward
+
+I basically added extra lines for the origin trace, and that if either the eye OR the origin trace show obstructions then return as True, etc...
+
+Ak.
+
+--------------------------------------------------
+05/06/03 at 10:34:58  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+150 isn't a very far distance.  Try changing your distance to something like 200-400 and see if that does any better.
+
+Also, you're calling UTIL_TraceLine() twice with the same arguments (tr and tr1 will contain exactly the same results).  Perhaps you meant to use a different source and destination in the second call.
+
+Also, you don't show calling UTIL_MakeVectors() before using gpGlobals->v_forward.  You have to do this EACH time before you use the global vectors otherwise other code will overwrite the shared variables.
+
+botman
+
+--------------------------------------------------
+05/06/03 at 12:31:39  Reply by: Akira (akira666@btinternet.com)
+--------------------------------------------------
+I tried that Botman, but no worries i'll continue tweaking it. Another question on identifying entities as valid Bot enemies, this is the current code: 
+
+ if (pBot->pBotEnemy != NULL)
+   {
+      // is the enemy dead ? assume bot killed it
+      if (!IsAlive (pBot->pBotEnemy))
+      {
+         // was this enemy a player or a bot (not a squark) ?
+         if ((pBot->pBotEnemy->v.flags & FL_CLIENT) || (pBot->pBotEnemy->v.flags & FL_FAKECLIENT))
+         {
+            // sometimes laugh at him
+            if (RANDOM_LONG (1,100) <= (56 - 2 * gpGlobals->maxClients))
+            {
+               pBot->BotChat.b_saytext_kill = TRUE; // bot laughs
+               pBot->f_bot_saytext_time = gpGlobals->time + RANDOM_FLOAT (3.0, 5.0);
+            }
+
+It seems that the pBot->pBotEnemy is automatically instantiated, because i don't see any code that makes checks if it's a player or not. I obviously see the bit that checks the flags for fake client and such, but when does it actually *stick* an entity into the pBotEnemy prior to this check?
+
+Ak.
+
+--------------------------------------------------
+05/06/03 at 14:59:14  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+When the bot calls the BotFindEnemy() function (in the BotThink code), that will assign an enemy for that bot.  Once a bot has an enemy, it keeps that enemy forever until that enemy is dead or until the bot is dead.
+
+pBotEnemy is just a pointer to an engine edict_s structure so it could be a human player, or it could be a bot (they are both the same as far as the engine is concerned).
+
+botman
+

@@ -1,0 +1,192 @@
+--------------------------------------------------
+Subject: Infinite loop in HL
+--------------------------------------------------
+07/21/03 at 19:11:47  Posted by: wthod (handdeath_ps@yahoo.com)
+--------------------------------------------------
+I've got a bug that has been driving me crazy for weeks and I just can't find it.
+
+The symptom is that hlds loops infinitely in swds.dll, and as far as I can tell never re-enters any of my code.
+
+I can't reproduce the behaviour reliably, it just happens sometimes (maybe once every 3-10 hours of uptime with an active game) when I have a few bots running.  As you can imagine, this makes experimentation very difficult.
+
+Has anyone ever had a problem like this before?
+
+--------------------------------------------------
+07/21/03 at 20:22:52  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+yes.... angle overflow.
+
+Clamp all your angles into the -180/180 bounds. ALL of them. Always. Everywhere.
+
+
+--------------------------------------------------
+07/21/03 at 22:10:26  Reply by: wthod (handdeath_ps@yahoo.com)
+--------------------------------------------------
+Well, isn't that exciting.
+
+Ok, I guess we'll do a trawl through the code to sanity check it.
+
+Thanks!
+
+--------------------------------------------------
+07/22/03 at 00:27:28  Reply by: wthod (handdeath_ps@yahoo.com)
+--------------------------------------------------
+I'm pretty sure you're right.
+
+Seems that somewhere in the movement code (rounding error? accidental convert to int?) there's a bug which causes a divide by zero, and passing NaN to HL as an angle causes it to freak out.
+
+Thanks again.
+
+--------------------------------------------------
+08/18/03 at 19:04:48  Reply by: wthod (handdeath_ps@yahoo.com)
+--------------------------------------------------
+Excitingly enough, I've got this problem again.  Must be more than one cause.  It happens intermittently after (usually) 2 to 10 hours of bot uptime when playing against humans.
+
+I have checks around everywhere in the code that there's an angle.  Anyone know of other things that can cause the hang symptom (again in swds.dll)?
+
+--------------------------------------------------
+08/19/03 at 00:35:08  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Is it for TFC ?
+
+I had a similar symptom with my bot code when I wanted to check for TFC grenades owners, to make the bot check if a grenade was thrown by an enemy or not. In the case the grenade owner dies before the grenade vanishes, the grenade's pEdict->v.owner is reset to zero and your code has to be aware of that situation.
+
+
+--------------------------------------------------
+08/19/03 at 05:09:17  Reply by: Cheesemonster!!! (cheeseh@houstondod.com)
+--------------------------------------------------
+Check for memory leaks, It might not be the problem but I typically get hangs when I don't free/terminate pointers properly in linked lists and such if you have such things in your program.
+
+--------------------------------------------------
+08/20/03 at 13:30:10  Reply by: wthod (handdeath_ps@yahoo.com)
+--------------------------------------------------
+The bot is for NS.  I'm using botman's recommendation on tracking entities.  All entity references that are kept from frame to frame are held in a smart pointer class that checks the entity index is consistent each frame.  That seemed to fix 99% of all the crash bugs I've had.
+
+If you're interested, you can see the source for the smart pointer at:
+
+http://cvs.sourceforge.net/cgi-bin/viewcvs.cgi/whichbot/bot/src/cpp/worldstate/EntityReference.cpp?rev=1.2&content-type=text/vnd.viewcvs-markup
+
+Thanks for the pointer, Cheeseh.  I do use BoundsChecker to look for memory leaks but I guess I haven't done it for a month or so.
+
+As for linked lists and so on, all containers I'm using are standard STL (the STLport implementation, which I've found to be the best free implementation available).  Life is too short to write container code unless you really have a good reason.
+
+--------------------------------------------------
+08/20/03 at 17:04:10  Reply by: wthod (handdeath_ps@yahoo.com)
+--------------------------------------------------
+Looks like the msec value wasn't being calculated correctly for pfnRunPlayerMove, which may have caused some problems.  I'll have to run some tests to see if that actually fixes it or if there's some other issue causing the hangs.
+
+--------------------------------------------------
+08/21/03 at 07:01:43  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+I'm not sure why a bad msec value in RunPlayerMove would cause the game to freeze, but eventually know that if you're using gpGlobals->frametime to compute it, that this value is highly unreliable (see my thread "weirdest bug ever"). In this case, use one of the common computation methods that all bot makers know (either Rich's, Leon's, Tobiase's or mine).
+
+
+--------------------------------------------------
+08/21/03 at 21:18:28  Reply by: wthod (handdeath_ps@yahoo.com)
+--------------------------------------------------
+Welp, that wasn't it.  Hung again after a day of uptime.
+
+One weird thing I did notice was that if you attach VS6's debugger and break, it's in SWDS.DLL.  If you continue and break again, it says "Potential deadlock.  Soft broken" and it's in system code.
+
+
+--------------------------------------------------
+08/21/03 at 23:44:33  Reply by: wthod (handdeath_ps@yahoo.com)
+--------------------------------------------------
+I looked into the mysterious deadlock issue and it seems that it may mean that there is a genuine thread deadlock between the kernel thread and the hlds thread.  Or not.  Apparently on Win2K the behaviour of the deadlock detection is a little erratic, for whatever reason.  Also, the hlds code is still in swds.dll, it's just that the debugger brings up the kernel thread by default when you hit break.
+
+There's also an exploit for hlds (released July 30th, I think) that causes infinite loops in hlds but the server in question seems protected by it.  I patched it and tried the test exploit code and it seems fine.
+
+So, I'm down to desperate grasping-at-straws ideas at this point, like writing a character to a file and flushing the socket before and after every HL call.  That would be a bit sad and might run me out of disk before the hang happens again but I don't have a better idea.
+
+--------------------------------------------------
+08/22/03 at 04:16:59  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Well, at this point, all I can suggest is to parse through all your loops, either whole(), do...while(), for() etc. and triple check if, eventually, one of them could have a never-exit condition.
+
+It's normal you can't see your code in the debugger's call stack when the problem occurs, because you have to break in manually, and 99% of time you will land in the wrong timeslice (i.e, not the one in which HLDS runs, because of the multitasking).
+
+
+--------------------------------------------------
+08/22/03 at 06:50:55  Reply by: wthod (handdeath_ps@yahoo.com)
+--------------------------------------------------
+Hmm.  Does anyone know a way to get VC6 to break if it enters a certain DLL?  If I could do that, I could tell if it is ever re-entering the bot code (I don't think it is, the bot code isn't on the call stack, but still...).
+
+--------------------------------------------------
+08/22/03 at 11:33:53  Reply by: Cheesemonster!!! (cheeseh(at)houstondod(dot)com)
+--------------------------------------------------
+Thing is, infinite loops can happen in the engine if you've accidently written over part of the HL engine in memory, obviously this goes for crashes too.
+
+What I'd do is put a breakpoint at the beginning of every while loop, and disable all of them. When it hangs just re-enable all of them (in edit->breakpoints (off topic:whats up with my greater than sign??) )
+
+Or else you can look in edit->breakpoints for some other options, I know you can make the program break if a variable changes.. could have a look
+
+--------------------------------------------------
+08/22/03 at 15:17:57  Reply by: wthod (handdeath_ps@yahoo.com)
+--------------------------------------------------
+I know about the conditional breakpoint on data changes, but I couldn't see any way of making it break on entering a general section of code.  It's possible I missed something, though.
+
+My confidence that it's actually ever entering the bot code once it hangs is low, since then I'd expect the bot code to be on the call stack.  However, I guess I can fire it up in the debugger for another day on the test server and hope enough people play to hang it again (with the breakpoints ready).
+
+--------------------------------------------------
+08/22/03 at 23:46:17  Reply by: wthod (handdeath_ps@yahoo.com)
+--------------------------------------------------
+After adding a breakpoint to every last while loop, it never comes back to any of them. :(  Alas.
+
+--------------------------------------------------
+09/02/03 at 17:12:18  Reply by: wthod (handdeath_ps@yahoo.com)
+--------------------------------------------------
+Still no joy on finding this bug, although now it does appear so far that it only happens on Win32 servers and not on Linux servers.
+
+--------------------------------------------------
+09/02/03 at 17:50:30  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Try asking in some professional developers' forums... there might be old timers there who are used to everything about C/C++, and who might point you into the right direction...
+
+
+--------------------------------------------------
+09/02/03 at 18:25:08  Reply by: Cheesemonster!!! (cheeseh(at)houstondod(dot)com)
+--------------------------------------------------
+what about the global alloc differences in windows and linux ? ???
+
+--------------------------------------------------
+09/03/03 at 05:14:53  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+"Try asking in some professional developers' forums"
+
+I think he already did in the hlcoders e-mail list at valvesoftware.com.
+
+I have no idea why the engine would be looping endlessly unless some pointers in the entity linked list became messed up somehow (which a MOD shouldn't normally be able to get access too unless the MOD code had some random pointer that happened to match one of the linked list pointers).
+
+botman
+
+--------------------------------------------------
+09/03/03 at 10:11:30  Reply by: Cheesemonster!!! (cheeseh(at)houstondod(dot)com)
+--------------------------------------------------
+
+QUOTE:
+"Try asking in some professional developers' forums"
+
+I think he already did in the hlcoders e-mail list at valvesoftware.com.
+
+I have no idea why the engine would be looping endlessly unless some pointers in the entity linked list became messed up somehow (which a MOD shouldn't normally be able to get access too unless the MOD code had some random pointer that happened to match one of the linked list pointers).
+
+botman
+
+
+
+
+unless the bot accidently overwrites those parts in memory ;D
+
+--------------------------------------------------
+09/04/03 at 00:43:43  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+
+QUOTE:
+what about the global alloc differences in windows and linux ? ???
+
+
+
+
+Simple: just get rid of every GlobalAlloc() and GlobalLock() in Windows and replace them by good 'ole malloc()'s. The sole advantage of GlobalAlloc() is to be able to Lock() the allocated memory to a specific data type and for some specific purpose. Replacing them by malloc()s (and checking all the malloc()/free() pairs) would be the first thing I'd do anyways.
+
+

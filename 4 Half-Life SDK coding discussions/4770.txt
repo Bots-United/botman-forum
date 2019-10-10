@@ -1,0 +1,348 @@
+--------------------------------------------------
+Subject: Adding a new variable to the pev (player)structure
+--------------------------------------------------
+08/25/03 at 13:57:07  Posted by: Chumad (botman@rpmsolutions.biz)
+--------------------------------------------------
+Greetings all!
+
+I'm trying to add another variable to my pev structure that will track another type of score in addition to frags. However, when I add the the new def to my progdefs.h file, half life crashes when I attempt to start a new game. 
+
+Maybe I'm all wrong in where I want to track this... my idea was to give each player in the game an experience score. I was hoping to be able to access it using the pev structure (i.e., pev->experience). Is there another way to track this? 
+
+
+Thanks for the reply.
+
+Chu
+
+ 
+
+
+--------------------------------------------------
+08/25/03 at 14:24:45  Reply by: Cheesemonster!!! (cheeseh(at)houstondod(dot)com)
+--------------------------------------------------
+You can't add anything to the entvars_t structure as it will muck up the memory since HL expects the entvars_t structure to be the same, as with many structures EXCEPT for classes, hence the crashing.
+
+You must create a NEW structure that points to the player that you want these values associated with so you can look through it and find their "experience" or whatever.
+
+e.g.
+
+typedef struct
+{
+  edict_t *m_pPlayer;
+  int m_iExperience;  
+}my_client_t;
+
+my_client_t Clients[32]; // GLOBAL
+
+my_client_t *GetClient ( my_client_t *pClientArray, edict_t *pClientEdict )
+// GetClient, get the client my_client_t structure thats
+// associated with the edict_t *pClientEdict
+// in the client array
+{ 
+  my_client_t *pClient;
+  int i = 0;
+
+  while ( i < 32 ) // max of 32 clients
+  {
+    pClient = &pClientArray[i];
+
+    if ( pClient->m_pPlayer == pClientEdict )
+      return pClient;
+
+    i++;
+  }
+
+  return NULL;
+
+}
+
+//using...
+
+void WorkWithPlayerExperience ( edict_t *pPlayer )
+{
+
+  my_client_t *pClient;
+  int iPlayerExperience;
+
+  pClient = GetClient ( Clients, pPlayer );
+
+  if ( pClient == NULL )
+  {
+     ALERT(at_console,"ERROR: Can't find client info in list!!!"); // error
+     return;
+  }
+
+  iPlayerExperience = pClient->m_iExperience;
+
+  // work with experience etc...
+}
+
+obviously the client info doesn't appear from no where you have to add new ones, and remove them when they leave the server.. use client put in server and client disconnect, also search for bad players (that tried to join but didnt) and remove them from the list by effectively setting the *m_pPlayer to NULL so we know its not used.
+like this:
+
+void ClientPutInServer( edict_t *pEntity )
+{
+  // find a free slot to place this clients info
+
+  int i = 0;
+
+  while ( i < 32 )
+  {
+    if ( Clients[i].m_pPlayer == NULL )
+      break;
+    i++;   
+  }
+
+  if ( i < 32 ) // found a slot
+  {
+    my_client_t *pClient = &Clients[i];
+    ClientInit(pClient);
+
+    pClient->m_pPlayer = pEntity;
+  }
+ 
+  (*other_gFunctionTable.pfnClientPutInServer)(pEntity);
+}
+
+void ClientDisconnect( edict_t *pEntity )
+{
+  // find where this player is stored and initialise it
+  int i = 0;
+
+  while ( i < 32 )
+  {
+    if ( Clients[i].m_pPlayer == pEntity )
+      break;
+    i++;   
+  }
+
+  if ( i < 32 ) // found it
+  {
+    ClientInit(&Clients[i]);
+  }
+
+  (*other_gFunctionTable.pfnClientDisconnect)(pEntity);
+}
+
+You might want to add a client think and initialise functions too......
+
+void ClientInit ( my_client_t *pClient )
+{
+  // make everything NULL or 0 inside client
+  memset(pClient,0,sizeof(my_client_t));
+}
+
+void ClientThink ( my_client_t *pClient )
+{
+   ...
+   WorkWithExperience(pClient);
+   ...
+
+
+// etc...
+
+   return;
+}
+
+void StartFrame ( void )
+{
+  int i;
+  my_client_t *pClient;
+
+  ...
+
+  for ( i = 0; i < 32; i ++ )
+  {
+    pClient = &Clients[i];
+
+    if ( pClient->m_pPlayer ) // used
+    {
+      if ( *STRING(pClient->m_pPlayer->v.netname) )
+      {
+        ClientThink(&Clients[i]);
+      }
+      else
+      {
+        // bad
+        ClientInit (pClient);
+      }
+    }
+    
+  }
+  
+
+  ...
+
+  (*other_gFunctionTable.pfnStartFrame)();
+}
+
+
+---------------
+
+I could go on... but that would be too much!!
+
+hope this helps man
+
+--------------------------------------------------
+08/25/03 at 14:36:51  Reply by: Chumad (botman@rpmsolutions.biz)
+--------------------------------------------------
+Wow, you went the extra mile with the code examples. I'll get to work on it right away. Thanks!
+
+
+
+--------------------------------------------------
+08/25/03 at 14:48:25  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+More simply, you can :
+
+1. Either create a struct that will embed the player entity's entvars, and only reference entities through these structs,
+2. Wrap it in a C++ class.
+
+If you're not very very fond of C++ like me, you might prefer the first solution...
+
+
+--------------------------------------------------
+08/25/03 at 17:08:16  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+OK so since you ask...
+
+QUOTE:
+Would you be willing to show me a bit more detail on it or perhaps point me to some existing source code that has done something similiar?
+
+
+
+code:
+
+// warning: untested code, just wrote that in a flow so that you get the idea...
+
+// definition in header
+typedef struct
+{
+   int experience; // so to say...
+   bool my_variable_2;
+   float my_variable_3;
+   char *my_string_variable_4;
+   edict_t *pPlayerEdict;
+} player_t;
+
+
+// declaration in source code
+player_t players[32]; // max of 32 players in a HL game
+
+
+// hooking and de-hooking players when they connect and leave
+void ClientPutInServer (edict_t *pEdict)
+{
+   // player is being put into server by engine, keep track of it.
+
+   // link the player entity to the pointer we attributed to it
+   // in our player_t structure, at the index in the array
+   // of the player itself. Note that player indices start at 1
+   players[ENTINDEX (pEdict) - 1].pPlayerEdict = pEdict;
+
+   // do initialization stuff on players...
+   players[ENTINDEX (pEdict) - 1].experience = 1; // or some other value
+   players[ENTINDEX (pEdict) - 1].my_variable_2 = FALSE; // or some other value
+   // etc.
+
+   // rest of function follows...
+}
+
+void ClientDisconnect (edict_t *pEdict)
+{
+   // player is being disconnected from server by engine, so untie it.
+
+   // unlink the player entity to the pointer we attributed to it
+   // in our player_t structure, at the index in the array
+   // of the player itself. Note that player indices start at 1
+   players[ENTINDEX (pEdict) - 1].pPlayerEdict = NULL;
+
+   // do uninitialization stuff on players...
+   players[ENTINDEX (pEdict) - 1].experience = 0;
+   players[ENTINDEX (pEdict) - 1].my_variable_2 = FALSE;
+   // etc.
+
+   // rest of function follows...
+}
+
+
+// now we need some utility functions to get the player_t structure of players,
+// instead of getting their edicts directly using ENTINDEX().
+player_t *GetPlayerByIndex (int player_index)
+{
+   return (&players[player_index - 1]); // remember player indices start at 1
+}
+
+player_t *GetPlayerByEdict (edict_t *pEntity)
+{
+   return (&players[ENTINDEX (pEntity) - 1]); // remember player indices start at 1
+}
+
+
+// now let's take an example of use, you want to loop through all players and:
+// 1°) read the value of their frags in their entvars (pev)
+// 2°) set the value of some other variable of yours that you defined (in player_t)
+//     according to the value of frags, for example
+
+   int this_players_frags;
+   int this_players_experience;
+
+   // cycle through all players...
+   for (int player_index = 1; player_index < gpGlobals->maxClients; player_index++)
+   {
+      player_t *pPlayer = GetPlayerByIndex (player_index);
+
+      // READ from entvars (pev)
+      this_players_frags = pPlayer->pPlayerEdict->v.frags; // read player frags from pev
+
+      // WRITE to entvars (pev)
+      pPlayer->pPlayerEdict->v.effects = EF_NODRAW; // make this player invisible in pev
+
+      // READ from your struct (player_t)
+      this_players_experience = pPlayer->experience; // read players experience from custom struct
+
+      // WRITE to your struct (player_t)
+      pPlayer->my_variable_3 = this_players_experience + sqrt ((float) this_players_frags * 10);
+   }
+
+
+
+[modified on 08/25/03 at 17:08:16]
+--------------------------------------------------
+08/25/03 at 22:25:32  Reply by: Chumad (botman@rpmsolutions.biz)
+--------------------------------------------------
+Ok... my weak grasp of c++ and my lack of familiarity with the HL SDK are about to shine forth like a beacon... but here goes :)
+
+First of all, thanks for the replies so far. They've helped.
+
+Here's what I've done. Please feel free to offer suggestions on how I could better implement this:
+
+1) My typedef struct has been defined in the util.h header file
+
+2) player_t players[32]; has been defined in the util.h header file
+
+3) I used the existing ClientDisconnect/ClientPutInServer methods of the client.cpp file for adding the edict to my structure
+
+4) My getPlayerByIndex and getPlayerByEdict functions have been declared in util.cpp
+
+
+Now, a few questions:
+
+1) Should I actually make my own class for my typedef and the def of my players variable? 
+2) I'm trying to send a message in the "UpdateClientData" method of player.cpp -- basically duplicating the gmsgHealth implementation. At that point, I have access to the pev structure. How do I pull the edict from that structure (pev) so I can retrieve my own player_t structure? 
+
+Thanks again-
+
+Ry
+
+
+
+
+[modified on 08/25/03 at 22:25:32]
+--------------------------------------------------
+08/27/03 at 17:32:33  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+1) No, the code I posted should work just fine in bare C. No need for classes and C++-specific stuff.
+2) You have pev and you want player_t ? GetPlayerByEdict (pev->pContainingEntity).
+
+

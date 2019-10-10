@@ -1,0 +1,89 @@
+--------------------------------------------------
+Subject: DOD + weaponlist
+--------------------------------------------------
+07/13/01 at 07:29:57  Posted by: @$3.1415rin (as3.1415rin@gmx.de)
+--------------------------------------------------
+I just searched for the reason why my bot crashed when receiving the weaponlist. The reason was I think that there are not only 9 data items send, but 10. The added one is the size of the clip.
+
+my code is then
+code:
+
+void BotClient_DOD_WeaponList(void *p, int bot_index, int iAdd)
+{
+   static int state = 0;   // current state machine state
+      static bot_weapon_t bot_weapon;
+      
+      if(iAdd != _CLIENT_END){
+            if (state == 0){
+                  state++;
+                  strcpy(bot_weapon.szClassname, (char *)p);
+            }
+            else if (state == 1){
+                  state++;
+                  bot_weapon.iAmmo1 = *(int *)p;  // ammo index 1
+            }
+            else if (state == 2){
+                  state++;
+                  bot_weapon.iAmmo1Max = *(int *)p;  // max ammo1
+            }
+            else if (state == 3){
+                  state++;
+                  bot_weapon.iAmmo2 = *(int *)p;  // ammo index 2
+            }
+            else if (state == 4){
+                  state++;
+                  bot_weapon.iAmmo2Max = *(int *)p;  // max ammo2
+            }
+            else if (state == 5){
+                  state++;
+                  bot_weapon.iSlot = *(int *)p;  // slot for this weapon
+            }
+            else if (state == 6){
+                  state++;
+                  bot_weapon.iPosition = *(int *)p;  // position in slot
+            }
+            else if (state == 7){
+                  state++;
+                  bot_weapon.iId = *(int *)p;  // weapon ID
+            }
+            else if (state == 8){
+                  state ++;
+                  bot_weapon.iFlags = *(int *)p;  // flags for weapon (WTF???)
+            }
+            else if (state == 9){
+                  bot_weapon.iAmmoClip = *(int *)p;  // clip size
+                  
+                  // store away this weapon with it's ammo information...
+                  weapon_defs[bot_weapon.iId] = bot_weapon;
+                  
+                  state = 0;
+            }
+      }
+}
+
+
+
+( with a new added data item in bot_weapon_t ....)
+
+Is that right ? Did the other DOD bot authors solved it that way ? ... at least it's workin good !
+
+--------------------------------------------------
+07/13/01 at 07:59:03  Reply by: Zneaker (zneaker@botepidemic.com)
+--------------------------------------------------
+Hi
+argh...i didn't see you posted it already in here...well,so we've got it twice ;-)
+
+--------------------------------------------------
+07/18/01 at 06:12:10  Reply by: Dave2019 (bootdiskmaker@yahoo.co.uk)
+--------------------------------------------------
+Hi $3.1415rin
+
+Did not know you was makeing a DOD bot. Hope It's Like You Joebot that rocks.
+
+
+--------------------------------------------------
+07/21/01 at 16:25:05  Reply by: flaegren (flaegren@hotmail.com)
+--------------------------------------------------
+FYI
+State 8 appears to be the weapon range.  I changed it to reflect that in my code and it's working great.
+

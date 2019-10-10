@@ -1,0 +1,177 @@
+--------------------------------------------------
+Subject: How to find out....
+--------------------------------------------------
+05/30/01 at 03:33:17  Posted by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+Ok, although i think i know the answer already, i'm gonna ask this to be sure... so i dont mess up my code for instance (which i'm good at btw :) ).
+
+ok, the problem is like this. When i search for 'players' and i like to get some information from it, it works perfectly in a listen server, the player (which the server is too) has all information i need. HOWEVER, When a player is a dedicated server, the game crashes... i need to know, how to figure out when a player is a dedicated server , and when its not! Here is my piece of code which (i think) makes it crash..
+
+
+while ((pent = UTIL_FindEntityByClassname( pent, "player" )) != NULL) 
+   { 
+
+         player_vector = pent->v.origin;
+
+
+         // Ok, check if this player is NOT dead
+            if (pent->v.deadflag == DEAD_NO      &&
+               (!FBitSet(pent->v.flags, FL_FAKECLIENT) ||
+            !FBitSet(pent->v.spawnflags, FL_FAKECLIENT)))
+            {
+
+              // HERE I THINK IT WILL CRASH, since a dedicated server doesnt have any of these values?!?!
+
+         if (pent->v.button & IN_JUMP)
+               jump = true;
+
+         if (pent->v.button & IN_DUCK)
+               duck = true;
+
+         if (pent->v.button & IN_USE)
+               use = true;
+            
+         found_good_player = true;
+         
+         break;
+            
+         
+            }
+   }
+
+
+Any info is appriciated!
+
+--------------------------------------------------
+05/30/01 at 05:14:08  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+All edicts have a "button" field, so that's not a problem (i.e. it won't cause a crash).  I assume your are checking the button state every frame (probably in the StartFrame function).
+
+If this is all the code that there is then it should never crash.  I suspect your problem is actually somewhere else.
+
+Clients on a dedicated server and clients on a listen server have exactly the same properties.  The only difference is, on a listen server the client that created the server has a network address of "loopback" in the ClientConnect() function.  All other clients will have a real TCP/IP or IPX network address.  An example of this can be seen in the HPB bot template #3 code where I check if the client issuing a command is the local client on a listen server.  Of coarse all cleints one a dedicated server are non-local, even if a client joins from the same machine that is running the dedicated server (in Win32 only).
+
+botman
+
+--------------------------------------------------
+05/30/01 at 06:02:07  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+maybe its this line:
+
+player_vector = pent->v.origin;
+
+i mean, does a dedicated server has an origin? 
+
+even if it doesnt crash, i need to know when its a dedicated server, i saw some lines of code in the template. So i will figure out. Its just that i must be certain that the entity i'm 'tracking' (recording) is not a dedicated server... thats all. As long as it 'moves' :)
+
+
+
+
+
+--------------------------------------------------
+05/30/01 at 06:03:44  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+sorry, i sound stupid. ofcourse it could not be that line i just typed, its also a part of the edict. So if that doesnt make the crash i need to check it again. MAYBE the crash was the same of the bug earlier... so it might be even fixed while i dont know it...
+
+
+--------------------------------------------------
+05/30/01 at 06:25:50  Reply by: BillDoor (nf9576@bris.ac.uk)
+--------------------------------------------------
+QUOTE:
+while ((pent = UTIL_FindEntityByClassname( pent, "player" )) != NULL) 
+   { 
+
+         player_vector = pent->v.origin;
+
+
+
+
+Is pent an edict_t? UTIL_FindEntityByClassname returns CBaseEntity, if you want it to return an edict_t, use the engine function FIND_ENTITY_BY_CLASSNAME (I think it's called), though the UTIL_ function is more useful because it does NULL checks.
+I think your crash must be caused by either (a) defining pent as an edict pointer and then using it with the UTIL_FindEntityByClassname function or (b) defining pent as a CBaseEntity pointer and then trying to access it's entvars with ->v. instead of ->pev->
+
+I'd suggest changing to:
+
+CBaseEntity *pent;
+pent = NULL;
+while ((pent = UTIL_FindEntityByClassname( pent, "player" )) != NULL) 
+{
+// Do your stuff here, and access entvars with pent->pev->origin (for example) If you want the edict pointer of a CBaseEntity use pent->edict()
+}
+
+
+
+--------------------------------------------------
+05/30/01 at 08:10:38  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+"UTIL_FindEntityByClassname returns CBaseEntity"
+
+The UTIL_FindEntityByClassname in the Valve SDK does indeed return a CBaseEntity.  The UTIL_FindEntityByClassname in the HPB bot template source code returns an edict_t.
+
+Many of the functions in the util.cpp file included with the HPB bot template source have the same name as the Valve SDK util.cpp functions, but their calling parameters and return values are sometimes different (since the template source contains no C++ classes).
+
+botman
+
+--------------------------------------------------
+05/30/01 at 17:01:38  Reply by: BrianL (halfkiller@hotmail.com)
+--------------------------------------------------
+Try this I haven't really had anytime to test this though.  So see what happens ok.
+
+code:
+
+bool jump = FALSE;
+bool duck = FALSE;
+bool use = FALSE;
+bool found_good_player = FALSE;
+
+void CheckPlayer(edict_t *pEntity)
+{
+edict_t *pent = NULL;
+Vector player_vector = Vector(0,0,0);
+
+ while(((pent = UTIL_FindEntityByClassname(pent,"player")) != NULL) && (pent != pEntity))
+ {
+  player_vector = pent->v.origin;
+
+  if ((pent->v.deadflag == DEAD_NO) &&
+      (pent->v.flags != FL_FAKECLIENT) &&
+      (pent->v.spawnflags != FL_FAKECLIENT))
+  {
+    if (pent->v.button & IN_JUMP)
+        jump = TRUE;
+    
+    if (pent->v.button & IN_DUCK)
+        duck = TRUE;
+
+    if (pent->v.button & IN_USE)
+        use = TRUE;
+
+    found_good_player = TRUE;
+    break;
+  }
+ }
+
+}
+
+
+
+--------------------------------------------------
+05/31/01 at 02:41:32  Reply by: BiGjesus (holybigjesus@hotmail.com)
+--------------------------------------------------
+botman i know its off topic and or stupid but how do frames work and what do they mean or =?
+
+--------------------------------------------------
+05/31/01 at 05:24:37  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+If you are talking about the StartFrame() function in Half-Life (and not about HTML frames) then a frame is 1 video "screen".
+
+When you display animated video, you display several frames of information in rapid succession.  The speed at which you display information is called your Frame Rate (or FR).  You'll hear people talking about getting so many frames per second (FPS).
+
+The StartFrame() function is called by the Half-Life engine at the beginning of every video frame.  If you are getting 30 frames per second then the Half-Life engine will call StartFrame() thirty times in every second.
+
+botman
+
+--------------------------------------------------
+05/31/01 at 23:49:19  Reply by: holybigjesus (holybigjesus@hotmail.com)
+--------------------------------------------------
+im not sure thats it but im talking about in c++ coding a bot i see people say in this frame do this or that and in this frame do that lol and im purdy fluent with all graphics so i know video and stmp animation purdy well and how it works but i never thought about coding bot animations :P so i guess my question is more on is it the same thing as video production or is it different sorry for not telling u b4 hand i know u are pressed for time.
+

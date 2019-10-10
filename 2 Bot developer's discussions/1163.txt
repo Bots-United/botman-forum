@@ -1,0 +1,94 @@
+--------------------------------------------------
+Subject: Botman: Map change and Grenade Velocity ?
+--------------------------------------------------
+01/30/01 at 10:31:55  Posted by: CountFloyd (countfloyd_1999@yahoo.com)
+--------------------------------------------------
+Botman, I've seen you fixed a bug about DS and mapchanges. I think this bug fix is only the reinitialising of a timer somewhere in the code, but could you tell us more about this ?
+
+You also wrote that you added Grenade Throwing to TFC. My Bots do Grenade Throwing since a long time, but I still don't know how to calculate the correct length of the button pressing period. What I'm doing right now is this:
+code:
+
+f_distance = (pEdict->v.origin - pBot->vLastEnemyOrigin).Length();
+pBot->f_grenadehold_time=(f_distance*0.0008);
+if(pBot->f_grenadehold_time>3.0)
+pBot->f_grenadehold_time=3.0;
+else if(pBot->f_grenadehold_time<0.5)
+pBot->f_grenadehold_time=0.5;
+pBot->f_grenadehold_time+=pBot->f_grenadeuse_time;
+
+
+
+This is only part of the function which gets called in every frame to recalculate the grenade hold time. f_grenadeuse_time is initialised when the Bot starts to hold the grenade. It works fairly well if the Bot and its enemy is at the same level but due to gravity fails if it isn't.
+Is there some Algo to calculate the resulting velocity of a grenade while holding it ? I did have a look into the HL SDK and found the normal function for this is CGrenade::ShootTimed. What confuses me is, that they don't seem to calculate the velocity by using the Hold Time ? Does anybody know more about this ? Thank you !
+
+(btw. this is for Cs and could be different from Halflife)  
+
+--------------------------------------------------
+01/30/01 at 10:46:45  Reply by: William (william@botepidemic.com)
+--------------------------------------------------
+just checking:
+- are you asking for the correct holding time given a known grenade launch velocity?; or
+- are you asking how to determine the correct grenade launch velocity and direction given a position and target?
+
+I can answer the latter one for fixed velocities (solving a few 2nd order equations by approximation), though the HL SDK one is also quite elegant.
+
+William
+
+--------------------------------------------------
+01/30/01 at 10:52:01  Reply by: CountFloyd (countfloyd_1999@yahoo.com)
+--------------------------------------------------
+I'm asking for the correct holding time, I wouldn't have problems calculating the correct velocity.
+
+--------------------------------------------------
+01/30/01 at 14:37:09  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+I don't calculate anything for grenades.  When the bot sees an enemy within 300 units it primes the grenade (holds the fire button down) and stands still (it probably should strafe left and right to avoid gunfire).  It sets a timer to expire between 1.5 and 2.0 seconds later.  When the timer expires it throws the grenade and starts backing up.  This gives the enemy between 1.0 and 1.5 seconds to get away from the grenade (and also gives the bot time to get further away from the grenade it just threw).
+
+botman
+
+--------------------------------------------------
+01/30/01 at 14:54:16  Reply by: CountFloyd (countfloyd_1999@yahoo.com)
+--------------------------------------------------
+So it's basically the same as in the HPB Alpha with a fixed time ? Doesn't the Bot throw too short/too long if you don't recalcute the holding time ? How do you evaluate if a Grenade should be thrown ? Do they throw it if they got one or do you rate Grenade throwing with some additional conditions (more than 1 enemy, no friends in the near etc.) ?
+
+What about the mapchange fix I asked in the original question ?
+
+--------------------------------------------------
+01/31/01 at 05:15:13  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+The only thing the bot uses to determine if it should throw a grenade is...
+
+1) If it is currently carrying a grenade
+
+2) If it has been longer than the minimum time between grenade throws since the last grenade
+
+3) If the distance to the enemy is less than 300 units.
+
+4) If a random number between 1 and 100 is 20 or less (20% of the time).
+
+If all of these conditions are true, the bot begins priming a grenade.  After the 1.5 - 2.0 seconds the bot throws it.  That's it.
+
+I'm not sure what mapchange bug you are referring to.  Explain what "fixed a bug about DS" means.
+
+botman
+
+--------------------------------------------------
+01/31/01 at 11:59:17  Reply by: CountFloyd (countfloyd_1999@yahoo.com)
+--------------------------------------------------
+Oh, I see (that works!?!)
+
+By "fixed a bug in DS" I meant one of the bugfixes you announced on your news page:
+"Bug with "bot" CVAR not working after map change was fixed"
+
+--------------------------------------------------
+01/31/01 at 14:21:20  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+Yes, I was not resetting the "check_server_cmd" variable when a map change occurred.  Since I use it to keep track of when to check for another "bot" CVAR command it would reach the mapcycle time and then never get reset, thus no more "bot" CVAR checking would take place.  Just reset it back to 0.0 at the top of StartFrame() where it detects that a new map has started.
+
+botman
+
+--------------------------------------------------
+01/31/01 at 17:43:57  Reply by: CountFloyd (countfloyd_1999@yahoo.com)
+--------------------------------------------------
+Thank you, I'm sure a lot of other people had the same problem.
+

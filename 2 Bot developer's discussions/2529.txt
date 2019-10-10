@@ -1,0 +1,134 @@
+--------------------------------------------------
+Subject: MultiBot Targets...
+--------------------------------------------------
+12/08/01 at 13:01:25  Posted by: RedLink (redlink_star@hotmail.com)
+--------------------------------------------------
+Hi...
+
+Does any body know how to make the bot use multi targets? I have tryed every thing to do this... The main thing is that the bot selectes the nearest enemy and not follow one enemy to he goes out of sight... I cant understand on how to fixe this...
+
+
+..............................
+American X bot
+http://www.clan-warz.com/americanxbot
+
+--------------------------------------------------
+12/08/01 at 15:46:28  Reply by: Ghoul (oneeyedghoul@aol.com)
+--------------------------------------------------
+Change the BotFindEnemy function to use FindEntityInSphere to find enemies.  Then get the distance from each enemy and make the bot pick the enemy with the shortest distance.
+
+--------------------------------------------------
+12/09/01 at 05:12:11  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+in the BotFindEnemy function where it looks for players (Theres a for loop that searches for clients) and there is a float min_distance variable. Change the min_distance variable to a higher value to lets bots look for further away enemies.
+
+--------------------------------------------------
+12/09/01 at 07:19:04  Reply by: ReDucTor[FGW] (sjdtmv@tpg.com.au)
+--------------------------------------------------
+This would work easly, for Counter-strike(vip checking) and most other mods, if you remove the vip checking :)
+code:
+
+edict_t *BotFindEnemy( bot_t *pBot )
+{
+   static float closest_distance;
+   edict_t *pEdict = pBot->pEdict;
+   edict_t *pTarget = NULL;
+   closest_distance = 0.0;
+   for (i = 1; i <= gpGlobals->maxClients; i++)
+   {
+      edict_t *pPlayer = INDEXENT(i);
+      if (IsAlive(pPlayer) && (FBitSet(pPlayer->v.flags, FL_CLIENT)  FBitSet(pPlayer->v.flags, FL_FAKECLIENT))
+      {
+          vec3_t vecEnd = pPlayer->v.origin + pPlayer->v.view_ofs;
+          if (FInViewCone( &vecEnd, pEdict ) && FVisible( vecEnd, pEdict ))
+            continue;
+          int player_team = UTIL_GetTeam(pPlayer);
+          int bot_team = UTIL_GetTeam(pEdict);
+          if(player_team != bot_team)
+            continue;
+
+          char *infobuffer;
+          char model_name[32];
+
+          infobuffer = (*g_engfuncs.pfnGetInfoKeyBuffer)(pPlayer);
+          strcpy(model_name, (g_engfuncs.pfnInfoKeyValue(infobuffer, "model")));
+          if(strcmp(model_name,"vip") == 0)
+          {
+             pTarget = pPlayer;
+             break 2;
+          }
+
+         float distance_player = (pPlayer->v.origin - pEdict->v.origin).Length();
+        if(distance < closest_distance)
+            pTarget = pPlayer;
+     }
+  }
+  if(pTarget)
+  {
+    pBot->f_bot_see_enemy_time = gpGlobals->time;
+    return pTarget;
+  }
+  if ((pBot->f_bot_see_enemy_time > 0) &&
+       ((pBot->f_bot_see_enemy_time + 5.0) <= gpGlobals->time))
+   {
+      pBot->f_bot_see_enemy_time = -1;  // so we won't keep reloading
+
+      pEdict->v.button = IN_RELOAD;  // press reload button
+   }
+   return NULL;
+}
+
+
+
+Changed:
+if(strcmp(modelname,"vip"))
+To:
+if(strcmp(model_name,"vip") == 0)
+
+[modified on 12/09/01 at 07:19:04]
+--------------------------------------------------
+12/09/01 at 07:59:32  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+this is the part I mean velow, its actuallt called nearestdistance ,not min_distance as i said before :)
+
+code:
+
+   if (pNewEnemy == NULL)
+   {
+         nearestdistance = 2500; // Change this value!!!
+         
+         // search the world for players...
+         for (i = 1; i <= gpGlobals->maxClients; i++)
+         {
+               edict_t *pPlayer = INDEXENT(i);
+               
+               // skip invalid players and skip self (i.e. this bot)
+               if ((pPlayer) && (!pPlayer->free) && (pPlayer != pEdict))
+               {
+                     // skip this player if not alive (i.e. dead or dying)
+                     if (!IsAlive(pPlayer))
+                           continue;
+...
+...
+...
+
+
+--------------------------------------------------
+12/12/01 at 00:33:52  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+well, i had the impression that Redlink meant with multiple targets that the bot does not blindly follow one enemy all the time.
+Anyhow...
+
+What i do, i run a similiar function as FindEnemy which checks for closer enemies, or better yet, enemies which are more of a treath to the bot. This way, the bot does not blindly follow one bot, and when an enemy appears closer, he will pick this one and shoot him down.
+
+I dont think distance checks are 100%. You could check for instance:
+
+-   does any other bot, or player, fight another bot/player already?
+
+i did this by trying to figure out if any bot has its enemy pointer filled with our edict, or when its a human, it will try to figure out how much we are focussed on (the bot should be within a close amount of degrees to be 'focussed' on).
+
+--------------------------------------------------
+12/12/01 at 07:51:58  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+Oh... I forgot about the multi-traget thing as I kept going into more distance problems! So when the bot looks for an enemy in that part I put in earlier, you could also put in other factors which allows the bot to chose its enemy. I.e. it only selects the enemy with the least distance in that code but you could adapt it to maybe shoot enemies with a different priorityif they have a different class.
+

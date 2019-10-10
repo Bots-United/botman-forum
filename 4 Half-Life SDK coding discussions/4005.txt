@@ -1,0 +1,95 @@
+--------------------------------------------------
+Subject: hl sdk question (define)
+--------------------------------------------------
+01/08/03 at 13:15:56  Posted by: dakne (conny_k80@hotmail.com)
+--------------------------------------------------
+Hi 
+I recently read this tutorial.
+And I dont understand what He means with this:
+
+add
+int CHalfLifeMultiplay::ClassNameToClassNumber( const char *classname )
+{
+if ( FStrEq( classname, "soldier") )
+return HUMAN_SOLDIER;
+else
+if ( FStrEq( classname, "sniper") )
+return HUMAN_SNIPER;
+else
+if ( FStrEq( classname, "grunt") )
+return ALIEN_GRUNT;
+else
+if ( FStrEq( classname, "support") )
+return ALIEN_SUPPORT;
+else
+if ( FStrEq( classname, "fighter") )
+return ROBOT_FIGHTER;
+else
+if ( FStrEq( classname, "repair") )
+return ROBOT_REPAIR;
+else
+return 0;
+} 
+
+
+in teamplay_gamerules.cpp and define the function in teamplay_gamerules.h 
+
+Ok i know where to add everything even the code my question is How do I Define the function??
+
+Is someone answer that it will work only problem left for me :) (I dont think he explained that to well ),,,
+
+--------------------------------------------------
+01/08/03 at 13:54:36  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+In C, you need to "prototype" functions you write, in order to tell the compiler that such a function exists in the code, even if it hasn't come at the point of compiling it yet. Let's say you write a function
+code:
+
+void MyFunction (void)
+{
+   printf ("hello world!\n");
+}
+
+
+in a file named my_cpp_file.cpp. And let's say the main() function of your program is in another file, for example main.cpp, and in there you call MyFunction() like this.
+code:
+
+void main (void)
+{
+   MyFunction (); // call MyFunction() from my_cpp_file.cpp
+}
+
+
+Now when you compile the program, the compiler starts with main.cpp, and go for compiling the main() function. But then it comes to an issue, since you tell it to call a function it isn't aware of yet : the compiler never saw your MyFunction() function yet anywhere.
+
+There are two ways of fixing this trouble. The first way, is to ensure that the function MyFunction() will actually be compiled BEFORE the main() function. Then the compiler has become aware of it, and is able to link it well.
+
+But for large projects, where there are quite a lot of functions and a lot of files, you obviously don't want to clutter up one single .cpp file with all your functions in the right order, provided you even find the correct order at which they have to be compiled. There is a special way to do this, it's called "prototyping". It consists in telling the compiler sorta thing like this: "hey, later on you'll find a function named MyFunction() you don't know yet, anyway I tell you what's its type and how its parameters look like so that you can remember it for further reference".
+code:
+
+// main.cpp file
+
+// prototype of external functions
+void MyFunction (void);
+
+
+// actual functions
+void main (void)
+{
+   MyFunction (); // call MyFunction () from my_cpp_file.cpp
+}
+
+
+Above you can see what a prototype looks like. It's basically the name of the function, followed by its parameters, followed by a "end of code line" semicolon ";".
+
+Just put your function prototypes at the start of your .cpp files, or even better, in header files (.h files). So in case you would have a my_cpp_file.h file, you would put MyFunction()'s prototype in it. When the compiler goes for compiling the stuff, it looks in the .h files first and thus becomes aware of external functions, and can compile your project without error.
+
+
+--------------------------------------------------
+01/08/03 at 15:03:49  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+...and not just putting the prototype definition inside the .h file, but actually putting it inside the CLASS definition.
+
+You should find a header file (.h file) with the CHalfLifeMultiplay class inside it (i.e. "class CHalfLifeMultiplay").  You will need to add your function prototype for this new function somewhere inside this class definition.  You should find similar function prototypes already in there.  Just add your new funtion at the end of this class definition after the ones that are already there.
+
+botman
+

@@ -1,0 +1,459 @@
+--------------------------------------------------
+Subject: A*
+--------------------------------------------------
+10/15/01 at 13:46:35  Posted by: claudi (claudi@aclaudi.dk)
+--------------------------------------------------
+Does anyone have any experience with implementing this in a bot?
+Can it be done efficiently (reducing the max number of steps to do is one way)?
+As I understand, Valves own creatures used a wp-based system?
+
+--------------------------------------------------
+10/16/01 at 04:06:31  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Valve's monster and human military AI does use a waypoint based system (what they call "nodes").
+
+A* can be implemented efficiently as long as your heuristic function isn't overly complicated.  There are many source code and pseudo code examples of A* to get you started, although many of the examples that I have seen assume that you have some kind of grid system in your map, using squares or hexagons to represent locations that the entity can move to.  You would probably want to use waypoints or nodes as the locations and then use A* to determine a path from one location to a goal location.  A* will give you the advantage of being able to vary the path taken by bots as long as your heuristic is sufficiently advanced to make certain routes undesirable.
+
+botman
+
+--------------------------------------------------
+10/16/01 at 08:25:41  Reply by: William (william@cgf-ai.com)
+--------------------------------------------------
+As a point-of-reference:
+- on a PIII/500Mhz and with 1000 waypoints, the performance of 'shortest-path' A* is about 1,700 (random) paths/s, which gives you some 85 path searches per second or 8 path searches per tick, assuming you budget 5% of the CPU for pathfinding alone.
+
+Because bots don't change their mind every tick, this is sufficient for a good number of bots. And bots often need paths to nearby destinations (as opposed to random paths), actual performance might be a tad better.
+
+However, be aware that:
+- my A* implementation has been heavily profiled and optimized with just about any trick Amit Patel describes;
+- using precomputed lookup tables is more than 1,000 times faster (in other words, pathfinding doesn't eat CPU budget anymore in that case);
+- any specialization of A* to do more than shortest paths will be slower
+
+William
+
+--------------------------------------------------
+10/29/01 at 15:19:14  Reply by: claudi (claudi@aclaudi.dk)
+--------------------------------------------------
+Thx for the replies. Very helpful.
+If anyone has some code samples, I would sure like to see them : claudi@aclaudi.dk
+thx in advance ;-)
+
+--------------------------------------------------
+11/01/01 at 13:47:05  Reply by: Spyro (theoddbot@hotmail.com)
+--------------------------------------------------
+Hi,
+
+I am currently using A*, for the only reason that it able to handle a dynamic environment. In TFC and FLF, new paths can be created at any time during the round. The static algos will still work, but the behavior they create is less convincing.
+
+-Spyro
+
+--------------------------------------------------
+11/02/01 at 02:30:31  Reply by: William (william@cgf-ai.com)
+--------------------------------------------------
+A* is a good choice if you have a need for dynamic paths. (The alternative is patching precomputed static tables on the fly, which isn't as complicated as it sounds).
+
+But, being curious, could you give examples of dynamic paths being created in TFC, FLF (I haven't played these mods recently)?
+
+William
+
+--------------------------------------------------
+11/02/01 at 04:03:11  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+I think he means since there's usually more than one route to a goal you can vary the path taken instead of always taking the shortest route.  One time take the shortest route, another time take the underwater path, another time take the longest route, etc.
+
+botman
+
+--------------------------------------------------
+11/02/01 at 05:15:23  Reply by: William (william@cgf-ai.com)
+--------------------------------------------------
+in that case, he might have been better of making a special 'findpathtobase' that constructs a path as follows:
+- randomly pick one of the base entrances
+- look up the shortest path from origin to entrance, and from entrance to destination
+
+less code needed (A* implementation being typically larger than Floyd/Warshall), and 100x as fast.
+
+besides, A* tends to be less efficient with cost functions that prefer certain terrain.
+
+but, most important, no matter how Brendan gets his job done: good job! it's indeed beyond what most bots do.
+
+William
+
+--------------------------------------------------
+11/04/01 at 16:23:23  Reply by: Spyro (theoddbot@hotmail.com)
+--------------------------------------------------
+Hi,
+
+I have previously considered the technique that you described, and will probably implement it next time I get a chance. I was going to use it to allow players to give more detailed orders to the bots:
+say "fred attack underwater"
+Which would make fred use the underwater entrance to attack the flag.
+
+The dynamic paths are instances in TFC, where a demoman can place a detpack and blow a new hole in the enemy fortress. In FLF, some new paths open up each time a new point is captured.
+
+At the moment, I use a 'check' waypoint tag on each side of these entities. When the A* function asks for the distance between the two tagged waypoints, the distance function first checks if the 2 waypoints are reachable.
+
+I also use a multi-goal version of A* to send the bot to the nearest healthkit, etc.
+
+thanks,
+-Brendan
+
+--------------------------------------------------
+01/21/02 at 07:20:31  Reply by: bluesy (bluesy@bezeqint.net)
+--------------------------------------------------
+For some strange reason this topic is in the wrong forum (should be in bots dev IMHO) but hey....
+
+anyway,
+I`m trying to change the TEAMbot based pathfinding system (which my bot currently has) to A*. I`ve already taken care of the 'mechanics' like altering the waypoint struct & functions and even implemented some crude algorythm which (ofcourse) doesn`t work. 
+
+The main problem I have is that all tutorial, essays, articals etc. about a* assume a tile based map. Has anyone written a graph/node oriented A* article? or it`s up to the struggling (read: dummy ) bot developers (read: me) to figure it out themselves...
+
+Also, there seems to be some inconsistency regarding most of the pseuducode / code samples - they don`t do the same thing...
+
+BTW 
+One of the things I did understand is that the whole phase of creating 'children' for the graph nodes could be done when placing waypoints - this could save a lot of time when running the pathfind function.
+
+--------------------------------------------------
+01/21/02 at 11:11:01  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+I haven't seen any examples of A* that don't assume using a grid.  Several examples that I have seen recommend partitioning the open space into grids and marking those grids as impassible if any part of the grid is impassible otherwise mark it as passible.
+
+Your best bet would be to look through all the pathfinding discussions on www.gamasutra.com or www.gameai.com.
+
+For some reason most people don't just give away their bot A* code after spending dozens/hundreds of hours working on it for themselves.  I guess they just don't want everyone else to cut-and-paste their way to greatness taking advantage of what someone else had done.  This was the main reason that I didn't release the full source code to the HPB bot since I didn't want everyone else copying my navigation code.  IMHO, you REALLY need to do this type of stuff on your own to fully understand how it works and what types of problems can occur when using it.
+
+botman
+
+--------------------------------------------------
+01/21/02 at 12:19:39  Reply by: bluesy (bluesy@bezeqint.net)
+--------------------------------------------------
+You are 100% right about the source-code thing, I feel the same thing myself. 
+
+I wasn`t looking for a source code, I already have some form of A* running in my code, it`s just that the implementation of A*, gathered from what i`ve seen, is somewhat vague - to me atleast.
+
+Nevermind, I guess I`ll go burn some more IQ on this...
+
+[modified on 01/21/02 at 12:19:39]
+--------------------------------------------------
+01/29/02 at 21:59:21  Reply by: Extrarius (cprgmsw@rietta.com)
+--------------------------------------------------
+I personally don't understand the point in keeping the source code to freeware for yourself, unless you plan on eventually taking it commercial. I know perfectly well that in order to fully understand something I must work through it myself, but I also know that seeing what other people have done usually assists me in figuring out what does and doesn't work in my head without spending many extra weeks coding stuff that won't work in the end. I often have many ideas and spend a few weeks refining it to a (theoretically, as I dont code stuff often) working state, only to find some site after I'm done that has taken it 3 levels past what I did. General game AI would be a lot further than it is now if everybody openly published what they had done (for freeware products) in easy-to-find places. For example, the cgf bots for action quake 2 are much more advanced than most hl bots, and if William wasnt going commercial with his work, I'd be mad at him for not releasing the source long ago and furthering the development of everybodies bots, but I can appreciate that and will probably buy the book "AI Wisdom" (http://www.aiwisdom.com/)
+
+I do realize that you don't want people stealing your source, but I think the majority of the people that used your source code would follow your request that they give you credit for whatever parts they use.
+
+[modified on 01/29/02 at 21:59:21]
+--------------------------------------------------
+01/29/02 at 22:23:17  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+hmmm.
+
+<b>IMHO</b>. Too much time has been spent with this deal. I think people will somehow get bored with all those guys saying 'free the source! free the source!'. Somehow it will lose credibility....
+
+Let's do it, let's stop talking about it...
+
+8)
+
+
+
+--------------------------------------------------
+01/30/02 at 04:30:34  Reply by: William (william@cgf-ai.com)
+--------------------------------------------------
+Some comments on various messages:
+
+Ariel:
+QUOTE:
+
+The main problem I have is that all tutorial, essays, articals etc. about a* assume a tile based map. Has anyone written a graph/node oriented A* article? or it`s up to the struggling (read: dummy ) bot developers (read: me) to figure it out themselves...
+
+
+
+A* works as well for graphs as for tile based maps. Actually most pathfinding originates from graph applications.
+However, most tile-based applications have simple movement cost functions: either 1 tile, or the 'weight' of the tile. See James Matthews' demo at http://www.generation5.org/ase
+
+For graph based applications (such as pathfinding over manually positioned waypoints), you need provide a decent cost function. For example, compute the distance between two waypoints, figure out the speed the bot can travel at each of the waypoint (crouching through airvents is slower), and compute the travel time needed to move from one waypoint to the other.
+The A* heuristic (h()) would be the distance from the waypoint to the destination, divided by the maximum movement speed.
+
+Botman:
+QUOTE:
+
+For some reason most people don't just give away their bot A* code after spending dozens/hundreds of hours working on it for themselves.
+
+
+
+
+Amit Patel's site ( http://www-cs-students.stanford.edu/~amitp/gameprog.html ) and Steve Woodcock's site ( http://www.gameai.com ), and books like Game Programming Gems I and the upcoming AI Programming Wisdom do have good A* code. 
+But you still need to figure out how to fit it with you waypoints and cost-functions.
+
+Extrarius:
+QUOTE:
+
+General game AI would be a lot further than it is now if everybody openly published what they had done (for freeware products) in easy-to-find places.
+
+
+
+Good point. IMO, the game industry does a bad job at publishing how advanced their AI is. Then you get those funny academic papers that claim to create a more intelligent Quake bot than the game AI they have read about, whereas most amateur Quake bot easily beat the academic one.
+However, this situation is rapidly changing.
+AI has become a competitive feature, rather than an add-on. The military have taken an interest (they need cheap simulators for training facilities, preferably running on a $300 console - the graphics are in place, but the AI is a bit lacking). Initiatives like the GDC AI programmer's dinner and the round-tables ( http://www.gameai.com/cgdcstuff.html ) help a lot.
+Finally, a publisher recognized a great opportunity to do books about game programming and game AI. After the success Game Programming Gems I, II (and III - out in August 2002), there will be a book dedicated to game AI (AI Programming Wisdom - see http://www.aiwisdom.com/selectedarticles.html ). It's available from 19 March onwards.
+
+Full disclosure: yes, I'll be making money of the AI Programming Wisdom book, though probably not even enough to buy a fat 3D graphics card.
+
+QUOTE:
+
+if William wasnt going commercial with his work
+
+
+
+Technically, I'm not going commercial with the work I've done on CGF. Getting rid of every bit of Quake2 would be a lot of work. 
+However, I am doing some commercial game AI work (writing articles, doing design and programming) where giving out source code would work against me. 
+Besides, by spending two weeks on writing a clear and illustrated article, or by putting AI in a shiny up-to-date game engine, my work will be beneficial for more people than by simply handing out source code.
+
+William
+
+[modified on 01/30/02 at 04:30:34]
+--------------------------------------------------
+01/30/02 at 06:15:10  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+Out of interest, I just managed to get A* working with HPB_Bot, it took ages of trying to understand it (i think its quite easy now!) .It works, although I've had problems with abnormal events such as bots bumping into walls etc. I think thats becuase I hold all the waypoints that bots should goto in an array and sometimes if they miss out a waypoint, things will get muddled up. I've sorted that out though and it's looking good.
+
+
+I think I outta changed the arrays to linked lists and stacks as it will take less memory and easier to handle I believe. ;)
+
+[modified on 01/30/02 at 06:15:10]
+--------------------------------------------------
+01/31/02 at 09:55:39  Reply by: bluesy (bluesy@bezeqint.net)
+--------------------------------------------------
+For some strange godforsaken reason I`ve also managed to get A* part working... 
+
+I still get really strange behaviours but atleast speeds are good. :)
+
+Cheesemonster - have you tried working with priority ques? looks like realy nice results there...
+
+--------------------------------------------------
+01/31/02 at 13:57:32  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+I used a stack (LIFO) earlier, it worked great until a just today when my bots chewed up all my memory in half a second! I got into an endless loop where it kept making new nodes allocated to memory (I even put malloc checks in but they didnt seem to work :( ) I tried many things and I just gave up and went back to the old integer array :) I think its easier to handle now ;)
+
+I've had another strange bug recently though... for some reason at some points the pBot pointer changes and everythings muddled up in the bot causing a crash, don't have any idea why!!! The first time it happened, I changed the cost of a path higher by adding a fixed value of 2000 to the cost (weight) of a path... still I don't think thats what caused it and I don't know why it will...
+
+[modified on 01/31/02 at 13:57:32]
+--------------------------------------------------
+01/31/02 at 14:02:34  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+forgot to tell u the way I find the path... In case this might cause some bugz ;)
+
+oncee I find a goal...
+
+code:
+
+ if( found_agoal )
+ {
+                        // Moving backwards to find paths to take....
+                        
+                        int previous = -1;
+                        int current = node_goal;
+                        
+                        i = 0;
+                        
+                        DestroyArray(pBot);
+
+                        while (( current != pBot->curr_waypoint_index )&&(WptIsValid(current))&&(WptIsValid(i)))
+                        {
+
+                             
+                              // Add this path to the bots goto waypoints
+                              pBot->goto_wpt[i] = current;
+                              goal_index = current;                              
+                              current = node[current].parent;      
+                              i++;
+                        }
+                        
+ }
+
+
+
+Btw for some reason I did dijkstras algo at college 2day for networking hehe... after finding out how A* works 2 days earlier....
+
+[modified on 01/31/02 at 14:02:34]
+--------------------------------------------------
+01/31/02 at 14:58:46  Reply by: bluesy (bluesy@bezeqint.net)
+--------------------------------------------------
+I think I know what`s wrong:
+you declare i=0 but in the while statement you say wptisvalid(i). If I`m guessing right waypoints start from 1 (unless you changed that of course) and since the while loop never happenes your bot won`t have any wpts to go to.
+
+Hope it helped a bit...
+
+
+
+--------------------------------------------------
+01/31/02 at 15:03:34  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+I use the waypoints[] array so I think 0 is valid. I use the function to check if the number is between 0 and less than num_waypoints.. :) (cos then it might crash) or It could overflow or something bad will happen :)
+
+--------------------------------------------------
+01/31/02 at 15:20:18  Reply by: bluesy (bluesy@bezeqint.net)
+--------------------------------------------------
+I think that the waypoints array goes from 1 to max_waypoints (including) and not from 0 to max_waypoints-1.
+
+Are you sure your code gets inside that while loop?
+
+anyway, here`s my code that does basicaly the same:
+code:
+
+//result is an int array that would contain the path
+
+        int temp = goal;
+      steps = 0;
+
+      while (temp != NULL)
+      {
+            result[steps++] = temp;
+            temp = nodes[temp].parent;
+      } //construct the array
+
+      for (int i=0;i<(steps/2);i++)
+      {
+            int temp = result[i];
+            result[i] = result[steps-i-1];
+            result[steps-i-1] = temp;
+      } //reverse it
+
+
+
+
+On what did you base your A* code?
+I used the Generation5 example as a guideline and things are really messed up with what I did...
+
+--------------------------------------------------
+01/31/02 at 16:18:05  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+It gets into the while loop fine :p I'm sure theres definately a waypoint number 0 :)
+
+I used two example codes from www.gameai.com to get me started, I forgot one of the authors, the other is "Justin Heyes-Jones" although some things that were in the pseudocode I thought were wrong or didn't explain things exactly. ;)
+
+--------------------------------------------------
+02/01/02 at 01:35:21  Reply by: bluesy (bluesy@bezeqint.net)
+--------------------------------------------------
+Then maybe you`d have an idea on what is messed up with my A* code - I`m this -> <- close to give it up.. :(
+
+with a normal route (no forks) it seems to work fine. adding a few waypoints - still working fine. add some other waypoint - can`t even find a route between 2 neighbouring wpts...
+
+
+
+--------------------------------------------------
+02/01/02 at 04:29:44  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+try... waypoint save then waypoint load :D
+
+thats if you use waypointfindpath to generate succesors (which is what Im doing and probably what youre doing anyway!)
+
+[modified on 02/01/02 at 04:29:44]
+--------------------------------------------------
+02/01/02 at 12:09:45  Reply by: bluesy (bluesy@bezeqint.net)
+--------------------------------------------------
+actualy no need for waypoint save/load ;)
+
+All of the children/successor calculations is done during waypoints placement. Whenever a waypoint is added, all of it`s children is automaticaly added and stored in an array (part of the waypoint struct).
+
+I figured it would reduce the overhead a bit if all children are pre-calculated before the actual pathfinding.
+
+
+
+
+
+
+--------------------------------------------------
+02/02/02 at 11:10:41  Reply by: bluesy (bluesy@bezeqint.net)
+--------------------------------------------------
+Just a stupid question:
+
+lets say this is the a* code:
+functhatdoesastar(...)
+{
+   insert start to open list
+   while open list not empty
+   {
+      pop node with lowest f from open
+      do things with that node
+      if popped node == goal
+        return found_path
+   }
+}
+
+etc. etc.
+extactly when should I insert the popped node into the closed list?
+      
+
+
+--------------------------------------------------
+02/02/02 at 11:58:36  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+i put it in closed as soon as I pass the "if statement" to check if its in the open list. (and has lowest Hueristic value)
+
+--------------------------------------------------
+02/03/02 at 14:24:55  Reply by: Extrarius (cprgmsw@rietta.com)
+--------------------------------------------------
+I'm attempting to create a method of generating multiple paths from any waypoint to any other waypoint. I use something simmilar to A* (from what I understand of it from a few tile-based demo programs), but I am having problems with recognizing multiple paths. Since I'm not sure how or even if its possible to post images on this forum, and I've posted it in the foxbot's forums already, here is a link:
+http://dynamic3.gamespy.com/~foxbot/forum/showthread.php?s=&threadid=1346
+search for a post with the title of "A* Variant Problem"
+I believe that particular post is on page 2 by default (when you arent logged in)
+
+--------------------------------------------------
+02/06/02 at 08:33:01  Reply by: William (william@cgf-ai.com)
+--------------------------------------------------
+the problem of generating multiple paths from A to B consists of two parts:
+1. generating a path that's different from the previously generated path from A to B
+2. getting rid of silly paths
+
+Most people forget about step 2.
+
+Ad 1. At least two alternatives. One option is to use A* with a special cost function that prefers other things (stealth, cover, darkness, odd numbered waypoints, whatever) in addition to short travel time. The nice thing about A* is that you won't visit a waypoint twice. The bad thing of custom cost functions is that they make A* more expensive (the space explored during the search becomes much larger).
+Another option is to find/look up the shortest path from A to B and simply mutate it. You can apply a number of random mutations (pick some node on the path, pick one of its neighbors, and adjust the path to visit that neighbor as well). The advantage of this approach is that is typically is fast.
+
+Ad 2. OK, now you have an algorithm that provides paths other than shortest paths. Great. Now the AI looks smarter. Well, most of the time.
+For example, if A and B are next to each other, just about every path (going via C to B) will look silly. Or: going up a ladder, and jumping down to get to B looks silly. Zigzagging looks silly.
+
+Unless you have a good criterion for your path to deviate from the shortest path (again stealth, cover, but also prefering nodes to the north/east/west/south of the map), you are likely to end up with silly paths. 
+Using a good criterion for other paths helps. But you might have to filter for silly paths as well (the A next to B case).
+
+William
+
+
+--------------------------------------------------
+02/23/02 at 07:23:16  Reply by: eLiTe (ali@elitegamer.fsnet.co.uk)
+--------------------------------------------------
+Ariel, if you are using the TEAMbot source then it will go from 1 to maxwaypoints, because it seemed like waypoint 0 was messing up my waypoint code (and I heard of problems in PODbot when you delete waypoint 0 so I thought it must be something in the HPB source). I still get weird problems with paths linking to the centre of the level sometimes, but I'm not sure hwat is causing them. I don't know much about memory management and since I didn't write the HPB template myself it is difficult to know what is going on all the time (also I've not updated my bots for months, but at one point I spent ages going through how the waypoint system worked trying to track down bugs, and I even managed to understand how the Floyd algo worked, kind of, that's how I managed to move the whole waypoint system from 0 to 1).
+
+--------------------------------------------------
+02/27/02 at 09:32:29  Reply by: bluesy (bluesy@bezeqint.net)
+--------------------------------------------------
+I was too confused with all of the waypoint code so I`ve redone everything from scratch and implemented an A*/Dyjkstra search which works perfectly now...
+
+--------------------------------------------------
+03/10/02 at 07:10:23  Reply by: Spikeles (spikeles_@hotmail.com)
+--------------------------------------------------
+Obivously you guys didn't read Amit's A* pages all the way through.. :D
+
+http://theory.stanford.edu/~amitp/GameProgramming/MapRepresentations.html#S6
+
+Here he describes how to do A* on a Polygonal map... ie "navigation points".
+
+In other words... Waypoints...
+
+
+--------------------------------------------------
+03/10/02 at 07:55:54  Reply by: bluesy (bluesy@bezeqint.net)
+--------------------------------------------------
+I think I stopped about 2 pages before this one ;)
+
+But in the end - everything`s working :D
+
+--------------------------------------------------
+03/10/02 at 09:12:08  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Hey!  Amit's updated his A* pages since the last time I looked at it (about a year ago).  I don't think the "Other topics" section used to be there...
+
+http://theory.stanford.edu/~amitp/GameProgramming/index.html
+
+I'll have to find some time in the next week or so to read through the stuff that he's added.
+
+botman
+

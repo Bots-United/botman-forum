@@ -1,0 +1,233 @@
+--------------------------------------------------
+Subject: Half-Life isn't liking this..
+--------------------------------------------------
+04/17/03 at 08:09:59  Posted by: Phreak (dead_sexy_simon@hotmail.com)
+--------------------------------------------------
+Hello everyone,
+
+I have made a KillAllClients() function which i call like so:
+
+code:
+
+if (FStrEq(pcmd, "endround"))
+{
+    KillAllClients();
+}
+
+
+
+This code kills all clients like so:
+
+code:
+
+edict_t *pPlayer;
+
+      for (int i = 0; i <= gpGlobals->maxClients; i++)
+      {
+            pPlayer = INDEXENT(i);
+            
+            
+            if (pPlayer)
+            {
+                  
+                  if(pPlayer->v.flags & (FL_CLIENT))
+                  {
+                        if(IsAlive(pPlayer))
+                        {
+                              pPlayer->v.frags += 1;
+                              ClientKill(pPlayer);
+
+                  
+                              }
+                        }
+                  }
+            }
+      }//End for loop
+
+
+
+My code works fine killing one person by using something similar to:
+
+code:
+
+if (FStrEq(pcmd, "endround"))
+{
+    ClientKill(pEntity);
+}
+
+
+
+However, the second i try to kill every player by using a For...Loop, Half Life Freezes. I have never had this problem before, and if i have made a little mistake in the code above please tell me. Any help would be appreciated...
+
+[EDITED]
+I know it is the For...Loop because i have removed ever piece of code except for ClientKill(pPlayer); in the For...Loop, and thats all that makes Half Life Freeze (though that was a useful add-on so you didn't ask how i thought i knew) :)
+[/EDITED]
+
+Phreak
+
+[modified on 04/17/03 at 08:09:59]
+--------------------------------------------------
+04/17/03 at 14:42:49  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+I made a function to do this in my bot a while back and it works okay (well in the MOD i use for it anyway), here is the code.
+
+code:
+
+void UTIL_KillAll(void)
+{
+      int i;
+      
+      edict_t *killent = NULL;
+      
+      for( i = 1; i <= gpGlobals->maxClients; i ++ )
+      {
+            killent = INDEXENT(i);
+            
+            if(killent)
+            {      
+                  if(killent->v.deadflag == DEAD_NO)
+                  {
+                        if(killent->v.netname)
+                        {
+                              ClientKill(killent);
+                        }
+                  }
+            }
+      }
+}
+
+
+--------------------------------------------------
+04/17/03 at 22:08:26  Reply by: Phreak (dead_sexy_simon@hotmail.com)
+--------------------------------------------------
+
+It still doesn't work :(
+
+I have no idea whats happening but whenever i try and use it it just sits there. I call the function and nothing happens. I've added:
+code:
+
+ClientPrint(pEntity, HUD_PRINTTALK, "Testing...testing...1...2...3");
+
+
+to the KillAllClients() function to see if it is actually calling what it is supposed to be. And IT IS!! It prints but never kills all clients :(
+
+If anyone knows why this could be happening, please help me!!
+
+
+Phreak
+
+--------------------------------------------------
+04/18/03 at 08:03:45  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Phreak, replace
+code:
+
+if (pPlayer)
+
+
+with
+code:
+
+if (FNullEnt (pPlayer))
+
+
+Not all valid entity pointers actually point to a valid entity. Some pointers do point to nowhere.
+
+
+--------------------------------------------------
+04/18/03 at 10:05:10  Reply by: Phreak (dead_sexy_simon@hotmail.com)
+--------------------------------------------------
+Thanks guys, but it still didn't work. CS JUST FREEZES! Iv'e even tried Count Floyds UserNewRoundAll() function posted in a post on these forums. They all either don't work or freeze CS. Is my Half Life a bit stuffed? I have coded these before and they have never frozen CS. This time it has. If noone can think of anything, I may have to re-install...
+
+
+I appreciate the help...but its not working at all
+
+
+Anyone?
+
+Phreak
+
+--------------------------------------------------
+04/18/03 at 15:02:27  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+try giving the engine a bit of time...
+
+you could kill one player each frame, instead of all at once if that helps...
+
+code:
+
+
+...
+#include...
+...
+#define...
+...
+
+bool kill_players = FALSE;
+int current_player_to_kill = 1;
+
+
+
+
+code:
+
+void StartFrame ( void )
+{
+ ..
+
+  if ( kill_players )
+  {
+     if ( current_player_to_kill > gpGlobal->maxClients )
+     {
+        current_player_to_kill = 1;
+        kill_players = FALSE;
+     }
+     else
+     {
+        edict_t *pKill = INDEXENT(current_player_to_kill);
+
+        if ( pKill && !FNullEnt(pKill) )
+           ClientKill(pKill);
+
+        current_player_to_kill++;
+     }
+  }    
+
+   ...
+}
+
+
+
+code:
+
+void ClientCommand ( void )
+{
+  ...
+  ...
+  else if ( FStrEq(pcmd,"killall") )
+     kill_players = TRUE;
+  else if ...
+  ...
+}
+
+
+
+[modified on 04/18/03 at 15:02:27]
+--------------------------------------------------
+04/18/03 at 19:12:58  Reply by: Phreak (dead_sexy_simon@hotmail.com)
+--------------------------------------------------
+
+Cheesemonster: You are a life saver :) It worked..
+I have credited it and have made note about my current Half-Life state and how i code in the future.
+
+Thanks again
+
+
+Phreak
+
+--------------------------------------------------
+04/19/03 at 07:58:20  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Still, there has to be a bug somewhere else then. Intrinsically, the fact of calling several ClientKill() per frame, even for all clients, cannot make the engine crash. I have a "killall" server command in my bot also, which kills every client in one frame, and everything works okay.
+
+

@@ -1,0 +1,116 @@
+--------------------------------------------------
+Subject: Question and a comment
+--------------------------------------------------
+09/28/02 at 11:39:30  Posted by: Hueristic (hueristic9@yahoo.com)
+--------------------------------------------------
+First of all i'd like to state "Thank U Botman" Your faq is both informative and Straight forward.
+After searchin the web for basic info on mod design u have put me on the correct path.
+
+But now the question.
+
+My interest is in designing a world with randomly generated sections as players approach. Basically something that will write itself. I have Been searching for a engine to use in this manner but have found nothing as supported as the Half-life sdk.
+Could the Engine be used in this manner? I reilize this is a tough question and a tall order. But any input would be appreciated. 
+This project has been stewing around in my head for years and i am finally getting to the point where i am building a framework to hold it. But i cannot decide on what engine to put my efforts into.
+
+--------------------------------------------------
+09/28/02 at 11:51:34  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+You cannot randomly generate walls while the game is running.
+
+You can create random maps by writting an application that generates a .map file, then compile that .map file to build the .bsp file, then run Half-Life using that .bsp file (but the walls will be static while that map is running).
+
+You can modify the SDK to create a MOD that will enable or disable the rendering of walls (turn them on or off), but you will have to first create a .map file (and compile it) such that it contains all of the possible wall locations before the map is compiled.  Creating a map of this type is going to give you very bad r_speeds and the rendering will be pretty slow causing low FPS values.
+
+See some of the Half-Life mapping tutorial websites to learn how to turn on or off the rendering of walls (func_wall).
+
+botman
+
+--------------------------------------------------
+09/28/02 at 12:19:04  Reply by: Hueristic (hueristic9@yahoo.com)
+--------------------------------------------------
+Thanks for the quick reply. As i suspected in order to use this sdk i would have to Call the engine every time a new "area" was to be created. Does this sound feasable? Maybe the Larger Dlls could still be kept in memory? I reilize it is a tall order. I don't expect to have a shell for years to come. I have been waiting years but have seen no true forward progression in world creation since quake3. Unless u count polygon ocunts and lighting. Which i do not.
+
+--------------------------------------------------
+09/29/02 at 06:14:26  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+You can not create "areas" in a map on the fly.
+
+The engine loads the .bsp file independantly of the game DLL code.  No amount of DLL changes will allow you to add or remove geometry from the .bsp file.
+
+If you want areas that are dynamically created, you will have to create a .map file, then compile that .map file to a .bsp file, then load that .bsp file using the engine.  Once the .bsp file is loaded by the engine, you can not change the geometry of the world.
+
+You can enable or disable the rendering of walls if you create them properly.  You can also move the walls around on a fixed path (think of func_doors used as elevators).  You can not create or remove geometry on the fly placing surfaces where you want or removing surfaces from the world.
+
+You need to spend some time following some Half-Life mapping tutorials to get a better understanding of the limitations on what can be done as far as map rendering goes with the Half-Life engine.
+
+botman
+
+--------------------------------------------------
+09/30/02 at 09:40:11  Reply by: Hueristic (hueristic9@yahoo.com)
+--------------------------------------------------
+I think possibly i have not stated my original intent correctly.
+
+I would like to use the sdk as a client interface. The server side would generate the areas(bsp files) as the client progreesed throught the world. and the server side could send the bsp to the clients as needed. This way the "World area" Would consist of a library of bsp's stored on the server that the client would only acces as they moved in that direction.
+I realize that a program to create the map files would need to be written. My main use of the sdk would be as a client interface into the World generated.
+
+--------------------------------------------------
+09/30/02 at 14:07:16  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Just to put my 2 cents here, I'd say it'll be VERY hard (almost impossible) unless you base your maps on very big prefabs (as large as a room) to guarantee your level will:
+1°) compile right
+2°) actually <i>look like something</i>
+And this last point is not quite a piece of cake. Good luck.
+
+
+--------------------------------------------------
+09/30/02 at 14:39:15  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Hueristic, I don't think you fully understand the concept of server/client gaming.
+
+The servers loads the map (one map at a time).  The client connects to the server and renders the portion of the map that the client is currently in.  The server handles all the map entities and runs all the physics code (objects moving, falling, jumping, etc.).
+
+The client is purely used as a rendering device.  All it does is display stuff and pass user input (keypresses) back to the server for processing.  You can't have separate maps for each client.  All clients run the same map (just displaying different areas based on where that particular player currently is in the map).
+
+What you are describing sounds like something that you would need to create your own custom engine for.  I would suggest looking at something like the CrystalSpace engine and modify it so that you can move clients from one map into another when they hit transition points.
+
+It still doesn't make much sense to have a server running a map if all the clients could be in completely different areas (otherwise why would you need a centralized server?  just have the engine running on each client and let each client load and render whatever maps they needed, much like the way single player levels are played).
+
+botman
+
+--------------------------------------------------
+10/13/02 at 22:11:18  Reply by: Hueristic (hueristic9@yahoo.com)
+--------------------------------------------------
+Sorry took so long to get back. Been Busy. I've started the learning curve on Crystal Space and it looks like it may have the Potential for my Concept. The Sweet thing is it's open source :) .
+Talk to you in a year when i got something going. Lol thx agin.
+
+--------------------------------------------------
+12/01/02 at 13:52:16  Reply by: BeaverMon1 (BJDobson1@aol.com)
+--------------------------------------------------
+I think I understand what you want but I don't think it's possible.
+
+You want to be able to let the game load a different map like in the original Half-Life maps, be able to "warp" from 1 map to another without seeing a screen that has something like "loading this map, please wait".
+
+That I don't think it's possible, you got to be a master programmer, namely someone that created the original game to really understand how to do that.
+
+Duke3D has an option to place a sprite that would trigger once the player or anyone except a monster to get to the next map in the mapcycle. You basically want something like this, to trigger loading the next map, but you don't want it to "skip" the previous map and go to the 2nd.
+
+What I'm saying it's an sectoraffector sprite when set, will "teleport" the player to the next map, which I just said. That is impossible in TFC.
+
+[modified on 12/01/02 at 13:52:16]
+--------------------------------------------------
+12/01/02 at 14:38:13  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+the "sectoreffector" sprite you know in Duke3D has an equivalence in Half-Life, that's how single player missions work.
+
+But it is impossible, with the half-life engine, to switch maps like that. For the server, the map IS the world. And not a part of it. When you as a single player reach a new map, you actually START A NEW SERVER. Why it looks flawless is because your player entity state is saved, together with several other entities, in a special 'SaveRestore' structure, which the 'new server' loading the new map looks at when it spawns your character in the level, to spawn additional entities around (the grunts you've just killed, and such.) So it basically looks the same, but without that 'loading...' screen, you don't notice you've actually SHUT DOWN your server and RESTARTED a new one.
+
+
+--------------------------------------------------
+12/02/02 at 08:37:09  Reply by: BeaverMon1 (BJDobson1@aol.com)
+--------------------------------------------------
+The only way you could "simulate" this is create maps that kinda look like the others but with new stuff, basically creating a huge world, but on seperate maps. Throw these into a mapcycle, then set the mapchange to about um...... 10-15 minutes.
+
+You'll have to "play pretend" you actually warped to the next map. You can even simulate going back to the 1st map you played in if you wanted to.
+
+This is the ONLY way I know that CAN be done. I'm basically a TOTAL Noob at WorldCraft. Heck, I haven't even created my first room yet without working about leaks! (IMO, Duke3D's BUILD program is SO much easier to use! Even though your living in a "box world", sorta. Theirs no ramps that have nothing under them, but hey, it's an old game, made back in '95. But at LEAST you don't have to use several other programs JUST to give your map life! BUILD does it ALL. Now why can't WorldCraft be like that?)
+

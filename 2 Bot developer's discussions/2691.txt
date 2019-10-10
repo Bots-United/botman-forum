@@ -1,0 +1,110 @@
+--------------------------------------------------
+Subject: Attack Monsters?
+--------------------------------------------------
+02/04/02 at 14:50:55  Posted by: fluffy (talk_to_me85@yahoo.com)
+--------------------------------------------------
+Hello, 
+
+How could i make my bots fire at normal HL monsters?
+
+--------------------------------------------------
+02/04/02 at 16:40:22  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+hi, look in bot find enemy function in bot_combat.cpp, at the part where it says pNewEnemy = NULL you could add a bit of code that searches for entities with the classname of monster_.... of course you'd have to leave out gman, sitting scientist, furniture etc as you can't kill them.
+
+I made a function myself for this and you woul use it like...
+
+code:
+
+pNewEnemy = BotFindMonsters(pBot);
+
+
+
+heres a much simpler version of my function below.
+This isn't tested, I just created it there! Remember that monster's origin isn't exactly beteen head and feet, you'll need to either use VecBModelOrigin function or ((pent->v.absmax + pent->v.absmin)/2) to get the proper origin.
+
+So if the bots start targetting the monsters feet, you'll need to tell the bot to target the monsters proper origin. thanks to spyro helping me with this ages ago ;) Although I found out new ways to get good monster locations :p
+
+code:
+
+edict_t *BotFindMonsters(bot_t *pBot)
+{
+  edict_t *pEdict = pBot->pEdict;
+  edict_t *pent = NULL;
+  edict_t *pMonster = NULL;
+
+  char *pClassname = NULL;
+
+  float search_radius = 2000; // Search 2000 units away from the bot.
+  float min_distance = (search_radius + 1);
+  float distance;
+
+  Vector monster_origin;
+
+  while ((pent = UTIL_FindEntityInSphere( pent, origin, search_radius )) != NULL)
+  {
+    pClassname = (char *)STRING(pent->v.classname);   
+    if( strncmp("monster_",pClassname,8) == 0 )
+    {
+      if( strcmp("monster_gman",pClassname) == 0 )
+        continue; // Continue looking for different monsters, can't kill gmen
+      else if( strcmp("monster_sitting_scientist",pClassname) == 0 )
+        continue;
+      else if( strcmp("monster_furniture",pClassname) == 0 )
+        continue;
+    }
+    else
+      continue; // Only want to look for monsters
+
+    monster_origin = VecBModelOrigin(pent);
+
+    if( IsAlive(pent) && BotEntityIsVisible(pBot,monster_origin))
+    {
+
+
+      distance = (monster_origin - pEdict->v.origin + pEdict->v.view_ofs).Length();
+
+      if( distance < min_distance )
+      {
+        pMonster = pent;
+        min_distance = distance; // Look for the closest monster to shoot
+      }
+    }
+  }
+
+  return pMonster;
+}
+
+
+
+Soz I keep modifying it, aint my lucky day! :p
+
+[modified on 02/04/02 at 16:38:40]
+
+[modified on 02/04/02 at 16:40:22]
+--------------------------------------------------
+02/04/02 at 17:41:20  Reply by: fluffy (talk_to_me85@yahoo.com)
+--------------------------------------------------
+Cool thanks alot!
+
+My bots shoot at monster now!
+One last question:
+How would i get my bots to completely ignore the player?
+
+
+
+--------------------------------------------------
+02/05/02 at 04:06:27  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+you mean dont shoot any other players or just make the bot shoot other bots and not yourself?
+
+Botman included these options with the bot:
+
+put these in the console...
+
+observer 1 (will make you "invisible" to bots)
+observer 0 (will put it back to normal)
+
+I take it your trying to make a co-operative type bot? In that case, if you don't want them to shoot ANY players at all then look in bot_combat.cpp again in BotFindEnemy near the bottom where it looks for players and comment it out.
+
+[modified on 02/05/02 at 04:06:27]

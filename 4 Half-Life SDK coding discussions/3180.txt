@@ -1,0 +1,51 @@
+--------------------------------------------------
+Subject: BOTMAN, PLEASE, HELP!!!!!!!!!!
+--------------------------------------------------
+06/03/02 at 10:52:35  Posted by: SLAVIK (slava@deep-shadows.com)
+--------------------------------------------------
+Hi! I created new weapon for my mod and it works perfectly only in map where it is specified as text entity. I mean you pick-up this weapon, not use give weapon_... .
+The problem is that when I use give weapon_... in other maps, everything is ok until wepapons bullet (CTeleBall) hurts the wall and calls beamcyliner message. Half-Life crashes with message
+"New message started when msg '23' has not been sent yet."
+
+Please, can you help me with that thing? What is wrong with it?
+
+[modified on 06/03/02 at 10:52:35]
+--------------------------------------------------
+06/03/02 at 08:46:20  Reply by: SLAVIK (slava@deep-shadows.com)
+--------------------------------------------------
+has anyone ideas with this thing?
+please, help me!!!!!
+
+--------------------------------------------------
+06/03/02 at 11:25:06  Reply by: kippie (da_matt@hotmail.com)
+--------------------------------------------------
+I have the same problem with a TE_LARGEFUNNEL, I think it is due to errors in the message. You'd better double check it
+
+--------------------------------------------------
+06/03/02 at 11:26:08  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+You are sending a MESSAGE_BEGIN when a MESSAGE_END has not been sent yet. Two network messages can't overlap each other. Check the places where you send or catch messages, the bug is probably hidden in a machine state (you send a message in a state of the state machine where you catch one element of another message).
+
+
+--------------------------------------------------
+06/03/02 at 11:34:46  Reply by: SLAVIK (slava@deep-shadows.com)
+--------------------------------------------------
+Thanks,but I think that my messages are sent correctly. Second message is started when first is ended.
+I mean this:
+
+message_begin()
+//message1
+message_end()
+
+message_begin()
+//message2
+message_end()
+
+and everything is ok in maps where my weapon is spawned, not used by "give_" command. What is that, any new ideas?
+
+--------------------------------------------------
+06/03/02 at 11:47:23  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+I can't believe it is so. It HAS to be that. The error message is explicit, and I know this error for quite a time. It means that, somehow, somewhere, you are sending a new message when another message has not been completely sent yet. Many functions hide the fact that they are sending message, just like if you called Botman's UTIL_HostSay() somewhere in his bot_client.cpp, where all the state machines that catch the messages are.
+
+

@@ -1,0 +1,126 @@
+--------------------------------------------------
+Subject: Controlling player speeds
+--------------------------------------------------
+06/10/02 at 13:15:48  Posted by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+I have been following the tutorial on wavelength about controlling player speeds. All goes well , the server dll compiles great and such. For the client dll however things go wrong. The things go wrong at the delivered 'tutorial cpp' file. I did not change a line there and assumed it was ok.
+
+The error though is odd, it is only when util.h is included. If you do not include it the compiler will give around 10 errors about functions wchih are not defined. Ok, well that sounds reasonable, but when you re-include the util.h file you will get a weird error:
+
+c:\projects\half-life\sdk\source code\dlls\enginecallback.h(22) : error C2146: syntax error : missing ';' before identifier 'g_engfuncs'
+c:\projects\half-life\sdk\source code\dlls\enginecallback.h(22) : fatal error C1004: unexpected end of file found
+
+well, somehow i have been missing something. I don't know why this error gets here, and i am not a C/C++ n00b. I have been checking that line and i cant seem to find the problem.
+
+Anyone else had this problem before? I can imagine this tutorial was for SDK 1.0 maybe but even then this error gives me a headacke.
+
+Edit: the source code of speed.cpp
+code:
+
+/***
+*
+*      Client speed control
+*      By Adrian "Fireball" LaVallee
+*      8/25/99
+*
+****/
+//
+// speed.cpp
+//
+// implementation of CHudSpeed class
+//
+
+#include "hud.h"
+#include "util.h"
+#include "parsemsg.h"
+
+#include <string.h>
+#include <stdio.h>
+
+// here m_Speed = SPEED message
+DECLARE_MESSAGE(m_Speed, Speed);
+
+int CHudSpeed::Init(void)
+{
+      HOOK_MESSAGE(Speed);
+
+      gHUD.AddHudElem(this);
+
+      return 1;
+};
+
+void CHudSpeed::SetSpeed(void)
+{
+      char cmd[50];
+      sprintf(cmd, "cl_forwardspeed %d\n", m_iSpeed);
+      ClientCmd(cmd);
+      sprintf(cmd, "cl_backspeed %d\n", m_iSpeed / 2);
+      ClientCmd(cmd);
+      sprintf(cmd, "cl_sidespeed %d\n", m_iSpeed / 2);
+      ClientCmd(cmd);
+      sprintf(cmd, "cl_movespeedkey %f\n", 0.5);
+      ClientCmd(cmd);
+}
+
+int CHudSpeed:: MsgFunc_Speed(const char *pszName,  int iSize, void *pbuf )
+{
+      BEGIN_READ( pbuf, iSize );
+      int x = READ_SHORT();
+
+      if (x != m_iSpeed)
+      {
+            m_iSpeed = x;
+      }
+
+      SetSpeed();
+
+      m_iFlags = HUD_ACTIVE;
+      
+      return 1;
+}
+
+void CHudSpeed::Think(void)
+{
+      int iSpeed, iCheater;
+
+      if (!m_iSpeed  !(m_iFlags & HUD_ACTIVE))
+            return;
+
+      iCheater = 0; // innocent until proven guilty
+
+      iSpeed = CVAR_GET_FLOAT( "cl_forwardspeed" );
+      if (iSpeed != m_iSpeed)
+            iCheater = 1;
+
+      iSpeed = CVAR_GET_FLOAT( "cl_backspeed" );
+      if (iSpeed != m_iSpeed / 2)
+            iCheater = 1;
+
+      iSpeed = CVAR_GET_FLOAT( "cl_sidespeed" );
+      if (iSpeed != m_iSpeed / 2)
+            iCheater = 1;
+
+      if (iCheater)
+      {
+            CenterPrint ("You cheater!!\n");
+            SetSpeed();
+      }
+}
+
+
+
+btw, the other code changes from the tutorial work fine. (Additions to CHud).
+
+thanks in advance for any advice and such. Can't wait to change the player speeds by damage or something similiar
+
+[modified on 06/10/02 at 13:15:48]
+--------------------------------------------------
+06/10/02 at 13:19:49  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+argh, i found the sollution:
+
+"see Question 31 at MOD faq".. rofl
+changed util.h into cl_util.h and it worked ;)
+
+you can delete this post now botman.. ;)
+

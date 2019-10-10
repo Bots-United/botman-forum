@@ -1,0 +1,117 @@
+--------------------------------------------------
+Subject: How to respawn bots
+--------------------------------------------------
+04/20/01 at 02:43:59  Posted by: Pembunuh (yip_omar@hotmail.com)
+--------------------------------------------------
+I can now spawn the bots in firearms.
+
+But after they died, they cannot respawn. How can I respawn them? I tried looking in the bot_think()
+but have no idea how to implement it. 
+The problem with firearms is u must select 3 choices of configuration for yourself, each time after u died( weapons, items or classes) and there's a screen for that(but not vgui).
+
+This means I have to send a fakeclientcommand to select it.But the problem is I dont really know how the HPB bot actually checks for death and respawn stuff.
+
+Another thing is the bots dont shoot at the opposite team members. How do I make them know that they know who the enemy is?
+
+Any help would be appreciated.
+
+--------------------------------------------------
+04/20/01 at 05:22:03  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+This is from BotThink() in the bot.cpp file...
+code:
+   // if the bot is dead, randomly press fire to respawn...
+   if ((pEdict->v.health < 1) || (pEdict->v.deadflag != DEAD_NO))
+   {
+      // DO YOUR RESPAWN STUFF HERE!!!
+   }
+
+...like the comment says, "if the bot is dead..."
+
+botman
+
+--------------------------------------------------
+04/20/01 at 05:27:58  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+"Another thing is the bots dont shoot at the opposite team members"
+
+You'll have to determine what identifies them as being on one team or another.  In TFC they use the pev->team variable (pEdict->v.team in HPB bot code).  team==0 is the blue team.  team==1 is the red team.
+
+Gooseman decided not to use pev->team in Counter-Strike.  The best method I could come up with for checking which team a player is on was to examine the model the player was using.  Terrorist's use one set of models.  Counter-Terrorists use another set of models.
+
+Look at the UTIL_GetTeam() function in the util.cpp file as an example of determining the team for different MODs.
+
+P.S. As Eric Bieschke pointed out, the "artic" string should be "arctic" in UTIL_GetTeam().
+
+botman
+
+--------------------------------------------------
+04/20/01 at 05:56:51  Reply by: kevone (kevone@gmx.net)
+--------------------------------------------------
+Hi Pem.....
+(check your email)
+botman has pointed it out for you...
+try to add a simply 'FakeClientCommand' here...
+(code's included in my mail)
+for the second problem your code should look like this:
+
+code:
+
+int UTIL_GetTeam(edict_t *pEntity)
+{
+      // Firearms...
+ 
+      char *infobuffer;
+      char model_name[32];
+ 
+      infobuffer = (*g_engfuncs.pfnGetInfoKeyBuffer)( pEntity );
+      strcpy(model_name, (g_engfuncs.pfnInfoKeyValue(infobuffer, "model")));
+ 
+      if (strcmp(model_name, "red1") == 0)
+      {
+         return 0;
+      }
+      else if (strcmp(model_name, "blue1") == 0)
+      {
+         return 1;
+      }
+ 
+      return 2;  // return zero if team is unknown
+}
+
+
+(the return values depends on how you want to do it!)
+
+hope it helps,
+k3v
+
+--------------------------------------------------
+04/20/01 at 16:04:10  Reply by: Pembunuh (yip_omar@hotmail.com)
+--------------------------------------------------
+Hey, thanks botman and kevin
+Now the bots know the teams and can respawn.
+
+But it seems like they wont use any other weapons 
+except come close to me and use the knife. Hahaha, scary though.
+
+I have already put all the neccessary codes in the
+ bot_weapon_select_t;
+and 
+ bot_fire_delay_t;
+
+and also defining the weapon id's in bot_weapon.h
+
+Is it sth to do with the setting of the values in the structures? Maybe like how many percentage this weapon will be used if it is available?
+
+
+--------------------------------------------------
+04/21/01 at 04:30:57  Reply by: kevone (kevone@gmx.net)
+--------------------------------------------------
+Hi Weng Tak!
+
+be sure that you have used the right weapon ID's (use debug_engine = 1)...
+and also be sure that you have filled out the 'bot_weapon_select_t' array correctly. if the bot doesn't find the weapon he's carrying in the array, he'll take the next weapon which is in the array (so if u have forget to add some rifles, or such, and u have added the knife, it will take the knife!).
+ahh... watch out that you have entered the weapons in the right sequence... if the knife is at top and use_percent == 100, the bot always will use the knife, for example.
+
+k3v
+

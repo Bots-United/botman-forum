@@ -1,0 +1,50 @@
+--------------------------------------------------
+Subject: Bot scores
+--------------------------------------------------
+06/02/02 at 05:53:22  Posted by: ixiz (davehigham@zen.co.uk)
+--------------------------------------------------
+I have got my server set up with HPB bot so that a bot joins if the player numbers drop below 4. What I have noticed is that they usually join and keep the score of a player who has recently left, so they could start playing at 30/10 and work up from that. It's not the same bots joining - always a new name and model from the list. Is there any way to make them join a game on 0/0? 
+
+[modified on 06/02/02 at 05:53:22]
+--------------------------------------------------
+06/02/02 at 08:18:19  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+Yes, it is a known problem.
+Every "object" in the game is described by the engine side as an "entity". Players are entities. The problem is that, player entities are reused when a player leaves and another joins, this to speed up client connections, probably. Normally it's up to the player to set up his name (erasing the previous player's one), his player model, and set up his score too, and notify the engine of that to make the engine reset it. Botman's bots can't do that because they just set up their name and skin in this "edict" entity, thus they inheritate of their predecessor's score.
+
+A way to fix this is to deallocate (i.e. make the engine throw away the memory part used to store it) the player entity's private data, where the scores are (the deaths count, in fact). Then, seeing that this player entity has no private data, the engine will automatically allocate it a fresh new one, thus setting the score to zero. The best place to do it is when the bot is created, i.e. in botman's BotCreate() function.
+
+Before the line that creates the bot "player" by the engine side (just search Botman's bot.cpp bot source code file for "player" and look for the following line)
+code:
+
+   player (VARS (pEdict));
+
+
+insert the following lines <b>just before</b> :
+code:
+
+   if (pEdict->pvPrivateData != NULL)
+      FREE_PRIVATE (pEdict); // free our predecessor's private data
+   pEdict->pvPrivateData = NULL; // fools the private data pointer 
+   pEdict->v.frags = 0; // reset his frag count 
+
+
+
+and recompile the HPB bot (or ask Botman to do so and release a new version ;))
+
+
+[modified on 06/02/02 at 08:18:19]
+--------------------------------------------------
+06/02/02 at 08:48:17  Reply by: ixiz (davehigham@zen.co.uk)
+--------------------------------------------------
+Thanks for a very comprehensive reply :) I know my limitations though and I don't think I'll be modifiying any code. I just hope the main man puts it on his wish list for the next release :)
+
+--------------------------------------------------
+06/14/02 at 05:17:51  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+hey, thats cool pierre. I never really bothered about it, but since you posted a fix of it, thx! :) 
+
+
+(damn , now you must be in my credits list :P , hehe ;) j/k ;))
+
+

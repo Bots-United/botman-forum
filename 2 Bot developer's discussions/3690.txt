@@ -1,0 +1,134 @@
+--------------------------------------------------
+Subject: Two questions about hlpbot
+--------------------------------------------------
+09/17/02 at 12:04:40  Posted by: legoman (lego@yahoo.com)
+--------------------------------------------------
+I need to find a good way to check if player joins and respawns in the server in HLP_BOT so I can do for example: Send him this message when he joins the server: Welcome to blabla server.. also send him this message for example when he respawns after dying: show his health etc when he spawns.. Thanks!
+
+--------------------------------------------------
+09/17/02 at 13:16:08  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+The best place to check for players joining the server would be ClientPutInServer().  That's the point where clients are fully connected to a server and getting ready to be spawned into the level.
+
+For looking for respawns, just keep checking the health of a player.  If you see the health go to zero (the player is dead), just keep looking for the health to go back to a non-zero value (they have respawned and have full health again).  This can be done by looping through all the players in the StartFrame() function and storing pEdict->v.health in an array somewhere.
+
+botman
+
+--------------------------------------------------
+09/17/02 at 13:31:11  Reply by: legoman (lego@yahoo.com)
+--------------------------------------------------
+This way wont cause any lag? Checking connected players health all the time. I already checked "ClientPutInServer" and tried to send UTIL_SayText to the connected player.. he didnt receive any message.. Any ideas?
+
+*EDIT* Will host of the server count as player in "ClientPutInServer" ? Maybe thats the problem why I cant detect myself joining the game.
+
+[modified on 09/17/02 at 13:31:11]
+--------------------------------------------------
+09/17/02 at 15:34:17  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+If you are running a listen server, you will be one of the clients.
+
+You might not be able to send a message to the player before they have spawned for the first time since their HUD hasn't initalized yet.
+
+For each player, keep track of the time when ClientPutInServer() was called and set a short delay after that (2 or 3 seconds).  Send the message to that player at that time, then clear the time delay so that you know you've already sent a message.
+
+No, checking the player health during each frame won't slow things down (since you can very quickly loop through all clients and store the pev->health value).  If you are doing something more intensive than just checking a player field you might not want to do it during every frame (but realize that you could miss some event that happens during the frame that you don't check things).
+
+botman
+
+--------------------------------------------------
+09/17/02 at 16:07:13  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+code:
+
+float welcome_time[33];
+
+
+void ClientDisconnect (edict_t *pEntity)
+{
+   [...]
+
+   (*other_gFunctionTable.pfnClientDisconnect) (pEntity);
+
+   playerCount--; // decrement the player count as we know this client is disconnected
+   welcome_time[ENTINDEX (pEntity)] = 0; // reset this client's welcome time (in case not sent yet)
+}
+
+
+void ClientPutInServer (edict_t *pEntity)
+{
+   (*other_gFunctionTable.pfnClientPutInServer) (pEntity);
+
+   playerCount++; // increment the player count as we are certain now this client is connected
+   welcome_time[ENTINDEX (pEntity)] = gpGlobals->time + 5.0; // send the welcome message in 5 s
+}
+
+
+void StartFrame (void)
+{
+   int client_index, bot_index;
+
+   // cycle through all clients
+   for (client_index = 1; client_index <= gpGlobals->maxClients; client_index++)
+   {
+      // if it's time to send the welcome message to this client...
+      if ((welcome_time[client_index] > 0) && (welcome_time[client_index] < gpGlobals->time))
+      {
+         UTIL_SendWelcomeMessage (INDEXENT (client_index)); // send him the welcome message
+         welcome_time[client_index] = 0; // don't do it twice
+      }
+   }
+
+   [...]
+}
+
+
+void UTIL_SendWelcomeMessage (edict_t *pClient)
+{
+   // the purpose of this (simple) function, is to display the welcome message to the specified
+   // client. The welcome message is a white text line containing YOUR_WELCOMETEXT, which
+   // fades in, stays a few seconds, and fades out on the client's screen. A welcome sound is
+   // also played on the client. Since this sound sample has to exist on the client's machine,
+   // it is recommended to use a sound sample from the original Half-Life / CS sound packs.
+
+   if (pClient == NULL)
+      return; // reliability check
+
+   if (pClient->v.flags & FL_FAKECLIENT)
+      return; // don't send anything to bots
+
+   // send the welcome message to this client
+   (*g_engfuncs.pfnMessageBegin) (MSG_ONE_UNRELIABLE, SVC_TEMPENTITY, NULL, pClient);
+   (*g_engfuncs.pfnWriteByte) (TE_TEXTMESSAGE);
+   (*g_engfuncs.pfnWriteByte) (1); // channel
+   (*g_engfuncs.pfnWriteShort) (-8192); // x coordinates * 8192
+   (*g_engfuncs.pfnWriteShort) (-8192); // y coordinates * 8192
+   (*g_engfuncs.pfnWriteByte) (0); // effect (fade in/out)
+   (*g_engfuncs.pfnWriteByte) (255); // initial RED
+   (*g_engfuncs.pfnWriteByte) (255); // initial GREEN
+   (*g_engfuncs.pfnWriteByte) (255); // initial BLUE
+   (*g_engfuncs.pfnWriteByte) (1); // initial ALPHA
+   (*g_engfuncs.pfnWriteByte) (255); // effect RED
+   (*g_engfuncs.pfnWriteByte) (255); // effect GREEN
+   (*g_engfuncs.pfnWriteByte) (255); // effect BLUE
+   (*g_engfuncs.pfnWriteByte) (1); // effect ALPHA
+   (*g_engfuncs.pfnWriteShort) (256); // fade-in time in seconds * 256
+   (*g_engfuncs.pfnWriteShort) (512); // fade-out time in seconds * 256
+   (*g_engfuncs.pfnWriteShort) (256); // hold time in seconds * 256
+   (*g_engfuncs.pfnWriteString) (YOUR_WELCOMETEXT); // send welcome message
+   (*g_engfuncs.pfnMessageEnd) (); // end
+
+   // play welcome sound on this client
+   CLIENT_COMMAND (pClient, "play " YOUR_WELCOMESOUND "\n");
+}
+
+
+
+It is vital for the stability of your server that you do not forget the ClientDisconnect() part, else you will possibly end up sending welcome texts to unused client edicts, which will lead to a crash.
+
+
+
+--------------------------------------------------
+09/18/02 at 00:08:38  Reply by: legoman (lego@yahoo.com)
+--------------------------------------------------
+Thanks! I'll try it out :)
+

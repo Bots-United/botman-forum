@@ -1,0 +1,102 @@
+--------------------------------------------------
+Subject: Problems with Linux HPB Bot crashing
+--------------------------------------------------
+04/20/01 at 11:01:52  Posted by: Muerte (dalvis@aztec.asu.edu)
+--------------------------------------------------
+I'm running a Linux Half-Life server on RedHat 7, and when I try and use anything but Team Fortress the server crashes right after loading the HPB bot  library.  I've tried the standard Valve, Front Line Force, Holy Wars, and Counter Strike, and they all crash.  I'm using the default config files for all of these.  For some reason Team Fortess is the only one that works.
+
+This is the command line I use:
+hlds_run -nomaster +sv_lan 1 -dev +maxplayers 32 -game ...
+
+I've seen two errors, segmentation fault and invalid instruction.
+I've checked and I'm using the same HPB library in all of them, which is v1.2
+
+Any help would be appriciated.
+
+--------------------------------------------------
+04/20/01 at 11:19:28  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+If you have gdb installed it can help tell me where it's crashing.
+
+After hlds_run crashes, look for a "core" file in the hlds_l directory.  Run gdb with these options from the hlds_l directory...
+
+gdb hlds_run core
+
+...then enter "where" (without the quotes) and press return.  This should give you a list of modules that were called with the one causing the crash at the top of the list.  If you can cut-and-paste this output from gdb I might be able to figure out what's wrong.  Just use "quit" to exit gdb.
+
+botman
+
+--------------------------------------------------
+04/20/01 at 11:28:17  Reply by: Muerte (dalvis@aztec.asu.edu)
+--------------------------------------------------
+I checked all of the mods, and here is the last line from each:
+
+Counter Strike:
+#0  0x4256d040 in UTIL_BuildFileName ()
+   from /home/games/halflife/hlds_l/cstrike/dlls/HPB_bot_i486.so
+
+Front Line Force:
+#0  0x42550067 in BotClient_Valve_AmmoPickup ()
+   from /home/games/halflife/hlds_l/frontline/dlls/HPB_bot_i486.so
+
+Holy Wars:
+#0  0x42559300 in GameDLLInit ()
+   from /home/games/halflife/hlds_l/holywars/dlls/HPB_bot_i486.so
+
+Standard HL
+#0  0x4256cff2 in UTIL_BuildFileName ()
+   from /home/games/halflife/hlds_l/valve/dlls/HPB_bot_i486.so
+
+
+--------------------------------------------------
+04/20/01 at 11:32:34  Reply by: Muerte (dalvis@aztec.asu.edu)
+--------------------------------------------------
+Sorry, forgot to add the "where" info:
+
+From Counter Strike:
+#0  0x4256d040 in UTIL_BuildFileName ()
+   from /home/games/halflife/hlds_l/cstrike/dlls/HPB_bot_i486.so
+#1  0x4255931a in GameDLLInit ()
+   from /home/games/halflife/hlds_l/cstrike/dlls/HPB_bot_i486.so
+Cannot access memory at address 0x656b69
+
+From Front Line Force:
+#0  0x42550067 in BotClient_Valve_AmmoPickup ()
+   from /home/games/halflife/hlds_l/frontline/dlls/HPB_bot_i486.so
+(gdb) where
+#0  0x42550067 in BotClient_Valve_AmmoPickup ()
+   from /home/games/halflife/hlds_l/frontline/dlls/HPB_bot_i486.so
+Cannot access memory at address 0x6e696c74
+
+From Holy Wars:
+#0  0x42559300 in GameDLLInit ()
+   from /home/games/halflife/hlds_l/holywars/dlls/HPB_bot_i486.so
+(gdb) where
+#0  0x42559300 in GameDLLInit ()
+   from /home/games/halflife/hlds_l/holywars/dlls/HPB_bot_i486.so
+Cannot access memory at address 0x73726177
+
+From Standard HL:
+#0  0x4256cff2 in UTIL_BuildFileName ()
+   from /home/games/halflife/hlds_l/valve/dlls/HPB_bot_i486.so
+#1  0x4255931a in GameDLLInit ()
+   from /home/games/halflife/hlds_l/valve/dlls/HPB_bot_i486.so
+Cannot access memory at address 0xbfff0065
+
+--------------------------------------------------
+04/20/01 at 14:17:30  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+Very strange!  Are you running Half-Life dedicated server version 3.1.0.6?
+
+If you aren't running HBP bot release 1.2b for Linux then you WILL need to download that version since there were problems with 1.2 and 1.2a crashing due to bot_logo stuff.  Make sure the HPB_bot_i486.so file is 556803 bytes in size (the tar file should be named HPB_bot_1_2b.tgz also).  If not, then you need to download the 1.2b version and use it instead.
+
+botman
+
+--------------------------------------------------
+04/20/01 at 14:46:30  Reply by: Muerte (dalvis@aztec.asu.edu)
+--------------------------------------------------
+It works now! Thanks!
+I didn't notice the new version was out for Linux.  I tried all the mods out and they now start.
+
+Thanks again.
+

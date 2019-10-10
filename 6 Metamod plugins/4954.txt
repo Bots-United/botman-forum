@@ -1,0 +1,211 @@
+--------------------------------------------------
+Subject: Heal infections
+--------------------------------------------------
+11/06/03 at 04:01:25  Posted by: Multch (13steps@naplesnews.net)
+--------------------------------------------------
+Does anyone know how to setup healing of players infected by a medic in map?
+I have a map "somewhere", with this in it. It was placed in a tube or something? When you went in it said infection healed.
+
+--------------------------------------------------
+11/06/03 at 05:29:00  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+I'm not sure how this was done.  I searched the tfc .fgd file for "infect" and found nothing.  I searched for "heal" and found lots of "health" stuff, but didn't find anything that looked like it would automatically heal an infected person.
+
+Maybe the infection can be healed by giving them full health?  I don't know.
+
+botman
+
+--------------------------------------------------
+11/06/03 at 05:37:55  Reply by: Multch (13steps@naplesnews.net)
+--------------------------------------------------
+Oh yeah, i keep forgetting to search the .fgd ...
+I gotta find this map.. Gotta search my CD's.. I'll post what's up if/when i find it. I hope it got burnt!! I think it was a 4 Team type map, took place in like a building? Dam, it was way back when that i tried it.. I was going to waypoint it for HPB, but i think it had something bots couldn't handle?
+Maybe it didn't actully heal infections? Not sure cuz i was by myself when i seen message "Infection's healed". Something like that.. I'll try it out with a friend on server if i can find map... *cross's fingers
+
+--------------------------------------------------
+11/06/03 at 10:23:38  Reply by: WFB (williamfbuckleyjr@yahoo.com)
+--------------------------------------------------
+Perhaps the player entered an invincible_finished, info_tfgoal that lasted only seconds.  I'm not sure but I think this entity would "heal" a medic's infection.  Give it a try.
+
+--------------------------------------------------
+11/06/03 at 23:05:27  Reply by: buzzkill (buzzkill@100acrebloodbath.com)
+--------------------------------------------------
+Please report back on this. I've bandied about the idea of a mod that re-introduces the concept of infection heals when taking the deathpack of the medic who infected you. This type of information would obviously be Step 1.
+
+--------------------------------------------------
+11/07/03 at 21:47:18  Reply by: buzzkill (buzzkill@100acrebloodbath.com)
+--------------------------------------------------
+Sweet. That works.  Thanks for the info.
+
+--------------------------------------------------
+11/09/03 at 06:03:02  Reply by: Multch (13steps@naplesnews.net)
+--------------------------------------------------
+That works.... Cool!!
+I can't find the map. I think it was done by a popular mapper or it was that the name was catchy?
+Lost a whole dam section of TFC maps on a cd.. Dammit, say's corrupt, so if it was there.. heh..
+
+--------------------------------------------------
+11/10/03 at 13:56:14  Reply by: buzzkill (buzzkill@100acrebloodbath.com)
+--------------------------------------------------
+Here's an AMXMod plugin I wrote that spawns an antidote canister on top of a Medic deathpack (throws a wrench into the plans of all those infect-and-run medics).
+
+Should be simple enough for anyone to pull out the relevant entity info for their own purposes.
+
+
+#include <amxmod>
+#include <amxmisc>
+#include <Vexd_Utilities>
+
+public Pak_CreatePak(id){ 
+      
+      new Float:vOrigin[3]
+      new Float:vAngles[3]
+      Entvars_Get_Vector(id, EV_VEC_origin, vOrigin)
+      
+      vAngles[0] = 0.0
+      vAngles[1] = 0.0
+      vAngles[2] = 0.0
+      
+        new NewEnt = CreateEntity("info_tfgoal")
+
+        if(NewEnt == 0) {
+            return PLUGIN_HANDLED_MAIN
+        }
+
+      Entvars_Set_String(NewEnt, EV_SZ_classname, "buzz_pak")
+        ENT_SetModel(NewEnt, "models/w_antidote.mdl")
+
+      new Float:MinBox[3]
+      new Float:MaxBox[3]
+
+      MinBox[0] = -1.0
+      MinBox[1] = -1.0
+      MinBox[2] = -1.0
+      MaxBox[0] = 1.0
+      MaxBox[1] = 1.0
+      MaxBox[2] = 1.0
+
+      Entvars_Set_Vector(NewEnt, EV_VEC_mins, MinBox)
+      Entvars_Set_Vector(NewEnt, EV_VEC_maxs, MaxBox)
+
+      ENT_SetOrigin(NewEnt, vOrigin)
+      Entvars_Set_Vector(NewEnt, EV_VEC_angles, vAngles)
+      
+      Entvars_Set_Int(NewEnt, EV_INT_solid, 2)    //2 = Solid bbox. (const.h)   
+      Entvars_Set_Int(NewEnt, EV_INT_movetype, 6) //6 = movetype_toss, will fall to ground. (const.h)
+      
+      DispatchKeyValue(NewEnt,"g_e","1")
+      DispatchKeyValue(NewEnt,"g_a","1")
+      DispatchKeyValue(NewEnt,"team_no","0")
+      DispatchKeyValue(NewEnt,"goal_result","1")
+      DispatchKeyValue(NewEnt,"goal_state","2")
+      DispatchKeyValue(NewEnt,"invincible_finished","2")
+      DispatchKeyValue(NewEnt,"wait","60")  // 60 won't reappear. 
+      DispatchKeyValue(NewEnt,"message","Antidote administered.")  // 60 won't reappear. 
+      
+      DispatchSpawn(NewEnt);
+      
+      new szNewEnt[4]
+      num_to_str(NewEnt,szNewEnt,4);
+      set_task( 30.0, "Pak_Cleanup", 0, szNewEnt, 4)
+      
+      
+      return PLUGIN_HANDLED_MAIN 
+}
+
+public Pak_Cleanup(entid[])
+{
+      new eid = str_to_num(entid)
+      RemoveEntity(eid)
+}
+
+public event_death()
+{
+      
+      new id = read_data(2)
+      
+      new temp[32] 
+      get_user_info(id,"model",temp,31) 
+
+      
+      if (equal(temp,"medic"))
+      {
+            Pak_CreatePak(id)
+      }
+}
+
+
+public plugin_init(){ 
+    register_plugin("Buzz_DeathPak","1.00","default")
+    register_event("DeathMsg","event_death","a") 
+    
+    return PLUGIN_CONTINUE 
+}
+
+public plugin_precache() {
+      
+      precache_model("models/w_antidote.mdl")
+      return PLUGIN_CONTINUE 
+}
+
+[modified on 11/10/03 at 13:56:14]
+--------------------------------------------------
+11/24/03 at 08:04:46  Reply by: buzzkill (buzzkill@100acrebloodbath.com)
+--------------------------------------------------
+I've been playing with pvprivatedata offsets, trying to find the flag (if any) to indicate a player is infected (and then hopefully be able to simply flip it off).
+
+decimal offset 120 and 284 look interesting, but so far I haven't been able to reach any definite conclusions (my experimentation has been uncontrolled and half-assed). Anyone have any insight?
+
+--------------------------------------------------
+11/24/03 at 08:39:13  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+I don't know about any pvPrivateData offsets, but you should be able to tell this by intercepting the network message sent to the client (which displays the on the HUD that they are infected).
+
+botman
+
+--------------------------------------------------
+11/26/03 at 02:55:11  Reply by: buzzkill (buzzkill@100acrebloodbath.com)
+--------------------------------------------------
+True, but that still leaves me with having to 'heal' them, which as far as I can tell can be done by...
+
+1) Giving them an invincible_finished goal for a few seconds.
+
+2) Directly manipulating pvPrivateData (more desirable IMHO, assuming it's even doable. It's feasible that infection management isn't even handled within pvPrivateData).
+
+I suppose a post to hlcoders might be in order...
+
+--------------------------------------------------
+11/26/03 at 08:49:05  Reply by: AClockworkOrange (AClockworkOrange@TheKorovaMilkbar.com)
+--------------------------------------------------
+i get these warnings in my compiler..
+
+Small compiler 2.1.0            Copyright (c) 1997-2002, ITB CompuPhase
+
+C:\Program Files\AMX Compiler FrontEnd\antidote.sma(15) : warning 217: loose indentation
+C:\Program Files\AMX Compiler FrontEnd\antidote.sma(21) : warning 217: loose indentation
+C:\Program Files\AMX Compiler FrontEnd\antidote.sma(22) : warning 217: loose indentation
+C:\Program Files\AMX Compiler FrontEnd\antidote.sma(24) : warning 217: loose indentation
+
+4 Warnings.
+
+--------------------------------------------------
+11/26/03 at 09:20:57  Reply by: AClockworkOrange (AClockworkOrange@TheKorovaMilkbar.com)
+--------------------------------------------------
+i also got an error on precaching model...  its strange, but i have the antidote in my models folder on the server.. (both, model and modelt)
+
+the plugin ran on 2fort, but i never saw the antidote model over the healthkits.. then on nougat it crashed the server..  somthing about precaching caon only be done on respawn..
+
+im running amx ver 0.9.5
+
+
+
+--------------------------------------------------
+11/26/03 at 10:41:57  Reply by: buzzkill (buzzkill@100acrebloodbath.com)
+--------------------------------------------------
+Why are you looking for antidotes on health kits? A few posts back you'll note I mention they appear on/near medic deathpacks (i.e. - when you kill a medic).
+
+The indentation warnings can be ignored.
+
+No idea re: the precache problem. Works fine on 0.9.3 and 0.9.6j. An official submission of this is now in the AMXMod plugin forum.
+
+[modified on 11/26/03 at 10:41:57]

@@ -1,0 +1,76 @@
+--------------------------------------------------
+Subject: trigger_push
+--------------------------------------------------
+03/25/02 at 16:00:27  Posted by: WFB (williamfbuckleyjr@yahoo.com)
+--------------------------------------------------
+Any way to add a trigger_push to an existing map so the players who step on the entity is vaulted into the air.  So far I have been able to get a trigger_push to push players acrose the floor but not up into the air.  I think it has something to do with the angle setting but I can't seem to figure out the proper angle variables to get the players to shoot upward dispite numerous attempts.
+
+Thanks
+
+--------------------------------------------------
+03/25/02 at 16:21:31  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+In the SDK code, trigger_push uses "speed" and "movedir".  "speed" is the velocity.  "movedir" is a vector in the direction you want them to go.  A "speed" of 0 gets changed to a default speed of 100.  So if you have something like this...
+code:
+   speed/200
+   movedir/0 0 1
+
+...should push them straight up into the air.  You may have to use some trial and error to figure out the "movedir" key/value since this needs to be a vector of length 1 (i.e. x^2+y^2+z^2 = 1).  If you a vector larger than length=1, it wouldn't cause it to crash or anything, but the length of the vector would get multiplied by the speed (for example, speed=100 and movedir=0 0 2, is the same as speed=200 and movedir=0 0 1).
+
+You can determine whether X or Y or Z is zero or one by moving back and forth in the direction that you want the player to be pushed and see which values change in the X,Y,Z coordinates of the console command "status".
+
+Let me know if this works or not.
+
+botman
+
+--------------------------------------------------
+03/25/02 at 17:02:16  Reply by: WFB (williamfbuckleyjr@yahoo.com)
+--------------------------------------------------
+It seems no matter which move axis I set to '1' (0 0 1; 0 1 0; 1 0 0) I get pushed across the ground along the X axis.  I want to go up along the Z axis but no luck. :( 
+
+--------------------------------------------------
+03/26/02 at 06:11:19  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Okay, I found out that the "angles" key is used to set the movedir.  So if you don't set angles it will default to moving along the X axis.
+
+The angles (a vector) can be set to (0, -1, 0) if you want the player pushed up.  It can be set to (0, -2, 0) if you want the player to be pushed down.  All other angles values will only effect the X and Y velocities of the player (you can't push them up and at an angle).
+
+Also, trigger_push will NOT lift the player off the ground if they aren't already off the ground unless you set the spawnflags to 1.  The problem is, if you set the spawn flags to 1, the trigger_push entity will remove itself after it pushes once.
+
+Here's an example of a trigger_push that will push the player up when they touch it (but it will only happen once)...
+code:
+{
+   classname/trigger_push
+   spawnflags/1
+   speed/2000
+   angles/0 -1 0
+   origin/-480 940 -1660
+   bbox_min/-20 -20 -20
+   bbox_max/20 20 20
+}
+
+...if you don't have the "spawnflags" key in there and the player is already in the air when touching the entity, the player will get pushed upwards.
+
+botman
+
+--------------------------------------------------
+03/26/02 at 07:49:32  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+I just looked at the Xen jumppad in the HLDM lambda_bunker map.  They use a func_door to start moving the player upwards and a trigger_push to accelerate them.
+
+Use my BSP_tool to dump the entities in that map and look at those as examples (search for "pod_").
+
+botman
+
+--------------------------------------------------
+03/26/02 at 17:20:06  Reply by: WFB (williamfbuckleyjr@yahoo.com)
+--------------------------------------------------
+Thanks for the info botman.  I'll do some trial and error this upcoming weekend and report back to you.  
+
+Thanks
+
+--------------------------------------------------
+03/27/02 at 08:06:38  Reply by: LunaticWithCandy (candyranger@hotmail.com)
+--------------------------------------------------
+Couldn't you have two trigger push, one pushing upwards, one pushing horizontal. Then you would make the push faster or slower on the horizontal depending on what angle you want.
+

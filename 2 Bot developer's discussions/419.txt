@@ -1,0 +1,162 @@
+--------------------------------------------------
+Subject: Lookin up and down at waypoints..........
+--------------------------------------------------
+10/25/00 at 10:48:39  Posted by: DarkYouth (darkyouth@thegraze.freeserve.co.uk)
+--------------------------------------------------
+How can it be done?
+
+Ive tried but failed...
+
+My way makes them spazz out.. Anyone got any code that may do the trick...
+
+Its for underwater waypoints.. I got them to recognize them correctly but heading up/down at the right angle doesnt work. 
+
+This is also to be used in my ladder function...
+
+
+
+--------------------------------------------------
+10/25/00 at 11:48:46  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+Are you sure you are changing the pitch correctly?  If I remember correctly the pitch (v_angles.x) looking up is negative and looking down is positive.
+
+botman
+
+--------------------------------------------------
+10/25/00 at 13:16:09  Reply by: DarkYouth (darkyouth@thegraze.freeserve.co.uk)
+--------------------------------------------------
+I tried using the method in the aiming code to aim at the waypoint origin....
+
+But arrgh.
+
+When they reached their waypoints they did a 360 rotation (backflip) and it carried on like that. 
+
+Can you post some code here that might help...
+
+--------------------------------------------------
+10/25/00 at 14:23:51  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+Here's what I've got for navigating underwater...
+void BotFixIdealPitch(edict_t *pEdict)
+{
+   // check for wrap around of angle...
+   if (pEdict->v.idealpitch > 180)
+      pEdict->v.idealpitch -= 360;
+
+   if (pEdict->v.idealpitch < -180)
+      pEdict->v.idealpitch += 360;
+}
+
+
+float BotChangePitch( bot_t *pBot, float speed )
+{
+   edict_t *pEdict = pBot->pEdict;
+   float ideal;
+   float current;
+   float current_180;  // current +/- 180 degrees
+   float diff;
+
+   // turn from the current v_angle pitch to the idealpitch by selecting
+   // the quickest way to turn to face that direction
+   
+   current = pEdict->v.v_angle.x;
+
+   ideal = pEdict->v.idealpitch;
+
+   // find the difference in the current and ideal angle
+   diff = abs(current - ideal);
+
+   // check if the bot is already facing the idealpitch direction...
+   if (diff <= 1)
+      return diff;  // return number of degrees turned
+
+   // check if difference is less than the max degrees per turn
+   if (diff < speed)
+      speed = diff;  // just need to turn a little bit (less than max)
+
+   // here we have four cases, both angle positive, one positive and
+   // the other negative, one negative and the other positive, or
+   // both negative.  handle each case separately...
+
+   if ((current >= 0) && (ideal >= 0))  // both positive
+   {
+      if (current > ideal)
+         current -= speed;
+      else
+         current += speed;
+   }
+   else if ((current >= 0) && (ideal < 0))
+   {
+      current_180 = current - 180;
+
+      if (current_180 > ideal)
+         current += speed;
+      else
+         current -= speed;
+   }
+   else if ((current < 0) && (ideal >= 0))
+   {
+      current_180 = current + 180;
+      if (current_180 > ideal)
+         current += speed;
+      else
+         current -= speed;
+   }
+   else  // (current < 0) && (ideal < 0)  both negative
+   {
+      if (current > ideal)
+         current -= speed;
+      else
+         current += speed;
+   }
+
+   // check for wrap around of angle...
+   if (current > 180)
+      current -= 360;
+   if (current < -180)
+      current += 360;
+
+   pEdict->v.v_angle.x = current;
+
+   return speed;  // return number of degrees turned
+}
+
+In BotHeadTowardWaypoint() I've got this...
+   // check if the bot is under water...
+   if ((pBot->pEdict->v.waterlevel == 2) 
+       (pBot->pEdict->v.waterlevel == 3))
+   {
+      pEdict->v.idealpitch = -v_angles.x;
+
+      BotFixIdealPitch(pEdict);
+   }
+
+...then in BotThink() I've got this...
+   // if the bot is under water, adjust pitch by pitch_speed degrees
+   if ((pEdict->v.waterlevel == 2) 
+       (pEdict->v.waterlevel == 3))
+   {
+      // turn towards ideal_pitch by pitch_speed degrees
+      pitch_degrees = BotChangePitch( pBot, pEdict->v.pitch_speed );
+   }
+   else
+      pitch_degrees = 0.0;
+
+   // turn towards ideal_yaw by yaw_speed degrees
+   yaw_degrees = BotChangeYaw( pBot, pEdict->v.yaw_speed );
+
+   if ((pitch_degrees >= pEdict->v.pitch_speed) 
+       (yaw_degrees >= pEdict->v.yaw_speed))
+   {
+      pBot->f_move_speed = 0.0;  // don't move while turning a lot
+   }
+   else if ((pitch_degrees >= 10)  
+            (yaw_degrees >= 10))  // turning more than 10 degrees?
+   {
+      pBot->f_move_speed = pBot->f_move_speed / 4;  // slow down while turning
+   }
+   else  // else handle movement related actions...
+   {
+
+botman
+

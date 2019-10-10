@@ -1,0 +1,105 @@
+--------------------------------------------------
+Subject: Need help here !
+--------------------------------------------------
+01/03/01 at 04:16:26  Posted by: BillaBong (mikkelmanden@sol.dk)
+--------------------------------------------------
+Hey!
+
+I am trying to make my bot strafe, and it's working out great. Anyway i do have a couple of questions about strafing:
+
+1) What is the max. strafe speed for a player in CS ? (270 seems pretty fast!)
+
+1) How do i make so my bot only will strafe for a half second. I think i should use
+gpGlobals->time + 0.5, but i dont know how to link it with my strafe code:
+strafing code:
+
+//strafe right
+      g_engfuncs.pfnRunPlayerMove( pEdict, pEdict->v.v_angle, 0.0, 270, 0, pEdict->v.button, 0, pBot->msecval);
+
+Thanx for helpin' me out...
+
+- BillaBong
+
+--------------------------------------------------
+01/03/01 at 07:36:44  Reply by: BillaBong (mikkelmanden@sol.dk)
+--------------------------------------------------
+HELP ME SOMEONE. PLEASE !
+
+--------------------------------------------------
+01/03/01 at 08:18:36  Reply by: Suikun (Phoenix.Tschache@t-online.de)
+--------------------------------------------------
+I simply used the pBot->f_max_speed to make it strafe. But I guess, the speed can be both positive and negative for left (negative) and right (positive).
+
+--------------------------------------------------
+01/03/01 at 12:30:08  Reply by: RedFox (redfox@nildram.co.uk)
+--------------------------------------------------
+What you could do is seup a new variable in bot_t
+that stores the time the bot started straifing.
+Set it to 0 when you start the straifing code, and only alow the bot to strafe if it below 5seconds.
+
+I've done somthing similar for my bot when it sees the enemy, it will strafe in one direction (so it circles the enemy) until it either hits a wall or randomly decides to change direction, I'll post the code if you want it.
+
+RedFox
+
+--------------------------------------------------
+01/03/01 at 13:18:17  Reply by: BillaBong (mikkelmanden@sol.dk)
+--------------------------------------------------
+Thanks Redfox, i would appriciate if you'd post your code... Anyway, if you don't want to post it you've been a great help anyway... :)
+
+- BillaBong
+
+--------------------------------------------------
+01/03/01 at 15:49:21  Reply by: RedFox (redfox@nildram.co.uk)
+--------------------------------------------------
+Kewl, glad to help.
+Heres the code:
+
+in bot.h you need to include
+
+   float f_side_speed;
+   bool f_side_direction;
+
+in bot.cpp in the botthink function
+find the does enemy exist routine and replace with
+
+        if (pBot->pBotEnemy != NULL)  // does an enemy exist?
+      {
+         BotShootAtEnemy( pBot );  // shoot at the enemy
+             
+             // strafing??
+             //can we get the bot to strafe whilest fighting?
+             if ( BotCheckWallOnRight (pBot))
+                   pBot->f_side_direction = false;
+             if ( BotCheckWallOnLeft (pBot))
+                   pBot->f_side_direction = true;
+             if (RANDOM_LONG(1, 1000) <= 50)
+             {
+                  if(pBot->f_side_direction)
+                        pBot->f_side_direction = false;
+                  else
+                        pBot->f_side_direction = true;
+             }
+             if(pBot->f_side_direction)
+                   pBot->f_side_speed = pBot->f_move_speed;
+             else
+                   pBot->f_side_speed = -(pBot->f_move_speed);
+
+         pBot->f_pause_time = 0;  // dont't pause if enemy exists
+      }
+
+and finally!... at the end of the botthink function, replace the matching line (just the variable) with
+
+   g_engfuncs.pfnRunPlayerMove( pEdict, pEdict->v.v_angle, pBot->f_move_speed,
+                                pBot->f_side_speed ,0, pEdict->v.button, 0, pBot->msecval);
+
+Hope it helps
+
+RedFox
+
+--------------------------------------------------
+01/08/01 at 03:14:10  Reply by: eLiTe (ali@elitegamer.fsnet.co.uk)
+--------------------------------------------------
+If u need any more simple stuff like that, try looking at my open source at www.teambot.net
+
+It's based on the HPB template 1, but i has useful stuff like how to strafe for a certain amount of time and how to buy stuff
+

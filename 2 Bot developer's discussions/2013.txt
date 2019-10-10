@@ -1,0 +1,127 @@
+--------------------------------------------------
+Subject: Waypoints dont work.....
+--------------------------------------------------
+07/22/01 at 05:46:47  Posted by: redlink (redlink_star@hotmail.com)
+--------------------------------------------------
+I have just designed the Weapons System and was going to test it... It worked fine but i noted that the bots diden't use the waypoints so i wrote Waypoint Load and it told me cstrike\systembot\wp\cs_sige.s2k is not a SystemBot Waypoint so i made a new and saved it restarted the game but the same error i have tryed every thing i can't get it to work why?
+
+The waypoint system is allmost the same as the HPB system but just some dir chances... I have't got in to the waypoint part really yet...
+
+[modified on 07/22/01 at 05:46:47]
+--------------------------------------------------
+07/22/01 at 06:32:28  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+oops actually look here.. I think you may have changed your FILETYPE name some where and not updated this one.
+
+all this from waypoint.cpp
+
+code:
+
+if (strcmp(header.filetype, "HPB_bot") == 0)
+      {
+....
+....
+....
+}
+else
+{
+
+else
+      {
+         if (pEntity)
+         {
+            sprintf(msg, "%s is not a HPB bot waypoint file!\n", filename);
+            ClientPrint(pEntity, HUD_PRINTNOTIFY, msg);
+         }
+...
+...
+...
+
+
+
+and this is what is saved..
+
+code:
+
+
+void WaypointSave(void)
+{
+...
+...
+
+   strcpy(header.filetype, "HPB_bot");
+...
+...
+
+
+
+[modified on 07/22/01 at 06:32:28]
+--------------------------------------------------
+07/22/01 at 06:57:38  Reply by: redlink (redlink_star@hotmail.com)
+--------------------------------------------------
+I have... THis is the COde:
+
+
+for Save: (Chanced only)
+strcpy(header.filetype, "SystemBot");
+
+   header.waypoint_file_version = WAYPOINT_VERSION;
+
+   header.waypoint_file_flags = 0;  // not currently used
+
+   header.number_of_waypoints = num_waypoints;
+
+   memset(header.mapname, 0, sizeof(header.mapname));
+   strncpy(header.mapname, STRING(gpGlobals->mapname), 31);
+   header.mapname[31] = 0;
+
+   strcpy(mapname, STRING(gpGlobals->mapname));
+   strcat(mapname, ".s2k");
+
+   UTIL_BuildFileName(filename, "systembot\\wp", mapname);
+
+
+----- LOAD :::::.....------
+
+strcpy(mapname, STRING(gpGlobals->mapname));
+   strcat(mapname, ".s2k");
+
+   UTIL_BuildFileName(filename, "systembot\\wp", mapname);
+
+ 
+
+   if (IS_DEDICATED_SERVER())
+      printf("loading waypoint file: %s\n", filename);
+
+   
+   FILE *bfp = fopen(filename, "rb"); //OLD
+
+   // if file exists, read the waypoint structure from it
+   if (bfp != NULL)
+   {
+      fread(&header, sizeof(header), 1, bfp);
+
+      header.filetype[7] = 0;
+      if (strcmp(header.filetype, "SystemBot") == 0)
+      {
+         if (header.waypoint_file_version != WAYPOINT_VERSION)
+         {
+
+[modified on 07/22/01 at 06:57:38]
+--------------------------------------------------
+07/22/01 at 09:19:24  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+The header filetype size was only 8 bytes, therefore this...
+
+strcpy(header.filetype, "SystemBot");
+
+...will overwrite other stuff in the waypoint file header (it's too big).  Don't forget that null terminated strings also contain a null, so "SystemBot" would take 10 bytes (not 9).
+
+botman
+
+--------------------------------------------------
+07/22/01 at 09:55:29  Reply by: redlink (redlink_star@hotmail.com)
+--------------------------------------------------
+Thanks.... I'll use the old Header name or now...
+HPB_bot.....
+

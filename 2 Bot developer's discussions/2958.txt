@@ -1,0 +1,112 @@
+--------------------------------------------------
+Subject: botman, could you tell us more about...
+--------------------------------------------------
+04/07/02 at 15:34:42  Posted by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+Hello botman, could you tell us more about that spy grenade bug in TFC that you got fixed quite a time ago? What was the message that was sent? What were the functions involved?
+
+I'm getting a sz_getspace error in TFC with my bots and I suspect it could be something like that.
+
+Thank you in advance.
+
+--------------------------------------------------
+04/07/02 at 15:49:31  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+The problem was that TFC was using pfnClientCommand() to play the hallucenation sounds on the player.  The 1.1.0.8 version of the Half-Life engine does not protect bots against the pfnClientCommand() or pfnClientPrintf() functions.  Calling these with a fake client edict will cause the engine to crash with the sz_getspace error message.
+
+The HPB bot template #3 source code and the latest HPB bot source code release should guard against both of these problems.  If you based your bot on the template #1 or template #2 stuff you will have to make these changes yourself (see the HPB bot code in engine.cpp for pfnClientCommand and pfnClientPrintf).
+
+botman
+
+--------------------------------------------------
+04/07/02 at 16:33:27  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+OK, thanks. But tell me, wouldn't it be more simple to just block the ClientCommand and ClientPrintf calls like this ?
+
+code:
+
+void pfnClientPrintf (edict_t* pEdict, PRINT_TYPE ptype, const char *szMsg)
+{
+   // don't process this command if we are in multiplayer mode
+   if (!is_multiplayer_game)
+      (*g_engfuncs.pfnClientPrintf) (pEdict, ptype, szMsg);
+}
+
+
+
+Are they of certain use in multiplayer games?
+
+
+--------------------------------------------------
+04/08/02 at 00:29:11  Reply by: @$3.1415rin (joebot@botepidemic.com)
+--------------------------------------------------
+I think that way not only the bots wouldn't receive that messages, but human players won't too.
+
+--------------------------------------------------
+04/08/02 at 02:12:22  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+It seems it does not prevent players to issue buy commands in Counter-Strike, for example. Such commands are Client Commands so, in your opinion, they should be blocked. However this is obviously not the case, so the question is: what's the use of calling these functions ?
+
+--------------------------------------------------
+04/08/02 at 04:25:29  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+"what's the use of calling these functions ?"
+
+pfnClientPrintf() prints text messages on the client's display.  If you block it, human players won't see this text (which may be telling them that they need to do something).
+
+pfnClientCommand() issues commands on the client.  This can be used to play sound effects (pfnClientCommand(pEdit, "play abience/helpme.wav")), or to perform other client functions.  Again, if you block it then the clients won't be getting these commands (which are part of the game).
+
+You should only block these for bots (since bots don't need them for anything).  You might actually need to intercept some of these messages (for example if you wanted the bots to react to the TFC hallucination effects, you could catch the pfnClientCommand and see if it's a "play" command).
+
+botman
+
+--------------------------------------------------
+04/08/02 at 09:07:52  Reply by: Darkhunter (darkhunter@hackermail.net)
+--------------------------------------------------
+
+QUOTE:
+I think that way not only the bots wouldn't receive that messages, but human players won't too.
+
+
+
+
+So it will also be possible to remove the effect of a conc for human players ?
+
+And i have another question about the new tfc update.
+If the bots still work then wouldn't it be possible for to make a cheat IN the bot.dll ?
+
+Grtz,
+Dh
+
+--------------------------------------------------
+04/08/02 at 11:04:53  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+"If the bots still work then wouldn't it be possible for to make a cheat IN the bot.dll?"
+
+Yes, server operators can create cheats using AdminMOD plugins.  There's nothing to stop them from doing this.  Once Valve releases the new update it will hopefully prevent clients from being able to run cheats (then you will only have to worry about server admins cheating).
+
+botman
+
+--------------------------------------------------
+04/08/02 at 13:46:25  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+Have you had a look in other bot's source code ? In many of them, pfnClientCommand and pfnClientPrintf calls are just ignored with a return(); so I'm quite curious because it doesn't seem to cause the problems you mention... In HPB template #3 too, it is so... When it comes to the game itself, I don't notice anything particular ; I still get the "the bomb has been planted" message in Counter-Strike, for example... According to you such a message shouldn't happen, right ?
+
+
+--------------------------------------------------
+04/08/02 at 15:08:49  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+In the template, pfnClientCommand() does just return.  This is wrong.  If you playing TFC and are using this code, the hallucination grenade will not cause any sound effects on the client (try it and see).  The proper code for pfnClientCommand() is what it shown in the HPB bot 2.0 source code (download it and look).  Other MODs may or may not use pfnClientCommand() for anything but you should pass these messages on to the engine just to be safe.
+
+pfnClientPrintf() may not be used for anything in Counter-Strike (so planting the bomb messages still appear because they are using pfnMessageBegin(), pfnWriteString(), pfnMessageEnd(), etc.), but pfnClientPrintf() may get used in other MODs.  If your bot is only going to support Counter-Strike, then you can leave it as it is.
+
+In order to make your bot code be transparent to the MOD, you should pass EVERYTHING through to the engine (since you don't necessarily know from one release to the next whether an engine function will be used in the future or not).
+
+botman
+
+--------------------------------------------------
+04/08/02 at 16:52:03  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+I finally got it. I agree. Thank you!
+
+

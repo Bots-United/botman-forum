@@ -1,0 +1,59 @@
+--------------------------------------------------
+Subject: Dedicated Server Commands - no full string?
+--------------------------------------------------
+01/13/02 at 02:04:25  Posted by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+Hey all,
+
+I try to get the dedicated server commands accept arguments. The problem is, somehow the CVAR_GET_STRING() function does not even get more then 1 command. 
+
+I tested it several times, and the cvar_bot variable doesnt get filled further till the last space. 
+
+Is there a way that dedicated server commands CAN have arguments? I checked the HPB_Bot full source, but it is excactly the same as in RB.
+
+Any help, tips etc are welcome!
+
+--------------------------------------------------
+01/13/02 at 03:47:36  Reply by: @$3.1415rin (joebot@botepidemic.com)
+--------------------------------------------------
+i solved this problem by separating the parameters from the command by "|" ... so now you have "joebot addbot|2|2|name" ... works fine :D
+
+--------------------------------------------------
+01/13/02 at 05:48:17  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+When you set the CVAR you have to use double quotes to make it take more than one argument.  For example...
+code:
+bot_command Butthead capture the flag
+
+would only store "Butthead" in the CVAR bot_command.  But this...
+code:
+bot_command "Butthead capture the flag"
+
+would store "Butthead capture the flag" in the CVAR bot_command.
+
+botman
+
+--------------------------------------------------
+01/13/02 at 05:58:13  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+It would be better to create a new server command (using pfnAddServerCommand) and then get the arguments to that command inside the function.  For example...
+code:
+(*g_engfuncs.pfnAddServerCommand)("bot_command", BotCommand);
+
+code:
+void BotCommand(edict *pEntity)
+{
+   int arg_count = CMD_ARGC();  // number of arguments
+   const char *pcmd = CMD_ARGV(0);
+   const char *arg1 = CMD_ARGV(1);
+   const char *arg2 = CMD_ARGV(2);
+   const char *arg3 = CMD_ARGV(3);
+
+   // command specific stuff here
+}
+
+It would be used the same way as shown above, except instead of a CVAR called "bot_command", the server would now have a dedicated function assigned to the command "bot_command".
+
+botman
+
+[modified on 01/13/02 at 05:58:13]

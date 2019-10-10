@@ -1,0 +1,110 @@
+--------------------------------------------------
+Subject: Any thoughts (my lookup tables too big!)
+--------------------------------------------------
+01/15/03 at 13:36:28  Posted by: RedFox (redfox@nildram.co.uk)
+--------------------------------------------------
+Ok, seem to have miscalculated the size of my pre computed lookup tables
+In total, its going to take up 1gig of ram 
+lol
+
+ok..so thats not really useful
+
+its because instead of just a node and a end, its a node a start and an end..
+so..anyone have any thoughts, or know any good theorys that could be used to reduce the data stored?
+compression...(gotta be reasonably quick access)
+and filtering I suppose...
+
+gonna go dig over the data and see if theirs any patterns to the data that will allow me to reduce the data stored
+
+just wondering if anyone had dealt with this before?
+better re-read the q3 stuff again :p
+
+--------------------------------------------------
+01/15/03 at 13:47:17  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+ROFL - what a "miscalculation" :D - LMAO
+
+Could you post the layout of the data you store, and tell us more on why and when you use these lookup tables, how large in elements they are, etc, etc.
+
+
+
+--------------------------------------------------
+01/15/03 at 14:13:16  Reply by: RedFox (redfox@nildram.co.uk)
+--------------------------------------------------
+yeah, little bit over 
+hehehehehe
+
+
+ok, your looking at tables that have about 500elements at most, each table (referenced by star and end) must store values for all 500 elements
+so thats n ^ 3
+
+theirs also smaller tables that are these same..which are about 150 elements in size
+theirs about 200 of those...so thats nearly n^3 again...
+
+these are all the worst cases I've found
+works out to take 350meg of ram..so not quite a gig, but still unusable
+
+so...say n is an element in the table, the table can be referenced as
+lookup [start,end,n]
+
+so efor every start/end I want to know all elements n
+
+perhaps their is a way to shrink the data..perhaps their isn't..dunno
+
+--------------------------------------------------
+01/15/03 at 15:05:45  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+QUOTE:
+ok, your looking at tables that have about 500elements at most, each table (referenced by star and end) must store values for all 500 elements
+so thats n ^ 3
+
+
+
+(screaming) why the hell would you want EVERY element in your table to hold information relative to EVERY other ????
+There HAS to be millions of cases where this information is unavailable (for example, if you store visibility or reachability between waypoints, you obviously don't want a waypoint at the far north of TFC warpath to hold information about a waypoint at the far south of it, do you ?)
+Imagine I had stored my faces stuff in a static-sized array, I would have had to reserve "parallels x meridians x (total_faces_count x sizeof (face) + total_vertex_count x sizeof (vertex))" bytes of memory, just apply the formula and you immediatly bomb to the gigabytes !!!
+
+Definitely, you want to dynamically allocate your array. For example, like this :
+code:
+
+waypoint_t waypoints[500]; // blind array of all your waypoints
+
+typedef struct
+{
+   waypoint_t **concerned_waypoints; // array of pointers to waypoints (mallocated)
+   int number_of_concerned_waypoints; // size of this array
+} lookuptable_element_t; // lookup table element
+
+lookuptable_element_t lookup_table[500]; // the lookup table itself
+
+
+This way you can guarantee every byte of memory you use in your lookup table deserves its malloc ;D
+
+[modified on 01/15/03 at 15:05:45]
+--------------------------------------------------
+01/15/03 at 15:25:08  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Use compression, man!  Throw away every other bit!  ;D
+
+botman
+
+--------------------------------------------------
+01/15/03 at 22:08:08  Reply by: CountFloyd (countfloyd@botepidemic.com)
+--------------------------------------------------
+ROFL, yeah dude throw that magic wavelength compre[2]sion code in and just store your datas as jpegs !
+
+No seriously why not using linked lists, perhaps not even using the array stuff PM suggested but solely linked. Or if this is about caching/routing you could make it time-based removing datas after some timespan. Maybe you have some infos which are the same for i.e. 80% of the time. Then just don't allocate that memory and treat the NULL ptr as that data.  
+
+--------------------------------------------------
+01/16/03 at 06:44:09  Reply by: RedFox (redfox@nildram.co.uk)
+--------------------------------------------------
+lol
+
+odly, that may be a good idea! haha
+
+came to the same conclusion count..I should imagine that no matter the start point, if the end point is the same, the datas gonna be extreamly similar
+so just gonna try storing the differences
+
+nopfully the data should end up as n^2 + a little bit :p
+well, I really hope it does :D
+

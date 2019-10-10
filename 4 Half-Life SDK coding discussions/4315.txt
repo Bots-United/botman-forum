@@ -1,0 +1,79 @@
+--------------------------------------------------
+Subject: still not working
+--------------------------------------------------
+04/13/03 at 17:26:51  Posted by: webguy (webguy@aol.com)
+--------------------------------------------------
+how do I change the amount of ammo in the hud display for half-life to something more than 254?
+
+I've tried changing the AMMOX Function in the ammo.cpp file, to doubles for the int types, but doesn't work.
+
+any ideas, anybody?
+
+--------------------------------------------------
+04/13/03 at 20:40:11  Reply by: dx72ict (dx72ict@yahoo.com)
+--------------------------------------------------
+hey, you are aware that an integer is ranged from 
+-32,768 to 32,767, and 0-65535 if its unsigned? i forget what the range on a short int is, but the point is changing from an int to a double wont make much diff. anyways, maybe theres  ammo capacity defined in weapons.h? good luck
+
+--------------------------------------------------
+04/13/03 at 20:50:39  Reply by: dx72ict (dx72ict@yahoo.com)
+--------------------------------------------------
+one more thing, in ammohistory.h  gWR is defined as an instance of class WeaponsResource , and in the WeaponsResource class, you can see where SetAmmo is defined, it assigns iCount to riAmmo[iId]  , like this   riAmmo[ iId ] = iCount;   and then you can see that riAmmo is defined privately in the class like this         
+int            riAmmo[MAX_AMMO_TYPES];      
+
+
+
+--------------------------------------------------
+04/14/03 at 05:33:53  Reply by: RobGP (rob@planetfortress.com)
+--------------------------------------------------
+its probably being sent to the client with WRITE_BYTE(), which only ranges from 0 - 254 (a byte)
+
+--------------------------------------------------
+04/14/03 at 12:42:47  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Good point, I'd check there also.
+
+
+--------------------------------------------------
+04/14/03 at 23:11:44  Reply by: gladers (gladers@ntlworld.com)
+--------------------------------------------------
+Goto hl.dll (not client!)
+
+Weapons.h, then search for (URANIUM_MAX_CARRY)
+
+You can change the max capacity here. then rebuild all.
+
+--------------------------------------------------
+04/18/03 at 19:04:06  Reply by: webguy (webguy@aol.com)
+--------------------------------------------------
+as rob said, the amounts cannot change because of the write byte... I'll have to think of a way around this, maybe change it from a byte to something else.
+
+--------------------------------------------------
+04/18/03 at 22:46:42  Reply by: dx72ict (dx72ict@yahoo.com)
+--------------------------------------------------
+check out enginecallback.h  , write_byte is defined there, as well as write_char, write_short, write_long, and others.  Maybe just change write_byte to write_long or whatever .
+
+found this segment in weapons.cpp. Im just guessing at this point. dont know anything for sure
+
+MESSAGE_BEGIN( MSG_ONE, gmsgCurWeapon, NULL, pPlayer->pev );
+                  WRITE_BYTE( state );
+                  WRITE_BYTE( m_iId );
+                  WRITE_BYTE( m_iClip );
+            MESSAGE_END();
+
+
+--------------------------------------------------
+04/19/03 at 07:55:47  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+"just" changing WRITE_BYTE to WRITE_LONG won't work. You have to change the shape of the network message itself. If the sender sends a long where the receiver expects to find a byte, you're running into serious problems.
+
+
+--------------------------------------------------
+04/19/03 at 11:58:23  Reply by: webguy (webguy@aol.com)
+--------------------------------------------------
+yeah, any ideas on that, I'm assuming there is something I must change within the client.dll and hl.dll files, I'll look into it.
+
+Thanks
+
+All
+

@@ -1,0 +1,80 @@
+--------------------------------------------------
+Subject: once again, question about hpb bot :)
+--------------------------------------------------
+08/20/02 at 03:19:19  Posted by: kippie (da_matt@hotmail.com)
+--------------------------------------------------
+ok, so I am using hpb bot source as an intermidiate dll. But now I stumbled across a new problem: I wanna make new weapons and monsters with it. Is this possible in hpb bot? and where in the source would I best create the new entities?
+
+--------------------------------------------------
+08/20/02 at 05:36:23  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+See my Monster plugin source code for an example of creating external monsters for a MOD that you don't have the source code to.
+
+botman
+
+--------------------------------------------------
+08/20/02 at 06:49:32  Reply by: kippie (da_matt@hotmail.com)
+--------------------------------------------------
+and any thoughts on how to do a weapon?
+I just wanna use the hornetgun, which shoots hornets (which I also need to create in the sourcecode).
+
+--------------------------------------------------
+08/20/02 at 09:03:10  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+I already explained how in this thread...
+
+http://dynamic.gamespy.com/~botman/yabb/YaBB.pl?board=6&action=display&num=3461&start=30
+
+(which you replied to).
+
+botman
+
+--------------------------------------------------
+08/20/02 at 23:13:38  Reply by: kippie (da_matt@hotmail.com)
+--------------------------------------------------
+oki, sorry =(
+btw, I see you don't use LINK_ENTITY_TO_CLASS, what should I use instead? or do I have to make it an ent in an entire different way?
+
+[modified on 08/20/02 at 23:13:38]
+--------------------------------------------------
+08/21/02 at 05:32:51  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Metamod plugins don't use LINK_ENTITY_TO_CLASS.  Hook DLLs (like the HPB bot) will use something similar to LINK_ENTITY_TO_CLASS.  See the linkfunc.cpp file of the HPB bot for some examples.
+
+You won't need LINK_ENTITY_TO_CLASS if you are adding a weapon to a MOD since none of the maps you will using will be trying to spawn that weapon.  The LINK_ENTITY_TO_CLASS stuff is only required so that the engine can spawn an entity (getting the name of the entity from the .bsp file).
+
+Here's a tip:  Don't try and cut-and-paste Half-Life SDK source code to add a weapon.  Create everything line by line yourself so that you fully understand what it's doing and why it's there.  If you don't understand what the code is doing and why it's there, it is doubtful that you will be able to sucessfully add an external weapon to a MOD.
+
+botman
+
+[modified on 08/21/02 at 05:32:51]
+--------------------------------------------------
+08/29/02 at 06:23:11  Reply by: kippie (da_matt@hotmail.com)
+--------------------------------------------------
+yeah, but in hpb bot, you use LINK_ENTITY_TO_FUNC, but there is only an entity name in there. You don't tell the engine which class in the sourcecode would be the entity
+
+--------------------------------------------------
+08/29/02 at 09:28:12  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+The exported functions are exported by name (i.e. if you have a function named "weapon_shotgun", it will exported as weapon_shotgun() ).
+
+With hook type DLLS (like the HPB bot) you only need to provide an exported function for each function that will be exported in the MOD.  For example, if you want to support 2 different MODs with the same hook DLL, and the first MOD has an entity called "item_grapplehook" and the second MOD has an entity called "weapon_shockrifle", then the hook DLL needs to have an exported function for both item_grapplehook() and weapon_shockrifle() (which is what the LINK_ENTITY_TO_FUNC macro does for you).
+
+The engine will call the hook DLLs functions when it is trying to spawn something from a map file and the hook DLL will call the MOD DLL function of the same name (i.e. item_grapplehook() in the hook DLL calls item_grapplehook() in the MOD DLL).
+
+You don't need ANY of this if you use a metamod plugin, since metamod itself handles all the MOD DLL exported functions (for a whole bunch of MODs).
+
+botman
+
+--------------------------------------------------
+08/30/02 at 00:51:36  Reply by: kippie (da_matt@hotmail.com)
+--------------------------------------------------
+so basically you're saying I should use metamod because it's better and easier to use than your hpb bot?
+
+--------------------------------------------------
+08/30/02 at 05:48:38  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Yes, and it will be easier to support any MOD that metamod supports since you don't have to worry about updating your plugin everytime somebody changes a MOD and adds a new entity.
+
+botman
+

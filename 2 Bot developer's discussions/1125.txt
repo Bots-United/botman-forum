@@ -1,0 +1,373 @@
+--------------------------------------------------
+Subject: Dedicated server Command Problem! 
+--------------------------------------------------
+01/26/01 at 13:54:12  Posted by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+i really hope someone can help me with this.
+Ever tried to excecute a dedicated server command? i got the excact code as the template, and i cant seem to do ANY dedicated server command with botmans code..
+
+The original code:
+
+ // if time to check for server commands then do so...
+      if ((check_server_cmd <= gpGlobals->time) && IS_DEDICATED_SERVER())
+      {
+         check_server_cmd = gpGlobals->time + 1.0;
+
+         char *cvar_bot = (char *)CVAR_GET_STRING( "bot" );
+
+         if ( cvar_bot && cvar_bot[0] )
+         {
+            char cmd_line[80];
+            char *cmd, *arg1, *arg2, *arg3, *arg4;
+
+            strcpy(cmd_line, cvar_bot);
+// etc
+
+, it doesnt seem to work!
+When i put a printf("here i enter the IF block for dedicated server commands") line in the IF b lock. IT NEVER gets excecuted!!
+
+so, i thought of this sollution. I do, as with ClientCommand...
+
+My code is now:
+ if ((check_server_cmd <= gpGlobals->time) && IS_DEDICATED_SERVER())
+      {
+                  
+                  check_server_cmd = gpGlobals->time + 1.0;
+                  //printf("Time to check! \n");
+                  const char *pcmd = Cmd_Argv(0);
+                  const char *arg1 = Cmd_Argv(1);
+                  const char *arg2 = Cmd_Argv(2);
+                  const char *arg3 = Cmd_Argv(3);
+                  const char *arg4 = Cmd_Argv(4);
+
+            //char *cvar_bot = (char *)CVAR_GET_STRING( "bot" );
+
+      //   if ( cvar_bot && cvar_bot[0] )
+        // {
+                  
+                  // char *cmd, *arg1, *arg2, *arg3, *arg4;
+                  const char *cmd;
+
+            //strcpy(cmd_line, cvar_bot);
+
+            index = 0;
+            //cmd = cmd_line;
+                  cmd = pcmd;
+
+well, its a bit sloppy, but i just commented out some lines. There is no cvar stuff here. I dont actually know why its done. Since the BOT cant type any commands?!?
+
+Now, when i type ADDBOT, the command DOES get excecuted... the only problem that is left, is that it gets excecuted EVERY SECOND!! i need to clear the cvar. Or the string, or whatever holds the console command! I cant do this:
+
+Cmd_Argv(0) = NULL;
+etc.
+
+that doesnt compile. NOR, i dont know how i get this cleared. OR someone can help me with a proper (or fix) usage of the cvar lines?!?!
+
+thx in advance!
+
+
+--------------------------------------------------
+01/26/01 at 14:19:42  Reply by: RedFox (redfox@nildram.co.uk)
+--------------------------------------------------
+You could try Cmd_Argv(0)[0]=null but I don't know what the syntax for Cmd_Argv is.. or if Cmd_Argv is a function, clear it their (after its copyed it into another string for return purposes).
+
+:)
+
+RedFox
+
+--------------------------------------------------
+01/26/01 at 14:22:08  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+thats the prob, it wont work :( atleast, not by doing that. 
+
+error you get is:
+
+"l-value specifies const object"
+
+--------------------------------------------------
+01/26/01 at 16:47:54  Reply by: RedFox (redfox@nildram.co.uk)
+--------------------------------------------------
+get rid of the const infront of it then?? might work. Explain that Cmd_Argv otherwise.
+
+RedFox
+
+--------------------------------------------------
+01/27/01 at 02:41:37  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+hmm, i dont think it can be done like that. The variable is recieved from the engine (when you look at other pieces of code). So either, you get an "cant convert const char into char" error, or there must be some other way to fix this??!!
+
+--------------------------------------------------
+01/27/01 at 04:22:00  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+Hey, 
+
+i tried the latest HPB Bot, to see if the dedicated server commands do work there.
+
+Unfortunatly, they dont!
+
+when i type ADDBOT, it wont let me add bots. I can do all normal HL commands, but not the ones who are programmed in. The bot.cfg works , the min_ and max_ bots works perfectly too.
+
+But not the dedicated server commands when you type 'm?!? botman , a bug?
+
+--------------------------------------------------
+01/27/01 at 05:36:17  Reply by: BrianL (halfkiller@hotmail.com)
+--------------------------------------------------
+Do this in the game to add bots in:
+ bot "addbot 1 2"
+
+That will add a Sniper Bot in a dedicated server you have to type it in the server console for this to work.
+
+--------------------------------------------------
+01/27/01 at 06:08:15  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+so, its first you do BOT and then the command.. omg, i might just did all the time something wrong :D lol
+thx!
+
+--------------------------------------------------
+01/27/01 at 09:36:31  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+lol, it worked. :)
+
+thx
+
+
+
+--------------------------------------------------
+01/27/01 at 11:17:06  Reply by: BrianL (halfkiller@hotmail.com)
+--------------------------------------------------
+yep
+
+--------------------------------------------------
+01/27/01 at 12:26:13  Reply by: Mufasa (ja0475@devrycols.edu)
+--------------------------------------------------
+I got it to work just fine by simply commenting out the lines:
+
+if ( cvar_bot && cvar_bot[0] )
+{
+
+and the corresponding closing brace. It added my bot then cleared the bot cvar automatically.
+
+
+--------------------------------------------------
+01/27/01 at 12:49:50  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+well, now a real bug came up.
+btw, jonathan it is doable that way, but the extra check is better IMO.
+
+type this using the template2, i dont think it would differ that much
+
+bot min_bots 
+
+and thats it
+it should crash right?
+
+since whenever i type that, it crashes, no matter what arg1, arg2, arg3, or arg4 i give , it just crashes... anyone tried it before?
+
+--------------------------------------------------
+01/28/01 at 13:53:52  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+The code you sent me had this...
+code:
+if (*arg1 != NULL)
+{
+   // ...stuff with arg1 here
+}
+
+...but you never checked if arg1 was null before trying to dereference the pointer.  You should use this instead...
+code:
+if (arg1 != NULL)
+{
+   if (*arg1 != 0)
+   {
+      // ...stuff with arg1 here
+   }
+}
+
+...by the way you shouldn't try to replace this with...
+code:
+
+if ((arg1 != NULL) && (*arg1 != 0))
+{
+   // ...stuff with arg1 here
+}
+
+...since the compiler is not guaranteed to execute the instructions inside the if statement in any particular order (i.e. it could try to evaluate the second part of the expression first and crash).  This kind of stuff can be compiler dependant and turing on or off debugging can effect how it compiles.
+
+botman
+
+--------------------------------------------------
+01/29/01 at 06:19:59  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+thx botman, i'll try if that one works. 
+Hopefully it does work, else i'll be really puzzled. What still puzzles me though is, that you have that code in your template 2... and it doenst crash? or does it?!? 
+
+/me gets confused of coding, studying for exams and replying to forums. 
+
+--------------------------------------------------
+01/29/01 at 11:46:02  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+This is true.  I do have this in the template 2 code...
+code:
+         if ((arg1 != NULL) && (*arg1 != 0))
+         {
+            int temp = atoi(arg1);
+            if (temp)
+               b_observer_mode = TRUE;
+            else
+               b_observer_mode = FALSE;
+         }
+
+...and like I said, this type of code is compiler dependant.  It's not a good practice to write things this way, but the Microsoft C++ compiler appears to evaluate expressions left to right so it should work.  Notice that I do check that arg1 is not NULL before using it in the atoi() function.
+
+botman
+
+--------------------------------------------------
+01/29/01 at 13:42:41  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+aha. However, that part of code in the template 2 is for CLIENT side commands... not for dedicated server commands. I havent tried it, but i bet that when i run a HPB Bot dedicated server and i type:
+
+bot bot_max
+
+then it will crash too...
+since it doesnt have a check in the code there (unless ofcourse, its totally different in the HPB Bot code itself). 
+
+--------------------------------------------------
+01/29/01 at 14:38:39  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+Yes, that is correct.  Dedicated server commands that expect arguments, where arguments aren't provided, will cause the dedicated server to crash.
+
+botman
+
+--------------------------------------------------
+01/30/01 at 02:19:06  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+ok, well atleast found a bug eh ? :)
+
+i'll try your code now (i have finally some time between the 'learing zones' :) )
+
+
+
+--------------------------------------------------
+01/30/01 at 10:42:20  Reply by: CountFloyd (countfloyd_1999@yahoo.com)
+--------------------------------------------------
+There are a lot of console commands which aren't checked if they are valid or not (not only max_bots and min_bots). I wouldn't call this a bug it's only Botman being lazy again, isn't it :)
+
+--------------------------------------------------
+01/30/01 at 14:32:47  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+hmm, well, atleast my compiler lets everything crash if not checked at all.. :)
+
+so i have to built in all checks :(
+
+--------------------------------------------------
+01/30/01 at 14:59:04  Reply by: CountFloyd (countfloyd_1999@yahoo.com)
+--------------------------------------------------
+Errmm, your compiler ? How would this be possible ? And I recall you're using MS VC++, aren't you ? Of course the DLL crashes if you feed it with wrong parameters but this isn't your compilers fault...did I miss something here ? Not to say it's surely better to have some additional checks...
+
+--------------------------------------------------
+01/31/01 at 08:35:44  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+hmm, i thought botman said it was compiler depended. Or atleast said it has something to do how you compile the dll.
+
+Anywayz, i have the following code now for MIN_BOTS...
+
+else if (strcmp(cmd, "min_bots") == 0)
+            {
+               
+                        if (arg1 != NULL)
+                        {
+                              if (*arg1 != 0)
+                              {
+                        min_bots = atoi( arg1 );
+                              }
+                        }
+
+               if ((min_bots < 0) || (min_bots > 31))
+                  min_bots = 1;
+      
+               sprintf(msg, "min_bots set to %d\n", min_bots);
+               printf(msg);
+                  }
+
+it doesnt crash. Well, thats great eh? well, the bug is, whenever i type
+
+bot min_bots 4
+
+it still says
+
+min_bots is 1
+
+like the parameter is ALWAYS clear!!! i think somehow the parameters never get filled..
+
+--------------------------------------------------
+01/31/01 at 09:01:55  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+You must assign a string to the CVAR.  Don't use this...
+
+bot min_bots 4
+
+...use this...
+
+bot "min_bots 4"
+
+...there's no other way around it.
+
+botman
+
+--------------------------------------------------
+01/31/01 at 11:22:40  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+omg, i try that out.
+
+However, if it works, then i still suggest to put in the checks , because a user who doesnt do that. will let it crash..
+
+--------------------------------------------------
+01/31/01 at 11:27:55  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+great, i cant even type a " in the HLDS!! 
+
+
+--------------------------------------------------
+01/31/01 at 14:17:01  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+Which nationality keyboard are you using.
+
+For a U.S. keyboard, when the dedicated server is pretty heavily loaded, you have to HOLD the shift key for 1/2 a second or so before pressing the single quote key (') to get the double quotes (").  Try holding the shift key down for a second or so before pressing the " key.
+
+Or get a fater CPU.  ;)
+
+botman
+
+--------------------------------------------------
+02/01/01 at 02:11:26  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+My keyboards is set as US international... I guess i have to hold it for 1/2 secs then :)
+
+anywayz, i really need a new cpu (and new motherboard and so on then). Since the 350mhz really getting slow to me (or, i need to get Windows 95 installed :D)
+
+
+
+--------------------------------------------------
+02/01/01 at 02:14:33  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+lol, guess what.
+
+The " does work in DOS or something. But when i run HLDS, i cant even type a:
+
+'
+
+or 
+
+"
+
+its like the "(')  key wont work! great. I have to set something in windows right i guess, or maybe its my Win ME?!?
+
+
+--------------------------------------------------
+02/01/01 at 02:17:12  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+i think i know what causes this.
+
+When i press the ' key, then i have to press another key to get a character (not in dos though). However, since HLDS is a windows (console) application. I guess it waits for a 'second' press in order to give me a character. Unfortunatly , when i press SPACE, it still doenst give me a " or a '. Any way to turn this 'feature' off?!?
+
+

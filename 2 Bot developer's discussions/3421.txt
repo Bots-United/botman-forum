@@ -1,0 +1,137 @@
+--------------------------------------------------
+Subject: What should I do?
+--------------------------------------------------
+07/14/02 at 09:47:36  Posted by: laextr (laextr@icqmail.com)
+--------------------------------------------------
+Hey botman, I've seen some of the threads but only some of them answer my question. i'm using youre latest HPB Bot, and when I add bots to a game, they all appear in other teams or MOST of them appears as spectators, can you help me to tell what I hould do in the CFG files or programming code, how to stop the bots from always getting stuck in spector mode. I've set "observer" to 0, etc. and still doesn't work.
+
+Thanks man!
+
+--------------------------------------------------
+07/14/02 at 11:55:50  Reply by: @$3.1415rin (joebot@botepidemic.com)
+--------------------------------------------------
+you havnt written what mod you are talking about, but maybe you should check if the bots are joining the correct team. sometimes there are already too much players on one team. In CS e.g. you can avoid this problem by not using "menuselect 'RANDOM_LONG(1,2)'", but using "menuselect 5", i.e. the "random team" selection
+
+--------------------------------------------------
+07/14/02 at 22:19:08  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+"Random team" selection is not always available, i.e. if there is too much population in one team compared to the other one, your bots will still go in spectator mode.
+You can make a cheap test to know which is the less populated team and make the bots join them. That's what I do.
+If you make a bot for TFC, though, there is actually a problem with the template code, personally I changed it like that.
+code:
+
+void BotStartGame (bot_t *pBot)
+{
+   char command[32];
+   int team;
+   int class_not_allowed;
+
+   if (pBot->pEdict == NULL)
+      return; // reliability check
+
+   // handle Team Fortress Classic stuff here...
+   if (pBot->menu_notify == MSG_TFC_TEAMSELECT_TEAMMENU)
+   {
+      pBot->menu_notify = MSG_TFC_IDLE; // switch back to idle
+
+      // select the team the bot wishes to join...
+      if ((pBot->bot_team < 1) || (pBot->bot_team > 4))
+      {
+         // none specified, is bot forced to choose a team ?
+         if (CVAR_GET_FLOAT ("racc_botforceteam") > 0)
+            pBot->bot_team = CVAR_GET_FLOAT ("racc_botforceteam"); // join the specified team
+
+         if ((pBot->bot_team < 1) || (pBot->bot_team > 4))
+            pBot->bot_team = 5; // else use auto team assignment
+      }
+
+      sprintf (command, "jointeam %d", pBot->bot_team);
+      FakeClientCommand (pBot->pEdict, command);
+      return;
+   }
+
+   else if (pBot->menu_notify == MSG_TFC_TEAMSELECT_CLASSMENU)
+   {
+      pBot->menu_notify = MSG_TFC_IDLE; // switch back to idle
+
+      team = GetTeam (pBot->pEdict);
+
+      if (team_class_limits[team] == -1) // civilian only?
+         pBot->bot_class = 0; // civilian
+      else
+      {
+         if (pBot->bot_class == 10)
+            class_not_allowed = team_class_limits[team] & (1 << 7);
+         else if ((pBot->bot_class > 0) && (pBot->bot_class <= 7))
+            class_not_allowed = team_class_limits[team] & (1 << (pBot->bot_class - 1));
+         else if ((pBot->bot_class > 7) && (pBot->bot_class <= 9))
+            class_not_allowed = team_class_limits[team] & (1 << (pBot->bot_class));
+
+         if (class_not_allowed)
+            pBot->bot_class = 10; // use auto class assignment if specified class is invalid
+      }
+
+      // select the class the bot wishes to use...
+      if (pBot->bot_class == 0)
+         strcpy (command, "civilian");
+      else if (pBot->bot_class == 1)
+         strcpy (command, "scout");
+      else if (pBot->bot_class == 2)
+         strcpy (command, "sniper");
+      else if (pBot->bot_class == 3)
+         strcpy (command, "soldier");
+      else if (pBot->bot_class == 4)
+         strcpy (command, "demoman");
+      else if (pBot->bot_class == 5)
+         strcpy (command, "medic");
+      else if (pBot->bot_class == 6)
+         strcpy (command, "hwguy");
+      else if (pBot->bot_class == 7)
+         strcpy (command, "pyro");
+      else if (pBot->bot_class == 8)
+         strcpy (command, "spy");
+      else if (pBot->bot_class == 9)
+         strcpy (command, "engineer");
+      else
+         strcpy (command, "randompc"); // use auto class assignment if nothing specified
+
+      FakeClientCommand (pBot->pEdict, command);
+      pBot->b_not_started = FALSE; // bot has now joined the game (doesn't need to be started)
+      return;
+   }
+}
+
+
+It is actually not perfect at all, anyway it seems to work well enough that way.
+
+
+
+--------------------------------------------------
+07/15/02 at 00:48:16  Reply by: @$3.1415rin (joebot@botepidemic.com)
+--------------------------------------------------
+i dont see where you are getting the number of players of each team, but if you say it's working - fine! i'm not making a tfc bot though ...
+
+--------------------------------------------------
+07/15/02 at 00:56:42  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+Hmm... I was misunderstood, I get the number of players in Counter-Strike, whereas this is some piece of code for TFC (since I think the "random" menu selection is always available in the VGUI in TFC, unlike in CS).
+
+Btw, I get sometimes strange behaviour with the logarithmic stuff in the aimcode (as if the momentum suddently changed to a very high value, making the bot's aim oscillate very quickly), is it the same with your bot ?
+
+[modified on 07/15/02 at 00:56:42]
+--------------------------------------------------
+07/15/02 at 02:11:07  Reply by: @$3.1415rin (joebot@botepidemic.com)
+--------------------------------------------------
+CS has also random team selection ...
+
+i'm not having any problems with my aiming code as long as the fps is higher than let's say 6 fps.
+but this momentum and speed values have to be chosen very carefully, otherwise you'll get problems. To test the aiming code, you could write a little GUI application ( again tobias' idea ) where you have a target and the view angles. with the mouse you move the target and now you can see if the view angles are oscillating, if everything is ok, whatever. that's quite useful.
+
+--------------------------------------------------
+07/15/02 at 02:33:32  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+Yes curiously I figured out that the speed and momentum factors are not linear... I had tried to make them skill-dependent but obviously that will not work that way.
+
+thx for the app idea, /me will do that :)
+
+

@@ -1,0 +1,228 @@
+--------------------------------------------------
+Subject: REG_USER_MSG()
+--------------------------------------------------
+07/29/02 at 03:50:32  Posted by: zenureo (startux@hotmail.com)
+--------------------------------------------------
+hi all,
+I was trying to add a fading function to a metamod plugin. This is done by the function below as presented in the SDK:
+
+void UTIL_ScreenFade( CBaseEntity *pEntity, const Vector &color, float fadeTime, float fadeHold, int alpha, int flags )
+{
+      ScreenFade      fade;
+
+      UTIL_ScreenFadeBuild( fade, color, fadeTime, fadeHold, alpha, flags );
+      UTIL_ScreenFadeWrite( fade, pEntity );
+}
+
+So i implemented all three functions, UTIL_ScreenFade(), UTIL_ScreenFadeBuild() and UTIL_ScreenFadeWrite() in the plugin, much like how metamod implemented UTIL_HudMessages(). However, the function UTIL_ScreenFadeWrite() requires me to register a user msg, which i promptly did as follows:
+
+int gmsgFade = REG_USER_MSG("ScreenFade", sizeof(ScreenFade));
+
+Everything compiles fine and look good, until i start a game and metamod loads. Metamode din seem to run the plugin, when i do a "meta list", it shows the plugin's stat as being "badf", which i take literally as bad file.
+
+What did i do wrong?? I did exactly the same thing for UTIL_HudMessages() and it works fine. But of course, UTIL_HudMessages() did not require me to register a user message.
+
+
+
+
+--------------------------------------------------
+07/29/02 at 04:47:24  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+QUOTE:
+int gmsgFade = REG_USER_MSG("ScreenFade", sizeof(ScreenFade));
+
+
+
+"ScreenFade" message is already registered, if you register it again the fade wont work or could crash. Instead do a check in the pfnRegUserMsg funtion to look for "ScreenFade" as the pszName and set your int value to the 'msg'.
+
+e.g.
+
+code:
+
+int pfnRegUserMsg(const char *pszName, int iSize)
+{
+   int msg;
+
+   msg = (*g_engfuncs.pfnRegUserMsg)(pszName, iSize);
+
+   if(!strcmp(pszName,"ScreenFade"))
+         gmsgFade = msg;
+
+
+
+
+
+[modified on 07/29/02 at 04:47:24]
+--------------------------------------------------
+07/29/02 at 05:59:31  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+""ScreenFade" message is already registered, if you register it again the fade wont work or could crash."
+
+No, that's not true.  I've registered user message that were already registered by the game DLL and it worked just fine.  That's how the "welcome" message gets printed by the HPB bot when the listenserver player joins the game.
+
+I'm not sure what causes the "badf" message, but it shouldn't have anything to do with registering a client message.  It sounds like you don't have something being built right to satisfy metamod.  Make SURE you start from a working metamod plugin (like one of the examples that come with the metamod source or some other metamod plugin) and DON'T remove things from the metamod plugin source unless you KNOW what you are doing.
+
+botman
+
+--------------------------------------------------
+07/29/02 at 08:44:21  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+QUOTE:
+""ScreenFade" message is already registered, if you register it again the fade wont work or could crash."
+
+No, that's not true.  I've registered user message that were already registered by the game DLL and it worked just fine.  That's how the "welcome" message gets printed by the HPB bot when the listenserver player joins the game.
+
+
+
+I've re-registered the Screenfade before and when a screenfade happens HL will crash with WriteDestParm: Not a client or something, so I'd advise not to reregister.
+
+
+--------------------------------------------------
+07/29/02 at 08:52:47  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+"Not a client" means you are attempting to send a screen fade to an entity that's not a client.
+
+This error happens often to people who are trying to do a headshot message.  They print text on the screen to indicate a headshot and then get a crash when someone kills someone with a grenade (because they are trying to send the "headshot" message to the grenade, which did the killing, but grenades are not entities and the engine will give you this message if you try to send a network message to an entity that is not a client).
+
+botman
+
+--------------------------------------------------
+07/29/02 at 09:35:04  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+The fact is, when I removed the REG_USER_MSG to 're-register' the screenfade message it worked okay again.. So I dunno what could have cauased it except that. :(
+
+--------------------------------------------------
+07/29/02 at 18:11:21  Reply by: zenureo (startux@hotmail.com)
+--------------------------------------------------
+Er...
+
+I did start from the mm_trace plugin code and did not do anything with the metamod source except opening and looking at the source. My plugin had been running perfectly with metamod until i decided to try out a screen fade which requires me to register a user msg...
+
+I narrowed down the cause of the "badf" problem to the one line :
+
+int gmsgFade = REG_USER_MSG("ScreenFade", sizeof(ScreenFade));
+
+As long as i have this line somewhere, the "badf" comes. So maybe the ScreenFade msg cannot be re-registered??
+
+Seems quite controversial here...
+
+
+--------------------------------------------------
+07/29/02 at 18:52:46  Reply by: zenureo (startux@hotmail.com)
+--------------------------------------------------
+QUOTE:
+"ScreenFade" message is already registered, if you register it again the fade wont work or could crash. Instead do a check in the pfnRegUserMsg funtion to look for "ScreenFade" as the pszName and set your int value to the 'msg'.
+
+
+
+
+Sorry, please forgive my ignorance, do u meant changing the SDK source for pfnRegUserMsg at engine_api.cpp??? I had been doing everything only at the metamod side, did not change the metamod's source, if i did, wouldn't i need to use the new metamod.dll compiled??
+That would make my plugin incompatiable with future metamod versions right...
+
+[modified on 07/29/02 at 18:52:46]
+--------------------------------------------------
+07/30/02 at 03:38:01  Reply by: zenureo (startux@hotmail.com)
+--------------------------------------------------
+QUOTE:
+
+int pfnRegUserMsg(const char *pszName, int iSize)
+{
+   int msg;
+
+   msg = (*g_engfuncs.pfnRegUserMsg)(pszName, iSize);
+
+   if(!strcmp(pszName,"ScreenFade"))
+         gmsgFade = msg;
+
+
+
+
+Hey cheese,
+
+I did as u said, to capture the ScreenFade msg value. But how u pass the value out from metamod to my plugin? Is there any easy way to do it?
+
+I hardcode the gmsgFade value (98), and the plugin runs with no problem. So i'm quite sure u r correct about the re-registering of the ScreenFade msg.
+[modified on 07/29/02 at 20:50:43]
+
+[modified on 07/30/02 at 03:38:01]
+--------------------------------------------------
+07/30/02 at 04:43:38  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+I wouldn't give the Screenfade a constant value either, I've tried that before and its crashed a few times, sometimes it isn't the same number.
+
+Perhaps you were trying to re-register the Screenfade globally instead of locally e.g. in GameDLLInit or something.
+
+You should check some metamod stuff to find out how to catch registered messages in the Reg_User_msg function.
+
+--------------------------------------------------
+07/31/02 at 01:38:04  Reply by: zenureo (startux@hotmail.com)
+--------------------------------------------------
+QUOTE:
+I wouldn't give the Screenfade a constant value either, I've tried that before and its crashed a few times, sometimes it isn't the same number.
+
+
+
+Yep, i dun wanna do this too. I caught the value 98 within mm_RegUserMsg at engine_api.cpp of metamod.
+
+QUOTE:
+
+Perhaps you were trying to re-register the Screenfade globally instead of locally e.g. in GameDLLInit or something. 
+
+
+
+Globally?? Please enlighten me!! I coded the following line, within my metamod plugin. So thats local or global?
+
+int gmsgFade = REG_USER_MSG("ScreenFade", sizeof(ScreenFade));
+
+QUOTE:
+
+You should check some metamod stuff to find out how to catch registered messages in the Reg_User_msg function. 
+
+
+How do i catch? I know that metamod actually passes plugin a g_engfuncs with all the functions that i may want to catch. How is it done?? Do i just redirect the pointer to a function to my own function??? Can u show me how i can catch the function encapsulated by the macro REG_USER_MSG???
+
+[modified on 07/31/02 at 01:29:37]
+
+[modified on 07/31/02 at 01:38:04]
+--------------------------------------------------
+07/31/02 at 02:45:27  Reply by: zenureo (startux@hotmail.com)
+--------------------------------------------------
+Stupid me, Will Day had already provided a macro GET_USER_MSG_ID to do what i need.
+
+But anyway, i'm still interested in how to catch and reimplemented certain functions(such as Reg_User_Msg) if someone is kind enough to explain...
+
+--------------------------------------------------
+07/31/02 at 02:47:43  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+you said there was a mm_RegUserMsg funtion? If you want to to the messages catching, youd check it there maybe, because everymessage that gets registered  goes through there.
+
+
+--------------------------------------------------
+07/31/02 at 03:44:53  Reply by: zenureo (startux@hotmail.com)
+--------------------------------------------------
+Yes there is, but mm_RegUserMsg exist in engine_api.cpp within metamod !!! I dun think i want to change metamod and make my plugin incompatiable with future metamod version.
+
+Can i do it at my plugin without altering metamod's code??
+I mean, can i make the engine or gameDLL or whatever call MY version of mm_RegUserMsg instead of metamod's or the SDK's ???
+
+[modified on 07/31/02 at 03:44:53]
+--------------------------------------------------
+07/31/02 at 03:52:50  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+If you can't access that function, you'd be better just using the GET_USER_MSG_ID function you found, because it will do even better that catching and storing message ID's. And you won't need to bother about 'catching them' :)
+
+--------------------------------------------------
+07/31/02 at 04:28:20  Reply by: zenureo (startux@hotmail.com)
+--------------------------------------------------
+But if i could do that, it would be possible to do a lot of other things...
+
+--------------------------------------------------
+07/31/02 at 05:38:37  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+what things are you trying to do? :D There might even be easier ways of doing what you want do do aswell :P
+
+--------------------------------------------------
+08/01/02 at 02:09:50  Reply by: zenureo (startux@hotmail.com)
+--------------------------------------------------
+Do not have a clear idea of which functions i would want to "catch" but it sure would be useful if i can do it.
+

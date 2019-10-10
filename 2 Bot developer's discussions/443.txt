@@ -1,0 +1,297 @@
+--------------------------------------------------
+Subject: On TFC quit command in 1.1.0.4
+--------------------------------------------------
+10/28/00 at 12:43:03  Posted by: botman (botman@mailandnews.com)
+--------------------------------------------------
+I was just now browsing the PVS archive over at the Admin MOD and noticed that Alfred had the same problem with TFC and the quit command causing a crash.
+
+The comments on the code checked into the PVS archive indicate that Alfred found and fixed this problem for Win32, but Linux still has some issues (that apparently don't effect the game play).
+
+I've sent Alfred an e-mail asking him to describe the changes made to prevent the crash problem due to the quit command.  When I hear something back from him, I'll post his reponse here.
+
+I've also downloaded his source code changes.  The new mystery function in eiface.h is called pfnAddServerCommand(), which I believe Yahn said could be used to capture server commands that the MOD DLL normally doesn't have access to (like "kick", "map", "changelevel", "quit", etc.).
+
+botman
+
+--------------------------------------------------
+10/28/00 at 14:34:48  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+Okay, I FINALLY figured it out.  To fix this problem you HAVE to add a new function called "GetNewDLLFunctions".  It works kinda like the GetEntityAPI function that's already in the dll.cpp file.  Here's what you have to do...
+
+1) Add the following prototype to whatever file you have GETENTITYAPI defined in...
+
+typedef int (FAR *GETENTITYAPI)(DLL_FUNCTIONS *, int);
+typedef int (FAR *GETNEWDLLFUNCTIONS)(NEW_DLL_FUNCTIONS *, int *);
+
+2) Download this version of engine\eiface.h and replace the one in your engine directory (you may have to shift-click to download it)...
+
+http://planethalflife.com/botman/eiface.h
+
+...notice the NEW_DLL stuff at the bottom of it.
+
+3) Add this at the top of the dll.cpp file...
+
+extern GETNEWDLLFUNCTIONS other_GetNewDLLFunctions;
+
+4) Add the following function right after the GetEntityAPI function in the dll.cpp file...
+
+extern "C" EXPORT int GetNewDLLFunctions( NEW_DLL_FUNCTIONS *pFunctionTable, int *interfaceVersion )
+{
+   // pass other DLLs engine callbacks to function table...
+   if (!(*other_GetNewDLLFunctions)(pFunctionTable, interfaceVersion))
+   {
+      return FALSE;  // error initializing function table!!!
+   }
+
+   return TRUE;
+}
+
+5) Add this to the top of the h_export.cpp file...
+
+GETNEWDLLFUNCTIONS other_GetNewDLLFunctions;
+
+6) Add this to the GiveFnptrsToDLL() function in the h_export.cpp file.  (add it right before the other_GiveFnptrsToDll assignment)...
+
+   other_GetNewDLLFunctions = (GETNEWDLLFUNCTIONS)GetProcAddress(h_Library, "GetNewDLLFunctions");
+
+   if (other_GetNewDLLFunctions == NULL)
+   {
+      // Can't find GetNewDLLFunctions!
+
+            ALERT( at_error, "HPB_bot - Can't get MOD's GetNewDLLFunctions!" );
+   }
+
+   other_GiveFnptrsToDll = (GIVEFNPTRSTODLL)GetProcAddress(h_Library, "GiveFnptrsToDll");
+
+...and I think that should do it.
+
+What this does is defines a new function called "GetNewDLLFunctions" which copies MOD DLL functions back to the engine.  Based on the information in eiface.h, it appears that one of these new functions frees up private data and the other has something to do with the game shutdown (ah-ha!!!)
+
+I now have the HPB bot able to execute the "quit" command without crashing!!!
+
+This little problem has taken me all day to straighten out and I'm not sure if I'll be able to make a release tomorrow night or not now.  But I'll certainly try my darnedest to get everything done that I said I would on my main web page.
+
+botman
+
+--------------------------------------------------
+10/29/00 at 06:36:44  Reply by: Shagwana (Shagwana@btinternet.com)
+--------------------------------------------------
+botman, I wana be the first to say.....
+
+"uz the man!"
+
+Now im off to try the code out!
+
+--------------------------------------------------
+10/29/00 at 08:43:02  Reply by: BrianL (halfkiller@hotmail.com)
+--------------------------------------------------
+Wow look at this stuff:
+QUOTE:
+
+--------------------Configuration: HPB_bot - Win32 Release--------------------
+Compiling...
+dll.cpp
+C:\My Documents\Source\BJL_bot\dlls\dll.cpp(20) : error C2146: syntax error : missing ';' before identifier 'other_GetNewDLLFunctions'
+C:\My Documents\Source\BJL_bot\dlls\dll.cpp(20) : fatal error C1004: unexpected end of file found
+h_export.cpp
+C:\My Documents\Source\BJL_bot\dlls\h_export.cpp(35) : error C2146: syntax error : missing ';' before identifier 'other_GetNewDLLFunctions'
+C:\My Documents\Source\BJL_bot\dlls\h_export.cpp(35) : error C2501: 'GETNEWDLLFUNCTIONS' : missing storage-class or type specifiers
+C:\My Documents\Source\BJL_bot\dlls\h_export.cpp(35) : fatal error C1004: unexpected end of file found
+Error executing cl.exe.
+
+BJLbot.dll - 5 error(s), 0 warning(s)
+
+
+
+hmm...
+
+--------------------------------------------------
+10/29/00 at 08:47:58  Reply by: BrianL (halfkiller@hotmail.com)
+--------------------------------------------------
+Nevermind I found out what I was doing wrong. :(
+
+
+--------------------------------------------------
+10/29/00 at 09:46:04  Reply by: CountFloyd (countfloyd_1999@yahoo.com)
+--------------------------------------------------
+Botman you RULE !!!
+
+--------------------------------------------------
+10/29/00 at 14:09:24  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+I am King botman???
+
+botman
+
+--------------------------------------------------
+10/29/00 at 15:21:37  Reply by: CountFloyd (countfloyd_1999@yahoo.com)
+--------------------------------------------------
+If you prefer [:)]. Since I'm the Count may I have some land in your kingdom then ?
+Honestly, I changed all your mentioned things in my sources and it now crashes 100%. I then thought that maybe the cause is there's not a valid ptr in g_engfuncs. So I've added this:
+
+in bot.h at the end
+void pfnAddServerCommand( char *cmd_name, void (*function) (void) );
+
+in engine.cpp
+void pfnAddServerCommand(char *cmd_name, void (*function) (void) )
+{
+#ifdef _DEBUG
+ fp=fopen("bot.txt","a"); fprintf(fp,"pfnAddServerCommand:\n"); fclose(fp);
+#endif
+   (*g_engfuncs.pfnAddServerCommand)(cmd_name, function);
+}
+
+It still doesn't matter what I do, it keeps crashing. It happens some time after the call to GiveFnptrsToDll (maybe the first time a newdll Function is called, it's hard to track down). Isn't there a need to copy the new DLL Ptrs to an own array ? I think some of the new functions also influence the old Menus (maybe allocating structures) since when I used UTIL_Showmenu after the new patch was applied it crashed after a few secs (strangely without doing anything else than displaying the menu). I'm very sure this did not happen with the old version. Do you know what might going wrong ? I already wasted a whole day on this...
+
+--------------------------------------------------
+10/29/00 at 15:50:24  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+You DO realize that this is ONLY needed for TFC right?  Counter-Strike doesn't make use of this stuff yet because Gooseman & Co. haven't released a new version of CS with the 1.1.0.4 engine updates (whereas TFC did make use of the new engine functions).
+
+Don't use this stuff for CS.
+
+botman
+
+--------------------------------------------------
+10/29/00 at 16:43:50  Reply by: CountFloyd (countfloyd_1999@yahoo.com)
+--------------------------------------------------
+Yes, I read the topic thread...I'm not that blind ! But this was my last hope (against all odds) to fix the menus crashing after the HL-Patch was applied. Like I wrote in the previous post the HL-Patch DOES crash my menus 100%.
+It didn't happen at anytime with the old version. Does this sound odd, or what ? You also use the old NO-VGUI Menu for waypointing. Does it crash ? If not, I'm really puzzled...
+
+--------------------------------------------------
+10/30/00 at 05:17:52  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+I haven't had any problems with the old text style menus causing the HPB bot to crash.  Can you post a code snippet showing how you set up the call to display the menu?
+
+botman
+
+--------------------------------------------------
+10/30/00 at 07:35:20  Reply by: CountFloyd (countfloyd_1999@yahoo.com)
+--------------------------------------------------
+There's not much to post, really...here we go:
+
+in bot.h
+
+#define MENU_WAYPOINT_ADD      1
+
+typedef struct
+{
+      int ValidSlots;
+      char *szMenuText;
+} menutext_t; 
+
+
+in dll.cpp at the top
+
+int iUserInMenu=0;
+
+menutext_t menuWaypointAdd={
+      0x2ff,
+      "Select Waypoint Type:\n\n\n1. Normal Waypoint\n2. Terrorist Important Waypoint\n"
+            "3. Counter Terrorist Important Waypoint\n4. Ladder Waypoint\n5. Rescue Waypoint\n"
+            "6. Camp Waypoint Start\n7. Camp Waypoint End\n8. Map Goal Waypoint\n \n0. Cancel"}; 
+
+Then in ClientCommand after checking for "waypoint add"
+
+// for further checking                          iUserInMenu=MENU_WAYPOINT_ADD;
+UTIL_ShowMenu(pEntity,menuWaypointAdd.ValidSlots, -1, FALSE, menuWaypointAdd.szMenuText);
+
+
+You see there's not much about it. Nearly instantly if I call UTIL_ShowMenu HL goes BANG !
+I didn't post the checks for "menuselect x" in ClientCommand since I removed them already to find the Bug. I also put a return straight after UTIL_ShowMenu to test if there's some stuff at the end of my function which goes wrong...but nothing seems to help. And it really was working fine with the previous (I didn't change anything!) HL-version. I can't believe it since it's obvious that CS couldn't use any new function in the new patch (yes I DID realize that).
+
+Right before getting insane,
+Count Floyd
+
+--------------------------------------------------
+10/30/00 at 07:43:56  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+I don't see anything wrong with what you have, but there is a limit to the length of the text that can be sent (I'm not sure what the limit is).  That's why the "needmore" boolean value is in the UTIL_ShowMenu() function).
+
+Try shortening your text to the following...
+
+"Menu\n\n1.\n2.\n3.\n4.\n5.\n6.\n7.\n8.\n9.\n0."
+
+I bet that will work.
+
+You can bust your text into smaller chunks and send the first chunk with "needmore" set to TRUE, then send the next chunk (with "needmore" set to TRUE if necessary), then send the last chunk with "needmore" set to FALSE).  All the other parameters (slots, displaytime, etc.) should remain the same on each call to UTIL_ShowMenu().
+
+botman
+
+--------------------------------------------------
+10/30/00 at 15:10:00  Reply by: CountFloyd (countfloyd_1999@yahoo.com)
+--------------------------------------------------
+You just won a hearty "Thank you again!" with your bet. It works now without any flaws...
+
+Note to myself:
+Should really take some deeper looks into the HL-SDK before posting...
+
+--------------------------------------------------
+10/30/00 at 16:33:18  Reply by: BrianL (halfkiller@hotmail.com)
+--------------------------------------------------
+Botman when creating menus do I have to make a loop to check for menuselect num?
+
+Thanx
+
+--------------------------------------------------
+10/31/00 at 05:43:07  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+I'm not sure what you mean by "make a loop", but you do have to intecept the "menuselect" command that the client will return when an option from a menu is selected.  Add code to the ClientCommand() function to catch these in the same way that "addbot" or "waypoint on" is caught.
+
+botman
+
+--------------------------------------------------
+11/17/00 at 05:44:42  Reply by: theimann (theimann@stud.fh-heilbronn.de)
+--------------------------------------------------
+From the menus back to the original problem: Botman, I added all fuctions and variables as you wrote and the game crashes exactly like Count Floyd described it. I could track the error down to the function you posted under 4): if other_GetNewDLLFunctions is NULL it does - obviously - not work. Note that you can't read the "HPB_bot - Can't get MOD's GetNewDLLFunctions!" message before because the crash follows milliseconds after.
+So the problem is that I can't get a corresponding ProcAdress in my dll: I tried it with HL1104 and the newest CS and both didn't work. Does only the TFC-dll export this function? Is there a tool that analyzes your dlls, i.e. gives you a list of all the exported functions?
+
+Tobias
+
+P.S.: I downloaded your post yesterday and I could swear that I didn't see any "fixed"-tags... Did you modify anything or am I just getting old?
+
+
+--------------------------------------------------
+11/17/00 at 13:01:58  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+You can use dumpbin (from the Visual C++ bin directory) to create a list of exported functions like this...
+
+dumpbin /exports tfc.dll
+
+See this...
+
+http://dynamic.gamespy.com/~wavelength/ubb/Forum3/HTML/004419.html
+
+The new stuff in eiface.h occurs at the end of the file.  I imagine the eiface.h included in SDK 2.1 is this version.  I haven't downloaded SDK 2.1 yet so I can't say for sure.
+
+Here's what I've got in h_export.cpp that handles this...
+
+   other_GetNewDLLFunctions = (GETNEWDLLFUNCTIONS)GetProcAddress(h_Library, "GetNewDLLFunctions");
+
+//   if (other_GetNewDLLFunctions == NULL)
+//   {
+//      // Can't find GetNewDLLFunctions!
+//
+//            ALERT( at_error, "HPB_bot - Can't get MOD's GetNewDLLFunctions!" );
+//   }
+
+...and this code in dll.cpp...
+
+extern "C" EXPORT int GetNewDLLFunctions( NEW_DLL_FUNCTIONS *pFunctionTable, int *interfaceVersion )
+{
+   if (other_GetNewDLLFunctions == NULL)
+      return FALSE;
+
+   // pass other DLLs engine callbacks to function table...
+   if (!(*other_GetNewDLLFunctions)(pFunctionTable, interfaceVersion))
+   {
+      return FALSE;  // error initializing function table!!!
+   }
+
+   return TRUE;
+}
+
+Since the GetNewDLLFunctions() only exists in TFC and not in any other MOD, I commented out the code that bails out if it can't load this function so that the HPB bot would work with TFC 1.1.0.4 and Counter-Strike 1.0.
+
+botman
+

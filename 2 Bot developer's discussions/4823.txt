@@ -1,0 +1,164 @@
+--------------------------------------------------
+Subject: CS 1.6 will not allow bots. Why?
+--------------------------------------------------
+09/16/03 at 13:17:41  Posted by: botmeister (meister@telus.net)
+--------------------------------------------------
+My upgraded HLDS server seems normal, but as soon as you try and add a bot into a CS 1.6 game, it crashes the server. 
+
+I noticed that the change log says "removed bots" but I thought this was only the new built-in bots and not ALL bots!
+
+Anyone have more information on this change? 
+
+
+[modified on 09/16/03 at 13:17:41]
+--------------------------------------------------
+09/16/03 at 13:51:01  Reply by: @$3.1415rin (johannes@_-removeifnotavirus-_lampel.net)
+--------------------------------------------------
+no idea yet :(
+
+€: you saw that already in the joebot forums :)
+
+[modified on 09/16/03 at 13:51:01]
+--------------------------------------------------
+09/16/03 at 14:39:50  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+The "Removed Bots" item on the change list appears to be "Removed Official Counter-Strike bots"...
+
+http://www.turtlerockstudios.com/forums/csbot/viewtopic.php?t=76
+
+...but it's possible that Counter-Strike will not not allow ANY fake clients (I don't know this for sure and would be VERY surprised if Valve prevented fake clients in Counter-Strike).
+
+I'll e-mail Alfred at Valve and see if he can give a definitive word on this.
+
+botman
+
+--------------------------------------------------
+09/16/03 at 16:20:55  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Here's the reply from Alfred...
+
+We simply removed Mike's bots from CS 1.6. The fake client system is still fully intact (actually the user interface is a little nicer now, bots show up as bots on the scoreboard).
+
+- Alfred
+
+botman wrote:
+> Hey Man, I know you're kinda busy right now, but I was wondering if
+> you could answer a quick question for me.
+> 
+> The Release Notes for CS 1.6 says "Removed Bots" and the turtlerock
+> website forum says that the Official Counter-Strike bots were removed
+> from CS 1.6 
+> 
+> Does that mean that Counter-Strike doesn't support any fake clients
+> or does it mean that Mike didn't have time to get the changes needed
+> for his bots to work properly in CS 1.6 and they were left out until
+> they worked? 
+> 
+> Several people have e-mailed me stating that bots no longer work in
+> CS 1.6. I suspect that this is more of an engine/MOD interface change
+> that is CS/CZ specific and not that fake clients are just no longer
+> supported in the engine (since TFC bots seems to all still work just
+> fine). 
+> 
+> What's the scoop on bots in Counter-Strike?
+
+...so if there's any problems with bots in Counter-Strike, it would probably have to do with changes in the CS game DLL code (menus being different, weapon name changes, etc.) than it would be anything to do with engine/MOD interface changes.
+
+I know for a fact that TFC bots are still working.  I haven't tried the HPB bot in DMC, OpFor, or deathmatch to verify that those still work properly, but I will be checking everything out this coming weekend (since I was waiting for Steam to settle down before beginning to trouble shoot any problems).
+
+botman
+
+--------------------------------------------------
+09/16/03 at 21:17:40  Reply by: botmeister (meister@telus.net)
+--------------------------------------------------
+Thanks for the help botman! That reply clears a lot up. So the problem is with adding a bot somewhere - should be easy to trace through to find it.
+
+I've managed to get my mEAn mod (almost) fully compatible with CS 1.6. There's only a few new entities to add with only 3 new weapon entities (famas, galil and sheild). The biggest change is the menus because some weapons use different menus numbers than before, and some use overlapping numbers depending on which team is trying to buy the weapon. 
+
+For example, 
+
+The menu selection for buying the FiveSeven pistol is 1-5 for CT, but if a Terr selects 1-5 he will buy the Dual Pistols. 
+
+If you want to buy a scout, the menu selection is 4-3 for Terr and 4-2 for CT.
+
+Other than what I've mentioned, not much else needs to be changed for my mod. 
+
+The one remaining problem I have is that the messaging may of changed a bit, and this is what I'm now looking at, and this may also be why bots are crashing - although they still won't work properly because of the menu changes.
+
+For example I noticed that at the start of the game the WeaponList message is sent with a NULL entity even though no player is joining the game - with CS 1.5 this message was only sent when a player joined the game. 
+
+My guess is that we'll see a number of differences in how the messaging now works.
+
+
+
+--------------------------------------------------
+09/16/03 at 23:50:18  Reply by: DiVeBoMbeR (free_fall@attbi.com)
+--------------------------------------------------
+The bots HPB_bots still work the same in DMC on my steam server, They still won't use the rocketlauncher or grenade launcher same as before.
+;)
+
+--------------------------------------------------
+09/18/03 at 10:36:52  Reply by: punksong (psicomantis@punkass.com)
+--------------------------------------------------
+sorry for this post, but i think the bots who came with the CS 1.6, isn't the "ideal" bot.
+
+sometimes i use the shield and they stop attacking me... that's my opinion
+
+--------------------------------------------------
+09/18/03 at 12:18:17  Reply by: botmeister (meister@telus.net)
+--------------------------------------------------
+There never will be an "ideal bot", which is why there are people who enjoy making them. No matter how good a bot becomes, someone will figure out how to make an even better bot. I look forward to seeing the final version of the CS 1.6 Bots. It'll be fun to try and make a better version. It'll be even more fun if we can have our bots fight against the built-in ones to see which are better. 
+
+What my mEAn mod does (partly), is enhance existing bots, so for me the challange will be to see if I can enhance the built-in bots, to for example, correct weaknesses such as making them successfully attack a player with a shield, etc.
+
+
+
+--------------------------------------------------
+09/23/03 at 01:25:35  Reply by: botmeister (meister@telus.net)
+--------------------------------------------------
+I just finished trying to add a bot using the basic code from botman template readme.txt. 
+
+void BotCreate(void)
+{
+   edict_t *BotEnt;  // this is a pointer to the engine's edict structure
+   char ptr[128];  // allocate space for message from ClientConnect
+   char *infobuffer;  // pointer to buffer for key/value data
+   int clientIndex;  // engine's player index (1-32)
+
+   BotEnt = g_engfuncs.pfnCreateFakeClient)( "Bot" );
+   player( VARS(BotEnt) );
+   infobuffer = g_engfuncs.pfnGetInfoKeyBuffer)( BotEnt )
+   clientIndex = ENTINDEX( BotEnt );
+   g_engfuncs.pfnSetClientKeyValue)( clientIndex, infobuffer, "model", "gina" );
+   ClientConnect( BotEnt, "BotName", "127.0.0.1", ptr );
+   ClientPutInServer( BotEnt );
+   BotEnt->v.flags |= FL_FAKECLIENT;
+}
+
+A trace of the code shows that every line executes before crashing the server. My test code did nothing else afterwards. 
+
+
+
+
+
+
+--------------------------------------------------
+09/23/03 at 05:09:11  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Where did it crash? (I assume you are running it in the debugger.)
+
+botman
+
+[modified on 09/23/03 at 05:09:11]
+--------------------------------------------------
+09/23/03 at 08:46:24  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+botmeister, if you are running this for Counter-Strike, not sure if you know that already but the client infobuffer needs to be set BEFORE they are PutInServer(). Here you just set the "model"="gina" key/value, I'm afraid that's not quite much for CS... I don't see why it would crash, though, but if I were you I'd try to fill the infobuffer the same way botman does it in the HPB_bot (and basically all CS bot makers do it exactly the same way).
+
+
+--------------------------------------------------
+09/23/03 at 09:52:05  Reply by: botmeister (meister@telus.net)
+--------------------------------------------------
+I took the code stright out of botman's readme.txt that came with his template. I did not trace run it from a debugger, instead I logged each step to a text file. Each line executed successfully, and the entire function that created the fake client completed and returned from the call, then then after a very small delay (~milliseconds) the server crashed. I know more can be done to explore this, but my time is very limited at the moment. The purpose of this simple test was to help us narrow down the search.
+
+

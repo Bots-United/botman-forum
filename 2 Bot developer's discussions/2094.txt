@@ -1,0 +1,171 @@
+--------------------------------------------------
+Subject: Detection Holding Weapon Bug?
+--------------------------------------------------
+08/03/01 at 08:13:18  Posted by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+I try to code my own sort of weapon selection/usage while in combat. Since my bots take out a knife when walking (when high skilled) i dont want them to fight with it when an opponent is to far away. I've registered the weapon_id's (primary and secondary) and the bots do pick an other weapon. The odd thing is, the update doesnt seem to be updated anymore?
+
+Here is my code: (snipped from BotFireWeapon)
+
+// This determines what the current id is of our weapon RIGHT?
+   int current_id = pBot->current_weapon.iId; // Wat voor wapen we nu hebben....
+
+   bool switch_weapon = false;  // switch to other weapon?
+   int new_weapon = -1;      // To what weapon do i switch?
+   int reason = -1; // Reason for switching weapon (debug)
+
+
+   // If opponent to far away
+      if (current_id == CS_WEAPON_KNIFE && distance > 90)
+      {
+            switch_weapon = true;
+            reason = 0;
+            // Pick primary or secondary
+            if (pBot->primary_weapon > -1)
+                  new_weapon = pBot->primary_weapon;
+            else
+                  new_weapon = pBot->secondary_weapon;
+      }
+
+      if (switch_weapon)
+      {
+            if (reason == 0)
+                  BotDebug("Taking primary/secondary weapon because i've knife and enemy is to far away.\n");
+
+            char msg[80];
+            
+            sprintf(msg, "NR %d = %d LIST ID = %s -> weapon name\n", new_weapon, find_listid(new_weapon), cs_weapon_select[find_listid(new_weapon)].weapon_name);
+            BotDebug(msg);
+
+                // Select weapon
+            UTIL_SelectItem(pEdict, cs_weapon_select[find_listid(new_weapon)].weapon_name);
+
+            return false;
+      }
+
+This code WORKS... but this code 'loops' somehow.
+
+When playing against one bot, i get this via the debugging info:
+
+-> bot has a GLOCK18 (ID=17)
+-> bot picks a knife and walks with it
+-> bot sees me, and says the above debugging info, it will take the GLOCK18.
+
+But, the bot keeps repeating it has the knife!!
+I have checked my 'pick knife' code, but that is only called when the bot has NO enemy. 
+
+Anyone got any tips? or some info which could bring me closer to fix this bug?
+
+
+
+--------------------------------------------------
+08/03/01 at 08:25:37  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+info update:
+i've checked the client messages, and they all look fine. It should work, but somehow it doesnt?
+
+--------------------------------------------------
+08/03/01 at 08:34:04  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+BotFireWeapon is, by default, called during every frame.
+
+You might want to put a timer in your code so that you only check if the bot is carrying the knife every 1/10th of a second.  Just have something like this...
+code:
+if (pBot->check_knife_time < gpGlobals->time)
+{
+   pBot->check_knife_time = gpGlobals->time + 0.1;  // don't check again for a little while
+
+   // PUT THE REST OF YOUR KNIFE SWITCHING CODE HERE
+
+}
+
+...this will give the MOD time to generate the weapon switch message and set the currently deployed weapon in case you are calling the UTIL_SelectItem() function to rapidly.
+
+botman
+
+--------------------------------------------------
+08/03/01 at 08:40:59  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+aha, thanks botman. I guess it would be better to do the 'weapon' check every 10th a second then, instead of knifes only.
+
+Thanks!
+
+(btw, got any time to test RB more with BotMaster5000?)
+
+--------------------------------------------------
+08/03/01 at 08:48:15  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+"(btw, got any time to test RB more with BotMaster5000?)"
+
+I found one more place where it crashes, it's here...
+code:
+    if (strstr(message,"#Follow_me") != NULL)
+    {
+      if (RANDOM_LONG(0,100) < 50)
+      {
+      UTIL_GetBotPointer(pPlayer)->pBotUser = plr;
+      unstood = true;
+      pBot->f_follow_timer  = gpGlobals->time + 30;
+      } else
+
+...it crashes on the UTIL_GetBotPointer() trying to deference the pointer.  I haven't figured out why this is crashing since pPlayer is valid (it points to a good edict) and plr is valid (is also points to a good edict).  I just found this early this morning right before leaving for work, so I'm put some breakpoints around there and run it again tonight when I get home.
+
+I'm using the dedicated server with MSVC in Debug mode and starting up a client on a different IP port (+clientport 27099) to be able to connect and capture the points where it crashes.  I'll let you know more when I figure out what's going on.
+
+botman
+
+--------------------------------------------------
+08/03/01 at 08:58:27  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+okay, i use excactly the same radio code in my new version so i can try and debug it immidiatly too (if you've spotted the bug?).
+
+--------------------------------------------------
+08/03/01 at 09:00:52  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+I believe UTIL_GetBotPointer() is returning NULL, I just haven't had any time to look into why it isn't returning a pointer to a bot.
+
+botman
+
+--------------------------------------------------
+08/03/01 at 09:14:06  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+ok, i will try and let it check for NULL. Also, the timer sollution for weapon updating didnt work 100%. Ofcourse, the engine needs some time to update. 
+
+<snipped stupid comments from me>
+
+It still doesnt work! The bot only gives me info that its update after it has fired its weapon. Which he only does when i'm to close since then the check (>90 and having knife) fails...
+
+i think the only sollution is to let a bot not check for this information for about one second after it has switched a weapon.
+
+
+
+[modified on 08/03/01 at 09:14:06]
+--------------------------------------------------
+08/03/01 at 09:18:22  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+ok fixed;
+
+i think that the 'animation to get the weapon' also plays a role. Since i now let a bot check after 1.5 second for its weapon, it works. So i guess the engine does this:
+
+-> weapon_xxx got through
+-> engine plays animation
+-> after animation, engine sends update message about new weapon.
+
+
+
+--------------------------------------------------
+08/03/01 at 11:19:55  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+Yes, I believe that is correct.  The MOD doesn't send the CurrentWeapon network message until AFTER the Deploy animation sequence has finished.  During the time between holstering the old weapon and fully deploying the new weapon, there won't be a "current weapon".
+
+Perhaps you could set the "current_weapon.iId" field to some unused value (like CS_WEAPON_NONE) as soon as you call the UTIL_SelectItem(), that way you would know that the weapon switch was in progress (since the bots won't normally be carrying a WEAPON_NONE).
+
+botman
+
+--------------------------------------------------
+08/03/01 at 11:40:38  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+you're right, that sounds even better! Since some animations take longer then other animations, you are always assured that bots don't wait to long...
+
+i'll try that!
+

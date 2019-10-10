@@ -1,0 +1,255 @@
+--------------------------------------------------
+Subject: Darn bots don't shoot half the time :(
+--------------------------------------------------
+01/15/02 at 01:15:06  Posted by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+I get problems while my bot is in combat, most of the time they shoot fine, but when cheats are on and they get all the weapons they keep flicking through lots of weapons and only sometimes shoot their enemy...
+
+I don't know why they do this because its annoying :(
+
+the werid thing is, most of the time the code reaches the IN_ATTACK button but for some reason the bot isn't actually attacking...?
+
+I dunno what I might need to post so you can see whats happening, although it's mainliy just botmans weapon selection code using VALVE weapons...
+
+[modified on 01/15/02 at 01:15:06]
+--------------------------------------------------
+01/15/02 at 02:38:30  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+this is a known bug in HPB template 3. Botman has rewrote the code for BotFireWeapon in the 1.8 version. You should download it if you haven't done it yet.
+
+The reason is that bots keep issuing bad change weapon commands every frame that's why IN_ATTACKs are not effective half the time because of the weapon change time.
+
+I did rewrite this function too, but in another way than botman does. It works fine for me ; if you want you can look in the source of my bot.
+
+
+[modified on 01/15/02 at 02:38:30]
+--------------------------------------------------
+01/15/02 at 03:05:44  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+Thanks I'll check it out :)
+
+--------------------------------------------------
+01/15/02 at 04:39:27  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+"this is a known bug in HPB template 3."
+
+I'm not aware of this bug.  Here's everything that was changed in HPB bot 1.8 and 1.8a...
+
+10/02/2001 - Release 1.8a
+- Fixed a bug in pfnClientCommand() that caused the game to crash whenever a MOD DLL would try to send a command to a bot client.
+- TFC spy bots now use gas grenades (and regular grenades) once again (thanks to RedFox redfox@nildram.co.uk of the FoxBot for help on this one).
+
+09/29/2001 - Release 1.8
+- Updated to support Half-Life engine 1.1.0.8 (TFC crashes with "SZ_GetSpace: Tried to write to uninitialized sizebuf_t ???" when TFC spy bot throws a gas grenade.  For now, grenades are disabled for TFC spy bots only.
+
+I've never seen the problem that cheesemonster is talking about.  It sounds as though the bot is finding and then immediately forgetting about an enemy.  Hence, they start to aim/shoot and then stop.  I would bet that your bug is somewhere other than in the bot_combat.cpp code.  That's why it's ALWAYS important to keep backups of recently working code so that you can undo something if you screw it up.
+
+botman
+
+--------------------------------------------------
+01/15/02 at 07:20:10  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+I took the weapon select code from 1.8a, it improved a bit but I had to add this code below to make it better. I made it so the bots won't change weapon if they already have enough ammo etc for their current weapon.
+
+code:
+
+bool check_weapons = TRUE;
+...
+
+
+
+code:
+
+                  if( pBot->current_weapon.iId == pSelect[select_index].iId )
+                        check_weapons = FALSE;
+
+                  if( check_weapons )
+                  {                  
+                        int check_index = 0;
+                        
+                        while((pSelect[check_index].iId)&&(pBot->current_weapon.iId != pSelect[check_index].iId))
+                              check_index ++;
+                        
+                        if( pSelect[check_index].iId )
+                        {
+                              
+                              if ((pBot->current_weapon.iId != pSelect[select_index].iId)&&
+                                    ((weapon_defs[pBot->current_weapon.iId].iAmmo1 == -1) ||
+                                    (pBot->m_rgAmmo[weapon_defs[pBot->current_weapon.iId].iAmmo1] >= 1)))
+                              {            
+                                    bool prim_in_range = (distance >= pSelect[check_index].primary_min_distance) &&
+                                          (distance <= pSelect[check_index].primary_max_distance);
+                                    
+                                    bool sec_in_range = (distance >= pSelect[check_index].secondary_min_distance) &&
+                                          (distance <= pSelect[check_index].secondary_max_distance);
+                                    
+                                    if(( prim_in_range )||(sec_in_range))
+                                    {
+                                          select_index++;
+                                          continue;
+                                    }
+                              }            
+                              
+                        }
+                  }
+
+
+--------------------------------------------------
+01/15/02 at 17:56:45  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+To botman:
+
+With the bare unmodified HPB template #3, this bug exist. If you get close to a bot, you'll notice that the bot keeps switching weapons and rarely fires.
+
+
+--------------------------------------------------
+01/16/02 at 00:06:23  Reply by: jerry_stoel (jerry_stoel@hotmail.com)
+--------------------------------------------------
+Maybe Botman didn't noticed, because he didn't test it in Counter-strike ?
+
+Maybe it does work in TFC.
+
+--------------------------------------------------
+01/16/02 at 04:11:52  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+Botman, you wouldn't have noticed the bug because the original code just allows the bots to run right into the enemy and use its crowbar. I've changed the code so the bots will stay a small distance away from enemies and shoot with a gun. That's where the problem is... i think!
+
+--------------------------------------------------
+01/16/02 at 04:27:07  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+That is correct.  There is a small range (about 50 units away from the bot) where they will switch from a gun to the crowbar (or knife in CS).  If you keep moving towards them and away from them staying close to this 50 units range, the bots will keep switching from a gun back to the crowbar, back to a gun, back to the crowbar, etc.
+
+This "bug" also exists in the 1.8a release of the HPB bot.  Like cheesemonster said, since the bots keep advancing towards the player, you wouldn't normally notice this problem.
+
+botman
+
+--------------------------------------------------
+02/20/02 at 05:59:01  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+heres a slightly better code to fix it I think.
+
+(top of function)
+code:
+
+bool check_weapons = TRUE;
+
+
+
+I put the check_weapons variable in so if the bot does not have enough ammo/too far away etc on its current gun, it sets a flag so the bot will search lower priority weapons. If the select_index equals the bots current weapon ID then the bot will check to see if it needs to change weapon. If the select_index ID isn't the current weapon ID then it checks to see if the bot has enough ammo/distance to shoot with the current weapon instead of having to change weapon. :puff:!!
+
+I tried it and it seems to be working so far.
+
+code:
+
+                  use_primary = FALSE;
+                  use_secondary = FALSE;
+                  primary_percent = RANDOM_LONG(1, 100);
+                  
+                  // is primary percent less than weapon primary percent AND
+                  // no ammo required for this weapon OR
+            // enough ammo available to fire AND
+                  // the bot is far enough away to use primary fire AND
+                  // the bot is close enough to the enemy to use primary fire
+                  
+// FROM HPB_BOT 1.8a Source
+                  primary_in_range = (distance >= pSelect[select_index].primary_min_distance) &&
+                        (distance <= pSelect[select_index].primary_max_distance);
+                  
+                  secondary_in_range = (distance >= pSelect[select_index].secondary_min_distance) &&
+                        (distance <= pSelect[select_index].secondary_max_distance);
+
+                  if( pBot->current_weapon.iId == pSelect[select_index].iId )
+                        check_weapons = FALSE;
+
+                  if( check_weapons )
+                  {      
+                        
+                        if ((pBot->current_weapon.iId != pSelect[select_index].iId))
+                        {
+                              
+                              int check_index = 0;
+                              
+                              while((pSelect[check_index].iId)&&(pBot->current_weapon.iId != pSelect[check_index].iId))
+                                    check_index ++;
+                              
+                              if( pSelect[check_index].iId )
+                              {
+                                    bool enough_prim_ammo = ((pBot->m_rgAmmo[weapon_defs[pBot->current_weapon.iId].iAmmo1] >= 
+                     pSelect[check_index].min_primary_ammo) OR 
+                     (weapon_defs[pBot->current_weapon.iId].iAmmo1 == -1));
+                                    
+                                    bool enough_sec_ammo =  ((pBot->m_rgAmmo[weapon_defs[pBot->current_weapon.iId].iAmmo2] >= 
+                     pSelect[check_index].min_secondary_ammo) OR 
+(weapon_defs[pBot->current_weapon.iId].iAmmo2 == -1));
+                                    
+                                    bool prim_in_range = (distance >= pSelect[check_index].primary_min_distance) &&
+                                          (distance <= pSelect[check_index].primary_max_distance);
+                                    
+                                    bool sec_in_range = (distance >= pSelect[check_index].secondary_min_distance) &&
+                                          (distance <= pSelect[check_index].secondary_max_distance);
+                                    
+                                    if((( enough_prim_ammo )&&(prim_in_range)) OR 
+                                          (( enough_sec_ammo )&&(sec_in_range)))
+                                    {
+                                          select_index++;
+                                          continue;      
+                                    }                              
+                                    
+                              }
+                              
+                        }
+                  }
+
+
+
+Damn, the pipes aren't appearing again. I just wote "OR" instead :)
+
+[modified on 01/16/02 at 04:41:00]
+
+[modified on 02/20/02 at 05:59:01]
+--------------------------------------------------
+02/20/02 at 05:57:36  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+I made a much easier way to fix this and works a lot better.
+
+code:
+
+            select_index = 0;
+
+            bool check_current_weapon = FALSE;
+            
+            while((pSelect[select_index].iId)&&(pSelect[select_index].iId != pBot->current_weapon.iId))
+                  select_index++;
+            
+            if( pSelect[select_index].iId )
+                  check_current_weapon = TRUE;
+            else
+                  select_index = 0;
+
+            // loop through all the weapons until terminator is found...
+            while (pSelect[select_index].iId)
+            {
+...
+...
+...
+                  // see if there wasn't enough ammo to fire the weapon...
+                  if ((use_primary == FALSE) && (use_secondary == FALSE))
+                  {
+                        if( check_current_weapon )
+                        {
+                              select_index = 0;
+                              check_current_weapon = FALSE;
+                              continue;
+                        }
+                        else
+                        {
+                              select_index++;  // skip to next weapon
+                              continue;
+                        }
+                  }
+...
+...
+...
+                  }
+
+

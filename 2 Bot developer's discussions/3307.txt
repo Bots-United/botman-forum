@@ -1,0 +1,87 @@
+--------------------------------------------------
+Subject: debug dll with linux?
+--------------------------------------------------
+06/20/02 at 04:11:00  Posted by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+In my 'segmentation fault' post, botman, you told me to put "-g" next to my compile/link commands in the linux makefile so my DLL will produce (hopefully) better info on any crashes (am I right?)
+
+anyway I don't actually have a clue where to put the parameter "-g"!! I have no experience hardly with makefiles.
+
+
+Heres is most of the make file.. If you could just tell me where I should put it thats all I need hehe
+
+code:
+
+CPP = gcc
+
+BASEFLAGS = -Dstricmp=strcasecmp -Dstrcmpi=strcasecmp
+
+CPPFLAGS = ${BASEFLAGS} -m486 -O2 -w -I../engine -I../common -I../pm_shared
+
+OBJ = bot.o bot_client.o bot_combat.o bot_navigate.o bot_start.o \
+      dll.o engine.o h_export.o linkfunc.o util.o waypoint.o
+
+rcbot_i486.so: ${OBJ}
+      ${CPP} -fPIC -shared -o $@ ${OBJ} -ldl
+      cp -f rcbot_i486.so ${MOD_DIR}/dlls
+
+clean:
+      -rm -f *.o
+      -rm -f *.so      
+
+%.o:      %.cpp
+      ${CPP} ${CPPFLAGS} -c $< -o $@
+
+%.o:      %.c
+      ${CPP} ${CPPFLAGS} -c $< -o $@
+
+
+
+
+--------------------------------------------------
+06/20/02 at 04:15:00  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+i assume you do something like:
+
+gcc <makefile here> 
+
+?
+
+(i dont type anything precisily, you know i might mess up things again he? :D)
+
+i think botmans just means do:
+
+gcc -g <makefile here, or whatever you normally do here to compile>
+
+EDIT:
+although the above should work i think, i think you should add the -g to this:
+
+CPPFLAGS = ${BASEFLAGS} -m486 -O2 -w -I../engine -I../common -I../pm_shared
+
+i think Baseflags is here what you normally would type, so the makefile simply attaches this to your command. So practicly its the same, see what i mean?
+
+EDIT2: Botman could you plz confirm this?
+
+
+[modified on 06/20/02 at 04:15:00]
+--------------------------------------------------
+06/20/02 at 04:17:36  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Yes, this...
+code:
+CPPFLAGS = ${BASEFLAGS} -m486 -O2 -w -I../engine -I../common -I../pm_share
+
+...becomes this...
+code:
+CPPFLAGS = ${BASEFLAGS} -m486 -O2 -w -g -I../engine -I../common -I../pm_share
+
+...and this...
+code:
+${CPP} -fPIC -shared -o $@ ${OBJ} -ldl
+
+...becomes this...
+code:
+${CPP} -fPIC -shared -g -o $@ ${OBJ} -ldl
+
+botman
+

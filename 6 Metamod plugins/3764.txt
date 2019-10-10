@@ -1,0 +1,177 @@
+--------------------------------------------------
+Subject: Colored Text
+--------------------------------------------------
+10/21/02 at 12:50:42  Posted by: WFB (williamfbuckleyjr@yahoo.com)
+--------------------------------------------------
+Has anyone every seen a color other than the default white for in game bsp text messages?  
+
+I'm talking about the white lettering that centers screens when certain events occur in the game. 
+
+Such as when a player picks up a grenade pack the message "Grenades!" is printed in white letters on the screen.  
+
+I am not talking about adminmod csays, tsays, etc. commands where it's easily accomplished.
+
+Thanks - Bill
+
+[modified on 10/21/02 at 12:50:42]
+--------------------------------------------------
+10/21/02 at 15:09:22  Reply by: ~OLC~Gambit (OLC_Gambit@hotmail.com)
+--------------------------------------------------
+it has always my impression that the csay and tsay functionality from Admin Mod is implemented in the admin_MM.dll... kinda like the slap command. ...they did it, so i cant see why you shouldn’t be able to as well. but thats way out of my league. =-)
+
+~Gambit
+
+
+--------------------------------------------------
+10/21/02 at 15:25:34  Reply by: LunaticWithCandy (candyranger@hotmail.com)
+--------------------------------------------------
+It works just like Admin Mod's say commands do.
+
+Atleast I've heard that it's done by putting the name of the color infront of your text.
+
+EG: green Grenades!
+
+But I can't confirm this. I know that on some TFC maps the text comes up as green rather then white but I've never decompiled to see how its done nor can I remember the map that does it :). I think it's badlands.
+
+I'll run through em all right now and see which one it is then decompile it and see how its done.
+
+--------------------------------------------------
+10/21/02 at 15:48:07  Reply by: LunaticWithCandy (candyranger@hotmail.com)
+--------------------------------------------------
+Yes the map is badlands. I have no idea how they do it... botman? This is what I get from VHE:
+
+{
+"classname" "info_tfgoal"
+"g_a" "1"
+"g_e" "1"
+"mdl" "models/backpack.mdl"
+"wait" "5"
+"ammo_shells" "50"
+"ammo_cells" "150"
+"ammo_rockets" "5"
+"ammo_nails" "50"
+"noise" "weapons/scock1.wav"
+"armorclass" "1"
+"armorvalue" "50"
+"health" "25"
+"team_no" "2"
+"else_goal" "702"
+"angles" "0 225 0"
+"netname" ""
+"goal_state" "2"
+"origin" "704 1664 218"
+}
+
+For this backpack http://66.167.101.75:8000/badlands0064.jpg
+
+--------------------------------------------------
+10/21/02 at 18:09:08  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+I've seen TFC entities that have a "message" key print messages to the screen when those entities are activated.
+
+Try searching the TFC .fgd file for "message" to find entities that use this key.
+
+UPDATE: I found "@BaseClass = TFMessages" which contains a "message" field that says this...
+
+//#desc Message string is center printed to Activating Player.
+message(string) : "Message to A.Player"
+
+...so anything that is based on TFMessages will have this property.
+
+"info_player_teamspawn" has it.  "info_tfgoal" has it (and "i_t_g").  "info_tfgoal_timer" has it.  "item_tfgoal" has it.  "button_target" has it.  "func_button" (for TFC) has it.  "func_door" has it.  Etc., Etc., Etc.
+
+botman
+
+[modified on 10/21/02 at 18:09:08]
+--------------------------------------------------
+10/23/02 at 06:55:13  Reply by: WFB (williamfbuckleyjr@yahoo.com)
+--------------------------------------------------
+Got it!
+
+In the example that LWC gives above it's to the other entity that else_goal refers that is printed in green text.
+
+Seems that 702 is the following:
+{
+"origin" "64 -64 496"
+"message" "#ctf_cantuseitem"
+"goal_no" "702"
+"classname" "info_tfgoal"
+}
+
+Then I went to the tiles.txt where it's all explained. :)
+
+[modified on 10/23/02 at 06:55:13]
+--------------------------------------------------
+10/23/02 at 07:15:03  Reply by: ClockworkOrange (clockwork@integraonline.com)
+--------------------------------------------------
+so this line will change the text to green?
+
+"goal_no" "702" 
+
+
+if so, what 3's would blue and red be?
+
+inquiring minds want to know
+
+--------------------------------------------------
+10/23/02 at 07:52:36  Reply by: WFB (williamfbuckleyjr@yahoo.com)
+--------------------------------------------------
+
+QUOTE:
+so this line will change the text to green?
+
+"goal_no" "702" 
+
+
+
+No.  Learn about goal_no's on that site I gave you the other day in re quad damage.  Then learn about predesignated text messages such as "#ctf_cantuseitem."  Then check out the titles.text found in your TFC folder.
+
+
+--------------------------------------------------
+10/23/02 at 08:23:44  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+The "#" in front of text messages means that this entry should be looked up in the titles.txt file.  The titles.txt file tells the client.dll what it should replace this text with.
+
+The "#" is often used to display standard text message (of specific colors) and sometimes used to play sounds (like the hgrunts in Half-Life saying "You got nothing!").
+
+Like Bill said, check out the titles.txt file of TFC (or other MODs) for some examples.
+
+Note that you can't change the text or colors without modifying the titles.txt file, so making changes here would effect everything that uses what you changed.  Also, changing titles.txt on your machine won't make changes on a client's machine.
+
+botman
+
+--------------------------------------------------
+10/23/02 at 08:54:48  Reply by: WFB (williamfbuckleyjr@yahoo.com)
+--------------------------------------------------
+Therefore, it seems that message lines that we might want to add as a modifications to a bsp that are not of the predesignated colored variety found in the titles.txt will default to white. I assume this can be modified in the titles.txt file(there's a line there that looks like the culprit), but as botman said not so the client can see the change.
+
+--------------------------------------------------
+10/23/02 at 10:18:08  Reply by: DiVeBoMbeR (free_fall@attbi.com)
+--------------------------------------------------
+I don't know about TFC but other mods have a game_text entity, I use this all the time for adding text to maps. You can edit the color, where it appears on the screen and how it appears ie, scans in, blinks, etc, lots of other variables too. It has a name feild so you can target it with any other entity that has a target feild. I use several of them with a multimanager to display titles etc. to players as they join maps. you can email me for an example rmf if you like at free_fall@attbi.com
+<-=F=-*DiVeBoMbeR*-=F=->
+
+--------------------------------------------------
+10/23/02 at 10:23:29  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+See this...
+
+http://www.valve-erc.com/entities/?entity=game_text
+
+The fields in the parenthesis '(',')' are what you want to use in Stripper2 (i.e. use "effect", not "Text Effect").
+
+Also note that you have to TRIGGER this entity to get it to display the text, so you'll need to create an entity that will fire the trigger (like a func_button, etc.)
+
+botman
+
+[modified on 10/23/02 at 10:23:29]
+--------------------------------------------------
+10/23/02 at 11:11:53  Reply by: WFB (williamfbuckleyjr@yahoo.com)
+--------------------------------------------------
+Nice call Mark and thanks for the extra info botman.  This is actually what I wanted.
+
+--------------------------------------------------
+10/25/02 at 10:48:35  Reply by: WFB (williamfbuckleyjr@yahoo.com)
+--------------------------------------------------
+I have yet to try game_text entitiy on a TFC bsp, but I did search the tfc.dll (tfc.txt) and it wasn't included in the entities list there. 
+

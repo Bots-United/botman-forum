@@ -1,0 +1,514 @@
+--------------------------------------------------
+Subject: Navigating in Groups
+--------------------------------------------------
+04/17/01 at 02:10:25  Posted by: William (william@botepidemic.com)
+--------------------------------------------------
+I moved Eric Bieschke's post (in Learning the Map) over to a new thread. The original thread was already large enough in size and quality.
+
+William
+
+QUOTE:
+
+I am seeking a critique of my navigational system, and the strategies I have used to cope with its weaknesses. All feedback will be embraced.  =] 
+
+- - - 
+
+Solo-bot navigational system: 
+(1) Bots select navigational routes and traverse directly from waypoint to waypoint until they reach their navigational objective. A waypoint is considered to have been reached when the bot is within a minimal distance. 
+
+Problems with this system: 
+(a) Waypoints placed near brush edges often lead to bots getting stuck. Correctable by continual maintence of waypoints/paths. 
+(b) Multiple bots both moving towards the same waypoint at the same time will get stuck on eachother, and since neither ever "reaches" the waypoint they become stuck indefinately. 
+(c) Two bots travelling between the same two waypoints in opposite directions will get stuck on eachother. 
+
+My solution: 
+(2) Blend Craig W. Reynold's notion of "separation" into individual bots' movement routines. This essentially creates repulsion fields around each bot, alleviating problems (b) and (c) mentioned above. 
+(3) Waypoint origins are randomly displaced during navigation, decreasing the chances of bot collision, and creating minor deviance of bots' paths. 
+
+New problems: 
+(d) In confined spaces (e.g. doorway or narrow passage) the separation (i.e. repulsion) technique doesn't help. Bots are still stuck, they're just further apart (at the repulsion horizon). 
+(e) On occasion, a bot may be repulsed closer to the next waypoint along his path; however, it backtracks to traverse the waypoints in the "correct order" because it never "reached" the first waypoint. 
+
+Group navigational system: 
+(4) At this point, I decided to have my bots roam in squads (i.e. groups of one to four). Current implementation simply has each squad share the same navigational path. Currently, no system of explicit squad cohesion (or re-grouping) exists, but occurs naturally at the beginning of each round. 
+
+Issues on the horizon: 
+(f) Problems (d) and (e) from above are magnified. 
+(g) Individual bots shouldn't simply share the same paths, and instead should choose complimentary paths within the same immediate vicinity. What implementation strategies show potential here, knowing that not all squad members have deterministic paths (e.g. humans)? 
+(h) The shift to wayzone to wayzone (rather than point-to-point) navigation seems beneficial in a squad-centric environment. What approaches to wayzoning have yielded satisfactory results in practice? 
+
+- - - 
+
+Thoughts? Comments? 
+
+
+Eric Bieschke 
+original author of Rho-Bot (HLDM) 
+current author of a newer bot (CS) 
+
+
+
+--------------------------------------------------
+04/17/01 at 05:19:46  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+"New problems: 
+(d) In confined spaces (e.g. doorway or narrow passage) the separation (i.e. repulsion) technique doesn't help. Bots are still stuck, they're just further apart (at the repulsion horizon)."
+
+You could use something like the Aloha protocol used in wireless transmitters.  Whenever there is a collision you have each entity select a random delay and back off for that amount of time.  If they continue to collide, the delay time gradually becomes larger and larger until one of them is successful in getting through.
+
+botman
+
+--------------------------------------------------
+04/17/01 at 07:25:54  Reply by: theimann (killaruna@botepidemic.com)
+--------------------------------------------------
+To e):
+You could modify your waypointReached()-method by not only checking for arrival at the next waypoint but also for arrival at future waypoints of the path. If the bot happens to be at one of those, just set the currentWaypoint-pointer accordingly.
+
+To g):
+When there's a human in the squad it may be the easiest solution to just follow him without any use of waypoints - I think it's very hard to predict where a human will move to in order to get the corresponding paths.
+
+Tobias
+
+--------------------------------------------------
+04/17/01 at 09:21:41  Reply by: CountFloyd (countfloyd_1999@yahoo.com)
+--------------------------------------------------
+to b) and c):
+you could give priorities to each individual Bot, for example move the one closest to the waypoint towards the goal, let all others steer away.
+to h)
+It depends what method of wayzoning you're doing. For example Android Bot does call a number of waypoints a 'wayzone' (it's a sector) where a wayzone in my Bot is simply a radius offset like your solution in 3)
+I do some sort of postprocessing when walking the path. This means for every waypoint between the start and end-waypoint I check if the waypoint is
+a) occupied by another Bot
+b) if there's a waypoint with a smaller wayzone radius (a possibly more occluded waypoint then)
+c) if there's a connected waypoint which would mean less turning to the Bot
+
+If one of these cases is true (and the better rated waypoint is connected with the current destination waypoint AND the next waypoint) I exchange the waypoint I got from the Path Algo with the one rated better.
+
+--------------------------------------------------
+04/17/01 at 13:48:17  Reply by: William (william@botepidemic.com)
+--------------------------------------------------
+Finally somebody who realizes that CS is about team play :)
+
+Warning, followed by more constructive thoughts.
+
+Though you already list a number of concerns, team maneuver AI is probably a biggger can of worms than you can imagine. It has all the problems of normal (tactical) movement, and a whole lot of additional exceptions. 
+With CGF, I started out simple but ended up spending 30,000 lines of code (and comments) on team AI; way more than I use for individual AI. And still, I haven't tackled all exceptions correctly (teams trying to use an elevator together).
+
+One choice that will influence your design is the kind of team maneuvering (or squad roaming) you are aiming for. For example,
+- centipede movement (as in Rainbow Six): team members typically follow the leader very closely, and seldomly string out. This works great most of the time (in indoor close-quarters-battle), but this really is the wrong thing to do outdoors.
+By the way, Rainbow Six team members reused the path planned for the team.
+- formation movement (as in the Operation Flashpoint demo - recommended!): team members move in a formation, with some 4 meters in between, all the time. Works fine on outdoor terrain with little cover, but is pretty silly in urban environments.
+Operation Flashpoint seems to use large tiles to represent the terrain for the AI, and one tile can only be occupied by one AI members.
+- 'strung out on the move, with frequent regroups terrain permitting': it's what I ended up with in CGF, after starting initially with formation based movement. Formation based movement didn't work well in most cases, and Action Quake2 players tended to combined spaced out rushes with with brief reassemblies before turning a corner, etc. (terrain and path permitting). Members do not necessarily follow the same path as planned for the team: they might come from different positions, and deviate from the path when moving up, for example, to move in bounds.
+
+(The above just discussed movement before an engagement. Team movement during the engagement is different, and reassembly after combat probably is the toughest part - there's likely some more enemies in the neighborhood, and the team doesn't want to be caught together in a bad spot).
+
+Something that really worked for me was a large number of closely spaced waypoints (for Action Quake2 I use 2 meter between waypoints in open space, and less near obstacles; CS is a slower game and probably needs to have the waypoints even closer). 
+Simply put: the more waypoints you have, the easier it is to distinguish between different positions of the team members (in a small alley, which member is nearest to the exit, and should move first?). It also enables you position team members at distinct positions in a small space.
+I originally chose to use closely spaced waypoints to have the waypoints better express cover and concealment, but here I obtained another advantage.
+
+I precompute all paths. Yes, this takes up some memory (1600KB for 1000 waypoints, also expressing path lengths), but it allows the AI to reason about distances whenever it needs to do so. Which turns out to be very frequently: you need it to figure out the initial team movement order (pointman to tailman), and to correct the team order on the fly (if members fail to follow the path).  
+
+Your concerns:
+
+a) most of my waypoints are positioned automatically (once I visit the location myself); they typically are sufficiently spaced away from the wall. 
+
+b) this IMO is a bigger can of worms. I ran into the following problems:
+- two bots run into each other (I tackled that by having the two bots evade to the right, which works most of the time, or otherwise jump);
+- one bots runs into another bot who is static (sniping, for example);
+- two bots try to occupy the same spot;
+
+I didn't really solve the latter two problems in CGF. Jumping or moving around another bot typically deals with the second problem, but I would prefer to deal with problem by pushing away the bot with the lowest priority.
+The third problem I prevented within the team (which does bookkeeping for position claims), but not across team in the same force.
+
+I suggest experimenting with bots pushing each other out of the way, and giving more force the bot with the highest priority. This priority should be based on distance to destination, fitness, weapon, etc.
+
+e) This one can be solved quite easily by looking at two (current and next) waypoints rather than one (current) when testing for reaching a waypoint. In CGF, the waypoint was reached if it was really reached, or if the bot ended up distant from the current waypoint, but closer to the next waypoint than the distance between current and next waypoint.
+Like always, the exceptions caused me to write lots of code: specific waypoints (buttons for doors, ladders, ) should not be short-cut.
+
+d) Within the team, CGF is often able to figure out the correct sequence to leave a confined area (closely spaced waypoints help a lot here). Pushing out members in a certain direction would also help.
+I didn't deal with colliding teams in CGF.
+For bounding overwatch maneuvers, I explicitly ruled out bounds in certain terrain (that did not offer sufficient space for one member to pass another).
+
+g) Humans being part of an AI same team sucks. If you'd have a proper model of the key points in the terrain, you can make some educated (but expensive) guesses about the human intentions, but it would be hard to get it right.
+Without having to deal with a human, the AI team can implement really nice maneuvers.
+
+Wrt complimentary paths for AI team members: if you split the path in segments, you can have each team member travel to the start of the next segment using an A* path find function. Here, the A* cost function should move along walls but avoid waypoints that are already claimed as part of another members path. If the team members plan their paths in order, they would move spaced out (if possible) to the start of the next segment.
+
+Note that the real issue in decent team movement hasn't been mentioned yet: the team should make sure to check their environment in all directions. The pointman typically looks forward, but subsequent team members should also pay attention to flanks and the rear area. (Otherwise, they gain little from moving as a team).
+Figuring out who is to look where and when is rather tough but doable.
+
+Some pointers for more info:
+- team maneuver in combat: slides 61-81 in my www.cgf-ai.com/docs/gdc2001_slides.pdfGDC presentation
+- www.gdconf.com/archives/proceedings/2001/o%27brien.ppt"the basic of team AI" GDC presentation by Clark Gibson and Jim O'Brien of Red Storm; rather superficial - Clark and Jim weren't allowed to say everything they have figured out
+- the links on www.cgf-ai.commy site also refer to Jim van Verth's work on tank formations 
+- www.flashpoint1985.com/articles/a_ai.htmlsome info (specifically in the screen shots) illustrating some cell based team separation in Operation Flashpoint 1985
+
+William
+
+
+
+--------------------------------------------------
+05/04/01 at 17:52:42  Reply by: everyman (eric@gamershomepage.com)
+--------------------------------------------------
+Progress for group navigation is progressing slowly but surely. This is how my implementation has changed since my initial post.
+
+- - -
+
+Wrt my own problems:
+
+(a) Correct placement of paths between waypoints resolves this to satisfaction.
+
+(b) Count Floyd's movement priority suggestion worked superbly. My bots now only "separate" from bots with movement priorities higher than their own.
+
+With regard to William's problems in this area:
+- "two bots run into each other": Prioritized repulsion handles this issue smoothly.
+- "one bots runs into another bot who is static (sniping, for example)": I've just begun to run up against this issue. I've labelled it (I) below.
+- "two bots try to occupy the same spot": I've resolved this by having my bots stake claims on both the next waypoint they wish to reach, and also on their immediate tactical destination waypoint (e.g. sniping/ambush location). This method works for the majority of cases, but doesn't take into account instances where a bot's immediate tactical destination has become unreachable due to another bots movement. I hope that resolving issue (I) below alleviates this.
+
+(c) resolved by (b)
+
+(d) also resolved by (b)
+
+(e) I've taken both Tobias's and William's suggestions here. My bots check to see if they have reached either their next waypoint or have reached a waypoint which is closer to their final destination. In either of these cases, the bot's next waypoint is recomputed.
+
+(f) already discussed
+
+(g) Wrt meshing mixed human/bot squads, I've decided to allow only two and only two types of squads: (1) squads composed entirely of bots, or (2) squads led by one and only one human.
+
+Human-led squads are governed quite differently than all-bot squads. By default humans are not part of any squad (although they are more than welcome to run with all-bot squads). Humans interact with bots via the built-in radio commands. "Follow me" will pull nearby bots into the human's squad, after which they respond to subsequent radio commands appropriately. A human squad leader may relinquish his control over her squad by issuing the "You take the point" radio message.
+
+As a side note, bot inter-squad communication is also accomplished by radio commands. This is both a good ambience affect, and a straightforward implemention.
+
+(h) Coming around to William's way of thinking, I've reversed my stance concerning wayzones. My design goal is to have a squad maneuver with precision; therefore I have deemed wayzones inappropriate. Increasing the density of waypoints, and decreasing the random waypoint offset has helped in this regard. The density increase gives individual squadmembers more options for maneuverability, and the offset decrease helps with precision.
+
+- - -
+
+My current set of navigational issues:
+
+(I) One bot's movement is blocked by another static bot (e.g. ambushing/sniping) [brought up by William]. I'm not yet concerned with choosing an implementation here, because I haven't yet come to terms with the desired behavior. Possible valid behaviors:
+(a) bot joins the static bot, either guarding its rear/flank or assisting its ambush
+(b) bot decides its path is blocked, and chooses an alternate route
+(c) bot asks the static bot to move out of the way
+
+(II) How to determine where the "choke points" are from a defensible area (e.g. Ts defending a bomb site after planting, CTs guarding a dropped bomb).
+
+I haven't thought an implementation fully through yet, but my current thinking lies along these lines:
+(1) Choose 10 waypoints at random.
+(2) Lookup paths from these 10 waypoints to the defensible area (represented by a single waypoint)
+(3) This is where I get fuzzy: I think I want to find waypoints which overlap (or nearly so) within a given distance from the defensible location. [?]
+
+(III) How to have a squad defend an area if there are no discernable choke points? Roam the area? Sit on the spot and camp? What other options are there?
+
+(IV) This is the grandaddy of many other questions. How to tactically evaluate locations depending upon the ever-changing situation? The tactical value of a particular location for stealth, rapid travel, entering a building, sniping, defending, etc. are all different.
+
+I've found www.botepidemic.com/aid/cgf/design_terrain_ranking.shtmlCGF's Terrain Analysis canonically useful in understanding terrain from a tactical perspective.
+
+A big hole with using pre-computation is that dynamic elements cannot be considered. A bot with a shotgun and a bot with a sniper rifle have significantly different tactical terrain needs, even when defending the same location. Threats (potential and realized) change location, and also their equipped gun -- also impacting tactical location values.
+
+What methods have one used to integrate the performance advantages of tactical pre-computation (as per the CGF paper mentioned above) with the tactical demands brought on by a dynamic environment?
+
+- - -
+
+Eric
+
+
+
+
+--------------------------------------------------
+05/01/01 at 02:31:52  Reply by: bigjesus (holybigjesus@hotmail.com)
+--------------------------------------------------
+How does the chain for rainbow 6 work(I havent even played the game so I dont even have a clue)?
+
+--------------------------------------------------
+05/02/01 at 20:11:09  Reply by: Mercenary (adamc_@hotmail.com)
+--------------------------------------------------
+In Rainbow 6, the point forms the "head" of the chain.  Other team members follow closely behind almost in a line, but covering 360 degrees of view in the processs.  
+------
+
+I would like to address
+(I) One bot's movement is blocked by another static bot (e.g. ambushing/sniping) [brought up by William]. I'm not yet concerned with choosing an implementation here, because I haven't yet come to terms with the desired behavior. Possible valid behaviors:
+(a) bot joins the static bot, either guarding its rear/flank or assisting its ambush
+(b) bot decides its path is blocked, and chooses an alternate route
+(c) bot asks the static bot to move out of the way
+
+I noticed that you weren't concerned with implementation yet, but here are my thoughts.  You mentioned something about bots making claims to waypoints; why not make bots that ARE static try something similar, claiming any waypoints that fall within 3-4ft. from them in all directions (Thus making any points that cause the bots to get stuck to be claimed and unuseable) or maybe even use 2 points within their direct line of site to form a no-go (line) zone where team members will not deliberately walk into their sites using waypoints in that area.  I don't know if this is a legitimate AI description of what needs to happen, but then again..  As for bots joining as cover, maybe a similar priority used for group movement could be applied to helping static teammates. (?)  This system could also be applied if the dynamic members priority is higher than the static.  The static will yeild, thus freeing the waypoints for the dynamic to use.
+
+(III) How to have a squad defend an area if there are no discernable choke points? Roam the area? Sit on the spot and camp? What other options are there?
+
+Maybe (if you have a suitable cover finding implementation) squad members could decide on good cover that:
+A. Defends the area (Top priority)
+B. Provides additional cover for other teammates (If possible)
+C. May allow suitable movement to check all defended entrances .  (Bots might not want to get into a situation in which they can not easily move from one zone to another if needed)
+
+If the area is VERY large, roaming in small groups could be beneficial.  Assuming a squad of 6, a squad could have sniper/spotter, 2 member wait team (campers) and a 2 member lookout team (roamers).  With this lookout teams could provide intel for campers.  The campers then can move to intercept with the lookouts.  If the enemy position has a tactical advantage or other reasons in which they are not easily reached, the sniper could take action.  With this said, having a squad split up could be risky;  if one group is ambushed from behind with no previous knowledge of enemy whereabouts, say the snipers, then teammates might not be in a good position to defend the area anymore.  Thoughts? (?)
+
+I know that I am always wrong, but I thought this might inspire you not to do drugs, and maybe even help you to find something that does work.  Maybe someone could establish a comprehensive list of navigation issues that arise.  This summer I will be working with my dad to make a real "bot" that can navigate using its own AI.  Nothing more than a simple little thing with wheels that can turn and stuff (nothing dangerous!).  We've already established some ideas to keep it from getting stuck, running into walls and basic maneuvering like dodging things it can't run over.  I don't think we'll make them into pack hunters just yet!
+
+
+--------------------------------------------------
+05/04/01 at 08:52:24  Reply by: William (william@botepidemic.com)
+--------------------------------------------------
+Here are my experiences and thoughts, based on my CGF attempt to create tactical combat between fireteams.
+
+ad iv.
+There's really little info available on tactically evaluating situations in such a way that it is useful in a dynamic game. I've done some thorough searching on the net, but haven't found much that applies (but I've found many sources of inspiration: military research on off-line planners, RTS use of influence maps, some position evaluation functions in games such as chess and go).
+
+Maybe it isn't totally clear from the www.botepidemic.com/aid/cgf/design_terrain_ranking.shtml1999 CGF for Action Quake2 'terrain analysis' article, but these results form a useful base for dynamic tactical computations: in Quake style games, terrain remains rather static, and the computations made off-line free up some CPU to deal with dynamic things such as threat positions, lines of fire, friendly positions, etc.
+The GDC paper on www.gdconf.com/archives/proceedings/2001/vandersterrenw.pdfTerrain Reasoning for 3D Action Games should be a better description of off-line analysis, whereas the accompanying www.cgf-ai.com/docs/gdc2001_slides.pdfpresentation explicitly deals with dynamic reasoning. The latter contains an example where 'emergently' team members move up in response to a threat.
+
+In the underlying implementation, I evaluate for each team member and his specific needs (depending on weapon, team role, threat) what the most attractive position new is. For example, during an attack, I tend to have shotgun equipped members move up more aggressively than a sniper rifle team member, because the shotgun isn't that effective at a distance.
+Other factors, such as team cohesion, team spread wrt to threats, nearby cover, strong positions, etc. are all considered.
+As the presentation mentions, the use of precomputed tables is a bit vulnerable against some dynamic effects in the environment (doors, smoke, vehicles), but with yet more coding, you can correct for that on the fly.
+Early in the presentation, it is explained how varying threat positions can be predicted efficiently.
+
+ad ii. - AI figuring out choke points
+Simple: don't do it. Rather than having the AI analyse the terrain for choke points, use a simple text file that defines these locations. Creating such a file and properly figuring out the corresponding waypoints takes less than a day of work. And use the bomb site as a default defense location when no text file is provided.
+Writing a terrain analysis algorithm parsing the areas in the map took me a few weeks, with results that aren't always correct. And with areas, I haven't figured out the choke points (but that's doable in a few days).
+There are better ways to spend time on AI that's noticeable to the player than the automatic analysis.
+
+On the other hand, Eric's current thinking is close to what CGF uses to establish defense positions for team members. But you might want to focus on:
+- random waypoints being 10 seconds away from the area to defend
+- the first point on the shortest path that is visible from the defensive spot
+
+ad iii. - executing a defense
+QUOTE:
+How to have a squad defend an area if there are no discernable choke points?
+
+
+In these cases, the map most likely calls for forward defense (away from the goal line or red zone). The map 'de_dust' is a great example of this: rather than controlling the two bomb sites, the CT's better control the hallway and ramp from the lower passageway. It's easy to annotate, in a separate AI readable text file, the four useful defensive spots (2 x bomb site, hallway, ramp).
+Despite the terrain analysis algorithm being available, CGF simply uses mission files to define these defensive spots (and runs random missions for variation).
+
+The hard part indeed is in figuring out where _and_ when to position your (defensive) teams. Here, Adam's suggestion (split defense into teams area defense, cover+reserve, and forward patrols) doesn't completely cut it:
+AI that doesn't address the complete 'commander' during the whole fight role will look odd and stupid. 
+Specifically, the (AI) 'commander' should be able to position troops before the fight, but also respond to the changing nature of the fight: halfway the fight (at de_dust), the T's might break through to one of the bomb sites, requiring a shift in defense. Likewise, the T's might loose their backpack, which calls for a defense at the backpack location. Also, at the end of the engagement, if the situation is 4T vs 1CT, what are you going to do (patrol and snipe)? Or if the situation is 2T vs 2CT? etc. You'd have to tell bots to change roles, weapons and positions, after you've figured out what's most useful.
+
+Maybe I missed something, but I haven't even seen any individual AI that properly changed behavior (such as ammo management) depending on the CS round duration and status (the CGF strategy is to really waste clips during the opening seconds, since chances of survival are slim (dieing with two clips available is stupid). The next minutes are spent on burst control (consuming ammo), and in final engagements all ammo is used, since chances of engaging more enemies are slim).
+The commander's role is even more complicated. Rather than starting with an ambitious 'where' AI (ignoring the 'when' AI), I'd go for something less complicated that balances where and when, and uses random effects and scripting a lot.  
+
+I haven't addressed these issues properly in CGF (I used the scripting abilities), but I've spent some time thinking how I might do it...
+
+William
+
+p.s. Rainbow Six team mates do not cover the surroundings properly during movement (just when bunching up before entering a room). Basically, the AI doesn't really have advanced situational awareness.
+
+
+--------------------------------------------------
+05/04/01 at 21:04:29  Reply by: Mercenary (adamc_@hotmail.com)
+--------------------------------------------------
+Thus, the added clause: "With this said, having a squad split up could be risky;"  This is where it'd be a good idea to figure out what needs to be done.  The "group work" functions well in larger areas with numerous teammates (a small percentage of the time)  The other times, deciding what/where needs to be defended, team members could decide on the fly what they needed to do.  Probably roam the "random waypoints being 10 seconds away from the area to defend"  
+
+I am going to stop typing now.  I am just digging a hole.
+
+
+Edit:
+
+When you say team movement, are the movements based like SWAT movement, or just as a group, like walking with friends down the hall or something?  Are the group positions helpful to the group as a unit, or to the group as a whole squad?  That is, do they stick close and cover each other (unit), or spread out and cover wider areas while just staying within line of sight(group)?  Maybe I'm not on the same page as you.
+
+I'm thinking:
+1. Spreading out and covering map
+PROS:
+-In a LAN game situation (AI or player), having info on the entire map from your teammates is GREAT.  Info on large areas is easily passed among players, and allows better assessment of what needs to happen to win.
+CONS:
+-Easily isolated and killed
+-Not able to assist team members at all times
+
+2. Staying as a single unit
+PROS:
+-Easy for players, many teammates are covering for any errors you might make
+-Easy to eliminate threats with overwhelming numbers and firepower (most of the time with AI or players)
+-Only things that affect the unit need to be evaluated.  This is often hard to do!
+CONS:
+-Data on the situation is limited to a small area.
+-By moving as a unit, certain situations, such as a bomb being planted, might not be dealt with in time if the unit is on the other side of the map
+-Having a unit leader to decide every action is hard (AI or player).  Communication problems occur when he tries to tell you everything needed to be done.  (Players only I'd assume)
+
+Personally, my "CS Team" if you will, uses the spread out approach to eliminate enemies.  Using radio commands and text messages, enemies are found (1 group) and stopped by another group.  Normally there is a sniper/spotter if applicable, and a 4 person assault team that also serves as recon.  This works well even against some of the "power teams" of CS players.
+
+--------------------------------------------------
+05/05/01 at 06:17:20  Reply by: WKYA-Undertaker (mofo_badboys@yahoo.com)
+--------------------------------------------------
+If you want a very easy and effective way to handle determining choke points, why not create a new waypoint flag for choke points and place it where it is needed?  Then set it up so the bots to do what you want when they see the waypoint?  Just my 2 cents for this thread. :)
+
+--------------------------------------------------
+05/16/01 at 08:11:24  Reply by: CountFloyd (countfloyd_1999@yahoo.com)
+--------------------------------------------------
+Just my .02 to Eric:
+"b) Count Floyd's movement priority suggestion worked superbly. My bots now only "separate" from bots with movement priorities higher than their own."
+
+I've seen in your 1st Alpha Source that you use the Index Number of the Bot to priorize. Just a sugggestion, why not using the current distance to the desired waypoint or the highest speed as a priority ?
+
+to I:
+Why not judging the Bot standing still as an obstacle and let the Bot somehow move around it ?
+
+to II:
+What about the Bots 'learning' choke-points while playing ? There could be several implementations how to do this, the most obvious ones probably storing team-specific damage or kills/deaths. As a bonus the Bots would get better each time you play just like a human would.
+
+to III:
+I would think that it would be enough to have the Bot find a waypoint with the highest tactical value in a small distance which overlooks the position you want to defend (your func_bombzone, hostages whatever).
+
+I've been a bit disappointed seeing that your 'team' at the moment is basically just about choosing the correct weapon, position and then letting them take the same route. I didn't see assigning different plans to each team-member but you're working on it, aren't you ? :)
+I also read about your performance problems. Well, it's really not a surprise to me after seeing how often you walk through the Waypoint Array to find nearest waypoints to a location or to lookup a path. Why not periodically assigning each Client a chunk of time in StartFrame where you lookup the nearest waypoint to him and store it until the next lookup ?
+
+--------------------------------------------------
+05/19/01 at 03:27:47  Reply by: bigjesus (holybigjesus@hotmail.com)
+--------------------------------------------------
+well lol with blitz bot i have a problem the bot shoots me dead as hell when he sees an enemy in both mine and his line of fire what should i do? i have a few choices one make temporary slots so he goes to one side of me so he doesnt get me i think it would look like this as an algo but i havent thought it through so hehe i duno i kinda just wanted it to make available slots like a trianglular shape so no one wold get in any ones way no matter the configuration of waypoints or bsp?
+ edit: !@$@#$@! text
+          <
+        <<
+      <<<
+* <<<<
+      <<<
+        <<
+          <
+
+
+
+
+--------------------------------------------------
+05/19/01 at 07:06:03  Reply by: CountFloyd (countfloyd_1999@yahoo.com)
+--------------------------------------------------
+The most obvious one to me would be to just check if an own teammate is in the bots line-of-fire by adding the punchangle to the view_ofs and tracing a line up to his enemy. If he hits a team-member just disallow pressing the attack button. This would work at a rough guess only about 90% of all times because the View + the punchangle isn't really the end of the barrel of the gun, so some errors might still happen. 
+Your idea of assigning positions to Bots is a lot more difficult, Eric so far is the only one who did some work on formations in a CS Bot so far.
+Since I'm a lazy guy I used method 1 with good results so far. Of course if we're talking about grenades you could find all friendly units in the damage radius and then avoid throwing.    
+
+--------------------------------------------------
+05/20/01 at 09:58:39  Reply by: William (william@botepidemic.com)
+--------------------------------------------------
+use dotproduct to test for friendlies being in th e line of fire. the dotproduct expresses a cone, originating from the muzzle, which is a pretty realistic approach.
+the dotproduct of the (normalized) aiming direction and the direction towards the friendly character should below a certain value (~0.9) to be safe.
+
+the exact value depends on the weapon (spread): more for the shotguns and M249/Minimi(?), less for the other weapons (especially when using zoom).
+
+ofcourse, there are exceptions and caveats
+1. at close distances, the vector to the friendly character is no longer a good approximation of his position (he can no longer be regarded as a point in space, but should be considered a volume (lots of work), or you should take a smaller threshold).
+
+2. because the shot is fired in the next frame (rather than in the current frame), it isn't sufficient to check for the friendly characters current position; you actually should take into account his position in the next frame(s).
+
+wrt formations: modern day urban combat isn't really done in formations. rather than trying to shovel a formation into the map, it makes more sense to compute good positions that provide both spread out and team cohesion.
+CGF doesn't use formations except when spawning and regrouping.
+
+william
+
+
+--------------------------------------------------
+05/27/01 at 13:22:37  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+Checking next position of a friend doesnt matter if you check every single frame BEFORE pressing the attack button for a friend. Although some friends will get hit, its also more 'human like' (although 1 frame is not a human like behaviour) because real people wont stop immidiatly when some friend moves into your line of fire. Actually, there should be a kind of way to calculate if the 'moving' bot will not be in a line of fire. So you have 2 ways to check for friendly fire.
+
+About formations, i dont have a clue yet how to handle that. I think, a bot status , or ID could give some bot 'position'. Like you have a bot with NR 1, this bot is the leader. Other bots will take position corresponding to their number. So Bot NR 2 knows that he must be LEFT of Bot NR 1, Bot NR 3 nknows he should be at the RIGHT of the leader etc.
+
+
+
+--------------------------------------------------
+05/28/01 at 05:10:42  Reply by: William (william@botepidemic.com)
+--------------------------------------------------
+Warning, and going slightly off-topic (but coming back to it):
+mimicking stupid human behavior is generally perceived by gamers as more stupid, not more human.
+
+From an AI research perspective, human-like behavior is the holy grail (and definitely not within reach today).
+From a gamer perspective, things are different: the ideal opponent AI is the one that lets you beat him after an exciting and great fight.
+And probably the ideal friendly AI is the one that adds more glory to your deeds (rescueing the princess, creating a more believable world), executes your plan (thus giving you more reponsibility and control), and assists you in being the hero (for example, covering your back from some pesky infantry soldiers while you attack the Tiger tank with a hand grenade).
+
+If I play, for example, against Counter-Strike bots, I do so for fun (a good fight), to save money (phone bills), and to enhance my skills (aiming, map knowledge).
+Being shot down by my fellow bots (and sitting out some 4 minutes before playing a next round) isn't fun, and takes away from my training experience. The same holds, for example, for T bots (by accident?) who take the hostages with them, away from the hostage's original location. It might be human, but it's not what I want when I'm explicitly not playing humans.
+
+Back to "navigating in groups":
+The "challenging AI" approach also answers Adam's question whether to have a team of bots roam arounds as (communicating) individuals or as (closely packed) groups.
+Today's CS bots primarily walk around as individuals. For the player, an engagement with an opponent bot is a short one-on-one fight, rarely interrupted by other bots. As such, this fight primarily challenges the player's choice of weapon, aiming skill, and sometimes his choice of location. There's little need for the player to employ more tactics...
+
+If the bots would roam in wolf-packs, and collectively assault any target, the player is given a more complex problem:
+- choice of weapon and aiming skill are important (and will be rewarded), but typically are not enough to deal with three or more opponents
+- additionally, the player is required to think on his feet: depending on his position (and the number of opponent bots he expects), he may need to flee and fight another time, at a better place
+- against a larger team, location and being able to break away from a fight become more important
+- ideally, the player will be able to collect a few bots around him for protection.
+
+I personally prefer the second way of fighting: it provides me a larger challenge, multiple rewards, and more freedom to deal with it.
+
+William
+
+p.s. formations: the trouble with formations is that fixed formations (such as vee) don't give much better results (they ignore the terrain) but give much more troubles (because they ignore the terrain: where do you put nr1, nr2, and nr3 when climbing a ladder, or when backing out of a 1 man wide dead alley?)
+
+--------------------------------------------------
+05/28/01 at 14:52:23  Reply by: CountFloyd (countfloyd@botepidemic.com)
+--------------------------------------------------
+"From a gamer perspective, things are different: the ideal opponent AI is the one that lets you beat him after an exciting and great fight."
+
+Totally agree. It's just a pain to adjust everything so a Bot (Game Opponent) isn't unbeatable but also not too easy. From my past experiences early versions of my Bot (POD) were too hard, later versions too easy and now I believe I found the best adjustments to make them believeable opponents (at least to me). A lot of things around gameplay & combat can also be modified by end-users but somehow not many seem to care about this and just use the defaults. What do to about this ? Blame it all on the Users ? I'm unsure...
+
+"Being shot down by my fellow bots (and sitting out some 4 minutes before playing a next round) isn't fun, and takes away from my training experience"
+
+That's why nearly every Bot now has some kind of newround command to let you instantly start a new round without sitting it out. Of course getting shot by teammates is a flaw which needs to be eliminated because as you say ppl wouldn't take it as 'human-like' but as stupidity.
+ 
+"The same holds, for example, for T bots (by accident?) who take the hostages with them, away from the hostage's original location. It might be human, but it's not what I want when I'm explicitly not playing humans."
+
+Here I disagree. Taking away hostages is not a stupid thing Bots just do by accident (and I know I explicitely coded this in). I would like to recreate the 'feeling' of a good game of CS online, not using Bots just for training purposes but also to get a bit of fun & entertainment out of it when playing offline (the past months I really had more fun playing offline with Bots than I had playing online against stupid humans). I would find it extremely boring if the hostages would always stay at the position you assume them to be and moving them nearly always happens when playing online, IMO there's nothing stupid about that it even adds to the tactical value of a Bot. I would like to hear oppinions of others about this maybe I'm wrong.
+
+"If the bots would roam in wolf-packs, and collectively assault any target, the player is given a more complex problem:
+- choice of weapon and aiming skill are important (and will be rewarded), but typically are not enough to deal with three or more opponents
+- additionally, the player is required to think on his feet: depending on his position (and the number of opponent bots he expects), he may need to flee and fight another time, at a better place
+- against a larger team, location and being able to break away from a fight become more important
+- ideally, the player will be able to collect a few bots around him for protection."
+
+William, did you play CS online for some months ? From my experience combat in CS is done within 1-3 seconds and fleeing from combat is very seldom and mostly useless. Calling for help also rarely works because very few players actually support you and even if they do it, their arrival will be to late to change anything. I'm not saying this is true for each and every game of CS out there, this is just my past online experience and I'm not sure if CS really is a game about teamplay. Most people I know or heard of just take it as a DeathMatch MOD with Mission Goals, sometimes supporting their team, most of the time not. For example Frontline Force is a 'real' teamplay MOD, CS in my opinion isn't...
+
+Opinions please !
+
+     
+
+ 
+
+  
+
+--------------------------------------------------
+05/28/01 at 15:07:07  Reply by: William (william@botepidemic.com)
+--------------------------------------------------
+(We indeed get into opinions here).
+
+I indeed referred to your PODBot taking away the hostages. I later figured out it must be intentional (and, after finally catching up on some CS play time), and I now can appreciate it.
+However, if your teammate bots nick my hostages one more time, I know where to find you :) (I need that money).
+
+I've found a decent UK server where often some kind of team tactics are used (more often by the winning team), however primarily on well known maps (de_dust, cs_militia).
+There I get some escort when carrying the bomb and doing a "cover me". Also: coordinated militia tunnel rushes, and de_dust CT spawn spot defense.
+
+Fleeing example: sitting on the militia rooftop, taking a few pot shots at the first wave of rushing CTs; after a few seconds, when the CTs have spread out and zero in on you, it's better to move elsewhere (that roof doesn't offer much protection from M249 bullets).
+
+William
+
+--------------------------------------------------
+05/28/01 at 19:07:11  Reply by: CountFloyd (countfloyd@botepidemic.com)
+--------------------------------------------------
+"However, if your teammate bots nick my hostages one more time, I know where to find you :) (I need that money)."
+
+LOL, yes you sure know :)
+I'm the first to admit that this IS stupid. The Bots don't steal hossies from other Bots but they do from humans, not because I want them to steal money from them but just because it's a pain to find out if a hostage is used. There has been a discussion some time ago how to avoid it on this forum but I didn't care about it yet and AFAIK no one else did with his CS-Bot yet but you're right it also needs to be fixed.
+
+"however primarily on well known maps (de_dust, cs_militia)."
+
+Now these are example maps where even egoistic people will play as a team because they are forced to do so reasoned by unbalanced (intended?) teamplay on these maps. de_dust is a map where the T's will always loose when not acting as a team (CT's can easily hold the choke positions even with less team-members) and it's reversed in cs_militia where T's holding the roof can overlook most important parts of the map. This is probably also more or less true for de_aztec, de_cbble and de_inferno to name some other (IMHO!) unbalanced maps. But what about cs_backalley, cs_italy, de_dust2 to name some other popular ones ? I've often seen more Deathmatch gameplay in those maps than in Q3 ! ;)
+
+"sitting on the militia rooftop, taking a few pot shots at the first wave of rushing CTs; after a few seconds, when the CTs have spread out and zero in on you, it's better to move elsewhere (that roof doesn't offer much protection from M249 bullets)"
+
+Roger that. However if your enemy has got such a monster pierce-through-everything-weapon like a Para you really can't flee or hide anywhere if spotted. For example I know for sure that if you're on the roof of the house you can easily kill people using hostages in the basement and vice versa. I often get some bonus kills if I just spray through the roof into the house when I hear noises of people freeing the hostages, sad but true and it also works with most of the other piercing weapons. With a Para or AWP you can also shoot through 3/4 of the whole house in every direction and you can kill people in the sewers by just shooting through the ground. Militia is just a bad example, I wouldn't say that fleeing is totally useless but when playing against people with a superior weapon & knowledge of the map it can become quite useless.
+
+--------------------------------------------------
+05/29/01 at 14:05:25  Reply by: William (william@botepidemic.com)
+--------------------------------------------------
+Thanks for your analysis. I'll try to verify some of your M249 analysis :)
+
+Teams indeed need maneuver space (and alternative paths for flanking), to take advantage of their numbers. 
+Otherwise, they are forced to use centipede tactics and drills, solely using the ability to use weapon combinations (flashband + suppressive fire + movement) quicker than an individual.
+Or simply split and play death match with slightly better intelligence about the battlefield situation.
+
+Alas, programming team AI behavior is that complicated and that CPU intensive that is becomes hard to put all of this into a single bot :(
+
+Also note that I'm biased by AQ2, which has an unrealistically higher movement speed and lacks bullet penetration. Both aspects make fleeing a more viable tactic.
+
+William
+
+--------------------------------------------------
+05/31/01 at 02:55:23  Reply by: holybigjesus (holybigjesus@hotmail.com)
+--------------------------------------------------
+You guys play nice!
+edit: btw floyd i been meaning to ask you if i could use jason mode for blizbot lol i want the same name cause its awsome i love it... oh ya and keep up the topic lol :P
+

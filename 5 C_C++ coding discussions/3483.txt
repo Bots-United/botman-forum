@@ -1,0 +1,128 @@
+--------------------------------------------------
+Subject: export import templates
+--------------------------------------------------
+07/25/02 at 14:21:58  Posted by: Zmeko (dosap29@msn.com)
+--------------------------------------------------
+i have a simple function and i want to export it from my dll and import it to my executable for running, how would i do this and where do i put the __declspec (dllexport)
+
+
+--------------------------------------------------
+07/25/02 at 15:53:28  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Try doing a www.google.com search for something like "simple windows dll source code example" or something similar to find some tutorials on how to do basic DLL coding.
+
+botman
+
+--------------------------------------------------
+07/26/02 at 08:03:19  Reply by: Zmeko (dosap29@msn.com)
+--------------------------------------------------
+
+QUOTE:
+i have a simple function and i want to export it from my dll and import it to my executable for running, how would i do this and where do i put the __declspec (dllexport)
+
+
+
+
+
+oh... sorry, this function is a template
+and i would like to export it from the dll and be able to use it in the executable, can this be done?
+
+--------------------------------------------------
+07/26/02 at 08:13:56  Reply by: @$3.1415rin (joebot@botepidemic.com)
+--------------------------------------------------
+you can only export a template when you already know when you build the dll for which types the template should be used. you have to make prototypes there. it's then only possible to use it for this types. exporting a general template isnt possible as far as I know. Sometimes you even have to write all your code into the header file :-(
+
+--------------------------------------------------
+07/26/02 at 09:01:26  Reply by: Zmeko (dosap29@msn.com)
+--------------------------------------------------
+
+QUOTE:
+you can only export a template when you already know when you build the dll for which types the template should be used. you have to make prototypes there. it's then only possible to use it for this types. exporting a general template isnt possible as far as I know. Sometimes you even have to write all your code into the header file :-(
+
+
+
+
+what dO YOu mean by "knowing what types will be used", so if i was to import a template to my program i should define it the types that will be used with it?
+
+--------------------------------------------------
+07/26/02 at 09:25:43  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+The C++ compiler will only create template code for the types that are used within the scope of the template modules.
+
+For example, if you create a Stack template and declare a Stack of ints, a Stack of floats, a Stack of char pointers, there are only 3 types of the Stack template that will exist in that code.
+
+Templates aren't magically created at run time.  The C++ compiler HAS to know what the type is going to be for a template instance at compile time.  So you can't create a generic template Stack DLL and then load that DLL in other code to create different types of stacks on the fly.  It just won't work.
+
+botman
+
+--------------------------------------------------
+07/26/02 at 14:29:05  Reply by: Zmeko (dosap29@msn.com)
+--------------------------------------------------
+oh... i thought if i was to create a template, the compiler would make one for every type used in the code.....
+
+
+--------------------------------------------------
+07/26/02 at 14:50:35  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Yes, for every type used in THAT code (the one that contains the template definition).  It won't do anything for code that was not compiled with that template definition.
+
+botman
+
+--------------------------------------------------
+07/27/02 at 14:56:51  Reply by: BrianL (halfkiller@hotmail.com)
+--------------------------------------------------
+For say you can use a .DEF file in your workspace to define exports of your DLL.
+
+code:
+
+Example Code:
+
+float INT_FLOAT (int someNum)
+{
+  return *(float*)someNum;
+}
+
+// Below is the .DEF file defines..
+LIBRARY yourdll.dll
+EXPORTS
+   INT_FLOAT
+
+
+// Now from another program
+// You can call the functions...
+typedef float (*intToFloat_t)(int);
+HMODULE pMyDll = LoadLibrary("yourdll.dll");
+
+if (pMyDll)
+{
+intToFloat_t pIntFloat = (intToFloat_t)GetProcAddress(pMyDll, "INT_FLOAT");
+
+  if (pIntFloat)
+  {
+    float myIntSum = (*pIntFloat)(15);
+  }
+}
+
+
+
+I mean exporting your functions are limitless.. Until under certian curcumstances..
+
+--------------------------------------------------
+07/29/02 at 11:40:30  Reply by: Zmeko (dosap29@msn.com)
+--------------------------------------------------
+how do i make a dll with a def file?
+do i need to do anything to the compiling settings??
+
+
+[modified on 07/29/02 at 11:40:30]
+--------------------------------------------------
+07/29/02 at 12:29:18  Reply by: BrianL (halfkiller@hotmail.com)
+--------------------------------------------------
+Just create a def file then add it to your project and thats it:
+
+LIBRARY yourdll.dll
+EXPORTS
+  INT_FLOAT
+
+That above is an example of a .DEF file there's nothing else to it, very simple to understand there.  All includes go in seperate lines..
+

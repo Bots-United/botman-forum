@@ -1,0 +1,193 @@
+--------------------------------------------------
+Subject: Spray paint
+--------------------------------------------------
+10/03/01 at 14:08:39  Posted by: laextr (laextr@icqmail.com)
+--------------------------------------------------
+How can I implement that spray logo like in CS and Jumbot? I think its a spiffy little func.
+
+Thanks for reading
+
+
+
+--------------------------------------------------
+10/03/01 at 14:24:13  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Here's the function that I use for spraying a logo...
+code:
+void BotSprayLogo(edict_t *pEntity, char *logo_name)
+{
+   int index;
+   TraceResult pTrace;
+   Vector v_src, v_dest;
+   UTIL_MakeVectors(pEntity->v.v_angle);
+   v_src = pEntity->v.origin + pEntity->v.view_ofs;
+   v_dest = v_src + gpGlobals->v_forward * 80;
+   UTIL_TraceLine( v_src, v_dest, ignore_monsters, pEntity->v.pContainingEntity, &pTrace );
+
+   index = DECAL_INDEX(logo_name);
+
+   if (index < 0)
+      return;
+
+   if ((pTrace.pHit) && (pTrace.flFraction < 1.0))
+   {
+      if (pTrace.pHit->v.solid != SOLID_BSP)
+         return;
+
+      MESSAGE_BEGIN( MSG_BROADCAST, SVC_TEMPENTITY );
+
+      if (index > 255)
+      {
+         WRITE_BYTE( TE_WORLDDECALHIGH);
+         index -= 256;
+      }
+      else
+         WRITE_BYTE( TE_WORLDDECAL );
+
+      WRITE_COORD( pTrace.vecEndPos.x );
+      WRITE_COORD( pTrace.vecEndPos.y );
+      WRITE_COORD( pTrace.vecEndPos.z );
+      WRITE_BYTE( index );
+
+      MESSAGE_END();
+
+      EMIT_SOUND_DYN2(pEntity, CHAN_VOICE, "player/sprayer.wav", 1.0, ATTN_NORM, 0, 100);
+   }
+}
+
+...note that the logo_name string passed into this function MUST already exist in the decals.wad file.  If you want custom spray logos, you will have to create a utility that allows people to take a bitmap file (.bmp) of the spary logo and insert that into the decals.wad file.  You can use Wally (the wad editor) to do this if you want to.
+
+botman
+
+--------------------------------------------------
+10/04/01 at 13:23:40  Reply by: laextr (laextr@icqmail.com)
+--------------------------------------------------
+Ok, I've added the code in bot.cpp . I've also tried to make the bot spray, but didn't succeed. 
+I've tried to make it that every 30 seconds (thats how long it takes in HL to reload the spray-logo func.) and the bot can choose (between a random_long func. between 0 - 50%) if it wants to spray, but lately none of 'em wanted to.
+Is there anything else I nedd to do, like add a piece of code in the botthink or something.
+
+Thanks again botman, wouldn't know what I would have done without yah!
+
+--------------------------------------------------
+10/04/01 at 13:34:32  Reply by: @$3.1415rin (joebot@botepidemic.com)
+--------------------------------------------------
+have u used the right decal name ? if yes, are the bots near to a wall when wanting to spray ? if not, just replace the 80 from botman's code with 8000 ;)
+
+--------------------------------------------------
+10/04/01 at 13:44:13  Reply by: laextr (laextr@icqmail.com)
+--------------------------------------------------
+Here's a sample code in the botthink func. :
+
+[bot.cpp]
+
+extern char spray_name[MAX_SPRAY][24];
+extern int  spray_count;
+extern int  recent_bot_spray[5];
+
+   /*
+       A player can spray a logo every 30 seconds.
+       Allow a bot to decide if it wants to spray
+       every 30 seconds. If he doesn't want to, set
+       pBot->b_hassprayed = FALSE. If he did, set to
+       TRUE. After 30 secs. this will re-run.
+   */
+   clock_t Time = 0;
+
+   Time = clock() + 1 * CLK_TCK ;
+
+   if ( ( Time == 30 ) || ( Time == 0 ) )
+   {
+      int    i,
+               recent_count, 
+               spray_index;
+      bool   used;
+
+        recent_count = 0;
+
+        pBot->b_havesprayed = FALSE;
+        Time = 1;
+
+      while ( recent_count < 5 )
+      {
+                spray_index = RANDOM_LONG(0, spray_count - 1);
+
+         used = FALSE;
+
+         for (i=0; i < 5; i++)
+         {
+                  if (recent_bot_spray[i] == spray_index)
+                         used = TRUE;
+         }
+
+         if (used)
+            spray_count++;
+         else
+            break;
+      }
+
+      for (i=4; i > 0; i--)
+            recent_bot_spray[i] = recent_bot_spray[i-1];
+
+            recent_bot_spray[0] = spray_index;
+
+            if ( RANDOM_LONG( 0, 100 ) <= 50 )
+            {
+                  pBot->b_havesprayed = TRUE;
+                  BotSprayLogo( pBot->pEdict, spray_name[spray_index] );
+            }
+   }
+
+Once again I apolagize for the mis-alignment of the code.
+
+You should have botmans BotSprayLogo procedure, so you could match the code with it (it only appears once).
+
+Maybe you could find my problem here.
+
+--------------------------------------------------
+10/04/01 at 13:46:56  Reply by: laextr (laextr@icqmail.com)
+--------------------------------------------------
+Sorry, I've added a b_bothavesprayed var. just as a global var. incase I need to check if a bot have sprayed a logo. Who knows, could be usefull.
+
+Forget my mis-aligned apolagies, doesn't seem to be mis-aligned after all, msut be this post's text box.
+
+Anyway thanks again, anyone!
+
+--------------------------------------------------
+10/04/01 at 14:52:54  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Post the names of some of the decals that you are trying to get it to spray.
+
+Also, like Aspirin said, make sure the bot is within 80 units of a wall when attempting to spray.  The default behaviour of the HPB bot template source code is to AVOID getting that close to walls.  So unless you've changed this default behaviour, they will never get close enough to a wall to spray a logo.  Look at the "f_dont_avoid_wall_time" as a way to get them to run into walls (just set the time to something fairly far into the future, say 5 or 10 seconds).
+
+P.S. Real players aren't allowed to spray every 30 seconds unless they get a kill every 30 seconds.  You should follow the same rules that the server uses for human players spraying logos.  There is a server variable (CVAR) called "decalfrequency" which determines how often a player who hasn't killed anyone can spray a logo.
+
+botman
+
+[modified on 10/04/01 at 14:52:54]
+--------------------------------------------------
+10/05/01 at 15:30:46  Reply by: laextr (laextr@icqmail.com)
+--------------------------------------------------
+I tried setting the units to 8000 and back and the f_dont_avoid_wall_time to a small value, didn't work. Should I rmove the 30 second timer? If I do, does HL have a built-in var that would make sure the bot don't constantly spray on the walls or something?
+
+--------------------------------------------------
+10/05/01 at 15:32:01  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+You should use gpGlobals->time instead of using the clock function(s) from the library
+
+--------------------------------------------------
+10/05/01 at 15:38:13  Reply by: laextr (laextr@icqmail.com)
+--------------------------------------------------
+What's wrong with the clock_t function?
+
+--------------------------------------------------
+10/06/01 at 01:38:31  Reply by: @$3.1415rin (joebot@botepidemic.com)
+--------------------------------------------------
+gpGlobals->time is the HL internal standard for the time and everything is based on it ... so the bots should too, I think
+
+and again, what names for spraypaints do u use ?
+
+--------------------------------------------------
+10/06/01 at 15:08:22  Reply by: laextr (laextr@icqmail.com)
+--------------------------------------------------
+Like HPB bot, it has a spray_logo.txt file with all the spray logo names in it.
+

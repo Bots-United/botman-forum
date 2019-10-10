@@ -1,0 +1,176 @@
+--------------------------------------------------
+Subject: Couldn't Get DLL API
+--------------------------------------------------
+08/16/03 at 09:35:14  Posted by: Vapok (pete@weruniq.com)
+--------------------------------------------------
+Well... I don't want to sound like I don't know what I'm doing.  I'm the server admin for our TFC clan.  I just downloaded the HPB_bot version 3.0.  I have it installed per directions, and I get the following error message when I try to start up the server.
+
+---------------------------------------------
+Console initialized.
+Protocol version 46
+Exe version 3.1.1.1
+Exe build: 18:20:53 Jul 29 2003 (2469)
+WON Auth Server
+Server IP address 66.98.144.21:27017
+LoadLibrary failed on ./tfc/dlls/HPB_i386.so: ./tfc/dlls/HPB_i386.so: cannot open shared object file: No such file or directory
+Host_Error: Couldn't get DLL API from ./tfc/dlls/HPB_i386.so!
+FATAL ERROR (shutting down): Host_Error: Couldn't get DLL API from ./tfc/dlls/HPB_i386.so!
+
+./hlds_run: line 339:  8033 Segmentation fault      $HL_CMD
+Add "-debug" to the ./hlds_run command line to generate a debug.log to help with solving this problem
+Sat Aug 16 10:29:02 CDT 2003: Server restart in 10 seconds
+
+---------------------------------------------
+
+I've installed everything just like you have mentioned in your read me txt.  Also, the DLL file is named HPB_bot_i486.so not HPB_i386.so.  Where do I get this HPB_i386.so dll?
+
+Thanks!
+
+-Vapok
+
+--------------------------------------------------
+08/16/03 at 10:43:40  Reply by: Cheesemonster!!! (cheeseh@houstondod.com)
+--------------------------------------------------
+open the liblist.gam file in the mod folder and edit the line that says "gamedll_linux" and change it to 
+
+gamedll_linux "dlls/HPB_bot_i486.so"
+
+--------------------------------------------------
+08/16/03 at 12:09:59  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Right, it's i486 not i386.
+
+botman
+
+[modified on 08/16/03 at 12:09:59]
+--------------------------------------------------
+08/16/03 at 18:50:41  Reply by: Vapok (pete@weruniq.com)
+--------------------------------------------------
+Please don't insult my intelligence.. :) j/k
+
+I do know my way around HL mods.
+
+here is what my current liblist.gam file looks like:
+------------------------------------
+// Team Fortress Classes Game .dll Listing File
+// Load order is determined by file order.
+game "Team Fortress"
+url_info "www.teamfortressclassic.com"
+url_dl ""
+version "1.5"
+size "37000000"
+svonly "0"
+cldll "0"
+type "multiplayer_only"
+nomodels "1"  // Don't show models in browser, since you don't pick them there anyway.
+mpentity "info_tfdetect"
+gamedll "dlls\tfc.dll"
+gamedll_linux "dlls/HPB_bot_i486.so"
+-----------------------------------------------
+
+This is what the Install script setup for me.  No changes had to be done to it.
+
+I also tried setting it in the +localinfo mm_gamedll string in my server startup, to no avail I keep getting segmentation faults.
+
+Here is the directory of my tfc/dlls
+---------------------------------------
+total 2480
+-rwxr-xr-x    1 gameadmi gameadmi   615355 Aug 16 10:28 HPB_bot_i486.so
+-rwxr-xr-x    1 gameadmi gameadmi  1912770 Jun 11  2002 tfc_i386.so
+
+And of course my log file is shown above in the first post.
+
+YEs.... you're asking yourself.. why does HPB_i386.so show up in the log as what's being started..  but in my liblist.gam file it's shows correctly?
+
+There in lies the question.  I have no clue, and am hoping that someone offer some advice.
+
+I did try and download the source.  I'm competent in compiling C++ modules, especially using MingW32 gcc compilers.
+
+The problem is, I can't get the waypoints.cpp file to compile because it doesn't recognize the access(), open(), close(), and unlink() functions.  So... I'm not real sure what to do there either.
+
+I was recommended this bot by a friend who had nothing but good things to say about this bot.  I'm looking forward to seeing it in action.
+
+[modified on 08/16/03 at 18:47:32]
+
+[modified on 08/16/03 at 18:50:41]
+--------------------------------------------------
+08/17/03 at 07:04:10  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+The "mm_gamedll" won't do anything for you since you aren't running metamod (since the gamedll_linux setting in your liblist.gam isn't loading the metamod DLL).
+
+The error message "LoadLibrary failed on ./tfc/dlls/HPB_i386.so" indicates that the dedicated server is trying to load "HPB_i386.so".  Somehow, somewhere, you have that set in a liblist.gam file that is being used when the server starts up.
+
+Are you manually starting the server up or do you have a script or cron job that starts the server?  If you have a script, start things up manually.  If you have a cron job, disable it and start things manually.  It really sounds like things are starting up differently a normal dedicated server startup.
+
+botman
+
+--------------------------------------------------
+08/17/03 at 09:05:28  Reply by: Vapok (pete@weruniq.com)
+--------------------------------------------------
+botman... the reason I tried to the mm_gamedll is because I thought, "hey let me try running metamod" so I set up metamod in the liblist.gam
+
+and tried that.
+
+
+No.. no cron job or scripts..
+
+Just a plain old ./hlds_run -game tfc blah blah blah..
+
+anyways.. I don't know what the problem is.. and I guess you're so used to talking with people who really haven't a clue what they are talking about, I'm feeling like you don't think I'm competent enough to do things.
+
+You're more than willing to contact me, pete@weruniq.com
+
+My Yahoo ID is skullz_vapok
+
+My MSN is pete@weruniq.com
+
+My AIM is peteandkristi
+
+and yes this is a dedicated server.  I am running 3.1.1.1d HLDS.
+
+
+--------------------------------------------------
+08/17/03 at 10:29:02  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Just for giggles, you can try copying dlls/HPB_bot_i486.so to dlls/HPB_i386.so and see if that works.
+
+Strange that the filename in the tfc/liblist.gam file isn't the one showing up in the error message.
+
+botman
+
+--------------------------------------------------
+08/17/03 at 19:36:38  Reply by: Vapok (pete@weruniq.com)
+--------------------------------------------------
+I did try to copy the i486 file to the filename of the i386.  and that didn't seem to have an effect.
+
+I also tried to copy the tfc.i386.so file to the HPB_i386.so.. and this time instead of getting the error that it couldn't find the "HPB_i386.so" it complained that it couldn't find the "tfc_i386.so"  
+
+Very werid.  I just wonder if there's an incompatibility with 3.1.1.1d.
+
+Anyways.. I won't waste any more of your time.. I'll just move on.. :(
+
+--------------------------------------------------
+08/18/03 at 09:57:47  Reply by: pl4tinum (vindi187@hotmail.com)
+--------------------------------------------------
+dunno.. maybe what i put in would work ;p
+
+[modified on 08/18/03 at 09:57:47]
+--------------------------------------------------
+08/18/03 at 09:51:51  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+"i could be totally wrong.  but that worked for me"
+
+No, the problem that you're thinking of is when you start the server and it says it can't find shared libraries that the dedicated server was linked against.
+
+In this case, the shared library is one that should be loaded based on the entry in the tfc\liblist.gam file.
+
+If you had received a similar message about a WONAuth .so file (or other shared library files found in the hlds_l directory), then you would need to update your LD_LIBRARY_PATH environment variable (or just copy those files into one of your existing library directories such as /usr/shlib).
+
+botman
+
+--------------------------------------------------
+08/18/03 at 15:21:26  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+I would try to fire up a fresh installation of the HLDS in another directory, such as /tmp/something. Install HLDS, install the HPB_bot, update your ldpath and see if it works... Then do a diff :)
+
+

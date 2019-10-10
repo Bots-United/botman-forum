@@ -1,0 +1,92 @@
+--------------------------------------------------
+Subject: Urgh damn SOLID's won't work.
+--------------------------------------------------
+08/15/02 at 14:19:25  Posted by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+I've made a sentry for my mod so far. It works okay when spwned by the world (i.e. if it's in the map/bsp file) It is SOLID fine, but when I spawn a sentry within the code it is not solid for some reason, also DispatchTouch() nevers gets called when you walk through it (???)
+
+I have ...
+
+code:
+
+void CAVP_Sentry :: Spawn ( void )
+{
+      Precache( );
+
+      pev->health = 100;
+      pev->max_health = pev->health;
+      pev->armorvalue = 100;
+
+      m_iRockets = SENTRY_MAX_ROCKETS / 2;
+      m_iShells = SENTRY_MAX_SHELLS / 2;
+
+      pev->gravity = 1;
+
+      SET_MODEL(ENT(pev), "models/avp_sentry.mdl");
+
+      UTIL_SetOrigin( pev, pev->origin );
+      
+      UTIL_SetSize(pev, Vector(-24, -24, -20), Vector(24, 24, 20));
+
+      pev->nextthink            = gpGlobals->time + 0.1;
+      pev->movetype            = MOVETYPE_FLY;
+      pev->sequence            = 0;
+      pev->frame                  = 0;
+      pev->solid                  = SOLID_SLIDEBOX;
+      pev->takedamage            = DAMAGE_AIM;
+      pev->deadflag            = DEAD_NO;
+
+      SetBits (pev->flags, FL_MONSTER);
+
+      m_fBuildTime = gpGlobals->time + 0.1;
+      
+      pev->effects |= EF_NODRAW;
+
+      EMIT_SOUND(ENT(pev), CHAN_BODY, "sentry/building.wav", 1.0, ATTN_NORM);
+      
+      SetThink(SentryBuildThink);
+}
+
+
+
+And I spawn it like...
+
+code:
+
+
+                              CBaseEntity *Sentry = CBaseEntity::Create( "avp_sentry", origin, pev->angles, pEntity );
+                              
+                              if( !FNullEnt(Sentry->edict()) )
+                              {                              
+                                    m_pPlayer->m_Sentry                  = Sentry;
+                                    
+                                    Sentry->pev->owner                  = pEntity;
+                                    
+                                    ClientPrint( pev, HUD_PRINTCENTER, "Building Sentry...\n");
+                              }
+                              else
+                                    ALERT(at_console,"Error allocating new edict for sentry!\n");
+
+
+
+
+Perhaps its something to do with the origin I pass in "Create"??? (Its just 100 units in front of the player) But the origin seems okay when I check it (ie. Its isn't (0,0,0)).
+
+What else can cause DispatchTouch to not be called and other things are also affected which is bugging me :(
+
+--------------------------------------------------
+08/15/02 at 15:46:57  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+See this post about UTIL_SetSize() and UTIL_SetOrigin()...
+
+http://dynamic.gamespy.com/~botman/yabb/YaBB.pl?board=2&action=display&num=1848
+
+They HAVE to happen in the correct order.
+
+botman
+
+--------------------------------------------------
+08/15/02 at 17:27:26  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+Ugh.. tried that, still "walk throughable" :( I noticed you can shoot it with the hornet gun no problem, crossbow bolt etc, but tracelines just go straight through it and I can still walk through it without DispatchTouched being called once... I'll try something else unless you have any ideas.. My debugger keeps "crashing" every now and then, it makes my mouse pointer go to the center of the screen all the time and I can't apply changes/break or anything and HL goes laggy, dunno what causes it.
+

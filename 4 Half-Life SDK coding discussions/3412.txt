@@ -1,0 +1,155 @@
+--------------------------------------------------
+Subject: Running HL not-maximized!
+--------------------------------------------------
+07/12/02 at 07:06:53  Posted by: Deacon (Deacon@mail.dk)
+--------------------------------------------------
+I changed some settings in hl.dsw.
+ALT + F7->Debug and set Paramenters to:
+-game frontline -developer -console -sw
+
+It will run Half-Life not maximized, how do I remove it? (I even tried to reinstall my Half-Life).
+
+--------------------------------------------------
+07/12/02 at 07:09:56  Reply by: Jedi_Master (jimhunterjr@bellsouth.net)
+--------------------------------------------------
+In one of the menus (Video Settings, I think) is a check box for running in windowed mode (it only appears when you have developer set).  Uncheck it and it will run in full screen mode.
+
+--------------------------------------------------
+07/12/02 at 07:13:21  Reply by: Deacon (Deacon@mail.dk)
+--------------------------------------------------
+Thank you :)
+
+--------------------------------------------------
+07/12/02 at 08:43:18  Reply by: @$3.1415rin (joebot@botepidemic.com)
+--------------------------------------------------
+or remove -sw from your commandline ...
+
+--------------------------------------------------
+07/12/02 at 11:07:59  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+when developing under Win9x, sw mode is often the only thing to do if you don't want a bug in your code to mess up the whole OS because of the bad OpenGL implementation. For example, if I play in GL mode, I am unable to switch to the code and back to the game, the computer freezes. Shitty hardware ? dunno...
+
+btw, congratulations for your bot Johannes, the aiming is awesome ! (apart from some bugs left) how did you do it ?
+
+
+--------------------------------------------------
+07/12/02 at 11:29:27  Reply by: @$3.1415rin (joebot@botepidemic.com)
+--------------------------------------------------
+I often also debug in software mode, that loads faster and hasnt this (NVidida?) opengl bug.
+
+*looking up my 'old' sources ... *
+
+quite simple ...
+code:
+
+current = pEdict->v.v_angle.x;
+      
+      ideal = pEdict->v.idealpitch;
+      
+      float a=f_AMomentum,idealSpeed,c=f_ASpeed,aNow;
+      
+      idealSpeed = (ideal - current);
+      idealSpeed = idealSpeed*c;
+      aNow = exp(log(a) * g_msecval / 50.f);
+      fViewSpeedPitch = fViewSpeedPitch*aNow + idealSpeed*(1.f-aNow);      // a+b=1, etwa a = 0.8, b=0.2
+      
+      current += fViewSpeedPitch * (g_msecval/50.f);
+
+
+
+and a quote from the skill file to show what values are used :
+
+code:
+#
+# joebot bot skill file
+#
+# please don't change the structure of this file
+#
+# copyright 2001 @$3.1415rin alias Johannes Lampel
+#
+#
+# VSC : Speed of changing the direction
+# VSM : Momentum for changing direction
+# REA : Reaction time
+# STH : values over 90 mean they don't have to estimate ur position, but the know the exact position
+# ITP : Instant turn probability
+# DIS : distance to overlook instantly            // at bots with sniper weapons this is 2 times
+# TPD : milliseconds it takes to look further 1000 units
+# PDI : distance to overlook instantly                                                      || prone
+# PTD : milliseconds it takes to look further 1000 units                                    || prone
+#
+# Note that PDI and PTD are added to the normal delay DIS and TPD
+# 
+# (2 b extended)
+#
+
+SKILL 0
+{
+VSC 10
+VSM 70
+REA 1.0
+STH 0
+ITP 0 
+DIS 500
+TPD 1000
+PDI 250
+PTD 3000
+}
+
+SKILL 100
+{
+VSC 100
+VSM 1
+REA 0.0
+STH 100
+ITP 100
+DIS 2000
+TPD 10
+PDI 1000
+PTD 1000
+}
+
+
+f_AMomentum is VSM / 100, fASpeed is VSC / 100
+
+--------------------------------------------------
+07/12/02 at 12:06:08  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+QUOTE:
+
+      aNow = exp(log(a) * g_msecval / 50.f);
+      fViewSpeedPitch = fViewSpeedPitch*aNow + idealSpeed*(1.f-aNow);      // a+b=1, etwa a = 0.8, b=0.2
+
+
+
+*** [JOE]@$3.1415rin killed [RACC]PieM with a headshot from good idea ***
+
+
+--------------------------------------------------
+07/12/02 at 12:31:19  Reply by: @$3.1415rin (joebot@botepidemic.com)
+--------------------------------------------------
+first it was *guesswhose* - yes, you are right, once again tobias' idea. I already knew this momentum stuff from neural nets, but somehow i havnt had the idea to use that with the view too ...
+i'm not sure if i'm right with the frame stuff, but I hope so. at least it's working, although it's not working with really low fps ( << 10 )
+
+[modified on 07/12/02 at 12:31:19]
+--------------------------------------------------
+07/12/02 at 14:13:31  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+Got it working with mine, looks like that (slightly tuned)
+code:
+
+   pBot->v_aim_speed.y = pBot->v_aim_speed.y * exp (log (0.7) * pBot->msecval / 50)
+                         + v_deviation.y * 0.1 * (1 - exp (log (0.35) * pBot->msecval / 50));
+   pBot->v_aim_speed.x = pBot->v_aim_speed.x * exp (log (0.7) * pBot->msecval / 50)
+                         + v_deviation.x * 0.1 * (1 - exp (log (0.35) * pBot->msecval / 50));
+
+   // move the aim cursor
+   pBot->pEdict->v.v_angle = UTIL_WrapAngles (pBot->pEdict->v.v_angle
+                                              + Vector (pBot->v_aim_speed.x * (pBot->msecval / 50),
+                                                        pBot->v_aim_speed.y * (pBot->msecval / 50),
+                                                        0) * aim_speed_factor); 
+
+
+...and guess what ? Remember Paulo-La-Frite aimbug fix ? It was about inverting v_angle.x after the body angles were set... well, this bug fix is actually itself a bug ! In fact it was a counter-measure to correct a bug someone did earlier (TheFatal or botman, don't know) in the bot framework. I had to get rid of it, else my bots' pitch was oscillating increasingly to infinity !!!
+
+

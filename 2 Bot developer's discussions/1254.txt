@@ -1,0 +1,146 @@
+--------------------------------------------------
+Subject: My bots don't get any money
+--------------------------------------------------
+02/24/01 at 11:09:22  Posted by: jerry_stoel (jerry_stoel@hotmail.com)
+--------------------------------------------------
+The bots don't get any money. I used a text-file to see how much money they all have but they stay at 300 (They only buy 1 weapon in the beginning when they got 800). Very weird I didn't changed anything in the cs_money function where it checks the money of each bot. What could be wrong???
+
+--------------------------------------------------
+02/24/01 at 12:15:01  Reply by: Zneaker (Hobermai@gmx.de)
+--------------------------------------------------
+Hi
+When are you inputting into your textfile ? When you are inputting in BotThink you will get a few hundred times the same amount of money in your textfile each round. (i suggest that your bots buy something for 500 and then you get a display of a few 100 times of 300$)
+
+--------------------------------------------------
+02/24/01 at 18:56:17  Reply by: eLiTe (ali@elitegamer.fsnet.co.uk)
+--------------------------------------------------
+I thought the money didn't work at first either, but it definitely does, also the armor... as I always say, u could check out my free source at www.teambot.net :D     It has some basic buying support, in fact almost exactly the same as what I'm using myself at the moment. But I think there's a minor issue that the bot will buy 2 primary weapons bcoz it is not checking if the bot has a primary weapon at the second part of the buy code... doesn't matter. U shouldn't need to rip off someone else's code straight off, u should only use it for hints... :)
+
+--------------------------------------------------
+02/25/01 at 02:32:43  Reply by: jerry_stoel (jerry_stoel@hotmail.com)
+--------------------------------------------------
+To : Zneaker
+
+I'm inputting it through the buy function not the bot think function.
+
+And to: Alistair
+
+I already downloaded your source :D. I look at it for examples (I did ripped "a part" of your waypoint code :) Hope you don't mind). I am modifying it.
+
+But about the buy-code they won't buy a primary weapon very annoying. This is my code( VERY VERY VERY BASIC :D):
+
+void BotBuy(bot_t *pBot)
+{
+      edict_t *pEdict = pBot->pEdict;
+      char rand_prim_weapon[32];
+      char rand_sec_weapon[32];
+
+      ShowTempMessage("Going into Buy menu!");
+
+      fp=fopen("c:\\sierra\\half-life\\cstrike\\jerry\\msg.txt", "a"); fprintf(fp, "Money: %d", pBot->bot_money); fclose(fp);
+
+      FakeClientCommand(pEdict, "buy", NULL, NULL);
+
+      if(pBot->start_action == MSG_CS_BUY_MENU)
+      {
+            
+            ShowTempMessage("IN BUYMENU");
+            
+            if(pBot->got_secondary_weapon == FALSE)
+            {
+                  FakeClientCommand(pEdict, "menuselect", "1", NULL);
+            }
+            else if(pBot->got_primary_weapon == FALSE)
+            {
+                  FakeClientCommand(pEdict, "menuselect", "3", NULL);
+            }
+            else
+            {
+                  pBot->buying = FALSE;
+            }
+
+            if((pBot->start_action == MSG_CS_PISTOL_MENU) && (pBot->bot_money > 750))
+            {                  
+                  pBot->start_action = MSG_CS_IDLE;
+                  
+                  pBot->rand_weapon = 0;
+                  
+                  pBot->rand_weapon = RANDOM_LONG(1,4);
+
+                  ShowTempMessage("Choosing a weapon");
+
+                  if(pBot->rand_weapon == 1)
+                        strcpy(rand_sec_weapon, "1");
+                  else if(pBot->rand_weapon == 2)
+                        strcpy(rand_sec_weapon, "2");
+                  else if(pBot->rand_weapon == 3)
+                        strcpy(rand_sec_weapon, "3");
+                  else
+                        strcpy(rand_sec_weapon, "4");
+                  
+                  ShowTempMessage("Buying a secondary weapon");
+
+                  FakeClientCommand(pEdict, "menuselect", rand_sec_weapon, NULL);
+
+                  pBot->got_secondary_weapon = TRUE;
+                  
+                  return;
+            }
+            
+            if((pBot->start_action == MSG_CS_SUB_MENU) && (pBot->bot_money > 2000))
+            {
+                  ShowTempMessage("Buying a MP5");
+
+                  pBot->start_action = MSG_CS_IDLE;
+
+                  FakeClientCommand(pEdict, "menuselect", "1", NULL);
+
+                  pBot->buying = FALSE;
+                  pBot->got_primary_weapon = TRUE;
+                  
+                  return;
+            }
+      }
+}
+
+Maybe something is wrong and I can't spot it >:(
+
+
+--------------------------------------------------
+02/25/01 at 12:37:13  Reply by: Zneaker (Hobermai@gmx.de)
+--------------------------------------------------
+Hi
+I suggest that you check if you didn't mix up the rifle and sub menus in your BotClient_CS_VGUI-function(there is an irregularity:
+p value sent for Shotgun menu is: 30
+Sub menu: 32
+Rifle menu: 31 )
+If you mixed the rifle and smg menus up, the bot startaction will be MSG_CS_RIFLE_MENU when they press "3" and not MSG_CS_SUB_MENU and the bot will never press "1" according to your buycode.
+
+
+--------------------------------------------------
+02/26/01 at 10:28:21  Reply by: jerry_stoel (jerry_stoel@hotmail.com)
+--------------------------------------------------
+You might be right. I'll check it right away thanks man.
+
+--------------------------------------------------
+02/26/01 at 15:23:26  Reply by: jerry_stoel (jerry_stoel@hotmail.com)
+--------------------------------------------------
+Well That wasn't it. I looked at the code and I defined it right: MSG_CS_SUB_MENU = 32 & MSG_CS_RIFLE_MENU = 31. But I did find out after a while that I played. They buy a MP5, but only once in the 15min. , but we played several rounds (about 30 rounds, I made a small level myself). What could be wrong??? 
+They are entering the buymenu properly but they just don't buy for a while.
+
+--------------------------------------------------
+02/27/01 at 12:09:56  Reply by: Zneaker (Hobermai@gmx.de)
+--------------------------------------------------
+Hi
+But according to your code the bots should buy if they have no weapon.. (got_primary_weapon). If you are executing your code only once at the beginning of a round, just execute it till they bought that weapon for sure .
+got_primary_weapon/secondary_weapon  has to be set to TRUE when a bot dies and you want him to buy again,when he gets alive the next round (then he will need a new weapon).
+
+
+
+--------------------------------------------------
+02/27/01 at 15:24:30  Reply by: jerry_stoel (jerry_stoel@hotmail.com)
+--------------------------------------------------
+Yes your right. I got it working now. I used some of the code of the team bot (from elite). And now they set the variables properly, they buy all the guns. That's why my bots only stand still during the freeze time in the beginning and after that round they don't stand still :). Now I can work perfecting the buy-code.
+
+Tnxs for your help I really appreciate it.
+

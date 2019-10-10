@@ -1,0 +1,426 @@
+--------------------------------------------------
+Subject: Angle of rotation
+--------------------------------------------------
+10/08/03 at 11:28:02  Posted by: BAStumm (bs@bs-linux.com)
+--------------------------------------------------
+Where is the rotation angle of the bot stored?
+
+is it pPlayer->v_v.angle or perhaps pPlyaer->v_v.angle.y I'm guessing the latter but what is v_v.angle with no x, y, or z?
+
+btw, what I'm looking for is the direction the bot is facing (or optionally looking). I mean this as in if you had birds eye view of the map (from above) the angle in degrees that the player is rotated to or facing. I don't care about up/down stuff...
+
+--------------------------------------------------
+10/08/03 at 11:29:14  Reply by: BAStumm (bs@bs-linux.com)
+--------------------------------------------------
+oops almost forgot, is this info available for sentries as well? If so where it stored? v_v.angles.y as well? only in pent of course... 
+
+--------------------------------------------------
+10/08/03 at 12:50:00  Reply by: rick (rick_helmus8@hotmail.com)
+--------------------------------------------------
+pPlayer->v.v_angle.y, for sentries dunno but i guess its the same(pent->v.v_angle.y)
+
+--------------------------------------------------
+10/08/03 at 13:26:33  Reply by: BAStumm (bs@bs-linux.com)
+--------------------------------------------------
+pPlayer->v_v.angle.y is giving values ranging from -180 to +180. ie (4 players angles shown):
+
+ANGLE   -46.769257      83.951424       82.803009       -73.894562
+
+
+pent->v_v.angle.y is giving 0.000000 always. 
+
+--------------------------------------------------
+10/08/03 at 14:02:14  Reply by: Cheesemonster!!! (cheeseh(at)rcbot(dot)net)
+--------------------------------------------------
+I think sentries angles will be stored in its body angles (pEnt->v.angles) not head angles since it doesnt have a head controller on its model.
+
+--------------------------------------------------
+10/08/03 at 19:45:19  Reply by: BAStumm (bs@bs-linux.com)
+--------------------------------------------------
+Well that works sort of. There must be another telling where the head is facing. Because if you built a sg and rotate it 180 that angle doesn't change. So that angle is for the base of the SG not the rotating top. 
+
+--------------------------------------------------
+10/09/03 at 03:46:29  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Exactly, but these are different entities. In DMC, the BASE of the sentry gun is a "building_sentrygun" entity (or another name in the likes). But the TOP of the sentry is another entity, with independent angles. I haven't look for its name, sorry, but it should be easy to find out using an entity monitoring plugin (such as mine hehe... www.racc-ai.com/pmtools_plugin.exe)
+
+
+--------------------------------------------------
+10/09/03 at 09:34:44  Reply by: Cheesemonster!!! (cheeseh(at)rcbot(dot)net)
+--------------------------------------------------
+do a typical HPB_Bot "search" command next to a sentry, it will tell you ;)
+
+--------------------------------------------------
+10/09/03 at 09:40:53  Reply by: BAStumm (bs@bs-linux.com)
+--------------------------------------------------
+typical HPB_Bot "search" command ??? 
+
+How do do you do a search command? This is in the code or this is something you do inside game as a player? 
+
+--------------------------------------------------
+10/09/03 at 09:43:15  Reply by: Cheesemonster!!! (cheeseh(at)rcbot(dot)net)
+--------------------------------------------------
+its a client command in HPB Bot, just type 'search' in the console (while running hpb_bot or your bot if it is derived from HPB_Bot and you didnt remove the search command from client command) It will print out a list of entities within about 100 units of you in the console.
+
+--------------------------------------------------
+10/09/03 at 09:48:30  Reply by: BAStumm (bs@bs-linux.com)
+--------------------------------------------------
+that shows the properties of the entities too? Ie v.angles ???
+
+--------------------------------------------------
+10/09/03 at 09:52:03  Reply by: Cheesemonster!!! (cheeseh(at)rcbot(dot)net)
+--------------------------------------------------
+You can always edit the command to show the entity angles it churns out, shouldn't be a proablem if you're a good coder eh?
+
+--------------------------------------------------
+10/09/03 at 09:54:32  Reply by: BAStumm (bs@bs-linux.com)
+--------------------------------------------------
+Thanks found the code for this in dll.cpp. I'll see if I can't haxor in some kind of properties listing. 
+
+--------------------------------------------------
+10/09/03 at 16:36:37  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+RHHAAA I can't stand seeing people REINVENTING THE WHEEL !!!
+
+Here's a typical CONSOLE output of my plugin, when I ask it to give me info about an entity:
+code:
+
+Printing out entity #1 variable information...
+(variable name = value (meaning))
+pEntity->v.classname = 57941752 ("player")
+pEntity->v.globalname = 0 ("")
+pEntity->v.origin = Vector (183.9, 686.9, -1820.0)
+pEntity->v.oldorigin = Vector (0.0, 0.0, 0.0)
+pEntity->v.velocity = Vector (0.0, 0.0, 0.0) - Length 0.000 - Length2D 0.000
+pEntity->v.basevelocity = Vector (0.0, 0.0, 0.0) - Length 0.000 - Length2D 0.000
+pEntity->v.clbasevelocity = Vector (0.0, 0.0, 0.0) - Length 0.000 - Length2D 0.000
+pEntity->v.movedir = Vector (0.0, 0.0, 0.0)
+pEntity->v.angles = Vector (-0.2, -16.9, 0.0)
+pEntity->v.avelocity = Vector (0.0, 0.0, 0.0) - Length 0.000 - Length2D 0.000
+pEntity->v.punchangle = Vector (0.0, 0.0, 0.0)
+pEntity->v.v_angle = Vector (0.5, -16.9, 0.0)
+pEntity->v.endpos = Vector (0.0, 0.0, 0.0)
+pEntity->v.startpos = Vector (0.0, 0.0, 0.0)
+pEntity->v.impacttime = 0.000
+pEntity->v.starttime = 0.000
+pEntity->v.fixangle = 1 (force view angles)
+pEntity->v.idealpitch = 0.780
+pEntity->v.pitch_speed = 0.000
+pEntity->v.ideal_yaw = -18.579
+pEntity->v.yaw_speed = 0.000
+pEntity->v.modelindex = 174
+pEntity->v.model = 57966524 ("models/player.mdl")
+pEntity->v.viewmodel = 57970400 ("models/v_crowbar.mdl")
+pEntity->v.weaponmodel = 57970376 ("models/p_crowbar.mdl")
+pEntity->v.absmin = Vector (166.9, 669.9, -1857.0)
+pEntity->v.absmax = Vector (200.9, 703.9, -1783.0)
+pEntity->v.mins = Vector (-16.0, -16.0, -36.0)
+pEntity->v.maxs = Vector (16.0, 16.0, 36.0)
+pEntity->v.size = Vector (32.0, 32.0, 72.0)
+pEntity->v.ltime = 0.000 (current time is 20.825)
+pEntity->v.nextthink = 0.000 (current time is 20.825)
+pEntity->v.movetype = 3 (MOVETYPE_WALK)
+pEntity->v.solid = 3 (SOLID_SLIDEBOX)
+pEntity->v.skin = 0 ("")
+pEntity->v.body = 0 ("")
+pEntity->v.effects = 0 ()
+pEntity->v.gravity = 1.000 (fraction /1 of normal)
+pEntity->v.friction = 1.000
+pEntity->v.light_level = 0
+pEntity->v.sequence = 25 ("")
+pEntity->v.gaitsequence = 2 ("")
+pEntity->v.frame = 213.283 (position /255 of total in sequence)
+pEntity->v.animtime = 20.825 (current time is 20.825)
+pEntity->v.framerate = 1.000 (times normal speed)
+pEntity->v.controller = {0, 0, 0, 0}
+pEntity->v.blending = {0, 0}
+pEntity->v.scale = 0.000
+pEntity->v.rendermode = 0 (kRenderNormal)
+pEntity->v.renderamt = 0.000
+pEntity->v.rendercolor = Vector (0.0, 0.0, 0.0) (RGB)
+pEntity->v.renderfx = 0 (kRenderFxNone)
+pEntity->v.health = 63.000
+pEntity->v.frags = 0.000
+pEntity->v.weapons = -2147483578 (01100010000000000000000000000001)
+pEntity->v.takedamage = 2.000 (DAMAGE_AIM)
+pEntity->v.deadflag = 0 (DEAD_NO)
+pEntity->v.view_ofs = Vector (0.0, 0.0, 28.0)
+pEntity->v.button = 0 ()
+pEntity->v.impulse = 0
+pEntity->v.chain = NULL
+pEntity->v.dmg_inflictor = Entity #0 ("worldspawn")
+pEntity->v.enemy = NULL
+pEntity->v.aiment = NULL
+pEntity->v.owner = NULL
+pEntity->v.groundentity = Entity #0 ("worldspawn")
+pEntity->v.spawnflags = 0
+pEntity->v.flags = 134218248 (FL_CLIENT | FL_ONGROUND | FL_THIRDPARTYBOT)
+pEntity->v.colormap = 0 (0x0)
+pEntity->v.team = 0
+pEntity->v.max_health = 100.000
+pEntity->v.teleport_time = 0.000
+pEntity->v.armortype = 0.000
+pEntity->v.armorvalue = 0.000
+pEntity->v.waterlevel = 0 (not in water)
+pEntity->v.watertype = -1
+pEntity->v.target = 0 ("")
+pEntity->v.targetname = 0 ("")
+pEntity->v.netname = -34801648 ("-|racc|- James Bonk")
+pEntity->v.message = 0 ("")
+pEntity->v.dmg_take = 0.000
+pEntity->v.dmg_save = 0.000
+pEntity->v.dmg = 2.000
+pEntity->v.dmgtime = 0.000 (current time is 20.825)
+pEntity->v.noise = 0 ("")
+pEntity->v.noise1 = 0 ("")
+pEntity->v.noise2 = 0 ("")
+pEntity->v.noise3 = 0 ("")
+pEntity->v.speed = 0.000
+pEntity->v.air_finished = 32.825
+pEntity->v.pain_finished = 0.000
+pEntity->v.radsuit_finished = 0.000
+pEntity->v.pContainingEntity = Entity #1 ("player")
+pEntity->v.playerclass = 0
+pEntity->v.maxspeed = 0.000
+pEntity->v.fov = 0.000
+pEntity->v.weaponanim = 0
+pEntity->v.pushmsec = 0
+pEntity->v.bInDuck = 0 (FALSE)
+pEntity->v.flTimeStepSound = 4 (current time is 20.825)
+pEntity->v.flSwimTime = 0 (current time is 20.825)
+pEntity->v.flDuckTime = 0 (current time is 20.825)
+pEntity->v.iStepLeft = 1
+pEntity->v.flFallVelocity = 0.000
+pEntity->v.gamestate = 0
+pEntity->v.oldbuttons = 0
+pEntity->v.groupinfo = 0
+pEntity->v.iuser1 = 0
+pEntity->v.iuser2 = 0
+pEntity->v.iuser3 = 0
+pEntity->v.iuser4 = 0
+pEntity->v.fuser1 = 0.000
+pEntity->v.fuser2 = 0.000
+pEntity->v.fuser3 = 0.000
+pEntity->v.fuser4 = 0.000
+pEntity->v.vuser1 = Vector (0.0, 0.0, 0.0)
+pEntity->v.vuser2 = Vector (0.0, 0.0, 0.0)
+pEntity->v.vuser3 = Vector (0.0, 0.0, 0.0)
+pEntity->v.vuser4 = Vector (0.0, 0.0, 0.0)
+pEntity->v.euser1 = NULL
+pEntity->v.euser2 = NULL
+pEntity->v.euser3 = NULL
+pEntity->v.euser4 = NULL
+End of dump.
+
+
+And this is a CONSOLE OUTPUT. It also output to a LOG FILE, guys. Eh ! wake uuuuuuupp...
+Sure, you do what you want, but for me, my choice is simple !
+
+PM
+
+--------------------------------------------------
+10/09/03 at 17:52:32  Reply by: BAStumm (bs@bs-linux.com)
+--------------------------------------------------
+why didn't you tell me about this in that other thread a few months ago when I was trying to gather all this info... The one where I had a wish list of stuff I wanted to gather about server/player/entities (its in top 10 threads on this forum). 
+
+Does your plugin work for linux too? Off to check it out :)
+
+--------------------------------------------------
+10/09/03 at 17:55:36  Reply by: BAStumm (bs@bs-linux.com)
+--------------------------------------------------
+I'm not seeing a .so or a linux make file in there... 
+
+--------------------------------------------------
+10/09/03 at 19:32:58  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Yeah, but you have the source code, it should be quite straightforward to port it though. I don't doubt a single second that you can do it :)
+
+Why didn't I tell you ? geez, on the contrary I feel like I'm hyping it over and over but nobody seems to listen... ;D
+
+
+--------------------------------------------------
+10/09/03 at 19:55:52  Reply by: BAStumm (bs@bs-linux.com)
+--------------------------------------------------
+got it to compile (gcc under linux). Very minor changes to port it, biggest being to include strings.h
+
+But it crashed my server when I sent:
+
+listent building_sentrygun
+
+Whats the format for giving command? 
+Am I supposed to do this in game or can I do it from the server console? I do so via halfd. 
+
+this is all it said before it crashed...
+
+Printing out ALL entities in game...
+index CLASSNAME ["netname"] (model): absmin (x, y, z); size (x, y, z); distance d  
+
+
+--------------------------------------------------
+10/09/03 at 20:59:27  Reply by: BAStumm (bs@bs-linux.com)
+--------------------------------------------------
+ok I should have checked, I see your expecting a listenserver... I've removed things that require listenserver but it seems I'm trying the wrong command. 
+
+all it get is 
+
+294 building_sentrygun (models/sentry1.mdl): min (-667, -1557, -220); siz (32, 32, 48); dst 0
+
+from listent building_sentry (get both guns and bases). 
+
+What command gives the full list you posted?
+
+
+*EDIT*
+
+Nevermind I'm an idiot... 
+
+printent
+
+Here is a sentry
+
+code:
+
+SERVER UP hlcmd> printent 294
+Sent 'printent 294' to server
+Printing out entity #294 variable information...
+(variable name = value (meaning))
+pEntity->v.classname = 58041208 ("building_sentrygun")
+pEntity->v.globalname = 0 ("")
+pEntity->v.origin = Vector (-650.0, -1540.0, -218.8)
+pEntity->v.oldorigin = Vector (0.0, 0.0, 0.0)
+pEntity->v.velocity = Vector (0.0, 0.0, 0.0) - Length 0.000 - Length2D 0.000
+pEntity->v.basevelocity = Vector (0.0, 0.0, 0.0) - Length 0.000 - Length2D 0.000
+pEntity->v.clbasevelocity = Vector (0.0, 0.0, 0.0) - Length 0.000 - Length2D 0.000
+pEntity->v.movedir = Vector (0.0, 0.0, 0.0)
+pEntity->v.angles = Vector (0.0, 211.8, 0.0)
+pEntity->v.avelocity = Vector (0.0, 0.0, 0.0) - Length 0.000 - Length2D 0.000
+pEntity->v.punchangle = Vector (0.0, 0.0, 0.0)
+pEntity->v.v_angle = Vector (0.0, 0.0, 0.0)
+pEntity->v.endpos = Vector (0.0, 0.0, 0.0)
+pEntity->v.startpos = Vector (0.0, 0.0, 0.0)
+pEntity->v.impacttime = 0.000
+pEntity->v.starttime = 0.000
+pEntity->v.fixangle = 0 (nothing)
+pEntity->v.idealpitch = 0.000
+pEntity->v.pitch_speed = 0.000
+pEntity->v.ideal_yaw = 256.000
+pEntity->v.yaw_speed = 0.000
+pEntity->v.modelindex = 160
+pEntity->v.model = 58041575 ("models/sentry3.mdl")
+pEntity->v.viewmodel = 0 ("")
+pEntity->v.weaponmodel = 0 ("")
+pEntity->v.absmin = Vector (-667.0, -1557.0, -219.8)
+pEntity->v.absmax = Vector (-633.0, -1523.0, -169.8)
+pEntity->v.mins = Vector (-16.0, -16.0, 0.0)
+pEntity->v.maxs = Vector (16.0, 16.0, 48.0)
+pEntity->v.size = Vector (32.0, 32.0, 48.0)
+pEntity->v.ltime = 0.000 (current time is 242.087)
+pEntity->v.nextthink = 242.162 (current time is 242.087)
+pEntity->v.movetype = 5 (MOVETYPE_FLY)
+pEntity->v.solid = 3 (SOLID_SLIDEBOX)
+pEntity->v.skin = 0 ("")
+pEntity->v.body = 0 ("")
+pEntity->v.effects = 0 ()
+pEntity->v.gravity = 0.000 (fraction /1 of normal)
+pEntity->v.friction = 0.000
+pEntity->v.light_level = 0
+pEntity->v.sequence = 2 ("con_password")
+pEntity->v.gaitsequence = 0 ("")
+pEntity->v.frame = 146.721 (position /255 of total in sequence)
+pEntity->v.animtime = 242.062 (current time is 242.087)
+pEntity->v.framerate = 1.000 (times normal speed)
+pEntity->v.controller = {23, 117, 110, 0}
+pEntity->v.blending = {0, 0}
+pEntity->v.scale = 0.000
+pEntity->v.rendermode = 0 (kRenderNormal)
+pEntity->v.renderamt = 0.000
+pEntity->v.rendercolor = Vector (0.0, 0.0, 0.0) (RGB)
+pEntity->v.renderfx = 0 (kRenderFxNone)
+pEntity->v.health = 138.000
+pEntity->v.frags = 0.000
+pEntity->v.weapons = 0 (00000000000000000000000000000000)
+pEntity->v.takedamage = 2.000 (DAMAGE_AIM)
+pEntity->v.deadflag = 0 (DEAD_NO)
+pEntity->v.view_ofs = Vector (0.0, 0.0, 22.0)
+pEntity->v.button = 0 ()
+pEntity->v.impulse = 0
+pEntity->v.chain = NULL
+pEntity->v.dmg_inflictor = NULL
+pEntity->v.enemy = NULL
+pEntity->v.aiment = NULL
+pEntity->v.owner = NULL
+pEntity->v.groundentity = NULL
+pEntity->v.spawnflags = 0
+pEntity->v.flags = 32 (FL_MONSTER)
+pEntity->v.colormap = 41110 (0xA096)
+pEntity->v.team = 0
+pEntity->v.max_health = 216.000
+pEntity->v.teleport_time = 0.000
+pEntity->v.armortype = 0.000
+pEntity->v.armorvalue = 0.000
+pEntity->v.waterlevel = 0 (not in water)
+pEntity->v.watertype = -1
+pEntity->v.target = 0 ("")
+pEntity->v.targetname = 0 ("")
+pEntity->v.netname = 0 ("")
+pEntity->v.message = 0 ("")
+pEntity->v.dmg_take = 0.000
+pEntity->v.dmg_save = 0.000
+pEntity->v.dmg = 0.000
+pEntity->v.dmgtime = 0.000 (current time is 242.087)
+pEntity->v.noise = 0 ("")
+pEntity->v.noise1 = 0 ("")
+pEntity->v.noise2 = 0 ("")
+pEntity->v.noise3 = 0 ("")
+pEntity->v.speed = 0.000
+pEntity->v.air_finished = 0.000
+pEntity->v.pain_finished = 0.000
+pEntity->v.radsuit_finished = 0.000
+pEntity->v.pContainingEntity = Entity #294 ("building_sentrygun")
+pEntity->v.playerclass = 0
+pEntity->v.maxspeed = 0.000
+pEntity->v.fov = 0.000
+pEntity->v.weaponanim = 0
+pEntity->v.pushmsec = 0
+pEntity->v.bInDuck = 0 (FALSE)
+pEntity->v.flTimeStepSound = 0 (current time is 242.087)
+pEntity->v.flSwimTime = 0 (current time is 242.087)
+pEntity->v.flDuckTime = 0 (current time is 242.087)
+pEntity->v.iStepLeft = 0
+pEntity->v.flFallVelocity = 0.000
+pEntity->v.gamestate = 0
+pEntity->v.oldbuttons = 0
+pEntity->v.groupinfo = 0
+pEntity->v.iuser1 = 0
+pEntity->v.iuser2 = 0
+pEntity->v.iuser3 = 0
+pEntity->v.iuser4 = 0
+pEntity->v.fuser1 = 0.000
+pEntity->v.fuser2 = 0.000
+pEntity->v.fuser3 = 0.000
+pEntity->v.fuser4 = 0.000
+pEntity->v.vuser1 = Vector (0.0, 0.0, 0.0)
+pEntity->v.vuser2 = Vector (0.0, 0.0, 0.0)
+pEntity->v.vuser3 = Vector (0.0, 0.0, 0.0)
+pEntity->v.vuser4 = Vector (0.0, 0.0, 0.0)
+pEntity->v.euser1 = NULL
+pEntity->v.euser2 = NULL
+pEntity->v.euser3 = NULL
+pEntity->v.euser4 = NULL
+End of dump.
+
+SERVER UP hlcmd> 
+
+
+
+
+btw, I'll email ya the .so and modified source later if ya want, after I debug it more for listenserver stuff... 
+
+[modified on 10/09/03 at 20:59:27]
+--------------------------------------------------
+10/10/03 at 01:38:42  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+glad someone finds it useful AT LAST!! ;D;D;D
+There may be a good couple other bugs also, because I use this plugin just for testing stuff... but thank you for the nnux library :)
+
+

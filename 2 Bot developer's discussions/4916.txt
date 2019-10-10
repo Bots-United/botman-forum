@@ -1,0 +1,141 @@
+--------------------------------------------------
+Subject: Shield weapon ID not via engine messages?!
+--------------------------------------------------
+10/18/03 at 12:33:08  Posted by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+Hey people,
+
+I'm figuring out the Weapon ID's and such. I got all of them except one. Oddly enough it just does not appear in my 'debug text file'. I can see all weapons, except weapon_shield.
+
+Anyone knows why? And, anyone knows what the ID is? Could it be a bug in my code? Or is the weapon_shield somehow coded differently?
+
+--------------------------------------------------
+10/18/03 at 14:05:22  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+Okay, call me stupid :)
+
+I had to recode some parts of my debugging system. (little history: I had HBP Bots debug engine, then Tub changed it into an 'easy debug' engine, but since i can't do the stuff i normally do with it, i had to change it back again)
+
+I figured the shield is not a 'weapon' on its own. Although it is used in mp.dll and you should have it in linkfunc.cpp, the shield has several models (for each secondary weapon + grenades + knife). The only way to detect if a shield is carried is probably by one of the few ways given at the "shield post" by botmeister. 
+
+ps. Someone correct me if i am wrong, perhaps there IS a weapon id afterall, but i haven't found one yet.
+
+--------------------------------------------------
+10/18/03 at 15:50:32  Reply by: botmeister (meister@telus.net)
+--------------------------------------------------
+I can check this "id" thing for you. 
+
+I simply assumed there is a shield weapon at least for buying it, but perhaps not. The shield seems to be a buggy patch that was "forced" into the original CS code, so it seems to behave very differently than the regular "weapons". I personaly don't like what was done with the shield much, and I'd love to be able to change how it works. The one thing I'd like it to do, is have it take on damage so it eventually breaks apart - but that may not be possible to do.
+
+
+--------------------------------------------------
+10/18/03 at 16:39:09  Reply by: botmeister (meister@telus.net)
+--------------------------------------------------
+OK, I confirmed there's no "normal" messages for the shield. All the weapons show up with weapon id's except the shield, also when you pick up a shield there's no weapon pickup message.
+
+There may be new messages just for the shield. I'll have to check this one later.
+
+
+--------------------------------------------------
+10/18/03 at 18:35:05  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+It is indeed possible to write a metamod plugin (or whatever) that would cause the shield to take damage and break apart. AustinBotServer is sending me the Steam Installer, once I get it I'll have a go for writing it.
+
+In the meantime, I'm not surprised to hear your comments about the shield, I never liked it, I never trusted the CS guys to code it properly and once I'll see it for real I can bet I won't like it more either.
+
+IMO, the way to go for detecting if a player has the shield or not is to have a look at pEntity->v.weaponmodel. And then, eventually, why not fill in a special (unused) bit in v.weapons OURSELVES ? That would make future checks a lot easier, and sorta 'fix' this consequence of the CS guys detestable coding habits :)
+
+[edited]Hey, anyway, why would you ever have some use with the weapons network messages ?? Don't forget our bots are server-side bots, hence why wouldn't it suffice to read the pEdict->v.weapons bitmap ? That's what I do ; the only thing I use the weapons network messages for (ammo messages in fact) is for catching the gunshot sounds...
+
+[modified on 10/18/03 at 18:35:05]
+--------------------------------------------------
+10/18/03 at 21:06:08  Reply by: botmeister (meister@telus.net)
+--------------------------------------------------
+PM You are right about the messages, I don't use messages for very much either.
+
+There are still important reasons for capturing the messages such as to reduce processing time and for reliability. As an example, you can use the weapon pickup messages (except for sheilds!) to detect if a new weapon has been picked up when it was picked up. This may be better than constantly checking on each frame if the weapon model has changed - which won't always work anyway in the case where the player does not automatically switch to the weapon on pickup. 
+
+As for the infamous shield, there's no problem detecting if a player has the shield using v.weaponmodel, what is more difficult is reliably detecting if the shield is activated or not. 
+
+
+--------------------------------------------------
+10/19/03 at 00:34:45  Reply by: bluesy (bluesy@bezeqint.net)
+--------------------------------------------------
+If you want to detect raised/lowered shield you could catch the HideWeapon message that`s getting sent to any client using the shield. Values are 66 for raised, 2 for lowered if I remember it right...
+
+
+
+--------------------------------------------------
+10/19/03 at 02:49:12  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+glad to hear i understood it right; the shield is nasty coded indeed. 
+
+We'll off to code some own stuff for it then :)
+
+--------------------------------------------------
+10/19/03 at 21:39:45  Reply by: AustinBotServer (AustinBotServer@MindSpring)
+--------------------------------------------------
+
+QUOTE:
+In the meantime, I'm not surprised to hear your comments about the shield, I never liked it, I never trusted the CS guys to code it properly and once I'll see it for real I can bet I won't like it more either. 
+
+
+
+Agreed! The shield is the most ridicules thing I ever heard of. Er.. lets dramatically change the game play of the most popular game….
+
+
+--------------------------------------------------
+10/20/03 at 06:27:03  Reply by: whistler_wmz (whistler_wmz@163.com)
+--------------------------------------------------
+Just show two lines in my version of bot...
+
+#define CS_WEAPON_SHIELDGUN 2
+
+LINK_ENTITY_TO_FUNC(weapon_shieldgun);
+
+--------------------------------------------------
+10/20/03 at 07:47:28  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+I did a check, but there is no weapon_shieldgun in mp.dll?
+
+--------------------------------------------------
+10/20/03 at 08:19:10  Reply by: whistler_wmz (whistler_wmz@163.com)
+--------------------------------------------------
+Well....there may be something different between beta and formal versions of Counter-Strike 1.6.
+
+My modified version of POD-Bot works only in Beta version of CS 1.6 and previous version.
+
+http://www.angelfire.com/ga4/myungjee/podbot.rar
+
+--------------------------------------------------
+10/21/03 at 23:02:05  Reply by: botmeister (meister@telus.net)
+--------------------------------------------------
+The released version of CS 1.6 has no such entity "weapon_shieldgun", but there's a "weapon_shield" enity and that's it.
+
+--------------------------------------------------
+10/22/03 at 07:17:26  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+yes, thats also how far i got. When you buy a shield some other stuff happens aswell with engine messages, pretty weird, but not real weapon id.
+
+
+
+--------------------------------------------------
+10/22/03 at 09:08:06  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Is there something sent through usercmd_t's like in DMC ? Dunno, just asking... might be what's missing.
+
+Should be easy to test out.
+I just received the Steam Installer from Austin (thanks!!!) and I'll give this a go soon - well, once I've debugged-the-crap-out-of-my-horrible-navmesh-which-doesnt-want-to-work-daaaah-mommy.
+
+
+--------------------------------------------------
+10/25/03 at 02:28:32  Reply by: AustinBotServer (AustinBotServer@MindSpring)
+--------------------------------------------------
+
+QUOTE:
+I just received the Steam Installer from Austin (thanks!!!)
+
+
+
+No problem.
+

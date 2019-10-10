@@ -1,0 +1,170 @@
+--------------------------------------------------
+Subject: Goal selection with XML files (Scripting)
+--------------------------------------------------
+01/30/03 at 17:06:44  Posted by: theimann (killaruna@nuclearbox.com)
+--------------------------------------------------
+OK, here we go... As I already mentioned I didn't read any articles on scripting, but this method seems to be a possible approach. It's geared towards the Parabot Goalfinder system (so you might have difficulties porting this), in which goals get triggered by perceipts. All possible goals in a situation are evaluated and given a score or priority. There are three kinds of actions: move, view and act (e.g. reload), which can be executed parallely.
+Anyway, here's an example (hierarchical approach):
+code:
+
+<goalspecs>
+      
+      <goal>
+            <name> combat </name>
+            <!-- trigger perceipt is valid for all subgoals -->
+            <trigger perceipt="enemy">
+                  <!-- if time since visibility with enemy was lost is less than 1 second -->
+                  <condition if="visLost" lowerThan="1.0"/>
+            </trigger>
+            
+            <goal>
+                  <name> medium distance </name>
+                  <!-- one trigger with several conditions: treat as "AND" -->
+                  <trigger>
+                        <!-- if traveltime to enemy is between 1 and 3 seconds -->
+                        <condition if="travelTime" greaterThan="1.0"/>
+                        <condition if="travelTime" lowerThan="3.0"/>
+                  </trigger>
+                  
+                  <!-- priority is valid for all subgoals -->
+                  <priority> 
+                        <!-- scale priority increasing with enemy's danger between 6 and 8 -->
+                        <scaleInc min="6" max="8"> danger </scaleInc>
+                  </priority>
+                        
+                  <goal>
+                        <name> defense </name>
+                        <!-- two seperate triggers: treat as "OR" -->
+                        <trigger>
+                              <!-- if bot's mood (0..10) is low -->
+                              <condition if="mood" lowerThan="5.0"/>
+                        </trigger>
+                        <trigger>
+                              <!-- ...or bot's health is low -->
+                              <condition if="health" lowerThan="20"/>
+                        </trigger>
+                        
+                        <!-- these actions obviously have to be predefined -->
+                        <action> getAway </action>
+                  </goal>
+                  
+                  <goal>
+                        <!-- no trigger: treat as default action (if no others apply) -->
+                              
+                        <!-- execute a view and a move action at once -->
+                        <action> fire </action>
+                        <action> goto </action>
+                  </goal>
+            </goal>
+      </goal>
+      
+</goalspecs>
+
+
+Obviously it's a high-level scripting, bots who support it must have own implementations for the defined actions. Could this kind of goal description be extended to CS styles of game? Comments, critics, suggestions, extensions? Do you require completely different functionality?Would be nice if we could define a common scripting language, to check how different bots perform with the same goal set (i.e. testing the individual implementations of the basic actions). Well, let's call it a vision... 8)
+
+Tobias
+
+[modified on 01/30/03 at 16:22:06]
+
+[modified on 01/30/03 at 17:06:44]
+--------------------------------------------------
+01/30/03 at 18:12:06  Reply by: CountFloyd (countfloyd@botepidemic.com)
+--------------------------------------------------
+Not sure if defining some kind of Bot scripting language would be good, though I like the XML approach to it. We do have different opinions (and code) why would we want to limit ourselves ? For example I'm not planning to have entities triggering goals and some guy might not have divided (though I did) his Bot into different controllers therefore the 3 different action types wouldn't work. What's the thing with the "testing the individual implementations of the basic actions" anyway ? There are so many different basic actions in every Game/MOD out there it could take quite some time to define them all imho. However this is just my opinion and of course it's interesting to see what makes your bot tick.
+
+--------------------------------------------------
+01/31/03 at 04:47:30  Reply by: William (william@cgf-ai.com)
+--------------------------------------------------
+Tobias, do have a look at the QuakeIII bot behaviors. Although they seem to be "programmed" in a C-style script, they closely resemble the kind of decisions you list here (once you remove that modern XML stuff :) ).
+AFAIK, Jan Paul's thesis contains an example. 
+
+QuakeIII was successful in providing recognizable characters, as opposed to competitor Unreal Tournament.
+
+William
+
+--------------------------------------------------
+01/31/03 at 07:08:46  Reply by: Gimli (gimli@jrrclan.com)
+--------------------------------------------------
+I think its a nice idea for your bot. At least you give the end user a little more control over what he wants to happen with his bot. Again it doesnt work with everybody though. btw what does AFAIK stand for?
+
+--------------------------------------------------
+01/31/03 at 09:24:52  Reply by: Bluesman (blues@telia.com)
+--------------------------------------------------
+
+QUOTE:
+btw what does AFAIK stand for?
+
+
+
+
+/me goes off-topic
+
+AFAIK = As Far As I Know
+
+
+--------------------------------------------------
+02/02/03 at 12:51:09  Reply by: theimann (killaruna@nuclearbox.com)
+--------------------------------------------------
+CF, the three different action types can be used, but don't have to. As for the goals-triggered-by-entities-principle: That's how my bot works, and I can only define the scripting language by requirements I know of. I'd love to see other approaches of defining tasks, goals and general behaviour in a high-level, easy understandable language. The reasons for trying to gather suggestions for one unified bot scripting language?
+
+1. The more suggestions you can implement in one language, the more powerful it gets.
+2. The idea of scripting IMHO is to make the bot modifiable for users. Why should users have to learn multiple languages if one will do?
+3. Are there really that many different actions? Or are the basics of every FPS easily to define and to script? That's the scientific interest in this question ;-)
+
+I don't know if scripting bots has a future, but discussing about the subject always seems like a good idea I'd think...
+
+Tobias
+
+--------------------------------------------------
+02/02/03 at 14:09:07  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+hell, I can't even understand how my own bot scripts itself... howdya want to debug anything ? :(
+
+I don't think scripting for the heck of it is the answer either. If you'd want to compare something, better according ourselves onto a basic input/output template ; input consisting of a particuliar layout of the bot's perceptions (which you did anthologically well in Parabot IMO), and output consisting in a particuliar layout (but not implementation) of the basic bot actions (move towards position, aim at something) or at least, up to a certain "level" of AI (take cover, etc.) Once such a basic I/O template would be accepted, only then it could be possible to make comparisons I'd think...
+
+[edited]once again advertising for my own butt, but that's what I tried to follow in that so-called bot AI template of mine ; I am dividing AI in 6 parts : 3 sensitive (eyes, ears, body), 3 motile (legs, hand, chat). "body" consisting of a "touch" implementation in order to make the bot aware of surrounding obstacles, "legs" consisting in the movement science of the bot, "hand" consisting of the use of weapons and objects. The other ones are obvious I think...
+
+[modified on 02/02/03 at 14:09:07]
+--------------------------------------------------
+02/05/03 at 01:06:47  Reply by: CountFloyd (countfloyd@botepidemic.com)
+--------------------------------------------------
+QUOTE:
+That's how my bot works, and I can only define the scripting language by requirements I know of.
+
+
+
+Certainly. Don't get me wrong, I find this thread very interesting and I'd like to contribute as well. I just don't see that a scripting language would be used in a lot of Bots here. My point of view is that defining some kind of universal language for data input (like the weapon specs) is a good thing for everyone where developing a scripting language for Bots would be more specialized imho. For example what use would be there for a Bot relying on Genetic Algos or Neural Nets to switch States ?
+
+QUOTE:
+
+1. The more suggestions you can implement in one language, the more powerful it gets.
+
+
+
+Agreed. However you also run danger that it gets kind of disorganized, fragmented or you want to do things by scripting which could be done better without.
+
+QUOTE:
+2. The idea of scripting IMHO is to make the bot modifiable for users. Why should users have to learn multiple languages if one will do?
+
+
+
+True again. But don't you overestimate the average users desire to learn a bot scripting language to be able to tweak some minor things they might dislike ? From my experience most users don't read manuals and are pretty reliefed if something runs 'right out of the box'. I don't want to waste a lot of time into a scripting parser which would only be used by a handful of people.
+
+QUOTE:
+
+3. Are there really that many different actions? Or are the basics of every FPS easily to define and to script?
+
+
+
+Depends on if you just want to script the very basic actions or higher level stuff. I fully agree on the basic actions they should be the same in every FPS of course.
+
+You've been asking about defining goals etc. well I can't describe this in XML but I can explain how my goalplaner is supposed to work.
+At the highest level there are the abstract goals in a game separated in offensive, defensive and dynamic goals. An offensive goal for example could be "achieve map goal" (whatever map goal that is) or "go for frags". These goals can be achieved through different plans. So once a goal has been selected the different plans have to be evaluated. The plans themselves are somewhat similar to the schedules in the HL AI. Plans are holding the real low-level tasks for the Bot to do, like actions. So the hierarchy looks like
+Goals[Array] i.e. Defensive ->
+Plans[Array] i.e. Seek Cover ->
+Task[Seek Cover] {getCoverFromPos,moveToLocation,facePosition,hide}
+
+Of course they are somewhat triggered by entities as well but I'd have problems scripting this right now. Perhaps later...
+             
+

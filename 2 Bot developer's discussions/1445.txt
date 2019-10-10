@@ -1,0 +1,118 @@
+--------------------------------------------------
+Subject: Access Violation
+--------------------------------------------------
+03/27/01 at 21:23:33  Posted by: DarthBobo (DarthBobo@swarm.edgegaming.com)
+--------------------------------------------------
+Hi, I posted about this a while back. I tried the suggestions and then gave it a bit of breathing space :}
+
+However now I am looking at it again and have discovered that the violation only occurs when a bot fires. Players can use the same class/weapon combination without any problems, but any bot firing crashes it. You can shoot bots and they run around ok.
+
+Unfortunately the crash is in the sw.dll so I can't debug it properly :( Below is the ASM code from the debugger, including the 5 lines before and after the crash line, which is the cmp  instruction.
+
+054155FB 8B C1                mov         eax,ecx
+054155FD 8B D6                mov         edx,esi
+054155FF 4E                   dec         esi
+05415600 85 D2                test        edx,edx
+05415602 74 08                je          vgui::Dar<vgui::TickSignal *>::setCount+1E77Ch (0541560c)
+05415604 80 38 00             cmp         byte ptr [eax],0
+05415607 74 03                je          vgui::Dar<vgui::TickSignal *>::setCount+1E77Ch (0541560c)
+05415609 40                   inc         eax
+0541560A EB F1                jmp         vgui::Dar<vgui::TickSignal *>::setCount+1E76Dh (054155fd)
+0541560C 2B C1                sub         eax,ecx
+0541560E E9 8F 01 00 00       jmp         vgui::Dar<vgui::TickSignal *>::setCount+1E912h (054157a2)
+
+This appears to be a timer in the VGUI code ... any ideas?
+
+These violations are making me thirsty ... and a little sore :/
+
+DarthBobo
+
+
+--------------------------------------------------
+03/28/01 at 05:55:44  Reply by: theimann (killaruna@yahoo.com)
+--------------------------------------------------
+Access violation in sw.dll when firing? That sounds familiar... I had exactly the same problem a while ago under the following circumstances: 
+1. It appeared only after a map change.
+2. It appeared for human clients as well.
+3. It was depending on the weapon used - the shotgun e.g. was prone to crash.
+
+The solution was this:
+I started a game "hl.exe ... -map crossfire", changed the map and got the access violation with the first shot fired.
+After some hours of debugging and trying out nearly everything I noticed that the error disappears when starting the game with "hl.exe ... +map crossfire"...
+Now don't ask me what the format of the command line parameters has to do with a crash in a software rendering library on special events, but I could indeed verify that it was that small change from "-" to "+" that solved the problem. Maybe it works for you as well...
+
+Tobias
+
+
+--------------------------------------------------
+03/31/01 at 01:53:10  Reply by: DarthBobo (DarthBobo@swarm.edgegaming.com)
+--------------------------------------------------
+Using +/- map did not affect the crash at all. I don't generally use either, just tried both to see if there where any changes.
+
+Any other ideas?
+
+--------------------------------------------------
+03/31/01 at 01:53:44  Reply by: DarthBobo (DarthBobo@swarm.edgegaming.com)
+--------------------------------------------------
+Anyone? Please :}
+
+--------------------------------------------------
+03/31/01 at 05:31:27  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+If you have Microsoft Visual C++, run it under the debugger and when the access violation occurs view the stack callback to see what module in your code led to the crash.
+
+botman
+
+--------------------------------------------------
+03/31/01 at 09:02:23  Reply by: theimann (killaruna@yahoo.com)
+--------------------------------------------------
+If it's the same error that I got then it won't help cause the access violation occurs directly in sw.dll whithout any of your modules calling it. The stack will show: sw.dll hl.exe That's it. Maybe you'll have to trace it the hard way by just commenting out large parts of your code. Try to reduce the BotThink to just fire every 10 seconds or something like that, no navigation code, nothing else...
+
+Tobias
+
+--------------------------------------------------
+03/31/01 at 18:38:03  Reply by: bigjesus (holybigjesus@hotmail.com)
+--------------------------------------------------
+If you use softice you can check it out while its happening which should help you out a bunch.
+
+--------------------------------------------------
+04/02/01 at 15:44:07  Reply by: DarthBobo (DarthBobo@swarm.edgegaming.com)
+--------------------------------------------------
+Well after Tobias' post I went and checked the command lind arguments, in fact every combination :} And the bots only crash if I use -dev, any other combination works fine ... son of a bitch!
+
+--------------------------------------------------
+04/03/01 at 04:29:06  Reply by: theimann (killaruna@yahoo.com)
+--------------------------------------------------
+Hehe, so for you it's the +dev? Very interesting. I can't really remember if I use + or -dev, maybe somewhere in HL you find some weird code like:
+
+if (mapParameterSpecified) messUpMinusMap();
+else if (devParameterSpecified) messUpMinusDev();
+
+Forget your logic! Anyway, nice to hear that it's working now.
+
+Tobias
+
+
+--------------------------------------------------
+04/03/01 at 05:22:35  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+Also try to see if it crashes when you use "developer 1" on the console.  This should be the same as "-dev" on the command line.  If so then your problem is probably within one of the ALERT messages or some other message that only gets executed when developer mode is enabled.  I suspect that "-dev" isn't your problem, but something using developer mode IS your problem.
+
+botman
+
+--------------------------------------------------
+04/03/01 at 06:43:57  Reply by: DarthBobo (DarthBobo@swarm.edgegaming.com)
+--------------------------------------------------
+Well +dev did nothing, did not even print ALERT's.
+
+developer 1 resulted in crash. Everything works fine, shooting etc, enter developer 1 in the console and bang :{
+
+I commented out all the ALERT statements, no change in behaviour.
+
+What other things are related to developer 1?
+
+--------------------------------------------------
+04/27/01 at 18:29:30  Reply by: DarthBobo (DarthBobo@swarm.edgegaming.com)
+--------------------------------------------------
+w00t! Found the error that was causing this damn crash. Unfortunatly it was error 13: Idiot at keyboard :( Was using a float as a string in an ALERT call in the game dll, funny thing is it would only ever crash when playing aginst bots. The same code would not crash against human players, which it should have done ... no wonder I'm slowly going insane :}
+

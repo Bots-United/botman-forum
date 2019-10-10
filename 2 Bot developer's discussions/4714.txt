@@ -1,0 +1,112 @@
+--------------------------------------------------
+Subject: Another way of learning the map?
+--------------------------------------------------
+08/08/03 at 07:30:35  Posted by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+As i am trying to write my 'explore the map' thingy, i found that creating an entire 3d grid consumes way to much memory, it also requires the coder to convert vectors and all that stuff.
+
+I still don't have real success, but it also takes a lot of time to finallys ee some result. Mostly the memory (and the huge array) was my problem. But here is perhaps something that could be tried out!
+
+When the map loads, a bot is spawned, and where its spawned it will create a 'block/cube' of the player's size state. When the player is standing you create 2 blocks. One block is 50% of the human height.
+
+When you create a new 'block' (i think a linked list or something like this would be very handy), it has 6 variables, a list of any other blocks its connected to, and ofcourse the size of the block (in HL vectors).
+
+The 6 vars are corresponding each 'side' of a block. They should contain:
+-1 not checked
+0 free
+1 blocking/wall
+
+when a bot is inside a newly created block, it should first check out the block it is in. Can it go left? The bot should move left, if the bot is successfull, it will create another block there. The bot should move back to the previous block it was untill it finishes all 'not checked/-1' sides. Then it has several choices to check uppon new blocks. 
+
+Finally the bot should grow its knowledge and 'breed' around. This is similiar to flood filling with waypoints. The difference is, the bot checks the possibility (not tracelines, so you are 100% sure its really passable or not). Secondly, you can eventually group blocks to one big 'block'. This will reduce the amount of memory used and also speed up the path finder. 
+
+This is just an idea, anyone already thought of this? or tried it? i am thinkering about other manners to 'learn' a map now before i start coding something. 
+
+--------------------------------------------------
+08/08/03 at 11:58:51  Reply by: Scooter (rmiskovish@yahoo.com)
+--------------------------------------------------
+Something similar to this was done for the Rho-Bot.  You might want to check it out at http://rhobot.sourceforge.net/
+
+
+--------------------------------------------------
+08/08/03 at 15:27:05  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Stefan, are you aware your thingy is called a "navmesh" ? ;)
+
+lol
+
+
+--------------------------------------------------
+08/09/03 at 08:33:43  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+euh, no? :D 
+
+actually, i figured this could be same as just a 'waypoint' aswell, but it requires some memory to let a bot 'learn' the map, later on this property list could be removed when all data is gathered.
+
+--------------------------------------------------
+08/09/03 at 09:41:34  Reply by: Cheesemonster!!! (cheeseh@houstondod.com)
+--------------------------------------------------
+do a search on the forum for navmesh :)
+
+PM came up with ways to read the BSP File and get their planes. This way you can read the map, without much memory being used and can be accessed by every bot. You can mark your "non-walkable" areas by finding their normal vector.
+
+PM's BSP plugin reads the planes that are walkable, perhaps you can do the opposite :P But I prefer using the walkable planes myself since this way you've already came up with a potential waypoint type nav...type thing :P
+
+[modified on 08/09/03 at 09:41:34]
+--------------------------------------------------
+08/09/03 at 16:24:18  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+QUOTE:
+PM came up with ways to read the BSP File and get their planes.
+
+
+ehm...
+s/PM/botman
+
+Give credit to where it belongs !
+
+
+--------------------------------------------------
+08/09/03 at 17:11:27  Reply by: Cheesemonster!!! (cheeseh@houstondod.com)
+--------------------------------------------------
+I don't know who helped you make it ;)
+
+[modified on 08/09/03 at 17:11:27]
+--------------------------------------------------
+08/10/03 at 13:15:30  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+sounds nice, but thats exactly what i try to prevent-> reading stuff from bsp tree, as i find that 'cheating' in this 'true ai' thingy ;)
+
+
+
+--------------------------------------------------
+08/10/03 at 16:09:50  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+I wouldn't say so. Reading the BSP data from the map file does NOT infer my bots immediate knowledge of the whole map. Reading the BSP data rather provides a way for the programmer to know the limits of the surface the bots are standing on. And that's just how it is used. The BSP stuff gives me the ability to retrieve easily the coordinates of all the corners of any of the walkable faces on the map, but which face leads to which one, and what type of reachability it is, which one is out of range, up to where can the bot walk around when staying in the same area, and which are the faces the bot needs to pass by when wanting to reach any other one, all this, is given by learning : both by the bots themselves, for they remember individually where they successfully passed and how they passed it, and also by any other player in sight of this bot, for when the bot sees a player moving from one face to another, being not there the bot nevertheless admits it's able to perform the same move as well.
+
+What's wrong with this method ?
+
+--------------------------------------------------
+08/11/03 at 12:34:43  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+there is nothing 'wrong'. The fact is, i don't like reading it this way. I mean, strictly taken, no human player 'reads' bsp info. It learns by the data it sees on the screen. Now, this is hard to imitate for bots. But with some tracelines you can create a 3d vision of the bots world. 
+
+Actually this is my theory but one or 2 steps further. Instead of bumping into a wall, you can already 'see' what walls are in your FOV so you don't need to bump into them. 
+
+I guess its just a matter or taste.
+
+--------------------------------------------------
+08/11/03 at 15:32:45  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Well, if you want to go the real hard way, the best human-like method remains the FOV scan with TraceLines. In 2D or 3D, whatever ; 3D would be completely human-like, but count on heavy lag for just one bot :) and then you're up to figure out the algorithms to exploit that data. Just like the sketches I showed you in Amsterdam... If you want to simplify this method, do a flat scan like RACC does, and figure out an efficient way for the bot to remember its path. Almost impossible. Good luck ! been there, done that ;)
+
+The point remains that of whatever side you turn it, humans learn by their five senses. And most noticeably, by their eyes. Having the bot to go and bump into walls, even if it's for the sake of building a navmesh for remembering it later, is illogical and inhuman, don't you think ?
+
+
+--------------------------------------------------
+08/12/03 at 07:02:12  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+bumping into walls to learn a map is completely unlogical, true, but its a first step of the big concept i guess.
+
+Firing a lot of tracelines (a lot, well, lets say around 4 per bot) will already identify a lot of walls and obstacles... perhaps it won't be as hard as it seems.
+

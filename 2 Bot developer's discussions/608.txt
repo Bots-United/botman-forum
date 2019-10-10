@@ -1,0 +1,110 @@
+--------------------------------------------------
+Subject: Waypoint Systems Question
+--------------------------------------------------
+11/14/00 at 15:04:39  Posted by: Spyro (b2.mccarthy@student.qut.edu.au)
+--------------------------------------------------
+Hi everyone,
+
+I was wondering what sort of system each of you are using for your waypoint and path calculations.
+
+The system I use calculates all of the possible paths at the start of the game and stores the info + distances in a matrix. The problem with this is that it's a memory hog.
+
+The other way is to calculate the information as the bot needs it. I thought that this would be too slow and I can't really test speed on this machine (PIII-500 and GeForce-DDR:).
+
+Thanks,
+
+
+--------------------------------------------------
+11/14/00 at 15:13:34  Reply by: eLiTe (ali@elitegamer.fsnet.co.uk)
+--------------------------------------------------
+Hehe, I thought it would be a bit too much work (UN-NECESSARY WORK) to do that, my bots simply find the next closest waypoint (not including the current or last waypoint). I'm going to add in path/junction waypoints next, and each waypoint leading off from the path will have a flag such as 'goal' or 'return' so that the bots know which way to go. It's very simple, but I think that it will also be very effective (and efficient) when it is finished!
+
+--------------------------------------------------
+11/14/00 at 15:17:34  Reply by: Spyro (b2.mccarthy@student.qut.edu.au)
+--------------------------------------------------
+Hi again,
+
+It only took about an hour to write, 'cause I already had a working version of Djikstra that I wrote in Java :). I just added the distances stuff yesterday. The only thing is, my dll is approaching 700k !!!
+
+
+--------------------------------------------------
+11/14/00 at 18:36:20  Reply by: CountFloyd (countfloyd_1999@yahoo.com)
+--------------------------------------------------
+I'm using the Floyd Algo like most people at the moment AFAIK. Should really get my lame ass going to code the A* Stuff. 700Kb as a Release Build ? Wow, you should get rid of that MP3 in your Source :)
+
+Btw. Alistair is your usual nick "elite" ?
+
+
+--------------------------------------------------
+11/15/00 at 00:25:24  Reply by: The (www.pq_mk@yahoo.com)
+--------------------------------------------------
+Yes ,are you eLiTe from the NNbot's forum?
+
+--------------------------------------------------
+11/15/00 at 04:52:36  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+I'm also using Floyd's algorithm and (as William pointed out), for a small number of nodes (several hundred) the memory required is fairly small compared to the amount of memory the game itself needs for models, textures, bsp data, etc.  So even if you chew up 1/2 a megabyte for a Floyd matrix you are probably using only a few percent of the total memory that the Half-Life engine is using.
+
+The advantage of Floyd's is that the amount of CPU time required to find a path to a goal is EXTREMELY small (very rapid array index lookup), but like you said, it takes a large amount of memory.  Other algorithms (A* for example) will require less memory but will chew up more CPU time (which is fairly critical in real time 3D games).  It's a trade off of speed vs. memory (which is usually the case with most computer algorithms).
+
+The biggest disadvantage with Floyd's is that the bots will always take the same path to a goal from a specific starting point (since that is always the shortest route).  With A*, you can vary the heuristic (cost) of getting from one node to another node and thereby vary the path taken by the bots while still being able to roam "intelligently" toward a goal.
+
+botman
+
+--------------------------------------------------
+11/15/00 at 13:58:01  Reply by: Spyro (b2.mccarthy@student.qut.edu.au)
+--------------------------------------------------
+You could do the A* variation thing with floyd, it's just that they would take the same path all the time in a game. Different game = different path.
+
+I'm not so sure about the time thing either for A*. I was running some tests in java, and for a 50*50 grid A* kicks Djikstra by about 10 or 20 times, and the paths are about 5% longer.
+
+I takes about a second to do the entire matrix (in half-life), so you could problably use A* and not notice the difference. Especially if you save the path the bot is going to take, instead of recalculating the path at each waypoint. Also, each recalculation would probably kill any randomness in the system.
+
+Thanks,
+
+--------------------------------------------------
+11/15/00 at 14:04:20  Reply by: William (william@botepidemic.com)
+--------------------------------------------------
+FYI, the latest (Dec 99) of CGF for Q2 eats 4MB on the larger maps. I didn't receive more than 1 single complaint about the memory consumption, and the AI worked acceptable on low end Pentiums (200Mhz).
+I did do a decent amount of performance tuning (I used the MSVC profiler to address a few issues, most of them dealing with ray tracing too much).
+The profiler is a bitch to get going for .dlls executed by a 3rd party .exe, but once it works, you can get useful feedback.
+
+My point is: if you're worried about performance, worry about the amount of ray tracing you do first. Worry about using (long paths) path finding. Finally, worry about memory consumption.
+
+What is 500KB if the graphics board is using 16MB+ to store 'wall papers'?
+
+William
+p.s. CGF .dll is over 1MB, without problems
+
+--------------------------------------------------
+11/15/00 at 16:16:25  Reply by: billybot (Nulosoft@aol.com)
+--------------------------------------------------
+I don't really know of it's a good idea but why not using Floyd algorythm with a "random shortest path" I mean, adding a random number to the paths could maybe make the bots use an other path. They could also use an approximative "best way". What's the difference between 30000 and 35000 units?? Not much I guess. Also, the shortest path isn't the best one everytime. I mean, running straight towards the goal in a wide area will often send you in a deathtrap... Aren't the bots meant to be realistic? That's all.
+
+--------------------------------------------------
+11/16/00 at 00:00:35  Reply by: William (william@botepidemic.com)
+--------------------------------------------------
+Billy,
+
+the use of Floyd (or Warshall - same algorithm) results in a fixed table, hard-wiring all the paths. If you'd use random deviations on path length when computing paths, you would get other paths than the shortest (not a big problem, as you indicate yourself), but the paths still would be 100% predictable.
+Since the paths are retrieved from a table, instead of created anew, you'd always get the same path.
+
+The standard workaround is to do part of the path finding dynamically (instead of pre-computing a table). A* is one the most efficient algorithms for these purposes.
+
+The 'Game Programming Gems' book by (editor) Mark Deloura has some useful info on path finding, A*, etc., though most of that is easily found on the web as well.
+
+The ultimate goal of more realistic path isn't solved by random deviations alone. These deviations make the paths less predictable, but that's just one aspect of the way humans pick paths (under combat). Taking into account the combat situation, and learning from your experience are other aspects.
+
+William
+
+
+
+--------------------------------------------------
+11/17/00 at 14:54:55  Reply by: Spyro (b2.mccarthy@student.qut.edu.au)
+--------------------------------------------------
+Hi again,
+
+I've got a system that seems to work fairly well for the path calculations. I figure the bot doesn't really ever have to follow more than 15-25 waypoints to get anywhere on the map. So, each bot has storage for the next 10 points he has to visit, and this is updated when he reaches the end of the list. I'm using Djikstra for the pathing at the moment because i couldn't be be bothered writing the priority q for a*. Everything else seems to work ok and I'll probably switch it to a* later.
+
+Thanks for the input everyone,
+

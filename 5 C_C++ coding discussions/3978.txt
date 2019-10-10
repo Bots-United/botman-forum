@@ -1,0 +1,216 @@
+--------------------------------------------------
+Subject: malloc() access violation
+--------------------------------------------------
+01/03/03 at 05:59:29  Posted by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Hello
+
+At one point in my code, I can't malloc() 12 bytes. It says "access violation". The debugger bombs me inside malloc's assembly. Has anyone seen that ?
+
+code:
+
+bool LoadWorldMap (void)
+{
+   // this function saves the loaded world map created by LookDownOnTheWorld() in a .map file on
+   // disk. The format of this file is divided into chunks. For an explanation of the different
+   // chunks of which .map files are made, refer to the SaveWorldMap() function.
+
+   FILE *fp;
+   char map_file_path[256];
+   int i, j, index, count;
+
+   // build the world map file path
+   sprintf (map_file_path, "racc/worldmaps/%s/%s.map", mod_name, map_name);
+
+   fp = fopen (map_file_path, "rb"); // open or create such a file in binary read mode
+   if (fp == NULL)
+      return (FALSE); // error, can't open worldmap file
+
+   fseek (fp, 0, SEEK_SET); // seek at start of file
+
+   fseek (fp, sizeof ("RACCMAP"), SEEK_CUR); // skip the RACCMAP tag
+   fseek (fp, sizeof ("[filesize]") - 1, SEEK_CUR); // skip the filesize chunk tag
+   fseek (fp, sizeof (int), SEEK_CUR); // skip the filesize chunk data
+   fseek (fp, sizeof ("[worldsize]") - 1, SEEK_CUR); // skip the worldsize chunk tag
+
+   // read the world size chunk data
+   fread (&map.v_worldmins, sizeof (Vector), 1, fp);
+   fread (&map.v_worldmaxs, sizeof (Vector), 1, fp);
+
+   fseek (fp, sizeof ("[zonedelimiters]") - 1, SEEK_CUR); // seek at start of zonedelimiters chunk data
+
+   // read the zone delimiters lump (and mallocate for it on the fly...)
+   fread (&map.zone_delimiters_count, sizeof (int), 1, fp);
+   if (map.zone_delimiters_count == 0)
+      return (FALSE); // error, no zone delimiters have been recorded
+
+   ServerConsole_printf ("RACC: Fetching world map"); // tell people what we are doing
+
+   map.zone_delimiters = (zone_delimiter_t *) malloc (map.zone_delimiters_count * sizeof (zone_delimiter_t));
+   if (map.zone_delimiters == NULL)
+      TerminateOnError ("Fatal: Unable to allocate enough memory for world analysis [1][%d]\n", map.zone_delimiters_count * sizeof (zone_delimiter_t));
+   for (index = 0; index < map.zone_delimiters_count; index++)
+      fread (&map.zone_delimiters[index], sizeof (map.zone_delimiters[index]), 1, fp);
+
+   fseek (fp, sizeof ("[topology]") - 1, SEEK_CUR); // seek at start of topology chunk data (current offset + 10)
+
+   // read the topology chunk data (and mallocate for it on the fly...)
+   fread (&map.parallels_count, sizeof (map.parallels_count), 1, fp);
+   fread (&map.meridians_count, sizeof (map.meridians_count), 1, fp);
+   for (i = 0; i < map.parallels_count; i++)
+   {
+      for (j = 0; j < map.meridians_count; j++)
+      {
+         fread (&map.topology[i][j].faces_count, sizeof (int), 1, fp);
+         if (map.topology[i][j].faces_count > 0)
+            count = map.topology[i][j].faces_count; // if we actually need to mallocate, let it be
+         else
+            count = 1; // else avoid asking for a void malloc
+
+// THE FOLLOWING LINE IS CAUSING TROUBLE WHEN
+// i=19 j=25 count=3 sizeof(dface_t*)=4
+         map.topology[i][j].faces = (dface_t *) malloc (count * sizeof (dface_t *));
+         if (map.topology[i][j].faces == NULL)
+            TerminateOnError ("Fatal: Unable to allocate enough memory for world analysis [2][%d]\n", count * sizeof (dface_t *));
+
+         for (index = 0; index < map.topology[i][j].faces_count; index++)
+            fread (&map.topology[i][j].faces[index], sizeof (dface_t *), 1, fp);
+
+         fread (&map.topology[i][j].delimiters_count, sizeof (int), 1, fp);
+         if (map.topology[i][j].delimiters_count > 0)
+            count = map.topology[i][j].delimiters_count; // if we actually need to mallocate, let it be
+         else
+            count = 1; // else avoid asking for a void malloc
+
+         map.topology[i][j].delimiters = (zone_delimiter_t *) malloc (count * sizeof (zone_delimiter_t *));
+         if (map.topology[i][j].delimiters == NULL)
+            TerminateOnError ("Fatal: Unable to allocate enough memory for world analysis [3][%d]\n", count * sizeof (zone_delimiter_t *));
+
+         for (index = 0; index < map.topology[i][j].delimiters_count; index++)
+            fread (&map.topology[i][j].delimiters[index], sizeof (zone_delimiter_t *), 1, fp);
+      }
+
+      ServerConsole_printf ("."); // print a trailing dot as a progress bar
+   }
+
+   fclose (fp); // finished, close the file
+
+   // and terminate the progress bar
+   ServerConsole_printf (" done\n   %d parallels, %d meridians, %.2f kilobytes world data\n",
+                         map.parallels_count, map.meridians_count, (float) ftell (fp) / 1024);
+
+   return (TRUE); // and return the error state (no error)
+}
+
+
+
+€dited: I had left a GlobalAlloc() crap there for testing purposes - just removed it :) - now the source code is really as is
+
+
+[modified on 01/03/03 at 05:59:29]
+--------------------------------------------------
+01/03/03 at 06:07:15  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+Have you just tried this? :)
+
+(zone_delimiter_t *) malloc (sizeof (zone_delimiter_t)); 
+
+[modified on 01/03/03 at 06:07:15]
+--------------------------------------------------
+01/03/03 at 06:11:43  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+If this is the line causing the crash...
+code:
+map.topology[i][j].faces = (dface_t *) malloc (count * sizeof (dface_t *));
+
+...I would suspect that the array reference is causing the crash, not the malloc() function call.
+
+Access violations should only occur when your application tries to access memory that's not within it's process space.
+
+It sounds like 'i' or 'j' is larger than the map.topology array has been sized for.  Try making them ridiculously large (like [200][500] or something like that).
+
+botman
+
+[modified on 01/03/03 at 06:11:43]
+--------------------------------------------------
+01/03/03 at 06:22:38  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+i and j are respectively set to MAX_MAP_PARALLELS and MAX_MAP_MERIDIANS which both are 64.
+
+When I declare map.topology it's like this:
+code:
+
+// the virtual world itself
+typedef struct
+{
+   [snip loads of crap]
+
+   zone_delimiter_t *zone_delimiters; // pointer to map's zone delimiters memory space (malloc'ed)
+   int zone_delimiters_count; // number of zone delimiters in this map
+   zone_t topology[MAX_MAP_PARALLELS][MAX_MAP_MERIDIANS]; // map spatial topology
+   int parallels_count; // number of parallels dividing this map into sectors
+   int meridians_count; // number of meridians dividing this map into sectors
+   Vector v_worldmins; // quick access to the world's bounding box lower bottom left corner
+   Vector v_worldmaxs; // quick access to the world's bounding box upper top right corner
+} map_t;
+
+
+
+and may I point out that the debugger breaks <i>inside</i> the malloc() assembly code, such a thing wouldn't happen if I was overflowing my array, would it ?
+
+[modified on 01/03/03 at 06:22:38]
+--------------------------------------------------
+01/03/03 at 09:01:11  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+"and may I point out that the debugger breaks inside the malloc() assembly code, such a thing wouldn't happen if I was overflowing my array, would it ?"
+
+Nope.  I'm not sure what would cause malloc to blow up.  If you have MSDN you can use the debug versions of the standard C libraries to get source code to the routine causing you problems.
+
+I would suspect that the only way malloc would get an access violation is if something else in your code had screwed up the heap memory block chain that malloc uses (i.e. freeing up a block twice can sometimes do this).
+
+botman
+
+--------------------------------------------------
+01/03/03 at 11:16:11  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+code:
+
+(dface_t *) malloc (count * sizeof (dface_t *));
+
+
+
+dont use * in sizeof, I dont think it works that way, try just "dface_t" instead of "dface_t *"
+
+perhaps the paramter going into malloc is zero, which is causing malloc problems
+
+--------------------------------------------------
+01/03/03 at 13:23:47  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Nevermind, I found it !
+
+The fault was inside my zone_t structure declaration. In fact I am mallocating two ARRAYS of POINTERS. They have to be declared as :
+code:
+
+   dface_t **faces;
+   zone_delimiters_t **delimiters;
+
+
+and I was declaring them as :
+code:
+
+   dface_t *faces;
+   zone_delimiters_t *delimiters;
+
+
+No wonder !
+Now I am doing things the right way:
+code:
+
+map.topology[i][j].faces = (dface_t **) malloc (count * sizeof (dface_t *));
+
+
+and obviously it works. w00t ! :)
+
+I always feel scary when I see more than one level of indirection ...
+
+

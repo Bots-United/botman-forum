@@ -1,0 +1,196 @@
+--------------------------------------------------
+Subject: HELP ME BOTMAN!!!!!!!!!
+--------------------------------------------------
+12/02/01 at 07:29:26  Posted by: HUHND (dominic_blaschke@web.de)
+--------------------------------------------------
+I work at a new Bot and I dont know,how can a bot weapon buy or run at waypointpaths.
+Counter-Strike Bot :D
+HELP ME PLS BOTMAN!
+
+--------------------------------------------------
+12/02/01 at 09:52:21  Reply by: ReDucTor[FGW] (sjdtmv@tpg.com.au)
+--------------------------------------------------
+First things first you want to check if the bot already has a weapon, that isn't a glock18(terrorist starting pistol) or a usp(ct string pistol) don't forget the knife..
+
+so now add something to the bot_t structure, say bot_has_real_gun, make it a bool, coz it will only need two states..a true and a false..
+
+now, goto the BotClient_CS_WeaponPickup() function in bot_client.cpp, and you want to set the value to true, if the weapon isn't a knife, glock, or usp, so do something like this
+
+code:
+
+void BotClient_CS_WeaponPickup(void *p, int bot_index)
+{
+index = *(int *)p;
+
+if(!(index & CS_WEAPON_KNIFE) // knife
+ &&!(index & CS_WEAPON_USP) // USP
+ &&!(index & CS_WEAPON_GLOCK18)) // Glock
+{
+   bots[bot_index].bot_has_real_gun = TRUE;
+}
+// this is just like the Valve Weapon Pickup message
+BotClient_Valve_WeaponPickup(p, bot_index);
+
+
+
+Now you can tell if the bot has a good gun or not, if not then make it buy one, so lets make a function for buying a good gun, first we will setup something to store the list of weapons and how much they cost
+
+code:
+
+typedef struct
+{
+   int team; // 0=Both 1=Terrorist 2=Counters
+   int firstmenu; // First button pressed in the menus
+   int secondmenu; // Second button pressed in the menus
+   int cash; // Cash needed
+} bot_buy_weapons_t;
+
+bot_buy_weapons_t weapons_to_buy[] = {
+// {0, 1, 1, 500}, // USP(not needed)
+// {0, 1, 2, 400}, // Glock(not needed)
+   {0, 1, 3, 650), // Desert Eagle
+   {0, 1, 4, 600}, // SIG P228
+   {1, 1, 5, 1000}, // Beretta 96G Elite
+   {0, 1, 6, 750}, // FN-Five Seven
+   {0, 2, 1, 1700}, // Benelli M3 Super90
+   {0, 2, 2, 3000}, // Benelli XM1014
+   {0, 3, 1, 1500}, // MP5
+   {2, 3, 2, 1250}, // Styer TMP
+   {0, 3, 3, 2350}, // p90
+   {1, 3, 4, 1400}, // Mac-10
+   {0, 3, 5, 1700}, // UMP45
+   {1, 4, 1, 2500}, // Ak-47
+   {1, 4, 2, 3500}, // SIG-552 Commando
+   {2, 4, 3, 3100}, // Colt M4A1 Carbine
+   {2, 4, 4, 3500}, // Styer Aug
+   {0, 4, 5, 2750}, // Styer Scout
+   {0, 4, 6, 4750}, // AWP
+   {2, 4, 7, 5000}, // g3sg1
+   {2, 4, 8, 4200}, // SIG SG-550
+   {0, 5, 1, 5750}, // m249 para
+   {NULL, NULL, NULL, NULL}
+};
+
+
+
+Then the buy function
+code:
+
+void BotBuy( bot_t *pBot )
+{
+   edict_t *pEdict = pBot->pEdict;
+   
+   int buy_weapon;
+
+   while(true)
+   {
+      buy_weapon = RANDOM_LONG(0, sizeof(weapons_to_buy));
+
+      if(pBot->money<weapons_to_buy[buy_weapon].cash) // Not enough cash
+          continue;
+      
+      if(pBot->bot_team != weapons_to_buy[buy_weapon].team) // not on the right team
+          continue;
+ 
+      char command[256];
+      sprintf(command, "menuselect %i", weapons_to_buy[buy_weapon].firstmenu);
+      FakeClientCommand(pEdict, command);
+      sprintf(command, "menuselect %i", weapons_to_buy[buy_weapon].secondmenu);
+      FakeClientCommand(pEdict, command);
+      break;
+}
+
+
+
+
+So now all you need to do is check if you are in the buy zone, and don't have a weapon, then make it call the function, so in your BotThink function do something like this
+
+code:
+
+float radius = 500;
+edict_t *pent = NULL;
+while ((pBot->bot_has_real_gun) && (pent = UTIL_FindEntityByClassname( pent, "func_buyzone" )) != NULL)
+  BotBuy(pEdict);
+
+
+
+Theres some buying for you(btw thats untested)  
+
+--------------------------------------------------
+12/02/01 at 20:07:04  Reply by: CountFloyd (countfloyd@botepidemic.com)
+--------------------------------------------------
+Umm...you're doing this ->
+pent = UTIL_FindEntityByClassname( pent, "func_buyzone" )) != NULL)
+
+which would just find the buyzone in a map, instead of checking if a Bot is inside that area. Better would be to just check if the HUD Symbol got displayed + additionally checking if buying is still allowed -> mp_buytime 
+
+--------------------------------------------------
+12/02/01 at 21:33:51  Reply by: ReDucTor[FGW] (sjdtmv@tpg.com.au)
+--------------------------------------------------
+Shouldn't it find it on radus 0.0 if the entitys size is with in you, so you are with in the entity...
+
+btw you might need to make that reset the bot_has_real_gun bool to false when dieing or something
+
+--------------------------------------------------
+12/03/01 at 04:23:46  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+But you aren't using UTIL_FindEntityInSphere (which takes a radius), your using UTIL_FindEntityByClassname, which will just return the pointer to the entity (without regard to WHERE this entity actually is in the level).
+
+Even if you were using UTIL_FindEntityInSphere, it would use the origin of the entity (not the edges of the entity) to determine if the bot was close enough to it.  If you used a larger area you might think the bot was inside the buyzone when it actually wasn't (if the buyzone was smaller than your radius).  If you choose a fairly small radius, the bot might never be close enough to a buyzone to buy anything (as would be the case with a radius of 0.0).
+
+I would think C.F.'s way of intercepting the "shopping cart" network message would be the simplest and best way (less CPU intensive).
+
+botman
+
+--------------------------------------------------
+12/03/01 at 08:14:00  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+I think something like this would work once all the messages have been set-up correctly.. again this is untested :)
+
+code:
+
+
+void BotClient_CS_StatusIcon(void *p, int bot_index)
+{
+   static int state = 0;   // current state machine state
+   static int in_zone = 0;
+
+
+   //ALERT( at_console, "\nStatus Icon occured!!!!" );
+
+   if (state == 0)
+   {
+      state++;    
+        in_zone = *(int *)p;
+   }
+   else if (state == 1)
+   {
+      state = 0;
+
+        if (strcmp((char *)p, "buyzone") == 0)
+        {              
+              if( in_zone )
+              {
+                  // Bot walked into a buyzone
+                bots[bot_index].bot_can_buy = TRUE;
+              }
+              else
+              {
+                  // Bot walked out of a buy zone
+                bots[bot_index].bot_can_buy = FALSE;
+              }
+        }
+   }
+}
+
+
+
+--------------------------------------------------
+12/09/01 at 09:49:20  Reply by: HUHND (dominic_blaschke@web.de)
+--------------------------------------------------
+I WOULD LIKE PROGRESS A NEW WPT SYSTEM!
+THE BOTS SEARCH ONLY WPT (PODBOT)!
+HOW CAN I CREATE PADS!
+THE BOT MUST NAVIGATE AT WPTS (NOT ONLY RUN!)
+HELP ME!
+

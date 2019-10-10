@@ -1,0 +1,701 @@
+--------------------------------------------------
+Subject: DMC linux bots
+--------------------------------------------------
+01/15/03 at 16:27:53  Posted by: DiVeBoMbeR (free_fall@attbi.com)
+--------------------------------------------------
+I have been trying to get HPB bots to use all the weapons in DMC. They never use the rocket launcher or the grenade launcher, they do use all the other weapons. I have read all the posts concerning this problem and not knowing much about c++ I am just shooting in the dark trying to fix the code. Anyone have a fix? 
+remeber I'm a noob at this so go easy on me,  :)
+Thanks
+
+--------------------------------------------------
+01/16/03 at 05:37:02  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+They used the rocket launcher and the grenade launcher the last time I played with them in DMC.
+
+Try this.  Make your own DMC map with JUST a rocket launcher.  They'll pick it up and use it (as long as they don't have other weapons and as long as the enemy isn't too close to them).
+
+Do the same thing with the grenade launcher.  Create your own map with just grenade launchers.  They'll use them as long as the enemy is far enough away that they won't get damaged themselves.
+
+botman
+
+--------------------------------------------------
+01/16/03 at 11:22:21  Reply by: DiVeBoMbeR (free_fall@attbi.com)
+--------------------------------------------------
+Yes I did this, I used stripper2 to remove all other weapons and I then put a rocket launcher and rockets at every spawn point. The bots still never use the rocket launcher or grenades. I have been running them for several months and I play a lot. also there are a few other servers running them and they have the same trouble. A friend made a server side mod where the only weapons are the crowbar and the rocketlauncher, you spwan with the rocket launcher. The bots have the rocketlauncher when they spawn but they don't fire it, if you stay a ways away from them they just point it at you and chase you around. Then when they get close they switch to the crowbar and never back to the rocket launcher. I like the HPB bots they are very stable on the server and one of the only ones that will support a linux dedicated DMC server. Maybe you could fire up DMC and check it out? or you could join one of my servers with HPB bots. 12.229.178.242:27050 this one is midair mod (only rocketlauncher and crowbar) with HPB bot or 12.229.178.242:27015 or 27016 normal and low gravity DMC servers.
+Thanks for your time I know your busy.
+:)
+
+--------------------------------------------------
+01/16/03 at 11:34:32  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+I can try to take a look at it, but I won't have the time to create another release and put that up to make it available for download.
+
+I'll let you know if I find anything.
+
+botman
+
+--------------------------------------------------
+01/16/03 at 12:09:02  Reply by: DiVeBoMbeR (free_fall@attbi.com)
+--------------------------------------------------
+OK thanks, I know you don't have time, thats cool.
+Maybe steer me in the right direction, I have been tinkering with the bot_combat.cpp so far with no success. Might help if I actually knew what I was doing, hehe.
+Thanks again.
+
+--------------------------------------------------
+01/16/03 at 13:09:21  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+You can try testing my linux build for my bots that work with DMC (also rocket crowbar,cstrike hldm and other mods) I haven't tested the linux build, but I've heard people say it crashes on RC, (http://homepage.ntlworld.com/pat.murphy/rcbot for the site)
+
+--------------------------------------------------
+01/16/03 at 13:33:44  Reply by: DiVeBoMbeR (free_fall@attbi.com)
+--------------------------------------------------
+Yes I have tried the rcbots, they do use the rocketlauncher and all the guns. but they crash the server ever few minutes, even with no admin mod or any other plugins except metamod. :( nasty one too, it just freezes and won't restart.
+
+--------------------------------------------------
+02/23/03 at 18:02:01  Reply by: DiVeBoMbeR (free_fall@attbi.com)
+--------------------------------------------------
+I know your to busy to fix this problem botman, but can any of you guys point me to the right bit of code?
+:)
+Thanks
+
+--------------------------------------------------
+05/14/03 at 23:36:25  Reply by: DiVeBoMbeR (free_fall@attbi.com)
+--------------------------------------------------
+OK, I have really been trying to solve this problem. But I really don't know what I am doing 
+:(
+I found this thread where cheezy had solved the problem.
+
+http://dynamic.gamespy.com/~botman/yabb/YaBB.pl?board=2&action=display&num=2913
+
+Maybe he could post the code for the fix?
+:)
+Please
+Thanks for all your time guys.
+
+--------------------------------------------------
+05/15/03 at 14:56:00  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+code:
+
+void BotClient_Valve_AmmoX(void *p, int bot_index)
+{
+   static int state = 0;   // current state machine state
+   static int index;
+   static int ammount;
+   int ammo_index;
+
+   if (state == 0)
+   {
+      state++;
+      index = *(int *)p;  // ammo index (for type of ammo)
+   }
+   else if (state == 1)
+   {
+      state = 0;
+
+      ammount = *(int *)p;  // the ammount of ammo currently available
+
+      bots[bot_index].m_rgAmmo[index] = ammount;  // store it away
+
+        int iId = bots[bot_index].current_weapon.iId;
+        int value = 0;
+        int weapon_index = 0;
+        
+        iId = bots[bot_index].current_weapon.iId;
+
+        if (mod_id == DMC_DLL)
+        {
+              weapon_index = 0;
+              value = iId;
+              while (value)
+              {
+                    weapon_index++;
+                    value = value >> 1;
+              }
+        }
+        else
+              weapon_index = iId;
+
+        ammo_index = weapon_index;
+        
+      // update the ammo counts for this weapon...
+      bots[bot_index].current_weapon.iAmmo1 =
+         bots[bot_index].m_rgAmmo[weapon_defs[ammo_index].iAmmo1];
+      bots[bot_index].current_weapon.iAmmo2 =
+         bots[bot_index].m_rgAmmo[weapon_defs[ammo_index].iAmmo2];
+   }
+}
+
+void BotClient_Valve_CurrentWeapon(void *p, int bot_index)
+{
+   static int state = 0;   // current state machine state
+   static int iState;
+   static int iId;
+   static int iClip;
+
+   if (state == 0)
+   {
+      state++;
+      iState = *(int *)p;  // state of the current weapon
+   }
+   else if (state == 1)
+   {
+      state++;
+      iId = *(int *)p;  // weapon ID of current weapon
+   }
+   else if (state == 2)
+   {
+      state = 0;
+
+      iClip = *(int *)p;  // ammo currently in the clip for this weapon
+
+      if (mod_id == DMC_DLL)
+      {
+         if ((iState == 1) && (iId <= 128))
+            bots[bot_index].bot_weapons |= iId;
+             
+             int weapon_index = 0;
+             int value = 0;
+             int check_iId;
+
+             check_iId = iId;
+             
+             weapon_index = 0;
+             value = check_iId;
+             while (value)
+             {
+                   weapon_index++;
+                   value = value >> 1;
+             }
+             
+             if (iState == 1)
+             {
+                   bots[bot_index].current_weapon.iId = iId;
+                   bots[bot_index].current_weapon.iClip = iClip;
+                   
+                   // update the ammo counts for this weapon...
+                   bots[bot_index].current_weapon.iAmmo1 =
+                         bots[bot_index].m_rgAmmo[weapon_defs[weapon_index].iAmmo1];
+                   bots[bot_index].current_weapon.iAmmo2 =
+                         bots[bot_index].m_rgAmmo[weapon_defs[weapon_index].iAmmo2];
+             }
+      }
+      else
+      {
+         if (iId <= 31)
+         {
+            bots[bot_index].bot_weapons |= (1<<iId);  // set this weapon bit
+
+            if (iState == 1)
+            {
+               bots[bot_index].current_weapon.iId = iId;
+               bots[bot_index].current_weapon.iClip = iClip;
+
+               // update the ammo counts for this weapon...
+               bots[bot_index].current_weapon.iAmmo1 =
+                  bots[bot_index].m_rgAmmo[weapon_defs[iId].iAmmo1];
+               bots[bot_index].current_weapon.iAmmo2 =
+                  bots[bot_index].m_rgAmmo[weapon_defs[iId].iAmmo2];
+            }
+         }
+      }
+   }
+}
+
+void BotClient_Valve_WeaponPickup(void *p, int bot_index)
+{
+   int index;
+
+   index = *(int *)p;
+   
+   bots[bot_index].bot_weapons |= (1<<index);
+}
+
+void BotClient_Valve_AmmoPickup(void *p, int bot_index)
+{
+   static int state = 0;   // current state machine state
+   static int index;
+   static int ammount;
+   int ammo_index;
+
+   if (state == 0)
+   {
+      state++;
+      index = *(int *)p;
+   }
+   else if (state == 1)
+   {
+      state = 0;
+
+      ammount = *(int *)p;
+
+      bots[bot_index].m_rgAmmo[index] = ammount;
+
+        int iId = bots[bot_index].current_weapon.iId;
+        int value = 0;
+        int weapon_index = 0;
+        
+        iId = bots[bot_index].current_weapon.iId;
+
+        if (mod_id == DMC_DLL)
+        {
+              weapon_index = 0;
+              value = iId;
+              while (value)
+              {
+                    weapon_index++;
+                    value = value >> 1;
+              }
+        }
+        else
+              weapon_index = iId;
+
+        ammo_index = weapon_index;
+
+      // update the ammo counts for this weapon...
+      bots[bot_index].current_weapon.iAmmo1 =
+         bots[bot_index].m_rgAmmo[weapon_defs[ammo_index].iAmmo1];
+      bots[bot_index].current_weapon.iAmmo2 =
+         bots[bot_index].m_rgAmmo[weapon_defs[ammo_index].iAmmo2];
+   }
+}
+
+
+
+8)
+
+--------------------------------------------------
+05/15/03 at 16:03:01  Reply by: DiVeBoMbeR (free_fall@attbi.com)
+--------------------------------------------------
+Cool, thanks :)
+you da man
+Now I will see if I can actually figure out where it goes, hehe
+
+--------------------------------------------------
+10/18/03 at 07:01:28  Reply by: Fisch.666 (Fisch.666@gmx.de)
+--------------------------------------------------
+Hi!
+
+Do you have success whit this code to fix the weapon problem in DMC?
+
+--------------------------------------------------
+10/18/03 at 10:11:10  Reply by: DiVeBoMbeR (free_fall@attbi.com)
+--------------------------------------------------
+No, it didn't work :(
+
+--------------------------------------------------
+10/18/03 at 11:51:28  Reply by: Fisch.666 (Fisch.666@gmx.de)
+--------------------------------------------------
+Hi!
+
+Shit, thats bad.
+
+I try to run the rcbot 1.1 but this bot only uses the crowbar.
+
+--------------------------------------------------
+10/18/03 at 11:55:42  Reply by: DiVeBoMbeR (free_fall@attbi.com)
+--------------------------------------------------
+Yeah, I can't figure it out. :(
+Maybe PM can fix it in his metamod plugin version :)
+
+--------------------------------------------------
+10/18/03 at 12:29:25  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+geez, okie dokie then, I'm gonna have a look at it right away.
+
+
+--------------------------------------------------
+10/18/03 at 13:06:39  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Uploading unofficial version 3.0.1 of the HPB_bot to http://www.racc-ai.com/HPB_bot_plugin.exe
+
+Not tested, btw. Tell me if it works.
+
+
+--------------------------------------------------
+10/18/03 at 13:23:28  Reply by: Fisch.666 (Fisch.666@gmx.de)
+--------------------------------------------------
+Hi!
+
+Wow, really fast. :-)
+
+Can i compile this plugin for linux with the half-life SDK?
+
+--------------------------------------------------
+10/18/03 at 13:53:01  Reply by: DiVeBoMbeR (free_fall@attbi.com)
+--------------------------------------------------
+Nope no workie, now they only have the crowbar and shotgun ;)
+Rats
+Thanks for being so quick :)
+
+--------------------------------------------------
+10/18/03 at 14:30:14  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+OK my bad, fixed the wrong side of the bug :)
+
+Uploading version 3.0.2 at http://www.racc-ai.com/HPB_bot_plugin.exe
+Tested, this time. Works.
+
+You may recompile it for Linux if you want, but you'll probably have to commit a few minor changes in the source code. Look for the metamod stuff in dll.cpp, between the line that says
+code:
+
+// START of metamod stuff
+
+
+and the line that says
+code:
+
+// END of metamod stuff
+
+
+I suppose you'll have to #include <strings.h>, and also to change the DLLMain() function into a _fini() function. Other than that everything else should be straightforward.
+
+Enjoy :)
+
+
+--------------------------------------------------
+10/18/03 at 15:51:25  Reply by: DiVeBoMbeR (free_fall@attbi.com)
+--------------------------------------------------
+PM!!!!!!!!!!!!!!!!!!!
+I saw the bots fire the rocket launcher!!!!!!!!
+I love you man :)
+I will test more, you are the man!!!!!!!!!
+I didn't do any of the changes you mentioned but they still work.
+
+--------------------------------------------------
+10/18/03 at 17:10:30  Reply by: DiVeBoMbeR (free_fall@attbi.com)
+--------------------------------------------------
+They work good now:)
+the only bug I can see is they freeze for a split second every 3 seconds about.
+Other then that they use all the weapons, YAY
+:)
+
+--------------------------------------------------
+10/18/03 at 18:08:35  Reply by: Fisch.666 (Fisch.666@gmx.de)
+--------------------------------------------------
+Hi!
+
+QUOTE:
+
+You may recompile it for Linux if you want, but you'll probably have to commit a few minor changes in the source code. Look for the metamod stuff in dll.cpp, between the line that says
+
+// START of metamod stuff
+
+and the line that says
+
+// END of metamod stuff
+
+I suppose you'll have to #include <strings.h>, and also to change the DLLMain() function into a _fini() function. Other than that everything else should be straightforward.
+
+
+
+
+What do I need for that? The Half-Life SDK and the Metamod SDK?
+This is the first time i want do recompile a source at linux.
+
+@Mark
+
+Do you recompile it at linux?
+
+--------------------------------------------------
+10/18/03 at 18:17:23  Reply by: DiVeBoMbeR (free_fall@attbi.com)
+--------------------------------------------------
+Yes you need both the metamod source and the halflife SDK to comiple the bots.
+Here try this binary :)
+
+http://www.free-fall.net/downloads/rlbots.tar.gz
+
+Actually there are 2 files in there one normal with all weapons and one I modified to remove the Lightning gun for a mod I run that spawns you with all weapons, the bots are a little much with the Lightning gun, hehe
+
+--------------------------------------------------
+10/18/03 at 18:32:35  Reply by: Fisch.666 (Fisch.666@gmx.de)
+--------------------------------------------------
+Hi Mark,
+
+thanks!!!
+
+QUOTE:
+
+the bots are a little much with the Lightning gun, hehe
+
+
+
+
+I know, they are really good with the lightning gun.
+
+Edit:
+
+Sorry but i can't download your archive. Every time i want to download it, i get an index.html
+
+[modified on 10/18/03 at 18:32:35]
+--------------------------------------------------
+10/18/03 at 18:30:36  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+QUOTE:
+PM!!!!!!!!!!!!!!!!!!!
+I love you man :)
+
+
+
+hey, go easy ;D
+/me sticks his ass to the wall in awe
+
+About the other bug you're talking about, are you sure it wasn't already with the HPB_bot ? Else it may be your metamod config... the bots don't do this here.
+
+Anyway, back to mine now :)
+Anyone wants to help me finally fix my navmesh ?
+
+
+--------------------------------------------------
+10/18/03 at 19:06:05  Reply by: DiVeBoMbeR (free_fall@attbi.com)
+--------------------------------------------------
+Chris:
+ not sure why you can't download that it works fine for me :)
+
+PM:
+No the Other compiles of HPB bot didn't freeze like that, even your previous metamod version.
+
+I recompiled it a couple of time and it didn't change.
+
+--------------------------------------------------
+10/18/03 at 19:14:09  Reply by: Fisch.666 (Fisch.666@gmx.de)
+--------------------------------------------------
+Hi!
+
+QUOTE:
+Chris:
+ not sure why you can't download that it works fine for me :)
+
+
+
+
+I use Mozilla, IE and Flashget but i can't download the file. :-(
+
+Please, can you send this file to my e-mail address:
+
+Fisch.666@gmx.de
+
+Thanks!
+
+--------------------------------------------------
+10/18/03 at 19:34:25  Reply by: DiVeBoMbeR (free_fall@attbi.com)
+--------------------------------------------------
+Sent
+:)
+
+--------------------------------------------------
+10/19/03 at 07:31:13  Reply by: Fisch.666 (Fisch.666@gmx.de)
+--------------------------------------------------
+Hi Mark,
+
+next problem. When i try to unpack the archive i get an crc error:
+
+QUOTE:
+
+gzip: stdin: invalid compressed data--crc error
+tar: Child returned status 1
+tar: Error exit delayed from previous errors
+
+
+
+--------------------------------------------------
+10/19/03 at 07:45:54  Reply by: DiVeBoMbeR (free_fall@attbi.com)
+--------------------------------------------------
+Maybe it was because I was lazy and tarred them up with winzip, it extracts fine on my XP box.
+Guess that'll teach me ;)
+
+I sent you a zip 
+
+[modified on 10/19/03 at 07:45:54]
+--------------------------------------------------
+10/19/03 at 10:42:51  Reply by: Fisch.666 (Fisch.666@gmx.de)
+--------------------------------------------------
+Hi!
+
+QUOTE:
+Maybe it was because I was lazy and tarred them up with winzip, it extracts fine on my XP box.
+Guess that'll teach me ;)
+
+I sent you a zip 
+
+
+
+
+Yes, this file has no crc error. But when i start my server with the new files (testet HPB_bot_i486.so and HPB_botnolg_i486.so) then my server crashed:
+
+code:
+
+Start Line: ./hlds_i686 -debug -game dmc -pingboost 1 -noipx -zone 4096 -heapsize 384000 -nomaster -insecure +sv_lan 1 +maxplayers 32 +exec server.cfg +port 27018 +map dmc_e1m2 +localinfo mm_gamedll /dlls/HPB_bot_i486.so
+Core was generated by `./hlds_i686 -debug -game dmc -pingboost 1 -noipx -zone 4096 -heapsize 384000 -n'.
+Program terminated with signal 11, Segmentation fault.
+#0  0x58eed64c in GameDLLInit ()
+   from /home/chris/hlds_l/dmc//dlls/HPB_bot_i486.so
+#0  0x58eed64c in GameDLLInit ()
+   from /home/chris/hlds_l/dmc//dlls/HPB_bot_i486.so
+End of crash report 
+
+
+
+Any ideas?
+
+--------------------------------------------------
+10/19/03 at 10:43:47  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+I'm uploading the 3.0.3 version.
+
+http://www.racc-ai.com/HPB_bot_plugin.exe
+
+should fix the 3s lag issue. Not sure where it may have come from, but I've removed the quick "optimizations" I had made in botman's code. Perhaps the cause of the lag was that gpGlobals->frametime would be unreliable (I already suspected that).
+
+
+--------------------------------------------------
+10/19/03 at 10:53:19  Reply by: DiVeBoMbeR (free_fall@attbi.com)
+--------------------------------------------------
+Chris, It's a meta mod plugin you can't run it with the +localinfo line in your start up ;)
+
+PM, I can't seem to grab that file :(
+
+[modified on 10/19/03 at 10:53:19]
+--------------------------------------------------
+10/19/03 at 11:05:54  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+heh, a lil bit of patience guys :)
+can't imagine how slow a modem can be :)
+It's uploaded now, you can fetch it.
+
+
+--------------------------------------------------
+10/19/03 at 11:14:30  Reply by: Fisch.666 (Fisch.666@gmx.de)
+--------------------------------------------------
+Hi!
+
+QUOTE:
+Chris, It's a meta mod plugin you can't run it with the +localinfo line in your start up ;)
+
+
+
+
+But with the one from botman it works with the +localinfo line.
+
+Thanks for this hint!
+
+--------------------------------------------------
+10/19/03 at 11:29:17  Reply by: DiVeBoMbeR (free_fall@attbi.com)
+--------------------------------------------------
+Thanks PM :)
+
+Yes Chris the one from botman is not a metamod plugin. ;)
+
+--------------------------------------------------
+10/19/03 at 11:59:03  Reply by: Fisch.666 (Fisch.666@gmx.de)
+--------------------------------------------------
+Hi!
+
+Now it's funny to play with the bots. But they are even to easy with botskill 1. Is there any chances to make them harder?
+
+--------------------------------------------------
+10/19/03 at 12:12:28  Reply by: DiVeBoMbeR (free_fall@attbi.com)
+--------------------------------------------------
+PM, that seems to have done the trick, thanks again man :) I really appreciate all your work :)
+
+Chris, I sent you the latest compile, I doubt PM would be willing to make them harder for you. You best try on your own :)
+Unless PM wants to test his new navmesh and aim code on us :-D
+
+--------------------------------------------------
+10/19/03 at 13:44:26  Reply by: Fisch.666 (Fisch.666@gmx.de)
+--------------------------------------------------
+Hi!
+
+QUOTE:
+
+Now it's funny to play with the bots. But they are even to easy with botskill 1. Is there any chances to make them harder?
+
+
+
+
+I forgot to set the bot_reaction_time from 2 to 0. Now they are good.
+
+@Mark
+
+Thanks for the second mail!
+
+--------------------------------------------------
+10/19/03 at 17:16:40  Reply by: DiVeBoMbeR (free_fall@attbi.com)
+--------------------------------------------------
+hmm, maybe I spoke to soon, they seems to be freezing still about the same.
+I thought maybe it was the waypoint files so I renamed one and they still acted and navigated about the same. Aren't the hpb bots supposed to write their own waypoint file if there isn't one for a custom map? I know they used to they don't now.
+most strange ;)
+
+--------------------------------------------------
+10/19/03 at 17:27:24  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Curious...
+Not only they don't seem to freeze here, but also I really don't see what would cause it, since the changes I made to botman's code are extremely minor. The biggest change is the hooking of a new message for DMC, called "QItems".
+I'd like to be sure it's not your server causing the lag...
+Could someone else tell me whether he experiences this bug or not ?
+
+Anyway, know that I won't be fixing this bot my life long. I'll give up as soon as it starts to annoy me.
+
+
+--------------------------------------------------
+10/19/03 at 17:40:22  Reply by: DiVeBoMbeR (free_fall@attbi.com)
+--------------------------------------------------
+Another server operator I let try them has seen the same thing.
+The version before the wep fix didn't do this but I will try to load it again to make sure, it's not lag it's a screamin fast machine with loads of memory, seems odd.
+still it could be me, I will keep looking into it.
+Thanks for the effort :)
+
+--------------------------------------------------
+10/19/03 at 20:00:01  Reply by: DiVeBoMbeR (free_fall@attbi.com)
+--------------------------------------------------
+Ok, so I put back the pre weapon fix HPB plugin bots and no freezes, changed maps a bit let them run for a while. They happily run round shooting nails and shotguns.
+Next I put back the latest ones with the weapon fix, all was good no freezing until I changed maps then it started freezing again, so I added another bot that one was fine but the original one was still freezing :/ so I kicked the freezing one and changed maps. Now the new one is freezing, by freezing I mean it pauses for a fraction of a second every 3 seconds like clock work. ok so now I add another bot, this one is fine the other is freezing, so I change maps with both bots on. The freezing one is still freezing the other one is not freezing, hmm.
+My config is the same for all this testing so I doubt thats it plus it's run for a long time. My server it's even close to maxed.
+I have another server where the min max bot stuff is set so they leave and join as players do, and they seem to be fine so far.
+but the one with the addbot where he same bot stays on every map change starts freezing.
+anyway hope this helps.
+Thanks PM I am sending you 3 college girls in a hot tub, hehe
+:)
+
+--------------------------------------------------
+10/20/03 at 12:47:00  Reply by: Fisch.666 (Fisch.666@gmx.de)
+--------------------------------------------------
+Hi!
+
+I can't confirm this bug. There are no freezes with 16 bots at my server.
+
+--------------------------------------------------
+10/20/03 at 13:31:05  Reply by: DiVeBoMbeR (free_fall@attbi.com)
+--------------------------------------------------
+I don't know what's causing it, I ran a basic test server with only metamod and the bots and it still does it :(
+In fact I had one bot running in super slo mo today while the other one was fine, This was on my slackware 9.1 box, my red hat 9.0 box has the same kind of issues.
+Beats me :(
+These are steam servers that this is happening on.
+
+[modified on 10/20/03 at 13:31:05]
+--------------------------------------------------
+10/20/03 at 23:56:43  Reply by: DiVeBoMbeR (free_fall@attbi.com)
+--------------------------------------------------
+YAY
+Fixed, I was running a high sys_ticrate to boost fps on my servers, although I have been running this cvar for a long time without problems with normal HPB bots.
+Aparently the plugin variety dosen't like anything over 100fps :(
+Thanks again PM, I owe you one ;)
+
+P.S. It would be sweet to see a Linux port of your racc bots, I think they are the most realistic playing bots I have seen.
+
+--------------------------------------------------
+10/21/03 at 14:33:50  Reply by: Fisch.666 (Fisch.666@gmx.de)
+--------------------------------------------------
+Hi!
+
+Nice to hear that you solve your problem. 
+
+QUOTE:
+
+P.S. It would be sweet to see a Linux port of your racc bots, I think they are the most realistic playing bots I have seen.
+
+
+
+
+Then i should try that bot at my Windows PC.
+

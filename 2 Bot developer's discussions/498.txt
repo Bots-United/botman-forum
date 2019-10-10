@@ -1,0 +1,74 @@
+--------------------------------------------------
+Subject: I found the signification of iState in CurWeapon !
+--------------------------------------------------
+11/02/00 at 09:53:27  Posted by: Paulo-La-Frite (Paul.George@wanadoo.fr)
+--------------------------------------------------
+Just to say that I found the problem with the update of the values for the current weapon, sometimes I had some bugs with it, but now it is corrected :)
+
+In the variable iState, CS sends 1 if the weapon carried is your current weapon, or 0 if not.
+In case you (Botman and others) didn't find this bug, I just wrote this little message. Hope that can help someone :D
+
+--------------------------------------------------
+11/02/00 at 12:26:41  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+Thanks Paulo, if anyone wants the changes I made to the HPB bot to fix the spinning and jumping problem here's what I changed.  The bot used to store the previous origin and calculate the the distance it moved every frame.  If it hadn't moved much since the last location, it would assume it was blocked and jump or turn around.  I changed it so that it only calculate the moved_distance every 0.2 seconds instead of every frame.  I added a variable called "prev_time" to the bot_t structure.  Here's what I had originally...
+
+   // see how far bot has moved since the previous position...
+   v_diff = pBot->v_prev_origin - pEdict->v.origin;
+   moved_distance = v_diff.Length();
+
+   // save current position as previous
+   pBot->v_prev_origin = pEdict->v.origin;
+
+...here's what I changed it to...
+
+   if (pBot->prev_time <= gpGlobals->time)
+   {
+      // see how far bot has moved since the previous position...
+      v_diff = pBot->v_prev_origin - pEdict->v.origin;
+      moved_distance = v_diff.Length();  // calculate moved distance for this frame
+
+      // save current position as previous
+      pBot->v_prev_origin = pEdict->v.origin;
+      pBot->prev_time = gpGlobals->time + 0.2;
+   }
+   else
+   {
+      moved_distance = 2.0;  // fake out moved_distance for this frame
+   }
+
+botman
+
+
+--------------------------------------------------
+11/02/00 at 22:01:28  Reply by: dannywent (dannywent@hotmail.com)
+--------------------------------------------------
+hey, i tried to implement this update, and CS kept crashing.  The dll would compile, it was a runtime error.  this is what i did:
+
+in bot.h:  declared float prev_time;
+
+in bot.cpp: in botspwawninit()I intialized prev_time to pBot->gpGlobals->time +.2
+
+in botthink()
+i commented out what you said to replace and pasted in the new code.
+
+the map would load, but hl would close after a second or two.  Even when i commented out the new code but kept the new declarations, only one bot would actually be assigned to a team, the other wouldn't.  Any ideas??
+
+
+--------------------------------------------------
+11/03/00 at 05:04:51  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+If you are using MingW32, use "make clean", then "make" to rebuild all the .o files when changing any .h file.
+
+botman
+
+--------------------------------------------------
+11/03/00 at 15:26:28  Reply by: dannywent (dannywent@hotmail.com)
+--------------------------------------------------
+I"m using MVS 6.0, is that the equivalent of "remake all"?  i'll try it again with that
+
+--------------------------------------------------
+11/03/00 at 15:31:54  Reply by: dannywent (dannywent@hotmail.com)
+--------------------------------------------------
+yeah, i did 'rebuild all" and it work, thanks again
+

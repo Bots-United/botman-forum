@@ -1,0 +1,113 @@
+--------------------------------------------------
+Subject: compiling on linux
+--------------------------------------------------
+07/10/01 at 17:35:40  Posted by: noskill (ownz0r@hotmail.com)
+--------------------------------------------------
+Hi, i was wondering how you compile the stripper addon in linux.  I already converted the source code to be linux-compliant, but i dont know how to compile.  What i *think* i am supposed to do is compile each .c file into a .o file and then link the .o files into a .so.  I have NO idea how to link into a .so.  But, when i type "gcc dll.cpp -o dll.o" i get this error:
+"/usr/include/bits/local_lim.h:27:linux/limits.h:No such file or directory exists"
+
+--------------------------------------------------
+07/11/01 at 04:21:05  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+You should be able to start with the Makefile from the HPB bot source code and remove the files that you don't need.
+
+The error you're getting looks like a problem with include files (does limits.h even exist in Linux?).
+
+botman
+
+--------------------------------------------------
+07/11/01 at 22:59:08  Reply by: noskill (ownz0r@hotmail.com)
+--------------------------------------------------
+ok, i compiled using your makefile, but upon running, i get this error:
+LoadLibrary Failed on /usr/hlds_l/firearms/addon_i386.so: /usr/hlds_l/firearms/addon_i386.so: undefined symbol: edict__11CBaseEntity
+Host_Error:Couldnt get DLL API from /usr/hlds_l/firearms/addon_i386.so!
+Host_Error:Couldnt get DLL API from /usr/hlds_l/firearms/addon_i386.so!
+
+i changed loadlibrary to dlopen and i changed everything to the way its supposed to be for linux.  What is causing these errors plz tell me?
+
+--------------------------------------------------
+07/12/01 at 04:20:28  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+You have defined some CBaseEntity class in your code (or header files) somewhere.  Search your code for CBaseEntity and remove any references to it.
+
+botman
+
+--------------------------------------------------
+07/12/01 at 07:42:33  Reply by: noskill (ownz0r@hotmail.com)
+--------------------------------------------------
+but even in your HPB bot source, there are references to CBaseEntity
+
+--------------------------------------------------
+07/12/01 at 08:58:55  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+Yes, there are references to it, but there is NOTHING defined of CBaseEntity class.  Perhaps you have some code left in the .h files that is defining a CBaseEntity object.
+
+Try commenting out .h files in your .cpp code until the unresolved reference goes away, then you'll know which .h file you need to look more closely at.  Also try leaving .cpp files out of your project until the unresolved reference goes away and then you'll know which .cpp file is included the problem .h file.
+
+botman
+
+--------------------------------------------------
+07/12/01 at 09:38:20  Reply by: noskill (ownz0r@hotmail.com)
+--------------------------------------------------
+how do i get around this:
+
+CBaseEntity   *UTIL_PlayerByIndex( int playerIndex )
+{
+   CBaseEntity *pPlayer = NULL;
+
+   if ( playerIndex > 0 && playerIndex <= gpGlobals->maxClients )
+   {
+      edict_t *pPlayerEdict = INDEXENT( playerIndex );
+      if ( pPlayerEdict && !pPlayerEdict->free )
+      {
+         pPlayer = CBaseEntity::Instance( pPlayerEdict );
+      }
+   }
+   
+   return pPlayer;
+}
+
+Also, almost ALL of the UTIL_ functions take a CBaseEntity as a parameter
+
+--------------------------------------------------
+07/12/01 at 10:15:05  Reply by: noskill (ownz0r@hotmail.com)
+--------------------------------------------------
+ok, i replaced all CBaseEntity structures with edict_t structues, and changed the ->edict() to just the variables.  Its saying WON AUTH server now atleast before it crashes!  Now im getting: undefined symbol: GetProcAddress.  You use this for both OSs in your bot, so i assumed this works with linux as well.  is this the correct function? I am including dlfcn.h and im not getting errors with dlopen so i know this works.  Thank you SO much for helping.
+
+--------------------------------------------------
+07/12/01 at 11:15:30  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+No, GetProcAddress is Win32 only.  I've got this in bot.h to get around that problem...
+code:
+// stuff for Win32 vs. Linux builds
+
+#ifndef __linux__
+
+typedef int (FAR *GETENTITYAPI)(DLL_FUNCTIONS *, int);
+typedef int (FAR *GETNEWDLLFUNCTIONS)(NEW_DLL_FUNCTIONS *, int *);
+typedef void (DLLEXPORT *GIVEFNPTRSTODLL)(enginefuncs_t *, globalvars_t *);
+typedef void (FAR *LINK_ENTITY_FUNC)(entvars_t *);
+
+#else
+
+#include <dlfcn.h>
+#define GetProcAddress dlsym
+
+typedef int BOOL;
+
+typedef int (*GETENTITYAPI)(DLL_FUNCTIONS *, int);
+typedef int (*GETNEWDLLFUNCTIONS)(NEW_DLL_FUNCTIONS *, int *);
+typedef void (*GIVEFNPTRSTODLL)(enginefuncs_t *, globalvars_t *);
+typedef void (*LINK_ENTITY_FUNC)(entvars_t *);
+
+#endif
+
+This defines "GetProcAddress" as "dlsym" on Linux boxes.  Try that and see if that gets rid of your problems with GetProcAddress.
+
+botman
+
+--------------------------------------------------
+07/12/01 at 12:18:49  Reply by: noskill (ownz0r@hotmail.com)
+--------------------------------------------------
+muhahahaha it works thank you very much botman
+

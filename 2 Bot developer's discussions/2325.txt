@@ -1,0 +1,39 @@
+--------------------------------------------------
+Subject: New problem with dll linking
+--------------------------------------------------
+09/28/01 at 10:55:11  Posted by: PlasticWarrior (tigerstorm023@netscape.net)
+--------------------------------------------------
+Ok, read my old thread "dll chains, headaches" or dont, but i have worked around most of the problems by doing this:
+
+HLDS->Enhanced Bot Mixer->metamod->bot->mp.dll
+                                          
+                                          -> adminmod
+
+Now i can do all the evil modification i want, but i can't do it with adminmod. When i try to i get:
+
+[ADMIN] ERROR: NULLL Ent for adminmod_timer
+
+and it exits.
+
+I have looked up the piece of source responcable, and here it is:
+
+  
+  int istr = MAKE_STRING("adminmod_timer");
+  
+  pTimerEnt = CREATE_NAMED_ENTITY(istr);
+  if ( FNullEnt( pTimerEnt ) ) {
+    UTIL_LogPrintf("[ADMIN] ERROR: NULL Ent for adminmod_timer\n" );
+    exit(1);
+  }
+
+It is called when the first player connects on ClientStart, to initialize adminmod. The problem is somehow adminmod is able to access/thinks its not able to access pTimerEnt or soemthign.
+
+Without modifying adminmods source, how would you suggest i make it so adminmod can have its happy fun with itself without exiting hlds?
+
+[modified on 09/28/01 at 10:55:11]
+--------------------------------------------------
+09/28/01 at 19:00:14  Reply by: PlasticWarrior (tigerstorm023@netscape.net)
+--------------------------------------------------
+OK update: i have narrowed the problem down to the inability of adminmod to CREATE_NAMED_ENTITY            (*g_engfuncs.pfnCreateNamedEntity)
+any suggestions?
+

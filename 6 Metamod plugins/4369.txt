@@ -1,0 +1,68 @@
+--------------------------------------------------
+Subject: Ok.. Starting to get frustrated.
+--------------------------------------------------
+05/01/03 at 18:27:32  Posted by: DllMain (wrwrarwa)
+--------------------------------------------------
+Yay for problems. With the loop botman gave me, I can successfully make bots move. Once. Then they stop. If I lower the msec value, it makes them move for a longer period of time, SOMETIMES, but if they die then it doesnt work anymore. I can see nothing wrong in my code. Here is my BotCreate:
+
+void BotCreate(void)
+{
+      edict_t *pEntity;
+      char ptr[128]; 
+      char *infobuffer;
+      int clientIndex;
+      pEntity = g_engfuncs.pfnCreateFakeClient( "Bot" );
+      CALL_GAME_ENTITY( PLID , "player" , VARS( pEntity ) );
+      infobuffer = g_engfuncs.pfnGetInfoKeyBuffer( pEntity );
+      clientIndex = ENTINDEX( pEntity );
+      g_engfuncs.pfnSetClientKeyValue( clientIndex, infobuffer, "model", "bumperbot" );
+      MDLL_ClientConnect( pEntity, "Bot", "127.0.0.1", ptr );
+      ClientPutInServer( pEntity );            
+      MDLL_ClientPutInServer( pEntity );      
+      pEntity->v.flags = FL_FAKECLIENT;
+      g_engfuncs.pfnSetSize( pEntity, Vector( -16, -16, 0 ), Vector( 16, 16, 72 ));
+}
+
+
+Here is my StartFrame:
+
+void StartFrame( void )
+{
+      for (int i = 1; i <= gpGlobals->maxClients ; i++)
+      {
+            edict_t *pEdict = INDEXENT(i);
+            float forward_speed = 100.0f;
+            float msec_value = 25.0f;
+
+            if (pEdict)
+            {
+                  if (FBitSet(pEdict->v.flags, FL_FAKECLIENT))
+                  {
+                        pEdict->v.flags = FL_FAKECLIENT;
+                        g_engfuncs.pfnRunPlayerMove( pEdict, pEdict->v.v_angle,
+                                          forward_speed, 0, 0, 0,
+                                          0, msec_value);
+                  }
+            }
+      }
+      RETURN_META (MRES_HANDLED);
+}
+
+I cannot see anything wrong... But naturally it still doesnt work properly.. No clue whats wrong.
+
+
+EDIT: Usually my msec value is 50, but im currently trying different ones to see if it affects anything.. which it doesnt really.
+
+[modified on 05/01/03 at 17:41:45]
+
+[modified on 05/01/03 at 18:27:32]
+--------------------------------------------------
+05/02/03 at 14:43:31  Reply by: DllMain (wrwrarwa)
+--------------------------------------------------
+aww botman gave up on me : )
+
+--------------------------------------------------
+05/02/03 at 15:50:23  Reply by: DllMain (wrwrarwa)
+--------------------------------------------------
+w00t I fixed it. Yay :D
+

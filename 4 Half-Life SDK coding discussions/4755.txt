@@ -1,0 +1,124 @@
+--------------------------------------------------
+Subject: Changing modes and exec mode.cfg
+--------------------------------------------------
+08/21/03 at 01:34:45  Posted by: corbin_mike (corbin_mike@hotmail.com)
+--------------------------------------------------
+Hi, 
+
+I have custom cfg files for each one of my gamemodes. I am trying to get the server to exec the cfg when my new cvar is handled..
+
+Ex: mp_gamemode 5
+now it should exec the cfg for that mode and changelevel.
+
+I have only been able to get this to work if I have it in CHalfLifeMultiplay :: Think. Like this
+
+if (CVAR_GET_FLOAT("mp_gamemode") == 5)
+      {
+            SERVER_COMMAND( "exec /gamemodes/duel_arena.cfg\n" );
+            
+      }
+
+I dont want to put it in a think() cause it's looping through it all the time...
+
+Any where else I can call this from and work like I want ?
+
+Thanks !
+
+--------------------------------------------------
+08/21/03 at 05:50:59  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Maybe have a global flag that's reset when a level change happens?
+code:
+bool gConfigLoadedYet = false;
+
+.
+.
+.
+CHalfLifeMultiplay::LoadConfig()
+{
+   if (!gConfigLoadedYet)
+   {
+      SERVER_COMMAND("exec myconfig.cfg\n");
+      gConfigLoadedYet = true;
+   }
+}
+
+botman
+
+--------------------------------------------------
+08/21/03 at 07:05:34  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+If your goal is to exec something when a new level starts, you might want to put your code in ServerActivate(). This function is called only once per level, when the server is about to be turned "on" again to receive clients.
+
+[modified on 08/21/03 at 07:05:34]
+--------------------------------------------------
+08/22/03 at 01:55:25  Reply by: corbin_mike (corbin_mike@hotmail.com)
+--------------------------------------------------
+I tried Pierre-Marie's suggestion, no luck..
+
+The config must execute before level change so new cvars will be in effect for that gamemode when the new level loads. (to prevent 2 level changes)
+
+I think i'm close with Botman's suggestion..But its still loop through the config, here is what i've done :
+
+[CODE]
+
+bool gConfigLoadedYet = false;
+void CHalfLifeMultiplay::LoadConfig( )
+
+{  
+     if (!gConfigLoadedYet)
+     {
+      SERVER_COMMAND( "exec /gamemodes/duel_arena.cfg\n" );
+      gConfigLoadedYet = true;
+            
+     }
+            
+} 
+
+
+void CHalfLifeMultiplay :: Think ( void )
+{
+      if (CVAR_GET_FLOAT("mp_gamemode") == 5)
+      {
+            LoadConfig( );
+      }
+[END CODE]
+
+It looks like it should work ?
+
+If I confused with my first post :
+
+EX:
+1) Server is in mp_gamemode 0
+2) Server cvar mp_gamemode 5 is executed by vote or admin
+3) Server executes gamemode config (1 time) and changelevel (changelevel is in config)
+4) New level loads server is now in mp_gamemode 5 with all cvars set for this gamemode from config (and not looping)
+
+Thanks !
+
+
+--------------------------------------------------
+08/22/03 at 04:21:44  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Ah ok, then yes botman's suggestion is the way to go.
+
+I propose you check periodically the state of your mp_gamemode CVAR, and compare it with its previous value. In case it changes, process the config file.
+
+code:
+
+void CHalfLifeMultiplay::Think (void)
+{
+   static float prev_mp_gamemode = -1;
+
+   if (CVAR_GET_FLOAT ("mp_gamemode") != prev_mp_gamemode)
+   {
+      prev_mp_gamemode = CVAR_GET_FLOAT ("mp_gamemode"); // update the CVAR
+      LoadConfig (); // load config which will issue the change level command
+   }
+
+   prev_mp_gamemode = CVAR_GET_FLOAT ("mp_gamemode"); // remember the CVAR state for next frame
+}
+
+
+
+

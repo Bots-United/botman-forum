@@ -1,0 +1,232 @@
+--------------------------------------------------
+Subject: other ways to represent the world besides waypoint
+--------------------------------------------------
+03/18/02 at 13:09:09  Posted by: jm3 (matt@modelsoftware.com)
+--------------------------------------------------
+So, are there any bots out there (or ideas for bots) that use some alternate representation of the world besides waypoints?
+
+I've been looking around on the net, looking in the robotics field for world representation ideas.
+
+Basically my idea is this: if you can represent the world in a way that provides more detail to the bot than simple waypoints, you can have the bot perform more complex behaviors.
+
+One method I came across was using quadtrees (for 2d space, oct-trees for 3d space, but 2d may be acceptable)
+
+Anyway, I get the idea that 99% of bots either use NO waypoints and just roam around OR just use normal waypoints.
+
+Any ideas?
+
+--------------------------------------------------
+03/18/02 at 13:54:46  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+The most radical idea I have is to give the bots an idea of the space they can walk in. (like your 3d oct-trees idea?)
+
+Although there are many things you need to put into play with this idea (such as slopes/stairs etc.)
+
+Oh and another idea (More human like) Is to get bots to just follow walls and let them learn the environment...?
+
+[modified on 03/18/02 at 13:54:46]
+--------------------------------------------------
+03/18/02 at 14:37:14  Reply by: jm3 (matt@modelsoftware.com)
+--------------------------------------------------
+"Oh and another idea (More human like) Is to get bots to just follow walls and let them learn the environment...?"
+
+Well, to learn something, they have to store information in memory.  To store something in memory, you have to have a data structure.
+
+I'm really looking for ideas on how to represent the world to the bot.
+
+--------------------------------------------------
+03/18/02 at 14:37:19  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+QUOTE:
+
+Oh and another idea (More human like) Is to get bots to just follow walls and let them learn the environment...?
+
+
+
+
+A more 'human like' way would be to implement human senses in a bot: vision, hearing, etc.
+That's how I try to work. My bots sample their field of view before picking up the best location in the visible space for them to go. BotSampleFOV() and BotReachPosition() are involved here. Learning goes AFTER.
+
+That's barely psychologics. Imagine you wake up in a totally unknown room. Instinctively your eyes will scan your field of view and your brain will compute an appreciable wall planes representation using the distances walls are from you, at different angles of view. Then, instinctively, you'll turn your head and look in the longest direction.
+You can't disagree with this, it's fatal, amazingly simple. It's instinct.
+That's why, for a not-really-square room, without any particular feeling of agression (you'd be fine and you'd just want to explore, learn about your new environment), you'll finally end up standing right in the MIDDLE of the room... where the distances to wall are sensibly equal in whatever direction you choose to face.
+In another mood, you could end up in a corner or near a wall too, but you would be in a DEFENSIVE mood, trying to cover your backs. That's different.
+
+Not really simple to implement, but at this point it works impressively well.
+
+...and YES, staircases can be a problem (I tried to solve it by firing additional tracelines, but the final time cost rapidly becomes high :-().
+
+--------------------------------------------------
+03/18/02 at 15:21:04  Reply by: jm3 (matt@modelsoftware.com)
+--------------------------------------------------
+"You can't disagree with this, it's fatal, amazingly simple. It's instinct."
+
+You're saying it's instinct to look at walls that are far away?  What if there's motion? What if there's a nice picture on the wall that catches your eye?
+
+Anyway, you say your bot uses this technique for moving around a room, and that learning comes after.  What do you teach your bot to do?  How do you represent the learning?
+
+My first thought was to add the notion of "room number" to bots, and then to create both inter and intra room paths.
+
+Then, you could do something like say:
+
+i am in room a
+goal is in room c
+room a connects to room b
+room b connects to room c
+
+to get to room c, i need to move to room b, then move to room c.
+
+Then, you'd be in room a, and your bot logic could have, say, some hierarchy of goals, like:
+
+kill enemy if you see one
+otherwise move to next room.
+
+then you could do simple path plans not by moving from present to goal state, but from present to subgoal (in this case, you could find the closest waypoints in room B to room A, and then move to the waypoint that minimizes the distance to room B.
+
+Alternatively, you could have multiple strategies for moving from room to room, limited by imagination (sneaking, cover fire, flashbangs, retreating, etc)
+
+Anyway, i'm just looking for a good way to represent data.
+
+I was thinking that the simplest way would be to replace some of the FLAG bits in botman's waypoints with maybe 5-6 bits of "room #" data.
+
+SO then the question is "how many rooms per map?  Cstrike?  I think 64 rooms would work.  I'm sure there's extra room in those 32 bits for room# -- but i could just as easily just create some kind of lookup between waypoint ID and room #
+
+anyway, thoughts are appreciated.
+
+--------------------------------------------------
+03/18/02 at 15:45:57  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+QUOTE:
+You're saying it's instinct to look at walls that are far away?  What if there's motion? What if there's a nice picture on the wall that catches your eye?
+
+
+
+Well, such arguments can't apply because they deal with DECISIONAL intelligence. I am talking about reactions one have EVEN BEFORE THINKING. That's it, instinct.
+
+If there's motion, then the longest direction is likely to change. It will slide right or left if you face the wall ; it will naturally point to corners and follow curves.
+
+If there's an appealing picture on the wall, you may WANT to look at it. But it is DECISIONAL intelligence. If it was a text and you wouldn't have learned to read, would you look at it ? In fact, if such a game was reality: you even shouldn't, isn't it ?
+
+--------------------------------------------------
+03/18/02 at 15:52:04  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+See this thread...
+
+http://dynamic.gamespy.com/~botman/yabb/YaBB.pl?board=2&action=display&num=2576
+
+The Quake III bot paper by Jan Paul is REALLY good.  It has LOTS of good stuff about navigation and bot AI in general.
+
+botman
+
+--------------------------------------------------
+03/18/02 at 16:12:50  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+That's right! Since mid-December it's already stored in a strategical place on my computer : the desktop.
+
+;-)
+
+William's other AI-related links on cgf-ai.com are really worth a look too!
+
+Especially this one:
+http://www.cgf-ai.com/docs/gdc2001_paper.pdf
+written by William himself.
+
+Good readings...
+
+8)
+
+
+
+--------------------------------------------------
+03/18/02 at 17:06:18  Reply by: theimann (killaruna@botepidemic.com)
+--------------------------------------------------
+Apart from Gladiator and the Q3-bots, Foxbot uses a zone-based navigation as well (I think). Not extracted from the bsp and much simpler, but the idea is similar.
+The problem with adding roomID-flags to waypoints is that it's a lot of work to do it manually and even more to to it automatically - AFAIK William is the only one who ever did that. For more info on that and new navigation ideas in general see http://dynamic.gamespy.com/~botman/yabb/YaBB.pl?board=2&action=display&num=1950 and follow all posted links - there's some pretty interesting stuff in there.
+
+Tobias
+
+--------------------------------------------------
+03/20/02 at 04:23:49  Reply by: spatel (averburg@liacs.nl)
+--------------------------------------------------
+Hi,
+
+I am bussy with a bot who has a representation
+of the world in a 2d matrix. I was inspired 
+by a site calledcounterstrike 2D, which 
+has a lot of maps of the bsp files in 2D.
+if a human would be able to move through a
+2D map why shouldn't bots.
+
+I allready tackled the problem with the 2D
+maps and it's allready working. I will release
+it's source in the near future.
+
+some links :
+
+an example of a 2D cs map:
+http://csnation.counter-strike.net/cs2d/mymaps/dust/CS2D_DE_DUST_REDUX.jpg
+
+A screenshot of my 2D world representation
+http://www.liacs.nl/~averburg/raidbot/pictures/14_de_tr.gif
+
+
+regards,
+
+Alexander
+
+--------------------------------------------------
+03/26/02 at 00:41:18  Reply by: CountFloyd (countfloyd@botepidemic.com)
+--------------------------------------------------
+I just re-read that thread and stumbled across this (quoted from Tobias):
+QUOTE:
+
+Head straight towards the target until you encounter an obstacle (wall, gap), then follow its edge until you can head straight towards the target again.
+
+
+
+How's that done ? Using a Boid approach (flee from center of obstacle), by calculating line intersections or totally different ? I take it func_illusionaries and brushes like ladders don't get detected ? Also how do you get the boundaries for entities with invalid size/world coordinates ? 
+
+--------------------------------------------------
+03/27/02 at 09:05:37  Reply by: LunaticWithCandy (candyranger@hotmail.com)
+--------------------------------------------------
+Back in the days of oddbot, I posted to spyro that it might be possible to use worldcraft or some mapping tool to create waypoints during the level creation process.
+
+These entities wouldn't have to be in the fdg, you would have to create them manualy, but the bot would know to look for those specific entities. You could then define areas. I believe this has to do with the oct tree thing... but I have no clue when it comes to AI besides basic if this does this then do this. I'm just a mapper, hehe.
+
+Using textures like the AATRIGGER you could tie it to an entity and name the entity "Path", then with the vertex tool you could shape it to go up when there are ramps/stairs.
+
+You could then use the AATRIGGER again and define a full room, call it something like "area_name". This way the bots would know what the name of the area was and then on drop of a flag (TFC) could spout out "Flag at %s", area_name.
+
+I believe that using that path idea would prevent bot circling problems for bots that circle waypoints, aside from reducing the turning radious.
+
+This idea would be nice for mappers, but it would be hard to use on already created maps. The only way I can think to do that would be to decompile the map and add the entities then compile the csg back into the bsp which would allow clients to connect to server without having to dl a new version of the map.
+
+I also suggested that there be a special wad for the bots so that they would only have to look for the texture name. The texture would just have to be a func_wall with no render amount.
+
+If anyone wants to try something allong these lines I could create a simple map with, something with two diffrent heights for the bots to attempt to move up both  stairs and ramps, and even a small spiral staircase that would only be a little over 32 units wide.
+
+Get in contact with me at candyranger@hotmail.com 
+
+[modified on 03/27/02 at 09:05:37]
+--------------------------------------------------
+03/27/02 at 14:55:34  Reply by: theimann (killaruna@botepidemic.com)
+--------------------------------------------------
+QUOTE:
+How's that done ? Using a Boid approach (flee from center of obstacle), by calculating line intersections or totally different ? I take it func_illusionaries and brushes like ladders don't get detected ? Also how do you get the boundaries for entities with invalid size/world coordinates ?
+
+
+
+The method I'm using just works for walls and gaps because it relies on the surface normal of the obstacle (as delivered by a traceline). Once you've got that you can calculate an angle parallel to the obstacle. You start that way and follow any corners until turning round a corner you look in the direction of the target again.
+
+Tobias
+
+--------------------------------------------------
+03/29/02 at 07:58:03  Reply by: Ghoul (oneeyedghoul@aol.com)
+--------------------------------------------------
+QUOTE:
+Back in the days of oddbot, I posted to spyro that it might be possible to use worldcraft or some mapping tool to create waypoints during the level creation process.
+
+
+
+The only problem with that is you need to have access to the mods source to program the entities.  You could try and create them in the bot .dll, but not everyone uses bots.  So you'll end up in the same situation as we are in now, having to waypoint maps.
+

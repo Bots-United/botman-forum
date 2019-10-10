@@ -1,0 +1,53 @@
+--------------------------------------------------
+Subject: Bot Tracer Rounds
+--------------------------------------------------
+12/04/00 at 13:34:53  Posted by: swoop (jab@swoop.2y.net)
+--------------------------------------------------
+I'm trying to be a little crazy with some bot mods. I would like to have the bots display a beam (like the waypoint beams) when shooting an enemy. As easy as it sounds I can not get it to work. What I did is made a function like WaypointDrawBeam called DrawTracer that I included in the BotShootAtEnemy function:
+
+DrawTracer(pEdict, pEdict->v.origin + pEdict->v.view_ofs, pBot->pBotEnemy->v.origin, 30, 2, 255, 0, 0, 250, 5);
+
+However I do not see any beam at all being displayed.
+
+I created a test function that calls the DrawTracer function when I play and it works fine as a player bot not as a bot.
+
+Any Ideas?
+
+Thanks
+
+
+--------------------------------------------------
+12/04/00 at 14:46:37  Reply by: MKlimstra (mklimstra@zonnet.nl)
+--------------------------------------------------
+It might be useful if you showed us the DrawTracer-function you wrote.
+Also take a look how Botman draws the waypoints. He calls the WaypointDrawBeam function every second if I remember correctly (see WaypointThink)
+
+--------------------------------------------------
+12/04/00 at 15:01:34  Reply by: swoop (jab@swoop.2y.net)
+--------------------------------------------------
+Marcus 
+
+Sorry for not being clear. The DrawTracer functions is like Botmans WaypointDrawBeam except for 2 differences:
+   WRITE_BYTE( 5 ); // framerate
+   WRITE_BYTE( 20 ); // life in 0.1's
+
+
+
+--------------------------------------------------
+12/05/00 at 03:23:51  Reply by: MKlimstra (mklimstra@zonnet.nl)
+--------------------------------------------------
+in that case I think you should call the DrawTracer-function every 2 seconds. 
+
+--------------------------------------------------
+12/05/00 at 05:32:23  Reply by: theimann (theimann@stud.fh-heilbronn.de)
+--------------------------------------------------
+> I created a test function that calls the DrawTracer function when I play and it works fine as a player bot not as a bot.
+
+The DrawTracer relies on messages it sends to the engine. One thing sent is the edict of the calling player. If I remember botman's code right, DrawTracer sends a MSG_ONE which means that only one player will see the trace: the one whose edict you pass to the function. That's why it works for you and not for the bot.
+To change this, there are two possibilites:
+1) Send a MSG_ALL (or something like this, the constants are explained in some header-file)
+2) Search for your player edict and pass that to DrawTracer instead of the bot's edict.
+
+Tobias
+
+

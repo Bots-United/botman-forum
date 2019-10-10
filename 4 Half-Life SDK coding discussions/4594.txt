@@ -1,0 +1,85 @@
+--------------------------------------------------
+Subject: 2 questions
+--------------------------------------------------
+06/30/03 at 12:58:23  Posted by: phil2004 (phil2004@hotmail.com)
+--------------------------------------------------
+1) I am trying to make a M4 with a scope and burst fire, but i cant seem to get it to work. Here is my code:
+
+void CM4::PrimaryAttack()
+{
+    // don't fire underwater
+    if (m_pPlayer->pev->waterlevel == 3)
+    {
+          PlayEmptySound( );
+          m_flNextPrimaryAttack = 0.15;
+          return;
+    }
+    
+    // don't fire if empty
+    if (m_iClip <= 0)
+    {
+          PlayEmptySound();
+          m_flNextPrimaryAttack = 0.15;
+          return;
+    }
+
+    // Weapon sound
+    m_pPlayer->m_iWeaponVolume = NORMAL_GUN_VOLUME;
+    m_pPlayer->m_iWeaponFlash  = NORMAL_GUN_FLASH;
+
+    // one less round in the clip
+    m_iClip--;
+    
+    // add a muzzle flash
+    m_pPlayer->pev->effects = (int)(m_pPlayer->pev->effects) | EF_MUZZLEFLASH;
+    
+    // player "shoot" animation
+    m_pPlayer->SetAnimation( PLAYER_ATTACK1 );
+    
+    // fire off a round
+    Vector vecSrc(m_pPlayer->GetGunPosition());
+    Vector vecAim(m_pPlayer->GetAutoaimVector(AUTOAIM_2DEGREES));    
+    Vector vecAcc(VECTOR_CONE_4DEGREES);
+    Vector vecDir(m_pPlayer->FireBulletsPlayer( 3,           // how many shots 
+                                                vecSrc,      
+                                                vecAim,      
+                                                vecAcc,      // accuracy
+                                                8192,        // max range
+                                                BULLET_PLAYER_M4, // bullet type
+                                                0,           // tracer frequency
+                                                0,           // damage
+                                                m_pPlayer->pev, 
+                                                m_pPlayer->random_seed ));
+    
+    // Fire off the client side event
+    PLAYBACK_EVENT_FULL( FEV_NOTHOST, m_pPlayer->edict(), m_event, 0.0, 
+                         (float *)&g_vecZero, (float *)&g_vecZero, 
+                         vecDir.x, vecDir.y, 0, 0, (m_iClip ? 0 : 1), 0 );
+    
+    // Add a delay before the player can fire the next shot
+    m_flNextPrimaryAttack = UTIL_WeaponTimeBase() + M4_FIRE_DELAY;    
+    m_flTimeWeaponIdle    = UTIL_WeaponTimeBase() + 
+                            UTIL_SharedRandomFloat(m_pPlayer->random_seed, 
+                                        M4_FIRE_DELAY + 1, M4_FIRE_DELAY + 2);
+}
+
+void CM4::SecondaryAttack()
+{
+      if ( m_pPlayer->pev->fov != 0 )
+      {
+            m_pPlayer->pev->fov = m_pPlayer->m_iFOV = 0; // 0 means reset to default fov
+            m_fInZoom = 20;
+      }
+      else if ( m_pPlayer->pev->fov != 20 )
+      {
+            m_pPlayer->pev->fov = m_pPlayer->m_iFOV = 20;
+            m_fInZoom = 0;
+      }
+      
+      pev->nextthink = UTIL_WeaponTimeBase() + 0.1;
+      m_flNextSecondaryAttack = UTIL_WeaponTimeBase() + 1.0;
+}
+ Can anybody help me wwith this code?
+
+2) Does anybody have links to a high-ping-kicking option tutorial (i.e. the server automatically kick people with a latency over 500)
+

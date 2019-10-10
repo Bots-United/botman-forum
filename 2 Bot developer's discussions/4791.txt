@@ -1,0 +1,67 @@
+--------------------------------------------------
+Subject: pfnEmitSound problem
+--------------------------------------------------
+09/03/03 at 10:35:25  Posted by: punksong (psicomantis@punkass.com)
+--------------------------------------------------
+hello again
+
+i have new problems with my bots. its about the pfnEmitSound function.
+
+when my bots "hear" a sound, they didnt look at the entity who made.
+
+so, my question is: why? i use the original HPB_bot pfnEmitSound source.
+
+PD: im not a hacker (lol)
+
+--------------------------------------------------
+09/03/03 at 15:58:17  Reply by: botmeister (meister@telus.net)
+--------------------------------------------------
+pfnEmitSound is used to make sounds, it is not used to hear sounds.
+
+Unless my understanding is incorrect, you have to simulate hearing by looking for patterns that represent something that can be heard. For example, a player that is moving at a speed that indicates running AND the player is within normal hearing range means that the player can be heard running - etc
+
+There may be better methods. There's a potentially auditable set that can be scanned, and perhaps you can hook onto the emitsound functions to get an idea what sound is being made by what entity. 
+
+In any event, creating convincing simulated hearing is likely to be a complicated process.
+
+
+--------------------------------------------------
+09/04/03 at 01:00:24  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+I strongly second:
+QUOTE:
+
+In any event, creating convincing simulated hearing is likely to be a complicated process.
+
+
+
+
+General directions:
+
+- There are 2 sort of sounds. Sounds that are issued by the SERVER (and then dispatched to all clients), and sounds that are predicted/simulated by the CLIENTS only (without network traffic). For example, player footsteps are such frequent sounds they can only be predicted by the clients, else the network would be congested by "footstep sound" messages. More significant sounds, such as "door open" sounds, are issued by the server and then are received by clients under the form of a network message so that every client plays the same sound at the exact same time.
+
+- SERVER sounds can be hooked by pfnEmitSound() and the likes in your engine functions interface.
+
+- CLIENT sounds have to be emulated on your side by your code.
+
+- Since both server and client sounds should finally be handled the same way, I suggest you write a layer in charge of dispatching these sounds to each bot's ears. For server sounds, as soon as you catch a sound, dispatch it to the bots ; and for client sounds, your sound emulation code will loop through all players and determine if either of them should play a sound now, and in case they do, dispatch it to the bots by calling the exact same function.
+
+- Once your bots have something to hear, you can make them check for the sounds they are hearing, and depending of the ambient noise, the sound's volume and duration, and perhaps its "importance" (adjustable heuristic), make it decide if the bot will take an action regarding this sound or not (for example, bots are likely to ignore teammate's footsteps, but should better not ignore gunshots).
+
+Look in my RACC template source code for a complete and working bot sound emulation layer. The code has been optimized since, but you can get the idea from it for a start.
+
+
+--------------------------------------------------
+09/04/03 at 14:23:20  Reply by: botmeister (meister@telus.net)
+--------------------------------------------------
+I learn something new every day - nice explaination PMB!
+
+--------------------------------------------------
+09/05/03 at 11:35:36  Reply by: punksong (psicomantis@punkass.com)
+--------------------------------------------------
+thanks for the help...
+
+i will download your racc-ai... i see your page before, but my clan dont want to play with your bots because they love PODbot (lan partys too)
+
+so... thanks for the help! =)
+

@@ -1,0 +1,126 @@
+--------------------------------------------------
+Subject: The bomb in CS
+--------------------------------------------------
+09/13/01 at 13:27:33  Posted by: Auch (bleknor@yahoo.com)
+--------------------------------------------------
+Hello again,
+
+     I want my CS bot to drop a bomb at the given target.  He's already been able to find it and move there.  I just don't really know how to select the bomb. UTIL_Select_Item() I assume might work but there isn't an entry for the bomb in the weapons chart.  How would I go about accomplishing my goal?  How would I add a new weapon item?  Thanks a lot.
+
+Robert
+
+--------------------------------------------------
+09/13/01 at 14:34:56  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+To find out things like this, do the following.
+
+1. Start up a server and join the game.
+
+2. Pull down the console and enter "debug_engine" (without the quotes).
+
+3. Perform the action you are interested in (in this case plant a bomb).
+
+4. Exit from the game.
+
+5. Look at the "bot.txt" file found in the Half-Life directory and search for "ClientCommand" to see which commands have been sent from the client to the server.  The last command sent is probably the one you want.
+
+botman
+
+--------------------------------------------------
+09/14/01 at 08:14:20  Reply by: Spectual (spectual@hotmail.com)
+--------------------------------------------------
+hehe - 5) No, that command would probably be quit :-)
+
+Robert - you can always make a fakeclientcommand - weapon_c4 changes weapon to bomb in counterstrike.
+
+In the pfnCreateEntity function you'll have to wait until an entity with the model setted to "models/w_c4.mdl" is spawned - this is when the bot is finished placing the bomb.
+
+(Or you could wait for textmsg (type 75) with a string "#Bomb_Planted")
+
+The bomb has exploded when you receive a textmsg (type 75) with a string "#Target_Bombed")
+
+
+[modified on 09/14/01 at 08:14:20]
+--------------------------------------------------
+09/14/01 at 09:56:07  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+I've been working on this today infact. I've already got the bot to plant the bomb, but I wanted the other bots to know if the bomb has been planet so CTs will know that it has to be defused...
+
+I made this
+
+botclient.cpp
+
+code:
+
+void BotClient_CS_TextMessage(void *p, int bot_index)
+{
+   static int state = 0;   // current state machine state
+
+
+   ALERT( at_console, "\nText Message occured!!!!" );
+
+   if (state == 0)
+   {
+      state++;      
+   }
+   else if (state == 1)
+   {
+      state = 0;
+
+        if (strcmp((char *)p, "#Bomb_Planted") == 0)
+        {
+              ALERT( at_console, "\nSet Bomb planted to TRUE!!!!" );
+              bots[bot_index].bomb_planted = TRUE;
+        }
+   }
+}
+
+
+
+somewhere in engine.cpp
+
+code:
+
+      else if (msg_dest == MSG_ALL)
+      {
+         ...
+         ...
+
+         else if (mod_id == CSTRIKE_DLL)
+         {
+            if (msg_type == message_DeathMsg)
+               botMsgFunction = BotClient_CS_DeathMsg;
+          else if (msg_type == message_TextMessage)
+             botMsgFunction = BotClient_CS_TextMessage;
+         }
+       ...
+       ...
+      }
+
+
+
+oh yah, this has also gotta go in engine.cpp
+
+code:
+
+      else if (mod_id == CSTRIKE_DLL)
+      {
+         if (strcmp(pszName, "VGUIMenu") == 0)
+            message_VGUI = msg;
+         ...
+         ...
+            message_Money = msg;
+         else if (strcmp(pszName, "DeathMsg") == 0)
+            message_DeathMsg = msg;
+         else if (strcmp(pszName, "ScreenFade") == 0)
+            message_ScreenFade = msg;
+         else if (strcmp(pszName, "TextMsg") == 0)
+            message_TextMessage = msg;
+
+
+
+There are some other things ya gotta do in the client and engine code. Read botmans readme.txt about it in the templates readme.
+
+[modified on 09/14/01 at 09:55:09]
+
+[modified on 09/14/01 at 09:56:07]

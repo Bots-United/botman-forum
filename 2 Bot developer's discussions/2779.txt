@@ -1,0 +1,73 @@
+--------------------------------------------------
+Subject: Problems getting a "clean" dll
+--------------------------------------------------
+02/25/02 at 23:34:16  Posted by: Tub (tubpc@authmann.de)
+--------------------------------------------------
+Edit: Sorry for disturbing you, after a long night I fixed the problem myself. It seems that posting here always helps, even if only to get my thoughts sorted by writing them down. There are still a few questions about the dll in that post I'd like to have answered, just out of curiousity.
+
+
+-- snip --
+
+I've been working on Realbot with Stefan for a while now, but I only added things where Stefan said "take this source, add it there please!". I was able to create a working navigation and other stuff, but I never really understood how the bot itself worked. That's why I wanted to remove every bot code from the template, then re-add it step by step.
+
+Now I've ran into the first problems. What I did:
+
+step 1) unpacked the template, compiled, worked.
+step 2) removed some stuff that was easily removed (waypoints etc), compiled, worked
+step 3) commented every code out that was hooked into the functions in dll.cpp and engine.cpp (I didn't remove the pass-through calls of course). Removed every source file except dll, engine, h_export and linkfunc. Then copied some things here and there so it compiles. Compiled, installed, started, and it crashed! Why?
+
+[edit: step 4) edit a little more, compile, works...]
+
+I've been looking for an answer for hours now, but I'm only slowly getting closer. The SDK really lacks a description of the dll interface.
+
+I'll just write down what I found out (or think I found out), please tell me if I'm wrong or what I'm missing.
+
+a) first, the hl-engine calls GiveFnptrsToDll() and passes a list of engine-functions the mod can use to access the halflife engine. The bot dll uses it and gives the mod dll a list of it's own, partially modified functions.
+b) second, GetEntityAPI() is called. Here it's the other way round, the mod passes it's functions to the engine. Still curious why these functions are not passed via the dll interface, but I think speed or dll size reasons are the answer.
+c) there is another exported function called GetNewDLLFunctions() .. no idea what that's for. eiface.h hints that the hl-engine passes some more engine functions to the DLL (like GiveFnptrsToDll does), but the template doesn't care about them, so neither do I, I left the function untouched.
+d) there are a lot of other exported functions in linkfunc.cpp - one for each entity there is, and they're passed directly to the mod. So this is probably not the source of the error, but I'm still interested in what they're used for.
+e) the bot.cpp calls a function player() from the mod dll. It also has an own player() function, but it doesn't seem to export it. But in linkfunc.cpp there is another player() function, and that is exported. weird.
+f) I downloaded a dll viewer and compared the exported functions of the template dll and my stripped dll. It looks as if both interfaces are equal (but I didn't check each single function)
+g) the first entry point in the dll is DllMain (at least for windows), I put something like fopen("test.txt", "wb") at it's start, started hl, it crashed, but there was no test.txt neither in my hl directory nor elsewhere on my hd. But how can it crash BEFORE any of my code is executed? On the other hand, when I hit "Run it!" in that dll viewer, nothing bad happens.. but that file isn't created either. Maybe the viewers fault? I don't know.
+h) in all those function passing.. there are many functions that aren't changed at all (in dll.cpp and engine.cpp) .. wouldn't it be better to just pass the original function pointer instead of creating another function in between? To me the way it is done looks like unneeded overhead. Or did I miss something?
+
+
+so.. basically.. I am stuck. I don't know what my dll lacks what the other dll has.
+
+before anyone asks: I'm using MingW32, the latest halflife / cstrike, and both realbot and botman's template compile & work find in that environment.
+
+sorry for the long post, but I'm really desperate now.
+[edit: not that deperate any more ;) ]
+
+tia
+Tub
+
+[modified on 02/25/02 at 23:34:16]
+--------------------------------------------------
+02/26/02 at 04:30:59  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Read the ReadMe.txt file that comes with the HPB bot template source.  Many of your questsion (like what the functions in linkfunc.cpp are used for) are answered.  Read through the WHOLE thing.
+
+Since the HPB bot code sits between the Half-Life engine and the game DLL code, the HPB bot MUST have a pass through function for EVERY function that would exist in the game DLL code (like DispatchSpawn, DispatchTouch, CreateNamedEntity, etc.).  The Half-Life engine only loads one DLL file (in this case the HPB bot DLL).  The Half-Life engine can only call functions in the DLL that it has loaded.  The HPB bot will load the game DLL file.  In order for the engine to be able to call functions in the game DLL code, it MUST call that function in the HPB bot DLL code and the HPB bot DLL code MUST pass that function and parameters along to the game DLL code.  There is no other way to do this.
+
+Your startup sequence of the order that functions get called is correct.  GetNewDLLFunctions() was added in SDK 2.0 to support new functions needed by TFC.  Since Valve wanted the new engine release to be backward compatible with MODs that existed at that time, they couldn't just add new functions to the existing function table.  They decided to create a new table of functions that was optional.  If the MOD exported a function called GetNewDLLFunctions(), then the engine would call that, if the MOD didn't export this function, then the engine knew that the MOD was using pre-SDK 2.0 source code and built for an earlier release of the engine.
+
+If you can get a copy of Microsoft Visual C++, you will find that it is MUCH easier to find problems using the MSVC debugger.  You can usually find a cheap copy of MSVC on e-bay.com for less than $50.
+
+botman
+
+--------------------------------------------------
+02/26/02 at 07:29:14  Reply by: Tub (tubpc@authmann.de)
+--------------------------------------------------
+thanks for your reply!
+
+QUOTE:
+The Half-Life engine can only call functions in the DLL that it has loaded.
+
+
+
+why that? If the bot dll just opens the gamedll, gets a pointer to it's DispatchSpawn() function and passes it back to the engine (instead of a pointer to it's own DispatchSpawn) .. will that result in a segmentation fault or why isn't that possible?
+
+about the readme.. yes, sure, sorry. I unpacked the source code a long time ago and didn't find a readme in that directory . I'll redownload the zip and see if I find it now.
+
+[modified on 02/26/02 at 07:29:14]

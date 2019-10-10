@@ -1,0 +1,98 @@
+--------------------------------------------------
+Subject: changing player models on the fly?
+--------------------------------------------------
+04/01/03 at 01:11:33  Posted by: JustinHoMi (stripper.20.skel@spamgourmet.org)
+--------------------------------------------------
+Hey. I'm trying to write a function to change a player model on the fly in CS... I've tried a number of things but nothing is working. Before I go into detail, can someone tell me if this is possible? If not "instant" is it possible to change the model so it goes into effect next round?
+
+Thanks,
+Justin 
+
+--------------------------------------------------
+04/01/03 at 05:20:05  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Yes, it is possible to change the client's model.  You can do this from the command line by using the "model modelname.mdl" command.
+
+The problem is that the Counter-Strike code is constantly resetting the model back to what it wants it to be.  As long as you constantly keep setting it, you should be able to change it.
+
+botman
+
+--------------------------------------------------
+04/01/03 at 06:30:10  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+How elegant... ;D
+
+If you want to use one of the player models of the game though, all you have to do is to make your players issue the "chooseteam", "menuselect X" and "menuselect Y" in a burst so that the next round they will respawn in the appropriate team and class.
+
+If you want to set them another model, such as like in ChickenMod (where players are turned into chickens sometimes), here's a trick :
+You can make your player invisible and noclip'ed first, by setting the EF_NODRAW and FL_NOTARGET flags appropriately, and then spawn an arbitrary entity with a model you choose right on top of them, and update this entity's model and angles to the models and angles of the player. That's how ChickenMod people did, and that's what I did in my own chicken plugin for metamod.
+
+
+--------------------------------------------------
+04/01/03 at 07:43:37  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+..but also remember that if you want to use custom models from other MODs (for example, the barney model from Half-Life), that Counter-Strike uses custom model skeletons and animations that aren't compatible with other MODs (i.e. you can't just replace one of the standard CS models with a player model from another MOD and expect it to work).  You'll need to create the player model using a modeling program and make sure your custom model follows the same skeleton and animations of the standard CS player models, which can be found using a Half-Life model viewer like the one on the Milkshape website).
+
+botman
+
+--------------------------------------------------
+04/01/03 at 14:52:23  Reply by: JustinHoMi (stripper.20.skel@spamgourmet.org)
+--------------------------------------------------
+I imagine you have to replace the model *very* fast b/c that doesn't seem to be working by hand :).
+
+Right now the plugin is using chooseteam and forces the model that way, but it leaves the menu open, so it's sort of tacky.
+
+I did look at the chickenmod source and tried that method, but I only managed to spawn the model in one place... it wasn't "attached" to my player in any way.
+
+Here's the source I was using (I just spawned a chicken to see... in reality I'll just be spawning models/player/sas/sas.mdl or one of the other default cs models):
+
+edict_t *pEdict = INDEXENT(index);
+            edict_t *pChicken = CREATE_NAMED_ENTITY( MAKE_STRING("info_target") );
+            pChicken->v.classname = MAKE_STRING("chicken");
+            pChicken->v.owner = pChicken->v.euser4 = pEdict;
+            pChicken->v.takedamage = DAMAGE_NO;
+            pChicken->v.solid = SOLID_NOT;
+            pChicken->v.movetype = MOVETYPE_FLY;
+            pChicken->v.renderfx = kRenderFxNone;
+            pChicken->v.rendermode = kRenderNormal;
+            pChicken->v.renderamt = 255;
+            if (pEdict->v.deadflag == DEAD_DEAD  pEdict->v.deadflag == DEAD_DYING)//if dead
+                  pChicken->v.effects = EF_NODRAW; //make invisible if dead
+            SET_ORIGIN(pChicken, (const Vector)pEdict->v.origin);
+            SET_MODEL(pChicken, "models/chick.mdl");
+            MDLL_Spawn( pChicken);
+            ENTITY_SET_KEYVALUE(pEdict,"cl_lw","0");
+
+[modified on 04/01/03 at 14:52:23]
+--------------------------------------------------
+04/01/03 at 15:16:48  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+You should retry your "chooseteam" method, but this time, just prevent the VGUI menu network messages to reach the player :) should fix the trouble :)
+
+Anyway, the code you have is okay for spawning an entity (it does even more than that, and probably unneeded stuff), but don't you forget to update the new entity's origin and angles each frame with the origin and angles of the player ? If not, then no wonder your chicken stays in one position forever :)
+
+
+--------------------------------------------------
+04/01/03 at 15:39:25  Reply by: JustinHoMi (stripper.20.skel@spamgourmet.org)
+--------------------------------------------------
+Oh with each frame? I get it now :)
+
+I'll have to think about how to prevent the VGUI menu from getting to the player....
+
+[modified on 04/01/03 at 15:39:25]
+--------------------------------------------------
+04/01/03 at 18:43:32  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+QUOTE:
+I'll have to think about how to prevent the VGUI menu from getting to the player....
+
+
+
+Well, just intercept it in pfnMessageBegin, and instead of calling the engine function, just return, and do the same for each pfnWriteStuff until pfnMessageEnd is called (and then you allow the engine functions to be called for the other messages). If you don't call the engine function, the engine won't ever know that the game DLL asked it to send a network message to one of its clients, thus, no packet will be sent but the game DLL will still be fooled about it, "thinking" that the message was sent normally (and that player X is now displaying his VGUI menu). :)
+
+
+--------------------------------------------------
+04/01/03 at 21:06:38  Reply by: JustinHoMi (stripper.20.skel@spamgourmet.org)
+--------------------------------------------------
+Ah, very cool :). Thanks!!
+

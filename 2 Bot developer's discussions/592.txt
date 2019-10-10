@@ -1,0 +1,99 @@
+--------------------------------------------------
+Subject: Serious problems with my bot............
+--------------------------------------------------
+11/13/00 at 12:20:55  Posted by: DarkYouth (darkyouth@thegraze.freeserve.co.uk)
+--------------------------------------------------
+Arrrghalargalargerlarger.................
+
+That was my scream as my defuse code lit up in a frenzy of death.
+
+I need to know what is the difference between:
+
+pEdict->v.button = IN_USE;
+
+and
+
+pEdict->v.button := IN_USE;
+(The semi-colon is a substitute symbol, Since the forum wont show the right one. You should be able to figure the symbol I mean..)
+as I suspect this may not make the bot defuse correctly.
+
+I make it look down 90' and then stop and press use. They do look in the right direction, But no defusey fusey. Hmmm, Voodoo magic seems appealing now.
+
+
+
+--------------------------------------------------
+11/13/00 at 12:35:06  Reply by: The (www.pq_mk@yahoo.com)
+--------------------------------------------------
+to make the bot press the use button
+
+pEdict->v.button I= IN_USE;
+
+I - is the staight line
+
+
+--------------------------------------------------
+11/13/00 at 12:38:09  Reply by: DarkYouth (darkyouth@thegraze.freeserve.co.uk)
+--------------------------------------------------
+What is the differance between the one with a line and the one without a line...
+
+It might be my problem.
+
+--------------------------------------------------
+11/13/00 at 12:42:20  Reply by: FuckFace (gellert.lukacs@dbs.hu)
+--------------------------------------------------
+As for the first part, 
+
+x = y is the 'or equal' operator (if I guessed it right from := ). Just like the +=. You could write it as:
+
+x = x  y, except that the compiller may generate faster code.
+
+The idea is, that when you OR the IN_USE constant to the button state var, all other parts(bits) are remains untouched but if you just assigns the IN_USE value, all other commands ( like IN_JUMP, IN_DUCK, IN_RELOAD, etc...) will be discarded.
+
+for the second part, I can only guess... You may be using this 'v.button' assigment at other places in the wrong way. You must make sure, that the IN_USE bit in the v.button will always be set for the time the bomb is defused. If there are other references in the code that may reset the IN_USE bit, you are virtually doing nothing. Keep using the v.button = IN_USE, and make sure that the IN_USE bit is actually set when you call the pfnRunPlayerMove(...) func.
+
+there are boolean operators to clear the bit, but I always keep forgeting the exact form, expect that is has to do something with AND and bitwise NOT :)
+
+
+
+--------------------------------------------------
+11/14/00 at 13:27:19  Reply by: The (www.pq_mk@yahoo.com)
+--------------------------------------------------
+Dark Youth try placing this after the bot stands over the bomb and looks down.
+
+pBot->pEdict->v.button I= IN_DUCK;
+pBot->pEdict->v.button I= IN_USE;
+
+I'm shure that that will solve youre problem :)
+
+
+--------------------------------------------------
+11/13/00 at 16:02:01  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+IN_USE is a bit mask.  It's one bit out of many that can be set in the v.button field.
+
+('I' used here instead of the vertical bar) :(
+
+This statement...
+
+pEdict->v.button = IN_USE;
+
+assigns the IN_USE value to v.button (and clears everything else).  This statement...
+
+pEdict->v.button I= IN_USE;
+
+...sets the IN_USE bit without disturbing any of the other v.buttons bits.  For example you could do this to set BOTH the IN_USE and IN_JUMP bits...
+
+pEdict->v.button I= IN_USE;
+pEdict->v.button I= IN_JUMP;
+
+...which is the same as this...
+
+pEdict->v.button = IN_USE + IN_JUMP;
+
+...or this...
+
+pEdict->v.button = IN_USE I IN_JUMP;
+
+botman
+
+

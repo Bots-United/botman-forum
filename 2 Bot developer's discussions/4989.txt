@@ -1,0 +1,179 @@
+--------------------------------------------------
+Subject: Bots Joining Teams
+--------------------------------------------------
+12/02/03 at 05:16:28  Posted by: jonny5 (JDG2129@hotmail.com)
+--------------------------------------------------
+Ok it is me again.  I got all the entities to work, now i am stuck at having bots join teams.  I have been reading the HPB_bot read me over and over again, I guess my brain is just warped.  Can some1 please help me I am not even sure where to start.
+
+--------------------------------------------------
+12/02/03 at 05:45:42  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Which MOD?  Every MOD handles teams differently.
+
+botman
+
+--------------------------------------------------
+12/02/03 at 07:45:24  Reply by: jonny5 (JDG2129@hotmail.com)
+--------------------------------------------------
+underworld
+
+--------------------------------------------------
+12/02/03 at 12:41:18  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+For finding out which team a player or a bot is in, you should ask the MOD developers how they do it themselves. Either they use the "team" field of the player's entvars structure which has been put there on purpose, like TFC does, or they use another variable in their own player class, which you can't access, like CS does. In this case, your best guess is to compare the player models, or perhaps their color.
+
+For making bots to join teams, you have to trace what happens when yourself, as a player, are joining one, i.e. which are the network messages that are sent back and forth from the server to the client. Then, once you have identified them, watch the moment when the bots catch such messages and make them send back the answer.
+
+
+[modified on 12/02/03 at 12:41:18]
+--------------------------------------------------
+12/13/03 at 22:22:26  Reply by: jonny5 (JDG2129@hotmail.com)
+--------------------------------------------------
+Ok after goining my composure, I read the HPB_bot read me file again, and I saw botman talks about building the dll in Debug mode.  How in the world do i go about ding that? I have tried and once again I am stumped.
+
+--------------------------------------------------
+12/14/03 at 06:10:11  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Please describe _exactly_ what you want to do and how you think you'll be able to do it. Botman's readme.txt is very useful, but long outdated and some better methods may have been devised since to do what you want in a more reliable or natural manner.
+
+To "build the DLL in debug mode", if you're using MSVC, check the menu, "Build"->"Configurations..." and select the "Debug" configuration. If you're using another compiler you need to add the #define DEBUG option to the compiler command-line, often it's -DDEBUG and/or -D_DEBUG
+Botman may be speaking of his "debug_engine" special feature though ; in this case change the initial value of the debug_engine global variable from 0 to 1 and rebuild the DLL.
+
+
+[modified on 12/14/03 at 06:10:11]
+--------------------------------------------------
+12/15/03 at 05:16:36  Reply by: jonny5 (JDG2129@hotmail.com)
+--------------------------------------------------
+Here is the section i am referring to:
+
+Then I compare the pszName parameter to specific strings that I know the MOD
+will use for certain types of network messages.  How do I know what these
+strings are?  I have to start the MOD up and let the HPB bot write out all
+of these values to a text file that I can go back and look at later.  If you
+are using Microsoft Visual C++, this will be done automatically for you if
+you build the HPB bot DLL in Debug mode.  Building in Debug mode will define
+the _DEBUG symbol which will cause this code in pfnRegUserMsg() to be added
+to the HPB bot DLL...
+
+#ifdef _DEBUG
+   fp=fopen("bot.txt","a");
+   fprintf(fp,"pfnRegUserMsg: pszName=%s msg=%d\n",pszName,msg);
+   fclose(fp);
+#endif
+
+If you don't have Microsoft Visual C++ you can just comment out the "#ifdef
+_DEBUG" and "#endif" lines and rebuild the bot to always print this data
+out.
+
+This creates a text file in the Half-Life directory called "bot.txt" and
+will write out a text string each time pfnRegUserMsg() gets called by the
+MOD DLL.
+
+I want to get the bot.txt file.
+
+--------------------------------------------------
+12/15/03 at 05:23:21  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Like Pierre-Marie said, if you are using Microsoft Visual Studio (or .NET), simply switch to the "Debug" build and build the DLL.
+
+If you are using some other compiler (Borland or MinGW), comment out the "ifdef _Debug" line and the matching "#endif" line and rebuild the DLL.  You'll have to do this for every instance of "_Debug" (or you can just define "_Debug" in your compiler options when you biuld the DLL).
+
+botman
+
+--------------------------------------------------
+12/16/03 at 21:14:28  Reply by: jonny5 (JDG2129@hotmail.com)
+--------------------------------------------------
+OK i am doing everything you said and i still can't get the bot.txt to come up.
+
+By the way i am using MSVC.
+
+--------------------------------------------------
+12/17/03 at 04:28:06  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Grmbl. Once more please don't post things such as "I do what you say but it won't work". If we find time to elaborate on the answer, please elaborate on the symptoms. AT LEAST.
+
+Describe, point after point, what you did. With details.
+
+
+--------------------------------------------------
+12/17/03 at 05:43:24  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Are you sure you are looking for the file in the right place?
+
+It should be in the Half-Life directory, not your MODs directory (if I remember correctly).
+
+botman
+
+--------------------------------------------------
+12/17/03 at 07:19:24  Reply by: jonny5 (JDG2129@hotmail.com)
+--------------------------------------------------
+ok i changed the "int debug_engine = 1" to 1 instead of 0 and rebuilt the dll in debug. Then put it in my mod dll folder and started a LAN game.  This caused the MOD to run super slow, and when i quit there was no "bot.txt" file in my half-life directory, or in my mod directory, or anywhere.  
+
+
+also off the topic, I noticed alot of funky files in my half-life directory with names i can't even type.  åÕ¡=K·SÅíÅLÄüÛmB, that is one, and there are many more.  Any1 know where they came from, or what they are?
+
+
+--------------------------------------------------
+12/17/03 at 07:45:13  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Either you did a VERY BAD modification to the bot source code that make it dump random crap on your hard disk, but I can't even imagine what you did to make it do so, or your filesystem is corrupted. Do a scandisk and a virus scan, check for bad sectors. Consider changing your hard drive before it goes awol in your hands.
+
+How long did your LAN game lasted when you put debug_engine to 1 ? If you waited hours before shutting down the server chances are that the bot.txt log file went over the capacity of the filesystem and it has gone berserk. If you never checked this file chances are that it's now more than several gigabytes. And if you run Win9x, the FAT32 limit is 2Gb. Make a file larger than this and you screw up the whole filesystem.
+
+
+--------------------------------------------------
+12/17/03 at 11:16:36  Reply by: Cheesemonster!!! (cheeseh(at)rcbot(dot)net)
+--------------------------------------------------
+You could have opened a file without closing it, which could cause weird things like that on your file space
+
+--------------------------------------------------
+12/17/03 at 22:40:36  Reply by: jonny5 (JDG2129@hotmail.com)
+--------------------------------------------------
+The lan game only lasted about 2 minutes, so I doubt it filled up that much disk space.  I believe those files were there before I ran the dll file.  I noticed them when I was copying the HPB_bot.dll into the directory.  Do you think it would hurt if I deleted them?
+
+I think I solved the problem, I forgot to edit the liblist.gam file.  
+
+--------------------------------------------------
+12/17/03 at 23:12:51  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+<not found a smilie on this forum able to mimic the facial attitude I have right now>
+
+
+--------------------------------------------------
+12/22/03 at 06:13:35  Reply by: jonny5 (JDG2129@hotmail.com)
+--------------------------------------------------
+lol ok what should i do about those crazy icons in my half-life folder?
+
+Also, i keep getting an error message on my comp and no1 can answer what it means...
+
+SYSTEM32 caused an invalid page fault in
+module KERNEL32.DLL at 0187:bff88396.
+Registers:
+EAX=c00309c4 CS=0187 EIP=bff88396 EFLGS=00010212
+EBX=012affec SS=018f ESP=011afe98 EBP=011b0010
+ECX=00000000 DS=018f ESI=00000000 FS=307f
+EDX=bff76855 ES=018f EDI=bff79060 GS=0000
+Bytes at CS:EIP:
+53 56 57 8b 75 10 8b 38 33 db 85 f6 75 2d 8d b5 
+Stack dump:
+
+
+any ideas how to fix?  
+
+[modified on 12/22/03 at 06:13:35]
+--------------------------------------------------
+12/22/03 at 09:35:43  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+"SYSTEM32 caused an invalid page fault"
+
+...means something tried to access memory that it shouldn't be messing with.
+
+You probaby have a bad pointer somewhere that is either accessing memory that was previously allocated but is now freed (and thus you shouldn't be accessing it), or you have a pointer declared somewhere but you haven't initialized it to point to anything valid (and thus the uninitialized pointer contains some random garbage location in memory and when you try to de-reference the pointer, the operating system gives you that error for attempting to access memory that you shouldn't have access to).
+
+botman
+
+--------------------------------------------------
+12/22/03 at 11:12:50  Reply by: jonny5 (JDG2129@hotmail.com)
+--------------------------------------------------
+thanks
+

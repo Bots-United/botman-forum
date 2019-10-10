@@ -1,0 +1,196 @@
+--------------------------------------------------
+Subject: Problems getting a bot to work with the DPB mod...
+--------------------------------------------------
+09/21/02 at 11:59:04  Posted by: WKYA-Undertaker (mofo_badboys@yahoo.com)
+--------------------------------------------------
+I have been working on a bot for the recently released Digital Paintball MOD.  So far I have everything working except the weapon selection.  When you join a server on this mod, the first thing you do is select a team and then select what kind of a weapon configuration you want.  At the weapon config vgui is where I am having difficulty.  The console command to select your config is similar to this (the creaters do not want this released so I am using a fake command) "weap 5 10 13 0 0" each number represents a diffrent selection.  The way I worked this was I took the join code from template 3 and modified it so it would randomly select each of the arguments, then I took the fakeclientcommand and created a new one of my own so that it could support 6 arguments.  Now when I add a bot and the bot begins to execute this it crashes hl to the desktop with an illegal operation (you have to reboot your computer to run half-life again), also in the bot.txt the last line would be "weap 4 2."  I originaly thought that the problem was in my new fakeclientcommand, however when I change weap to say, so the bot will say what the arguments are instead of executing them, the bots display the arguments fine.  I then tried using a fakeclientcommand like this "FakeClientCommand(pEdict, "weap", "9 12 15 0 0", NULL);"  This would display in the bot.txt but the bot still will not have anyweapon what so ever.  So I now have no clue at all what to do, if anyone could offer some information I would greatly appreciate it.
+
+The digital Paintball Mod can be found at http://www.digitalpaintball.net
+
+--------------------------------------------------
+09/21/02 at 12:18:15  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+Edit: eek didn't read correctly, I see you've altered the code already. Obviously there will be some problems add random arguments in FakeclientCommand, because bots already use FakeclientCommand for other things. Instead randmoise your arguments outside the function and insert the randomised strings into FakeClientCommand
+
+[glancing through text]When there is a space in a command you should have the m seperated as different parameters in FakeClientCommand... example:
+
+FakeClientCommand(pEdict,"weap","1","0");
+
+You can only have 3 arguments in FakeclientCommand, however you can alter the function to allow more if you need them, 
+[/glancing through text] ;)
+
+or have a look at PM's RACC source for his FakeClientCommand function :)
+
+[modified on 09/21/02 at 12:18:15]
+--------------------------------------------------
+09/21/02 at 12:31:57  Reply by: WKYA-Undertaker (mofo_badboys@yahoo.com)
+--------------------------------------------------
+I did forget to meantion that I did try it with seprate arguments and got the same exact problem.  What is wrong with using random arguments in fakeclientcommands?  its how the join code is done now isnt it?
+
+--------------------------------------------------
+09/21/02 at 12:46:03  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+Yes, well by the looks of it here...
+
+code:
+
+FakeClientCommand(pEdict, "weap", "9 12 15 0 0", NULL);
+
+
+
+You are still using the same function as the bots use in bot_start.cpp to join the game. By the looks of all the numbers, you are expecting the FakeclientCommand to give you a random number equaling one of these. Although If in bot_start.cpp, the bot wants to join a team or class... and the second argument is a string (i.e. "engineer" or something), what happens then?
+
+You should post the code which you have made to randomize these values.
+
+[modified on 09/21/02 at 12:46:03]
+--------------------------------------------------
+09/21/02 at 12:52:25  Reply by: WKYA-Undertaker (mofo_badboys@yahoo.com)
+--------------------------------------------------
+this is the code i am using, i slightly modified some of the values but all the code is the same.
+
+
+code:
+
+        if (pBot->start_action == MSG_PB_WEAPONMENU_SELECT)
+      {
+         pBot->start_action = MSG_PB_IDLE;  // switch back to idle
+         pBot->create_time = gpGlobals->time;  // reset
+
+             /*primary weapon select*/
+         if ((pBot->bot_class1 < 1) || (pBot->bot_class1 > 10))
+            pBot->bot_class1 = -1;
+
+         if (pBot->bot_class1 == -1)
+            pBot->bot_class1 = RANDOM_LONG(1, 10);
+
+             /*secondary weapon select*/
+       if ((pBot->bot_class2 < 1) || (pBot->bot_class2 > 3))
+            pBot->bot_class2 = -1;
+
+         if (pBot->bot_class2 == -1)
+            pBot->bot_class2 = RANDOM_LONG(1, 3);
+
+             /*barrel select*/
+         if ((pBot->bot_class3 < 1) || (pBot->bot_class3 > 3))
+            pBot->bot_class3 = -1;
+
+         if (pBot->bot_class3 == -1)
+            pBot->bot_class3 = RANDOM_LONG(1, 3);
+
+             /*extra paint*/
+         if ((pBot->bot_class4 < 1) || (pBot->bot_class4 > 2))
+            pBot->bot_class4 = -1;
+
+         if (pBot->bot_class4 == -1)
+            pBot->bot_class4 = RANDOM_LONG(1, 2);
+
+             /*extra grenades*/
+         if ((pBot->bot_class5 < 1) || (pBot->bot_class5 > 2))
+            pBot->bot_class5 = -1;
+
+         if (pBot->bot_class5 == -1)
+            pBot->bot_class5 = RANDOM_LONG(1, 2);
+
+         team = UTIL_GetTeam(pEdict);
+
+             /*Primary gun*/
+         if (pBot->bot_class1 == 1)
+            strcpy(c_class1, "1");  //no primary
+         else if (pBot->bot_class1 == 2)
+            strcpy(c_class1, "2");  // angel
+         else if (pBot->bot_class1 == 3)
+            strcpy(c_class1, "3");  // autococker
+             else if (pBot->bot_class1 == 4)
+            strcpy(c_class1, "4");  // automag
+             else if (pBot->bot_class1 == 5)
+            strcpy(c_class1, "5");  // bushmaster
+             else if (pBot->bot_class1 == 6)
+            strcpy(c_class1, "6");  //excaliber
+             else if (pBot->bot_class1 == 7)
+            strcpy(c_class1, "7");  // phantom
+             else if (pBot->bot_class1 == 8)
+            strcpy(c_class1, "8");  // sl98
+             else if (pBot->bot_class1 == 9)
+            strcpy(c_class1, "9");  //spyder
+             else if (pBot->bot_class1 == 10)
+            strcpy(c_class1, "10");  //shocker
+         else
+            strcpy(c_class1, "9");
+
+             /*secondary gun*/
+         if (pBot->bot_class2 == 1)
+            strcpy(c_class2, "11");
+         else if (pBot->bot_class2 == 2)
+           strcpy(c_class2, "11");
+         else if (pBot->bot_class2 == 3)
+            strcpy(c_class2, "11");
+         else
+            strcpy(c_class2, "11");
+
+             /*barrel*/
+         if (pBot->bot_class3 == 1)
+            strcpy(c_class3, "14");
+         else if (pBot->bot_class3 == 2)
+            strcpy(c_class3, "15");
+         else if (pBot->bot_class3 == 3)
+            strcpy(c_class3, "16");
+         else
+            strcpy(c_class3, "14");
+
+             /*extra ammo*/
+         if (pBot->bot_class4 == 1)
+            strcpy(c_class4, "2");
+         else if (pBot->bot_class4 == 2)
+            strcpy(c_class4, "3");
+         else
+            strcpy(c_class4, "0");
+
+             /*extra grenades*/
+         if (pBot->bot_class5 == 1)
+            strcpy(c_class5, "0");
+         else if (pBot->bot_class5 == 2)
+            strcpy(c_class5, "0");
+         else
+            strcpy(c_class5, "0");
+
+        FakeClientCommand2(pEdict, "weap", c_class1, c_class2, c_class3, c_class4, c_class5);
+
+                        /*this does not work either*/
+             //FakeClientCommand(pEdict, "weaponconfig", "9 12 15 0 0", NULL);
+
+                        /*this does not work either*/
+             //FakeClientCommand2(pEdict, "weaponconfig", "9" "12" "15" "0" "0");
+
+
+         // bot has now joined the game (doesn't need to be started)
+         pBot->not_started = 0;
+
+         return;
+      }
+
+
+--------------------------------------------------
+09/21/02 at 23:08:17  Reply by: @$3.1415rin (joebot@botepidemic.com)
+--------------------------------------------------
+since I dunno what your FakeClientCOmmand2 function really look like, I would suggest you just print the c_class1 etc. variables into one string and then you call the normal FakeClientCommand
+
+something like this
+
+code:
+sprintf(szTemp,"%i %i %i %i %i",ivar1, ivar2, ivar3, ivar4, ivar5);
+FakeClientCommand(pEdict,"weap",szTemp);
+
+
+btw, if you are always copying an "11" to class2, why are you using these if-statements ? one strcpy would be sufficient, wouldnt it ?
+
+--------------------------------------------------
+09/22/02 at 09:02:22  Reply by: WKYA-Undertaker (mofo_badboys@yahoo.com)
+--------------------------------------------------
+on the class2, in the future the entire script is gona get more complicated and it will be used, so its there for future purposes.
+
+As for my fakeclient2, I copied all of the fake client code and rewrote it all, so it is not looping back to the original its executing everything its self.
+
+I know your thinking its in my new fakeclientcommand2 (and im not saying it isnt), but if it was wouldnt the fact when I changed the weap command to "say" and the bot would succesfully display the correct arguments in the game mean that the fakeclientcommand is working correctly?  
+
+I am going to try it anyway, but wanted to point that part out.
+

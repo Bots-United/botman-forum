@@ -1,0 +1,131 @@
+--------------------------------------------------
+Subject: searching entire map for enitiies
+--------------------------------------------------
+01/13/01 at 16:21:38  Posted by: dannywent (dannywent@hotmail.com)
+--------------------------------------------------
+my code scans an entire map and saves the location of certain entities in a global struct
+right now i use
+code:
+
+float radius = 2000;
+Vector origin(0,0,0);
+while ((pent = UTIL_FindEntityInSphere( pent, origin, radius )) != NULL)
+      {
+            strcpy(item_name, STRING(pent->v.classname));
+            
+      if ((strcmp("capture_point", item_name) == 0) )
+        {
+              global_info.cp_index++;
+             global_info.cp[global_info.cp_index]= pent;
+              fp=fopen("globals.txt","a"); fprintf(fp, "cp added %x\n"); fclose(fp); 
+        }
+//other entities here
+                  }
+
+
+
+my problem is that with my current origin and radius i crash some maps, like flf_bier, etc.  But when i lowered the radius to 2000 i did not get as many entites added (i could tell this by looking in the output file i added).  Is there a better "center" of the map i could choose that would be more likely to find all the entities?
+or would it be better to use search for the entities by classname?
+
+thanks
+
+Dan
+
+
+--------------------------------------------------
+01/14/01 at 00:49:20  Reply by: William (william@botepidemic.com)
+--------------------------------------------------
+try testing for a non nil classname, before doing a string copy of it. in other words, add the line:
+
+code:
+if (   ( !(pent->v)           )
+    !! ( !(pent->v.classname) )
+   )
+  continue;
+
+
+as the first statement in the while loop.
+
+Do replace the "!!" by the logical or symbol  (two vertical bars) - this forum doesn't seem to show them.
+
+William
+
+--------------------------------------------------
+01/14/01 at 05:26:14  Reply by: @$3.1415rin (as3.1415rin@gmx.de)
+--------------------------------------------------
+Why don't u use UTIL_FindEntityByClassname ?
+
+--------------------------------------------------
+01/14/01 at 06:48:16  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+If you are going to use UTIL_FindEntityInSphere() you will need to use a larger radius to search the entire map.  Maps in Half-Life can be 8096 units across, high and deep.  If you are at location (0,0,0), a radius of 7095 would reach all the way to the farthest corner of the map (sqrt(4096^2+4096^2+4096^2)).  If you are in one of the farthest corners of the map a radius of 14,027 would rearch the opposite diagnal corner of the map.  But if you are only search for specific entity name, using UTIL_FindEntityByClassname() would be the way to go.
+
+botman
+
+--------------------------------------------------
+01/14/01 at 08:01:25  Reply by: dannywent (dannywent@hotmail.com)
+--------------------------------------------------
+ok, thanx  I was actually using a radius of 10,000 in the code that crashed, but thanks for the help
+another question.  how does the VecBModelOrigin() function work?  i know it returns the "center" of the bot when you send pEdict->v.origin, but what about its use with other entities, like doors?  What i need is a way to better tell if a bot is directly under a door (that is to say, it is on neither side of it, but right at the door)  would the bot vector and door vector be the same if i compared their values after VecBModelOrigin()?
+also, can you use makevectors() with an entity like a door?  if so, what direction does it face in?
+
+thanks
+
+Dan
+
+--------------------------------------------------
+01/14/01 at 09:09:25  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+For entities that have an origin of (0,0,0) (like the wall mounted Health/HEV stations), VecBModelOrigin() will return the median of the max and min dimensions (i.e. it will return the center of the entity).
+
+If you wanted more details (such as height or width or thickness) you would have to examine the absmin.x, absmin.y, absmin.z and absmax.x, absmax.y, absmax.z and/or the size.x, size.y, and size.z fields of the entity.
+
+I don't do this for doors.  All I do is place a waypoint at the center of the door very close to the door.  When the bot is approaching a door waypoint they slow down (so they won't run past the waypoint) and ignore walls for a little while (since a door is normally treated as a wall when it is closed).
+
+You can learn more about bmodels by looking at the bmodel.cpp file in the Standard SDK.
+
+botman
+
+--------------------------------------------------
+01/14/01 at 12:35:17  Reply by: BrianL (halfkiller@hotmail.com)
+--------------------------------------------------
+You could also do this:
+
+code:
+<b>
+void CheckForDoors(bot_t *pBot)
+{
+edict_t *pEdict = pBot->pEdict;
+edict_t *pEnt = NULL; 
+
+ while ((pEnt = UTIL_FindEntityInSphere(pEnt, pEdict->v.origin, RANDOM_LONG(45,40))) != NULL) 
+ {
+   if ((FStrEq(STRING(pEnt->v.classname), "func_door")) && (pEnt != pEdict))
+   {
+     pBot->f_move_speed = (pBot->f_max_speed/RANDOM_FLOAT(2.5,3.5));
+   }
+ }
+
+}
+
+Then down in BotThink right after waypoint found code addthis in:
+  
+  if (found_waypoint)
+  {
+   CheckForDoors(pBot);
+  }
+
+</b>
+
+<b>
+Plan on using it credit me. J/K :)
+Anyone could of thought of using this.
+</b>
+--------------------------------------------------
+01/14/01 at 17:25:29  Reply by: dannywent (dannywent@hotmail.com)
+--------------------------------------------------
+well, i wouldn't use it if for no other reason than that my bots don't use waypoints. :)
+thanks for all the help though everyone, i'm about to release the next version of Hot_Bot, beta 1 :)
+
+Dan
+

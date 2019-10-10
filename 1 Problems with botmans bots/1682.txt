@@ -1,0 +1,69 @@
+--------------------------------------------------
+Subject: Two Questions
+--------------------------------------------------
+05/21/01 at 08:50:15  Posted by: Maelstrom (linuxhlds@halflife.org)
+--------------------------------------------------
+I like the new version!
+
+1. The bots seem pretty chatty :)  What exactly does bot_chat_percent mean?  
+
+I understand whine will trigger after getting killed, and taunt after scoring a kill.  But chat?
+
+2. Is it possible to "upgrade" a wpt file by simply copying it to a new name?
+
+Example, a mapper comes out with "bobsmapb1".  I waypoint it.  "bobsmapb2" comes out, with some minor updates.  
+
+Can I copy the wpt to "bobsmapb2.wpt" and tweak it for the changes in the map?
+
+
+
+--------------------------------------------------
+05/21/01 at 09:06:44  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+1. The "bot_chat_percent" indicates what percent of the time bots will randomly spew out chat phrases (just like normal players spew out say messages that aren't associated with a kill or being killed).  It's basically just random chit-chat (not triggered by anything other than time).
+
+2. If a mapper changes a map (adds new rooms, changes textures, etc.) then the waypoints should not need to be changed (some more may need to be added).  If the mapper moves things around within the map, then the waypoints will need to be recreated (since there will be waypoints that exist outside of the navigatable player space that you can't get to in order to remove them).  If the name of the map changes (from map1.bsp to map2.bsp) you can use a binary file editor to modify the map name contained in the header part of the waypoint file.  You'll see the map name terminated by zeroes at the start of the file.  If you are familiar with the MS-DOS DEBUG program, you can use it to edit the name and write the file back with the modified internal name.  Then just change the filename to match the name of the map.
+
+The HPB bot waypoint code will NOT allow you to just rename the .wpt file to match the new map name since the map name is stored internally inside the waypoint file (to make sure that these waypoints are indeed intended for this .bsp map file).
+
+botman
+
+--------------------------------------------------
+05/23/01 at 13:24:55  Reply by: Maelstrom (maelstrom@halfd.org)
+--------------------------------------------------
+Thanks for the clarification on the wpt file.
+
+I'm still a little fuzzy on chat.  How often does it check to see if a bot should chat?
+
+My understanding of whine, for example, is something like this:
+
+bot gets killed
+if (random # between 0-100) <= bot_whine_percent, make the bot whine
+
+The "bot gets killed" event is what triggers the bot_whine_percent check.  What triggers the bot_chat_percent check?
+
+
+
+--------------------------------------------------
+05/23/01 at 14:08:48  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+Correct.
+
+For bot_taunt it is similar...
+
+bot gets a kill
+if (random # between 0-100) <= bot_taunt_percent bot says [bot_taunt] message.
+
+For bot_chat it just depends on time.
+
+bot gets spawned and sets chat_check_time (current time + 30 seconds).
+if (chat_check_time < current time)
+{
+   if (random # between 0-100) <= bot_chat_percent bot says [bot_chat] message.
+   chat_check_time = current time + 30 seconds.
+}
+
+...basically every 30 seconds it checks if a random number is less than bot_chat_percent.  If so then it sends a chat message and sets the time for the next check (in 30 seconds).  If not it just sets the time for the next check (in 30 seconds).
+
+botman
+

@@ -1,0 +1,233 @@
+--------------------------------------------------
+Subject: BotFixIdealYaw, BotChangeYaw and pEdict->v.v_angle
+--------------------------------------------------
+09/16/02 at 07:57:36  Posted by: spatel (averburg@liacs.nl)
+--------------------------------------------------
+
+Hi ,
+
+I cut everything from the BotThink () function
+and copied the following code in the function.
+
+I wanted the enemy bots to see me and shoot at
+me -- however the bots did notice my presence, 
+but remained motionless.
+
+Now it's clear to me that I do not understand
+a lot of the BotFixIdealYaw, BotChangeYaw and 
+pEdict->v.v_angle structures. 
+
+Could anyone tell me why the bots won't react
+to my presence ? Thank you very much.
+
+and as promised some code from botthink ()
+
+code:
+
+......
+         if (pBot->busy_buying == false && ((CVAR_GET_FLOAT("mp_roundtime") - CVAR_GET_FLOAT("mp_freezetime"))- (flRoundEnd - gpGlobals->time) > 0) && pBot->death == false)
+         {
+                  pBot->pBotEnemy = BotFindEnemy( pBot );
+
+                  if (pBot->pBotEnemy != NULL)  // does an enemy exist?
+                  {
+                        char msg[80];
+                        sprintf(msg, "%d found an enemy !\n",pBot->bot_index_number);
+                        ALERT(at_console, msg);
+
+                        BotShootAtEnemy( pBot );  // shoot at the enemy
+                  }
+
+                  BotFixIdealYaw                  (pBot->pEdict);
+//                  BotChangeYaw                  (pBot, 12);
+
+         } // if
+   
+          // make the body face the same way the bot is looking
+         pEdict->v.angles.y = pEdict->v.v_angle.y;
+         pEdict->v.angles.x = pEdict->v.idealpitch;
+
+         // save the previous speed (for checking if stuck)
+         pBot->prev_speed = pBot->f_move_speed;
+
+         g_engfuncs.pfnRunPlayerMove( pEdict, pEdict->v.v_angle, pBot->f_move_speed,
+                                                      pBot->f_side_speed, 0, pEdict->v.button, 0, pBot->msecval);
+         
+   } // if not death
+
+   return;
+} // BotThink !
+
+
+
+Thank you,
+
+Alexander.
+
+--------------------------------------------------
+09/16/02 at 09:58:06  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+you might want to shorten the long if statement code:
+if (pBot->busy_buying == false && ((CVAR_GET_FLOAT("mp_roundtime") - CVAR_GET_FLOAT("mp_freezetime"))- (flRoundEnd - gpGlobals->time) > 0) && pBot->death == false) 
+
+
+maybe something like
+
+code:
+
+
+float freezetime = CVAR_GET_FLOAT("mp_roundtime");
+float round_time = CVAR_GET_FLOAT("mp_freezetime");
+float time_passed = (flRoundEnd - gpGlobals->time);
+bool round_in_progress = ((freezetime + round_time) - time_passed) > 0;
+
+if ( !pBot->busy_buying && round_in_progress && !pBot->death ) 
+
+
+
+so you can see what the time values are incase they are causing the bot not to find/shoot an enemy.
+
+Also you might want to put FixIdealYaw only after you've changed the yaw, this will only check the ideal_yaw value in the entity so it won't make any difference to any other value except for ideal_yaw
+
+[modified on 09/16/02 at 09:58:06]
+--------------------------------------------------
+09/16/02 at 12:34:30  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+You might also want not to use botman's way of making the bot point its gun somewhere, since it's not IMO the right way of doing things. It's way too complex and the angles are reverted then turned back to normal with Paulo-La-Frite's aimbug fix (which one was actually a bug itself).
+code:
+
+void BotPointGun (bot_t *pBot)
+{
+   // this function is called every frame for every bot, after the bot has finished its
+   // sensing and thinking cycle (...). Its purpose is to make the bot
+   // move its crosshair to the direction where it wants to look. There is some kind of
+   // filtering for the view, to make it human-like. Two modes of aiming exist ; the first
+   // one is imprecise and is subject to momentum (i.e move the mouse too far, then come
+   // back, in small oscillations) to simulate the way humans wander aimlessly through the
+   // level, when not aiming at something in particular. The second mode is accurate aim ;
+   // it is a little slower but is not subject to momentum. This is the way humans aim at
+   // their enemies : we want precision before all.
+
+   float speed, momentum; // speed : 0.1 to 1, momentum : 0.7 to 0.01
+   Vector v_deviation;
+
+   if (pBot->pEdict == NULL)
+      return; // reliability check
+
+   v_deviation = UTIL_WrapAngles (Vector (pBot->pEdict->v.idealpitch, pBot->pEdict->v.ideal_yaw, 0)
+                                  - pBot->pEdict->v.v_angle);
+
+   // is the bot aiming at something ?
+   if (pBot->pBotEnemy != NULL)
+   {
+      // offset yaw and pitch at some percentage of the deviation, based on skill and
+      // frame time. Note the hazardous effects below 10fps for high-skilled bots...
+      // I haven't tested how fast it is, so it would be probably need some tweaking.
+      pBot->v_aim_speed.y = v_deviation.y * 3 * gpGlobals->frametime * pBot->bot_skill;
+      pBot->v_aim_speed.x = v_deviation.x * 3 * gpGlobals->frametime * pBot->bot_skill;
+   }
+
+   // else the bot is just wandering around without any precise target
+   else
+   {
+      // if bot is turning at a corner
+      if (pBot->f_turncorner_time > gpGlobals->time)
+      {
+         speed = 0.4 + (pBot->bot_skill - 1) / 10; // fast aim
+         momentum = 0.3; // imprecise aim
+      }
+
+      // else if bot is blinded
+      else if (pBot->blinded_time >= gpGlobals->time)
+      {
+         speed = 0.03 + (pBot->bot_skill - 1) / 40; // slow aim
+         momentum = 0.3; // imprecise aim
+      }
+
+      // else bot is just wandering around normally
+      else
+      {
+         speed = 0.15 + (pBot->bot_skill - 1) / 20; // slow aim
+         momentum = 0.2; // unfocused aim
+      }
+
+      // thanks Tobias "Killaruna" and Johannes "@$3.1415rin" Lampel for this one
+      pBot->pEdict->v.yaw_speed = (pBot->pEdict->v.yaw_speed * exp (log (momentum) * pBot->msecval / 50)
+                             + speed * v_deviation.y * (1 - exp (log (momentum) * pBot->msecval / 50)))
+                            * (pBot->msecval / 50);
+      pBot->pEdict->v.pitch_speed = (pBot->pEdict->v.pitch_speed * exp (log (momentum) * pBot->msecval / 50)
+                             + speed * v_deviation.x * (1 - exp (log (momentum) * pBot->msecval / 50)))
+                            * (pBot->msecval / 50);
+   }
+
+   // influence of y movement on x axis, based on skill
+   if (pBot->pEdict->v.pitch_speed > 0)
+      pBot->pEdict->v.pitch_speed += pBot->pEdict->v.yaw_speed / (1 + pBot->bot_skill);
+   else
+      pBot->pEdict->v.pitch_speed -= pBot->pEdict->v.yaw_speed / (1 + pBot->bot_skill);
+
+   // influence of x movement on y axis, based on skill
+   if (pBot->pEdict->v.yaw_speed > 0)
+      pBot->pEdict->v.yaw_speed += pBot->pEdict->v.pitch_speed / (1 + pBot->bot_skill);
+   else
+      pBot->pEdict->v.yaw_speed -= pBot->pEdict->v.pitch_speed / (1 + pBot->bot_skill);
+
+   // move the aim cursor
+   pBot->pEdict->v.v_angle = UTIL_WrapAngles (pBot->pEdict->v.v_angle
+                                              + Vector (pBot->pEdict->v.pitch_speed, pBot->pEdict->v.yaw_speed, 0)); 
+
+   // set the body angles to point the gun correctly
+   pBot->pEdict->v.angles.x = UTIL_WrapAngle (pBot->pEdict->v.v_angle.x / 3);
+   pBot->pEdict->v.angles.y = UTIL_WrapAngle (pBot->pEdict->v.v_angle.y);
+   pBot->pEdict->v.angles.z = 0;
+}
+
+
+
+See http://www.racc-ai.com/french/technical.html for technical explanations about my views on the mouse+keyboard interface simulation by the bots side (only available in french so far, but I'm working on a translation).
+
+
+[modified on 09/16/02 at 12:34:30]
+--------------------------------------------------
+09/17/02 at 02:46:15  Reply by: spatel (averburg@liacs.nl)
+--------------------------------------------------
+Hi,
+
+Thank you for the reactions -- 
+I'll try them right away !
+
+Thank You !
+
+Alexander
+
+--------------------------------------------------
+09/19/02 at 05:15:30  Reply by: spatel (averburg@liacs.nl)
+--------------------------------------------------
+
+I played around with botman's code and suddenly
+it worked ... thanks !
+
+No doubt your code works very good Pierre-Marie Baty, however I didn't have functions like
+UTIL_WrapAngles and therefor I could not use it.
+Too bad -- but there seem to be nothing wrong
+with botman's code !
+
+greetings,
+
+Alexander
+
+
+
+--------------------------------------------------
+09/19/02 at 15:44:17  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+sure, I never told something was wrong in venerable botman's code ;D but that was because it's not the best way of doing things...
+
+
+--------------------------------------------------
+09/19/02 at 16:02:14  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+...but like PM has said before, if the spawn angles are out of the normal range, the bots will just oscillate back and forth and won't go anywhere (this is because the bots set their speed to 0 when turning a lot, and when the spawn yaw angle is outside the "normal" range, the bots think they have to contantly keep turning to match that angle and never go anywhere).
+
+botman
+

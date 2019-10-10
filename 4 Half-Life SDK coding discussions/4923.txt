@@ -1,0 +1,58 @@
+--------------------------------------------------
+Subject: problem with global variable
+--------------------------------------------------
+10/22/03 at 11:03:52  Posted by: bh_letters (bh_letters@yahoo.com)
+--------------------------------------------------
+I am trying to declare a global variable that will be used in both client and server dlls, but I am not sure where to declare it.
+
+
+
+--------------------------------------------------
+10/22/03 at 11:20:58  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Aha, I suspect that's one of the cases where you'll need the weird Win32 stuff like GLOBAL_ALLOC and GLOBAL_LOCK... But I don't know for sure, better ask someone else (OK, I stop spamming!)
+
+
+--------------------------------------------------
+10/22/03 at 12:03:26  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+There is NO SUCH THING as a global variable that's available to the client AND the server.  The client and the server run on separate machines.  You can't have a single variable that's available to both.
+
+If you want to have a variable that's CALLED the same thing on both the client and the server, you can put in somewhere in the pm_shared code since this is included in the server DLL and the client DLL, but writing a value to this variable on the server WON'T show up on the client and vice-versa.
+
+botman
+
+--------------------------------------------------
+10/22/03 at 13:38:24  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+mh, I think the guy wanted to know a method to share variables between DLLs but LOCALLY, kinda like we share variables between source files using the 'extern' keyword... I don't think he wanted his variable to be sent through the network wire :)
+
+I suspect that by "server DLL" he meant "game DLL", simply that...
+
+
+--------------------------------------------------
+10/22/03 at 14:52:48  Reply by: bh_letters (bh_letters@yahoo.com)
+--------------------------------------------------
+thats correct Pierre-Marie Baty. I am sorry if i have confused you by saying server dll instead of game dll.
+
+--------------------------------------------------
+10/23/03 at 03:00:19  Reply by: AustinBotServer (AustinBotServer@MindSpring)
+--------------------------------------------------
+You can do this by placing the variable in a shared data segment.
+
+In the link optons for both projects add in something like this:
+
+/section:MyAppsDS,rws 
+
+MyAppsDS can be any name.
+
+Now define your variable(s) inside of the shared data segment like this.
+
+// put window handle in its own data segment, and share it with all instances
+// this requires /section:MyAppsDS,rws in the project options
+
+#pragma data_seg( "MyAppsDS" )
+HWND g_hMainWnd = 0;
+#pragma data_seg()
+
+

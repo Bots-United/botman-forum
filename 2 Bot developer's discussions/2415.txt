@@ -1,0 +1,83 @@
+--------------------------------------------------
+Subject: adding new weapons to botmans bot 9 or 10 i forget
+--------------------------------------------------
+11/02/01 at 09:36:11  Posted by: sheepboy103 (sheepboy103@hotmail.com)
+--------------------------------------------------
+i added it 2 new weaons and i would like to know what in botcombat.cpp the delay times mean and how to add in a new weapon for them 2 use
+
+--------------------------------------------------
+11/02/01 at 13:30:25  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+The delay times are how long to wait between trigger presses on the weapon.  For example, the 9mm handgun has a very short delay between each trigger press (IN_ATTACK).  The shotgun has a MUCH longer delay between each trigger press (since you can't fire the shotgun as quickly as the 9mm handgun).
+
+The comments on the bot_weapon_select_t fields are pretty self-explanitory.  You should be able to change the values in the array to support a new weapon fairly easily.  There are enough examples in there already of different firing types (press trigger to fire, hold trigger to fire continuously, press trigger-hold-then release to fire, etc.)
+
+If you don't understand what's going on in the code you might just want to rip everything out and replace it with this...
+code:
+if (RANDOM_LONG(1,100) < 50)
+   pBot->pEdict->button |= IN_ATTACK;
+
+...that will just randomly press the fire button 50% of the time (just like the way the respawn works in BotThink() when the bot is dead).
+
+botman
+
+--------------------------------------------------
+11/04/01 at 13:46:27  Reply by: sheepboy103 (sheepboy103@hotmail.com)
+--------------------------------------------------
+thanx i got it but i have a weapon that when u fire it at one of your firends it heals them (basicaly a reverse crowbar) i want 2 get it so that when you "use" a bot if they have the weapon it will heal u
+
+--------------------------------------------------
+11/05/01 at 04:08:40  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Then you will probably need to create a variable as a flag that you can set when the bot gets USED.  For some small period of time afterwards (5 seconds maybe?) have the bot ALWAYS select the healing weapon and have them "attack" teammates.
+
+That's how I do the medic healing stuff in TFC.
+
+botman
+
+--------------------------------------------------
+11/05/01 at 09:34:04  Reply by: sheepboy103 (sheepboy103@hotmail.com)
+--------------------------------------------------
+ok i know roughly whaat im dooin butr can ya tell me where aboutsthe viod use statment is i am presumingn its a viod r?
+
+--------------------------------------------------
+11/05/01 at 10:45:30  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Ok, first thing.  Lay off the alcohol when using the forums.  Friends don't let friends post drunk!
+ ;D
+
+Second, I'm not sure what "void" you are asking about.  Just add a "float" variable to the CBot class that can be used to store the current time when the bot is used (look for the Use function).  After storing the use time, check in bot_combat.cpp if the use time is within 5 seconds of the current time (use_time + 5.0 < gpGlobals->time).  If so, have the bot always switch to the healing weapon.  In the BotFindEnemy code, if the use time is within 5 seconds of the current time, change it so that the bot looks for teammates to attack instead of looking for non-teammates to attack.
+
+Of course this means that the bots WILL NOT attack an enemy if one comes into view during that 5 seconds.  If you want to handle this case, you can just reset the use time to 0 if the bot sees an enemy during the time that it is looking for a teammate to heal (again in the BotFindEnemy code).
+
+botman
+
+--------------------------------------------------
+11/06/01 at 08:20:31  Reply by: sheepboy103 (sheepboy103@hotmail.com)
+--------------------------------------------------
+cant i just set it go that in the voidusebot when the bot gets colse to u it gets oiut its medikit and heals u?
+
+
+--------------------------------------------------
+11/06/01 at 09:09:02  Reply by: sheepboy103 (sheepboy103@hotmail.com)
+--------------------------------------------------
+im not followin what u said so heres what i did
+i added this at da botum of da void use bot bit and declared the variabes at the top
+  if (pev->weapons & (1<<WEAPON_HEAL))
+   {
+            
+         if       ((weapon_choice == 0)||
+               (weapon_choice == WEAPON_HEAL))
+         {
+         new_weapon = weapon_ptr[WEAPON_HEAL];
+
+         if (m_pActiveItem != new_weapon)
+            SelectItem("weapon_heal");
+         pev->button |= IN_ATTACK; 
+
+         // set next time to "shoot"
+         f_shoot_time = gpGlobals->time + 0.5;
+         return TRUE;
+      }
+   }
+

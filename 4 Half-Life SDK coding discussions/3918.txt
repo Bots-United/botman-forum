@@ -1,0 +1,64 @@
+--------------------------------------------------
+Subject: Current time
+--------------------------------------------------
+12/12/02 at 10:40:51  Posted by: mefi_hl (ravaging@go2.pl)
+--------------------------------------------------
+How display current time on screen(hour:minutes:sec)
+
+--------------------------------------------------
+12/12/02 at 11:05:34  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+You would probably want to use the Windows API functions to get the current system time (see the C run-time library time() or ctime() function, for example) then display that on the client by printing the text string at a HUD position or by creating sprites for each digit and/or character and displaying sprites instead of text.
+
+botman
+
+--------------------------------------------------
+12/13/02 at 10:05:17  Reply by: mefi_hl (ravaging@go2.pl)
+--------------------------------------------------
+Could you explain it to me using an example?
+
+--------------------------------------------------
+12/13/02 at 12:20:26  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Let's say you decide to use ctime() to retreive the time as a string (using localtime to convert from UTC timezone to local time zone), then display this string in a text on the client.  You could do something like this...
+code:
+char current_time[64];
+
+strcpy(current_time, ctime(localtime(time(NULL))));
+
+current_time[19] = 0;  // chop off the year
+
+hudtextparms_t hudtextparm;
+
+hudtextparm.x = 40;
+hudtextparm.y = 20;
+hudtextparm.effect = 0;
+hudtextparm.r1 = 255;  // red text
+hudtextparm.g1 = 0;
+hudtextparm.b1 = 0;
+hudtextparm.fadeinTime = 0;
+hudtextparm.fadeoutTime = 0;
+hudtextparm.holdTime = 20;
+hudtextparm.fxTime = 0;
+hudtextparm.channel = 0;
+
+UTIL_HudMessage(pPlayer, hudtextparm, &current_time[11]);
+
+Note that this is all uncompiled code and might not actually work, but it gives you the idea.
+
+This is all done from the server, and the text will disappear if you don't keep redisplaying it.  There's no way to make the text constantly appear from the server without sending the text over and over.
+
+The best way to do this type of effect is to modify the client DLL code to display the local time (using text or HUD sprites for the digits of the time string).
+
+There's no way I'll be able to show all the code needed to modify the client do be able to add something like this.  All I can suggest is to take a look at how the health value is displayed and use something similar for the time (if you want to use sprites).  If you want to use a text string instead, take a look at the message.cpp file in the cl_dll directory to see how it displays the text message coming from the server.
+
+If you've never done any client DLL coding before, you will probably want to follow some of the client DLL coding tutorials found on various Half-Life coding web sites before attempting to do something like this on your own.
+
+botman
+
+--------------------------------------------------
+12/13/02 at 14:00:54  Reply by: mefi_hl (ravaging@go2.pl)
+--------------------------------------------------
+Thanks
+
+

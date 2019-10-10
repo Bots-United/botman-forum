@@ -1,0 +1,572 @@
+--------------------------------------------------
+Subject: Simple Bot AI Problem
+--------------------------------------------------
+05/02/03 at 18:02:48  Posted by: DllMain (wrwrarwa)
+--------------------------------------------------
+Now that I can get my bot to move, etc. without any problems, I have begun the task of getting the bot to search for players. I looked at the fodder bot source and loosely based it on that. The bot seems to be trying to lock on a target, but just strafes left and right until it goes off a cliff.... Here is my StartFrame, my newb AI is all included in it. Basically I am getting a random players index, and trying to point the bot in that players origin...
+
+void StartFrame( void )
+{
+      int EnemyIndex;
+      EnemyIndex = RANDOM_FLOAT(1,  gpGlobals->maxClients);
+      edict_t *pEnemy;
+      pEnemy = INDEXENT(EnemyIndex);
+
+      for (int i = 1; i <= gpGlobals->maxClients ; i++)
+      {
+            edict_t *pEdict;
+            pEdict = INDEXENT(i);
+
+            float forward_speed = 540.0f;
+            float msec_value = 50.0f;
+
+            if (pEdict)
+            {
+                  if( pEdict->m_nextthink < gpGlobals->time )//If its time to do the thinking stuff
+                  {
+                        if(FBitSet(pEdict->v.flags, FL_FAKECLIENT) || pEdict->AmIFake)//If its a bot
+                        {
+
+                              pEdict->v.v_angle.x = pEnemy->v.origin.x;
+                              pEdict->v.v_angle.y = pEnemy->v.origin.y;
+                              pEdict->v.v_angle.z = pEnemy->v.origin.z;
+
+                              g_engfuncs.pfnRunPlayerMove( pEdict, pEdict->v.v_angle,
+                                                forward_speed, 0, 0, 0,
+                                                0, msec_value);
+                              pEdict->m_nextthink = gpGlobals->time + 0.05f;
+                        }
+                  }
+            }
+      }      
+      RETURN_META (MRES_HANDLED);
+}
+
+Ill be messing with some stuff.. but if anyone sees problems and can let me know that would be good. : )
+
+
+
+
+--------------------------------------------------
+05/03/03 at 06:36:48  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+I would think that code would crash when pEnemy was NULL.
+
+botman
+
+--------------------------------------------------
+05/03/03 at 09:12:57  Reply by: DllMain (wrwrarwa)
+--------------------------------------------------
+Nope, doesnt crash.. thats the thing, the bots work fine, they move around, never crash, etc, etc. I just need to figure out how to lock onto a single player until they die, then they will pick a new player. Right now it seems like they go after everyone at once, they strafe left and right constantly and jerkily go around until they fall off a cliff and die. I just gotta get them to lock onto a single player and get them to go after them. After that I can pretty much do anything..
+
+I know that they choose a new player every frame because of the random choosing every frame, but I dont really know a better place to put it. Ill try putting it in spawn to see if that does anything. Anywho, if you can give me any pointers, that would be good. And yerah ive been looking at almost all of your sources for about 3 weeks too : )
+
+[modified on 05/03/03 at 09:12:57]
+--------------------------------------------------
+05/03/03 at 12:39:59  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+You can't lock it onto a single player this way, you are making a random enemy every frame, which would obviously cause a bot to alternate between enenmies extremely fast.
+
+If you want to continue doing it this way, make EnemyIndex static and make it -1 for example upon initialization. Find a valid enemy and set EnemyIndex to its index, if it is not valid the EnemyIndex should still be -1... When the current enemy is not alive anymore, or not valid then the enemyIndex can be reset to -1, and the code will get the turn to find a new enemy.
+
+I think you'd want to store your bots in a structure like botmans if you haven't already, it looks as though you arent', heres an example code, it wont work on yours yet since you need to setup each bot, i.e. make n initialization function for it, give it a pEdict, make it used (set is_used to true) if being used. Etc...
+
+code:
+
+
+typedef struct
+{
+      edict_t *pEdict;
+      edict_t *pEnemy;
+
+      bool is_used;
+}bot_t;
+
+bot_t bots[32]; // your bots
+
+void StartFrame( void )
+{   
+       // Function getting called every frame so make these static to save memory allocation ;p
+       static bot_t *pBot;
+     static short int i;
+
+     for ( i = 1; i <= 32 ; i++)
+     {
+             pBot = &bots[i];
+
+             if ( !pBot->is_used )
+                   continue;
+
+             if( pBot->pEdict->m_nextthink < gpGlobals->time )
+             {
+                   BotThink(pBot);
+                   pBot->pEdict->m_nextthink = gpGlobals->time + 0.05f;
+             }
+     }      
+
+     RETURN_META (MRES_HANDLED);
+}
+
+void BotThink ( bot_t *pBot )
+{
+    static float forward_speed = 540.0f;
+    static float msec_value = 50.0f;
+
+      static edict_t *pEdict = pBot->pEdict;
+
+      if ( pEdict->v.deadflag != DEAD_NO )
+      {
+            if ( RANDOM_LONG(0,10) < 5 )
+                  pEdict->v.button |= IN_ATTACK; // bot dead, press attack to respawn
+      }
+      
+      if ( pBot->pEnemy ) // got an enemy
+      {
+            edict_t *pEnemy = pBot->pEnemy;
+            
+            pEdict->v.v_angle.x = pEnemy->v.origin.x;
+            pEdict->v.v_angle.y = pEnemy->v.origin.y;
+            pEdict->v.v_angle.z = pEnemy->v.origin.z;
+            
+            if ( RANDOM_LONG(0,10) < 5 )
+                  pEdict->v.button |= IN_ATTACK; // press attack to shoot            
+      }
+      else
+            pBot->pEnemy = BotFindEnemy(pBot);
+      
+      g_engfuncs.pfnRunPlayerMove( pEdict, pEdict->v.v_angle,
+            forward_speed, 0, 0, 0,
+            0, msec_value);
+
+      return;
+}
+
+edict_t *BotFindEnemy ( bot_t *pBot )
+{
+      TraceResult tr;
+
+      short int i;
+      short int iMaxClients = gpGlobals->maxClients;
+
+      float fEnemyFitness;
+      float fBestEnemyFitness;
+
+      edict_t *pEnemy;
+      edict_t *pBestEnemy = NULL;
+      edict_t *pEdict = pBot->pEdict;
+
+      Vector vEnemyOrigin;
+
+      for ( i = 1; i <= iMaxClients; i ++ )
+      {
+            pEnemy = INDEXENT(i);
+
+            if ( !pEnemy || FNullEnt(pEnemy) || (pEnemy->v.deadflag != DEAD_NO) )
+                  continue;
+
+            vEnemyOrigin = pEnemy->v.origin;
+            fEnemyFitness = pEnemy->v.velocity.Length() + ( vEnemyOrigin - pEdict->v.origin ).Length();
+
+            if ( !pBestEnemy || ( fEnemyFitness < fBestEnemyFitness ) )
+            {
+                  UTIL_TraceLine(pEdict->v.origin,vEnemyOrigin,ignore_monsters,pEdict,&tr);
+                  
+                  if ( tr.flFraction >= 1.0 )
+                  {
+                        pBestEnemy = pEnemy;
+                        fBestEnemyFitness = fEnemyFitness;
+                  }
+            }
+      }
+
+      return pBestEnemy;
+}
+
+
+
+You really need to code a lot more if you want to get something like this to work 8)
+
+
+
+--------------------------------------------------
+05/03/03 at 13:14:55  Reply by: DllMain (wrwrarwa)
+--------------------------------------------------
+Thats very helpfull stuff cheese. I added this to my BotCreate:
+
+      bots[clientIndex].is_used = true;
+
+But when I do "addbot" it crashes. I THINK I know by what you mean when you say "give the bot a pEdict", so I will try messing with that.. Chances are I am wrong but hopefully I can get it to work.
+
+EDIT: Ok got it to not crash, I will now go into the game and test.
+
+EDIT2: Hahaha, once in the game the bot moved back and forward rapidly over about 5 feet, quite funny to look at... Ill try messing with it.. again : )
+
+EDIT3: Ok, with multiple bots ingame, all of them stop working.. i dunno what the hells going on.. ill mess with it some more, dont know if I can make this work though.
+
+[modified on 05/03/03 at 13:14:55]
+--------------------------------------------------
+05/03/03 at 13:43:34  Reply by: DllMain (wrwrarwa)
+--------------------------------------------------
+Ok here is a bunch of stuff that goes wrong:
+
+The bots are very laggy... I am trying to do this bot for the mod bumpercars, and you have to rub against the bot for like 5 seconds to get it to move. Usually 1 touch sends a person flying.
+edit- FIXED THIS.
+
+If you add more than 1 bot, all the bots except the first one you add do not work. They just hang in the air and do nothing.
+
+The first bot just kinda moves back and forth, doesnt follow anyone...
+
+Thats all I can see for now.. Ive been working on this for like a month and a half and as anyone can easily see I havent gotten very far... Here is a good bunch of my code:
+
+code:
+
+typedef struct { 
+      edict_t *pEdict;
+      edict_t *pEnemy;
+      bool is_used; 
+}bot_t; 
+bot_t bots[32]; // your bots 
+
+
+
+void BotCreate(void)
+{
+      edict_t *pEntity;
+      char ptr[128]; 
+      char *infobuffer;
+      int clientIndex;
+      pEntity = g_engfuncs.pfnCreateFakeClient( "Bot" );
+      CALL_GAME_ENTITY( PLID , "player" , VARS( pEntity ) );
+      infobuffer = g_engfuncs.pfnGetInfoKeyBuffer( pEntity );
+      clientIndex = ENTINDEX( pEntity );
+      g_engfuncs.pfnSetClientKeyValue( clientIndex, infobuffer, "model", "bumperbot" );
+      MDLL_ClientConnect( pEntity, "Bot", "127.0.0.1", ptr );
+      ClientPutInServer( pEntity );            //Plugin first
+      MDLL_ClientPutInServer( pEntity );      //Then gamedll
+      pEntity->v.flags = FL_FAKECLIENT;
+      pEntity->AmIFake = true;
+      g_engfuncs.pfnSetSize( pEntity, Vector( -16, -16, 0 ), Vector( 16, 16, 72 ));
+      CurrentBots++;
+      bots[clientIndex].is_used = true;
+      bots[clientIndex].pEdict = pEntity;
+}
+
+
+
+void ClientPutInServer( edict_t *pEntity )
+{
+
+      bots->pEdict = pEntity;
+      bots->pEdict->m_nextthink = gpGlobals->time + 0.2f;
+
+
+      RETURN_META (MRES_HANDLED);
+}
+
+
+
+
+edict_t *BotFindEnemy ( bot_t *pBot )
+{
+      TraceResult tr;
+      short int i;
+      short int iMaxClients = gpGlobals->maxClients;
+      float fEnemyFitness;
+      float fBestEnemyFitness;
+
+      edict_t *pEnemy;
+      edict_t *pBestEnemy = NULL;
+      edict_t *pEdict = pBot->pEdict; 
+
+      Vector vEnemyOrigin;
+
+      for ( i = 1; i <= iMaxClients; i ++ )
+      {
+            pEnemy = INDEXENT(i);
+
+            if ( !pEnemy  FNullEnt(pEnemy)  (pEnemy->v.deadflag != DEAD_NO) )
+                  continue;
+
+            vEnemyOrigin = pEnemy->v.origin;
+            fEnemyFitness = pEnemy->v.velocity.Length() + ( vEnemyOrigin - pEdict->v.origin ).Length();
+
+            if ( !pBestEnemy  ( fEnemyFitness < fBestEnemyFitness ) ) 
+            {
+                  TRACE_LINE(pEdict->v.origin,vEnemyOrigin,ignore_monsters,pEdict,&tr);
+
+                  if ( tr.flFraction >= 1.0 )
+                  {
+                        pBestEnemy = pEnemy;
+                        fBestEnemyFitness = fEnemyFitness;
+                  }
+            }
+      }
+      return pBestEnemy;
+}
+
+void BotThink ( bot_t *pBot )
+{
+      static float forward_speed = 540.0f;
+      static float msec_value = 50.0f;
+      static edict_t *pEdict = pBot->pEdict;
+
+//      if ( pEdict->v.deadflag != DEAD_NO )
+//      {
+//            if ( RANDOM_LONG(0,10) < 5 )
+//                  pEdict->v.button = IN_ATTACK; // bot dead, press attack to respawn
+//      }
+
+      if ( pBot->pEnemy ) // got an enemy 
+      {
+            edict_t *pEnemy = pBot->pEnemy;
+
+            pEdict->v.v_angle.x = pEnemy->v.origin.x;
+            pEdict->v.v_angle.y = pEnemy->v.origin.y;
+            pEdict->v.v_angle.z = pEnemy->v.origin.z;
+      }
+      else
+            pBot->pEnemy = BotFindEnemy(pBot);
+
+      g_engfuncs.pfnRunPlayerMove( pEdict, pEdict->v.v_angle,
+            forward_speed, 0, 0, 0,
+             0, msec_value);
+
+      return;
+}
+
+
+
+
+
+void StartFrame(void)
+{
+      static bot_t *pBot;
+      static short int i;
+      
+//      if(ServerTime < gpGlobals->time)
+//      {
+//            DoBots=TRUE;
+//      }
+//      if(DoBots)
+//      {
+//            if(CurrentBots < BotsToAdd)//We need to Add a Bot
+//            {
+//                  BotCreate();
+//            }
+//      }
+
+      for ( i = 1; i <= 32 ; i++)
+      {
+            pBot = &bots[i];
+
+            if ( !pBot->is_used )
+                  continue;
+
+            if( pBot->pEdict->m_nextthink < gpGlobals->time )
+            {
+                  BotThink(pBot);
+                  pBot->pEdict->m_nextthink = gpGlobals->time + 0.05f;
+            }
+
+      }
+      RETURN_META (MRES_HANDLED);
+}
+
+
+
+
+Thats all the code I can think of that relates to the bot... I really cant even begint ot hink as to what I have to do to solve all of those problems.... I am starting to get frustrated after almost 2 months of work and no matter what I try it doesnt work.. : (
+
+EDIT: I have been looking at HPB source... its not really helping at all. Way to complicated and too much crap I dont need to see which just confuses me... I am suspecting something is wrong with my BotCreate, but I dont know. I dont WANT to go back to my old system... but I might have to. I  just cant get this one to work... Anyones explaning as to what I am doing wrong would be nice...
+
+[modified on 05/03/03 at 13:43:34]
+--------------------------------------------------
+05/03/03 at 17:03:00  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+When you are creating a bot and adding it to the Bot_t structure using clientIndex, this is not exactly the best way to do it.
+
+First of all, anyway, you need to initialise your bots, Im sure there is a function called either DLLMAIN ;) Or GameDLLInit / DispatchSpawn (when worldspawn is created) And add code such a s this.
+
+code:
+
+// to initialise bots
+
+int i;
+bot_t *pBot;
+
+for ( i = 0; i < 32; i ++ )
+{
+   pBot = &bots[i];
+ 
+   pBot->is_used = FALSE;
+   pBot->pEdict = NULL;
+   pBot->pEnemy = NULL;
+}
+
+
+
+When you are adding a bot in Botcreate...
+
+code:
+
+void BotCreate(void)
+{
+     edict_t *pEntity;
+     char ptr[128]; 
+     char *infobuffer;
+     int clientIndex;
+     int bot_index; // new bot index!
+
+     pEntity = g_engfuncs.pfnCreateFakeClient( "Bot" );
+
+     CALL_GAME_ENTITY( PLID , "player" , VARS( pEntity ) );
+     infobuffer = g_engfuncs.pfnGetInfoKeyBuffer( pEntity );
+     clientIndex = ENTINDEX( pEntity );
+     g_engfuncs.pfnSetClientKeyValue( clientIndex, infobuffer, "model", "bumperbot" );
+    
+     MDLL_ClientConnect( pEntity, "Bot", "127.0.0.1", ptr );
+     ClientPutInServer( pEntity );            //Plugin first
+     MDLL_ClientPutInServer( pEntity );      //Then gamedll
+
+     pEntity->v.flags = FL_FAKECLIENT;
+     pEntity->AmIFake = true;
+
+     g_engfuncs.pfnSetSize( pEntity, Vector( -16, -16, 0 ), Vector( 16, 16, 72 ));
+     CurrentBots++;
+
+     bot_index = 0;
+
+     while ( (bot_index < 32) && (bots[bot_index].is_used) )
+         bot_index ++;
+
+     if ( bot_index < 32 )
+     {
+        bots[bot_index].is_used = TRUE;
+        bots[bot_index].pEdict = pEntity;
+     }
+}
+
+
+--------------------------------------------------
+05/03/03 at 17:39:23  Reply by: DllMain (wrwrarwa)
+--------------------------------------------------
+Bots "work" until they die. Except for the first bot I add, which just sticks in the air, and the 3rd bot. They also do not lock onto enemies at all either, its just the same strafing side to side, going in a circle sometimes until it goes off a cliff. Thanks for all the help but I think I am just going to try to improve on my old system since yours pretty much does the same thing, but how I was doing it had less bugs..
+
+--------------------------------------------------
+05/04/03 at 03:28:34  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+ah yeah how silly of me 8)
+
+code:
+
+
+// new function to fix angles...
+
+void UTIL_FixAngle ( float *fAngle )
+{
+    if ( *fAngle < 180.0 )
+        *fAngle += 360.0;
+    else if ( *fAngle > 180.0 )
+        *fAngle -= 360.0;
+}
+void UTIL_FixAngles ( Vector *vAngle )
+{
+    UTIL_FixAngle(*vAngle.x);
+    UTIL_FixAngle(*vAngle.y);
+    UTIL_FixAngle(*vAngle.z);
+}
+void BotThink ( bot_t *pBot )
+{
+....
+edict_t *pEdict = pBot->pEdict;  // shouldnt be static (could change!)
+
+// maybe you need to keep this in? For bot to respawn?
+/*
+if ( pEdict->v.deadflag != DEAD_NO ) 
+{ 
+    if ( RANDOM_LONG(0,10) < 5 ) 
+    pEdict->v.button = IN_ATTACK; // bot dead, press attack to respawn 
+} */
+
+if ( pBot->pEnemy ) // got an enemy 
+{ 
+   edict_t *pEnemy = pBot->pEnemy; 
+
+   Vector v_enemy = (pEnemy->v.origin - pEdict->v.origin);
+   Vector bot_angles = UTIL_VecToAngles(v_enemy);
+   UTIL_FixAngles(bot_angles);
+
+   pEdict->v.ideal_yaw = bot_angles.y; // just need to change yaw...
+
+}
+
+....
+
+}
+
+
+
+Forgot about the aiming code ;)
+
+[modified on 05/04/03 at 03:28:34]
+--------------------------------------------------
+05/04/03 at 07:59:05  Reply by: DllMain (wrwrarwa)
+--------------------------------------------------
+poo now Ill have to change everything back to try that : ) Thanks though, ill give it a shot.
+
+
+ok on my FixAngles.. gives me error that left of "x" must point to class / struct / union crap... I change from "." to "->" it gives me 10 more errors.. I have edited everything I can think of that would give me this kind of error. Yes vector is included..
+
+Ok I changed the fixangle stuff to this:
+
+void UTIL_FixAngle ( float fAngle ) 
+{
+      if ( fAngle < 180.0 )
+            fAngle += 360.0; 
+      else if ( fAngle > 180.0 )
+            fAngle -= 360.0;
+}
+
+void UTIL_FixAngles ( Vector *vAngle ) 
+{
+      UTIL_FixAngle( vAngle->x );
+      UTIL_FixAngle( vAngle->y );
+      UTIL_FixAngle( vAngle->z );
+}
+      
+Hopefully wont ruin anything.
+
+[modified on 05/04/03 at 07:59:05]
+--------------------------------------------------
+05/04/03 at 08:07:03  Reply by: DllMain (wrwrarwa)
+--------------------------------------------------
+Ok well... Now the first bot I add doesnt work.. the second does, and it doesnt lock onto anyone, just moves straight.. : \
+
+--------------------------------------------------
+05/04/03 at 11:32:00  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+make sure they are getting an enemy and trying to face it.
+
+BTW the Fixangle stuff should be like this.. I just forgot to change sonmething..
+
+code:
+
+void UTIL_FixAngle ( float *fAngle ) 
+{ 
+if ( *fAngle < 180.0 ) 
+*fAngle += 360.0; 
+else if ( *fAngle > 180.0 ) 
+*fAngle -= 360.0; 
+} 
+void UTIL_FixAngles ( Vector *vAngle ) 
+{ 
+UTIL_FixAngle(&vAngle->x); 
+UTIL_FixAngle(&vAngle->y); 
+UTIL_FixAngle(&vAngle->z); 
+}
+
+
+
+The fixanlge stuff you posted wont work either ;)
+
+[modified on 05/04/03 at 11:32:00]

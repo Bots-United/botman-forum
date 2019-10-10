@@ -1,0 +1,165 @@
+--------------------------------------------------
+Subject: Argh!!! Big prob (Bots keep using attack) 
+--------------------------------------------------
+07/02/01 at 11:12:27  Posted by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+Ok, my bot is for rocket crowbar, I've finally made the code for the bot to use a transformation, it does so successfully BUT for some reason once it is in the transformation, it keeps using primary attack over and over again.
+
+If you don't know how this mod works with transformations (A transformation is a hologram of a monster that can be used to allow the player to become that monster. Basically... Once a transformation is used, your weapons are no longer (since you are now a monster) your health is now 100 and armour whatever...
+
+Because bots wont be able to shoot like normal, i.e. choose a weapon etc I made my own combat function for transformations like this... (really simple)
+
+code:
+
+void TransformationCombat (bot_t *pBot)
+{
+ if( pBot->pBotEnemy == NULL )
+  return;
+
+ edict_t *pEdict = pBot->pEdict;
+
+ int weapon_choice;
+ float distance;
+
+ distance = (pBot->pBotEnemy->v.origin - pEdict->v.origin).Length();
+ weapon_choice = RANDOM_LONG(0,100);
+
+ if(pBot->transformation == BOT_TRANS_APACHE) // APACHE
+ {
+   if(weapon_choice > 20) // Use rockets 20 percent of the time
+    pEdict->v.button |= IN_ATTACK;
+   else       
+    pEdict->v.button |= IN_ATTACK2;            
+ }
+ else if(pBot->transformation == BOT_TRANS_SLAVE) // ALIEN SLAVE
+ {
+  if(distance < 40)
+   pEdict->v.button |= IN_ATTACK2;
+  else
+   pEdict->v.button |= IN_ATTACK;  
+ }
+ else if(pBot->transformation == BOT_TRANS_ASSASSIN) // ASSASSIN
+ {
+  if(distance < 40)
+   pEdict->v.button |= IN_ATTACK2;
+  else
+  {
+     
+   if(weapon_choice > 20)                         // Use grenade 20 percent of the time
+    pEdict->v.button |= IN_ATTACK;
+   else       
+    pEdict->v.button |= IN_DUCK;                              
+  }
+ }
+ else if(pBot->transformation == BOT_TRANS_GARG) // GARGANTUA
+ {
+  if(distance < 128)                               // If distance is less than 128 units
+  {
+   
+   if(weapon_choice < 20)                         // Use smack 20 percent of the time
+    pEdict->v.button |= IN_ATTACK2;
+   else if (weapon_choice < 40)                  // Use bite 20 percent of the time
+    pEdict->v.button |= IN_JUMP;            
+   else if (weapon_choice < 60)                  // Use kick 20 percent of the time
+    pEdict->v.button |= IN_DUCK;
+   else
+    pEdict->v.button |= IN_ATTACK;                   // Use flame thrower 40 percent of the time
+  }            
+  else
+   pEdict->v.button |= IN_ATTACK; 
+ }
+ else if(pBot->transformation == BOT_TRANS_HOUNDEYE)       // HOUNDEYE
+ {
+   
+   if(weapon_choice < 20)                         // Use radioactive blast 20 percent of the time
+    pEdict->v.button |= IN_ATTACK2;
+   else
+    pEdict->v.button |= IN_ATTACK;                   // Use normal blast 80 percent of the time
+ }
+ else if(pBot->transformation == BOT_TRANS_ICKY)       // ICKY FISH THINGY!
+ {
+   if(distance > 512)
+    pEdict->v.button |= IN_JUMP;                  // Use the ram... speed up thingy!
+   else
+   {  
+     if(weapon_choice < 50)                         // Use bite1 50 percent of the time
+       pEdict->v.button |= IN_ATTACK;
+     else
+       pEdict->v.button |= IN_ATTACK2;             // Use bite2 50 percent of the time
+   }
+ }
+ else if(pBot->transformation == BOT_TRANS_PANTH)       // PANTHER
+ {
+   if(distance > 64)
+    pEdict->v.button = IN_JUMP;                  // Use the pounce...!
+   else
+   {  
+     if(weapon_choice < 50)                         // Use slash1 50 percent of the time
+       pEdict->v.button |= IN_ATTACK;
+     else
+       pEdict->v.button |= IN_ATTACK2;             // Use slash2 50 percent of the time
+   }
+ }
+ else if(pBot->transformation == BOT_TRANS_TURRET)       // TURRET
+ {
+   if(pBot->bot_armor > 10)                         // Shoot!
+       pEdict->v.button |= IN_ATTACK;
+   else
+       pEdict->v.button |= IN_ATTACK2;             // regenerate if ammo is below 10
+ }
+
+}
+
+
+
+And in bot.cpp I put in...
+
+code:
+
+
+if (pBot->pBotEnemy != NULL)  // does an enemy exist?
+      {    
+           if(pBot->transformation == 0) // Not in transformation                
+           BotShootAtEnemy( pBot );  // shoot at the enemy
+else
+ TransformationCombat(pBot)
+           pBot->f_pause_time = 0;  // dont't pause if enemy exists
+...
+...
+
+
+
+I have defined transformations as following... IT is initialised to ZERO when the bot spawns.
+
+bot.h
+code:
+
+...
+...
+//TRANSFORMS
+
+#define BOT_TRANS_NONE 0
+#define BOT_TRANS_APACHE 1
+#define BOT_TRANS_ASSASSIN 2
+#define BOT_TRANS_GARG 3
+#define BOT_TRANS_HOUNDEYE 4
+#define BOT_TRANS_ICKY 5
+#define BOT_TRANS_PANTH 6
+#define BOT_TRANS_SLAVE 7
+#define BOT_TRANS_TURRET 8
+...
+...
+
+
+
+Any idea Where or why the bot might be trying to attack???
+
+I commented out the BotShootatEnemy and TransformationCombat lines in bot.cpp to see if it was that, but they still kept trying to attack thin air.
+
+I thought the bot was trying to attack itself in the botfindmonsters function. But I completly commented out the Find Transformation code and the bots still tried to attack thin air!!!
+
+I thought maybe the the bot thought it was dead when it used a transformation so I commented that out and they still attack thin air!!!
+
+Argh!!! Really confusing post ...
+
+

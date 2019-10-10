@@ -1,0 +1,117 @@
+--------------------------------------------------
+Subject: MSVC assertion failure
+--------------------------------------------------
+11/13/01 at 09:05:44  Posted by: jldailey (jldailey@uchicago.edu)
+--------------------------------------------------
+I was an idiot and made tons of changes without compiling, and now im stuck with a more or less unchaseable error.
+
+can anyone help? maybe you've seen it before?
+
+File: fopen.c
+Line: 54
+Assertion: *file != _T('\0)
+
+????
+
+
+--------------------------------------------------
+11/13/01 at 09:12:11  Reply by: Tub (tubpc@authmann.de)
+--------------------------------------------------
+looks like you're opening a file without checking the result... after fopen(), always check if the filepointer is null too see if the file could be opened. If you use file operations (like fprintf()) on an invalid file pointer your program will crash.
+
+You might post line 54 (and some lines above / below) if that doesn't help. Makes debugging easier.
+
+[modified on 11/13/01 at 09:12:11]
+--------------------------------------------------
+11/13/01 at 09:15:58  Reply by: jldailey (jldailey@uchicago.edu)
+--------------------------------------------------
+no no, perhaps i wasnt clear enough... this is an assertion failure from inside cstrike.exe, not in my code...
+i cant get line 54...
+
+this assertion failure happens first thing when the game loads, no messages get printed, and near as i can tell not even the GetEntityAPI nor the DLL entry point functions are run.  (i open files and print debugging messages into them in these functions but get no output)
+
+
+--------------------------------------------------
+11/13/01 at 10:20:38  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+If you're writing a bot for Counter-Strike, then your DLL will get loaded before the CS DLL does (so it's definitely executing at least some of your code).  Run the game in Debug mode using the dedicated server to start things up (since the listen server mode will just dump you straight back to Windows as soon as the CS DLL detects that the debugger is running)...
+
+http://dynamic.gamespy.com/~botman/yabb/YaBB.pl?board=2&action=display&num=1330
+
+botman
+
+--------------------------------------------------
+11/13/01 at 10:49:05  Reply by: jldailey (jldailey@uchicago.edu)
+--------------------------------------------------
+What function gets run absolutely first?
+I assumed it was the dll entry point function (sounds right to me), but im 95% certain that the code in that function and the code in GetEntityAPI is not running... 
+
+--------------------------------------------------
+11/13/01 at 23:09:21  Reply by: jerry_stoel (jerry_stoel@hotmail.com)
+--------------------------------------------------
+I guess that 
+code:
+void StartFrame( void )
+
+gets run in the beginning.
+
+--------------------------------------------------
+11/14/01 at 00:03:49  Reply by: jerry_stoel (jerry_stoel@hotmail.com)
+--------------------------------------------------
+That's the wrong one. First is:
+code:
+int DispatchSpawn( edict_t *pent )
+
+being executed.
+
+--------------------------------------------------
+11/14/01 at 04:33:25  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Actually the FIRST function in your DLL will be DLLMain(), followed by GiveFnptrsToDll(), followed by GetEntityAPI().  At which point the engine will begin spawning things by calling DispatchSpawn() with "worldspawn" always being the first entity spawned.
+
+botman
+
+--------------------------------------------------
+11/14/01 at 10:46:59  Reply by: jldailey (jldailey@uchicago.edu)
+--------------------------------------------------
+Thank you.  With that at least i can begin to make some guesses.
+
+So if these functions dont run, the dll never getsloaded and there is either a library format error (i recently reinstall visual studio, maybe its f-ed up), or a problem with liblist.gam maybe... 
+
+--------------------------------------------------
+11/14/01 at 23:00:44  Reply by: jerry_stoel (jerry_stoel@hotmail.com)
+--------------------------------------------------
+Well I also got a assertion error with my Flamerbot, but when I reinstalled MSVC++ the error was gone. So it might work for you too.
+
+YES 100 POSTS ;D :D 8)
+
+cu,
+
+[modified on 11/14/01 at 23:00:44]
+--------------------------------------------------
+11/15/01 at 04:32:23  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+"So if these functions dont run, the dll never getsloaded..."
+
+I would set breakpoints at DllMain, GiveFnptrsToDll, and GetEntityAPI.  These functions should get called before the MOD DLL actually starts to do much of anything.
+
+If you aren't getting to DllMain then the Half-Life engine is having problems loading your DLL.
+
+YES, 2430 POSTS!!!  ;D
+
+botman
+
+--------------------------------------------------
+11/19/01 at 18:33:46  Reply by: Gimli (gimli@jrrclan.com)
+--------------------------------------------------
+I'm having the same problem!
+
+[EdIT]
+Reinstalling didnt help!
+
+[modified on 11/19/01 at 18:33:46]
+--------------------------------------------------
+11/20/01 at 16:48:29  Reply by: Gimli (gimli@jrrclan.com)
+--------------------------------------------------
+Set it to release version and now theres no errors
+

@@ -1,0 +1,301 @@
+--------------------------------------------------
+Subject: how to do something like...
+--------------------------------------------------
+06/20/02 at 23:51:28  Posted by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+in the HL SDK you have to install gamerules. There you will indicate what class will be used for thinking of the mod right?
+
+i want to do something similiar, but i cant seem to get it working yet. When my bot loads, it should also know what class to use to think. I use for each mod a class. 
+
+for example:
+code:
+
+class CModCstrike
+{
+ Think();
+}
+
+class CModValve
+{
+ Think();
+}
+
+
+
+I have a bot class and a game class. For the moment they are seperated, but at the end it should be:
+
+CGame->CBot->Think();
+
+while atm it is only
+
+CBot->Think();
+
+When the bot thinks it has some 'general' thinking. But i also want to let the bot think 'further' about the specific mod:
+
+code:
+
+void CBot::Think() 
+{
+ // here thinking
+
+ // here call the mod think function of the mod you play
+
+ runplayermove()
+}
+
+
+
+I dont want to use lines as 
+code:
+
+if (mod_id == CSTRIKE_DLL)
+ CModCstrike->think()
+
+
+
+I want it more like
+
+code:
+
+ CMod->Think()
+
+
+
+
+So what do i need? Do i need a 'general'mod class? And the think function should be a pointer to the mod that is loaded? And if so, how do i do that?
+
+
+
+--------------------------------------------------
+06/21/02 at 01:13:49  Reply by: Zipster (skyork99@juno.com)
+--------------------------------------------------
+This begs for inheritence.  I would elaborate, but it's 1 AM and I need some sleep :)
+
+--------------------------------------------------
+06/21/02 at 05:36:52  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+maybe you want mod_id in 'CGame'
+
+you can have:
+
+code:
+
+class CBot
+{
+  CBot(); // constructor.. cant remember how to declare these
+  void Think();
+  void CSThink();
+  void TFCThink();
+  void DMCThink(); // or whatever...
+  void SetThinkFunction();
+  void *ThinkFunction;
+}
+
+CBot::CBot() // the constructor (more things to initialise..)
+{
+  ThinkFunction = NULL;
+}
+
+//Think() could just say
+//call set think function when mod starts
+
+void CBot::SetThinkFunction ( void )
+{
+  switch (mod_id)
+  {
+    case CSTRIKE_DLL:
+      ThinkFunction = CSThink();
+    break;
+    case TFC_DLL:
+      ThinkFunction = TFCThink();
+    break;
+    case DMC_DLL:
+      ThinkFunction = DMCThink();
+    break;
+    default:
+      ThinkFunction = NULL;    
+  }
+}
+
+void CBot::Think(void)
+{
+  if( ThinkFunction )
+    (*ThinkFunction)();
+}
+
+
+
+edit..
+
+actually I dont think this will work exactly.. I don't know how to call function pointers within classes :(
+
+[modified on 06/21/02 at 05:36:52]
+--------------------------------------------------
+06/21/02 at 06:09:30  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+me neither :(
+
+i see at the hl sdk something like:
+
+a = new class
+
+--------------------------------------------------
+06/21/02 at 07:08:00  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+actually...
+
+I know you said...
+
+QUOTE:
+
+I dont want to use lines as 
+
+if (mod_id == CSTRIKE_DLL)
+CModCstrike->think()
+
+
+
+
+but you could maybe say...
+
+(in CBot->Think()..)
+
+if (mod_id == CSTRIKE_DLL)
+CModCstrike->think()
+
+so you can still call the appropriate think function just by saying "CBot->think"
+
+
+
+--------------------------------------------------
+06/21/02 at 09:34:50  Reply by: Jedi_Master (jimhunterjr@bellsouth.net)
+--------------------------------------------------
+code:
+
+class CMod
+{
+public:
+   virtual void Think();
+   // other stuff
+};
+
+class CModCStrike : public CMod
+{
+public:
+   void Think();
+   // other stuff
+};
+
+class CModValve : public CMod
+{
+public:
+    void Think();
+    // other stuff
+};
+
+// in your gamerules class:
+CMod * Mod;
+
+// somewhere else in your gamerules class:
+switch (mod_type) {
+   case MOD_CSTRIKE:
+      Mod = new CModCStrike;
+      break;
+   case MOD_VALVE:
+      Mod = new CModValve;
+      break;
+}
+
+// elsewhere
+Mod->Think(); // Will call the appropriate Think function for the type of Mod you created.
+
+
+A sketchy example.  Don't forget to delete the mod object when finished with it.
+
+--------------------------------------------------
+06/21/02 at 09:51:53  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+yes thats what i meant! Thanks a million to all who tried to help me. I will try this asap! 
+
+thanks again guys
+
+so, if i understand correctly:
+
+the CMod virtual void means that this Think function is linked to any corresponding Think functions of the child classes? So, because you say 'mod' (which is CMod) = (child of class CMod)  you link those? 
+
+
+
+[modified on 06/21/02 at 09:51:53]
+--------------------------------------------------
+06/21/02 at 13:55:12  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+another issue! Yeap, it works fine and such. but...
+
+okay, there is:
+
+CGame
+
+CMod : Cgame
+
+CModCstrike : Cmod
+
+so practicly:
+Cgame->Cmod->CmodCstrike
+
+when the bot thinks, it does:
+mod->Think()
+
+this all works okay! I am very happy about that. Now something else, i have to inform my Counter-Strike class the round has started. 
+
+code:
+
+class CModCstrike : public CMod
+{
+ // virtual void
+ virtual void Think();
+
+ bool  bNewRound;
+ float flRoundTime;
+};
+
+
+
+My problem is, in engine.cpp i intercept the info_map_params, normally it was a global variable. But since this is now mod specific i want to acces the mod class. 
+
+I have at the top something like:
+code:
+
+extern CMod * Mod;
+
+
+
+Then later:
+code:
+
+Mod->flRoundTime = gpGlobals->Time;
+
+
+
+i expected it would not compile, and hence it didnt! :) I was wondering how to let the mod know it should actually do Mod->CStrikeMod->flRoundTime , but i only have the pointer to the MOD using the Mod pointer used for thinking. 
+
+do mind, the round time is CSTRIKE specific. So i think a virtual thingy would not work here either. The only sollution i can think off (but i didnt try this yet, and i really would like to see other sollutions or a confirmation) is to add a function to the CModCstrike function SetRoundTime();
+
+then make that a virtual void, and when the round starts i would call:
+
+mod->SetRoundTime();
+
+however, then again i would have the problem i have to make it virtual in the general (CMod) class :(
+
+anyone got a suggestion? All i need is to retrieve the pointer to the mod class i am doing now i think so i can call functions from there and change vars.
+
+--------------------------------------------------
+06/21/02 at 20:34:19  Reply by: Jedi_Master (jimhunterjr@bellsouth.net)
+--------------------------------------------------
+I would suggest using a function in CMod like:
+code:
+
+virtual bool IsRoundBased();
+
+
+Then this function is overridden in the derived classes to return false or true as appropriate.  Then just check this function to tell whether to do any round-related code.  With respect to variables, it's probably best to include any variables in the base class, even if it won't be used in one of the derived classes, so you can access the variable through a pointer to the base class.  Alternatively, you can typecast the pointer before trying to access the variable if you only want the variable defined in the class that will use it.
+

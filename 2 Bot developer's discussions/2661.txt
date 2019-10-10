@@ -1,0 +1,164 @@
+--------------------------------------------------
+Subject: Strange errors
+--------------------------------------------------
+01/22/02 at 13:34:30  Posted by: DarthBobo (DarthBobo@swarm.edgegaming.com)
+--------------------------------------------------
+Hi, it's been a long while since I have been here, so if these issues have been raised before please post a link, or the subject, I searched but did not find anything. Will troll the off line version later :}
+
+Fistly I am regularly getting access violations in calls to UTIL_TraceLine, but deep in the engine, about 4 function calls in the engine after this is used. Sometimes BotFindItem(...) is being called with a NULL pBot pointer! Other times it is something I can't track.
+
+
+Second, wierd shit, on the first entry to the below method state == 1 and myState == 3! Needless to say this causes some wierd shit to happen :/ as the next time it comes in it puts m_32bitsValidSlots in to the team and results in a illegal access, it goes way past the end of the array :/ In fact in the method before this, where state is declared the same, on the first entry state == -1. Now HTF does static int state = 0; == non zero on the first call???
+
+// First parameter is team number.
+// Second is valid classes for that team.
+// Valid classes changes as players join/leave a class.
+void BotClient_SWARM_ValClass(void *p, int bot_index)
+{
+      static int state = 0;   // current state machine state
+      static int myState = 0;
+
+      if(state == 0)
+      {
+            // Get team number, for this bot.
+            // Helps with bots that choose random team
+            bots[bot_index].bot_team = *(int *)p;
+            // Increment state counter
+            state++;
+      }
+      else
+      {
+            // Only ever one so reset state.
+            state = 0;
+
+            // get Valid classes for teams
+            SWARM_teams[bots[bot_index].bot_team].m_32bitsValidSlots = *(int *)p;
+      }
+}
+
+
+Third, I sometimes get this stack, with an access violation, thing is there is no monster_human_assassin in the map?
+
+SW! 0433271b()
+SW! 0433271b()
+SW! 0433271b()
+SW! 04332bd1()
+SW! 042e96ed()
+SW! 042e9742()
+monster_human_assassin(entvars_s * 0x0012d5d0) line 215 + 19 bytes      //NOTE THERE ARE NONE OF THESE IN MAP!
+HPB_BOT! 059154d1()
+HPB_BOT! 05916d3e()
+BotHeadTowardWaypoint(bot_t * 0x00000000) line 769 + 21 bytes      // NOTE NULL BOT POINTER!
+SW! 04320949()
+SW! 0431c9e3()
+SW! 042d5f81()
+HL! 0040f0b3()
+
+I took me about an 15 minutes to add the changes I made to template 3 to 1.8a. The changes i amde should not be affecting much. I'm willing to give out the source if required ... hell I'll be happy if you want to take it over, or add it to your own bot. I'm way to busy doing the main game code to do anything decent with the bots :{
+
+
+
+--------------------------------------------------
+01/22/02 at 13:55:16  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+make sure in DLL.CPP where it calls BotThink that the bots[bot_index].is_used is true and the pBot/pEdict pointer is not NULL. Maybe you deleted that from the code. BotFindItem() should really only be called in botthink.
+
+
+
+[modified on 01/22/02 at 13:55:16]
+--------------------------------------------------
+01/22/02 at 14:09:08  Reply by: DarthBobo (DarthBobo@swarm.edgegaming.com)
+--------------------------------------------------
+From dll.cpp:
+
+if (bot_stop == 0)
+{
+   for (bot_index = 0; bot_index < gpGlobals->maxClients; bot_index++)
+   {
+      if ((bots[bot_index].is_used) &&  // is this slot used AND
+      (bots[bot_index].respawn_state == RESPAWN_IDLE))  // not respawning
+      {
+         BotThink(&bots[bot_index]);
+                              
+         count++;
+      }
+   }
+}
+
+I have not changed that code at all ... I'd have thought the check for bots[bot_index].is_used would segfault if it where bots[bot_index] was NULL.
+
+
+--------------------------------------------------
+01/22/02 at 14:23:18  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+If you haven't done a "Build->Rebuild All" recently, do that first.
+
+Whenever I starting getting REALLY weird errors, a Rebuild All usually straightens things out.
+
+botman
+
+--------------------------------------------------
+01/22/02 at 14:33:56  Reply by: DarthBobo (DarthBobo@swarm.edgegaming.com)
+--------------------------------------------------
+I have done Rebuild all several times :( Am checking to see if there is another service pack for VC6, am using SP2 atm.
+
+--------------------------------------------------
+01/22/02 at 14:42:14  Reply by: DarthBobo (DarthBobo@swarm.edgegaming.com)
+--------------------------------------------------
+Am d/l SP5! Maybe that will fix something ... 133MB on my crappy 56k is gonna be a pain :/
+
+--------------------------------------------------
+01/23/02 at 00:03:05  Reply by: DarthBobo (DarthBobo@swarm.edgegaming.com)
+--------------------------------------------------
+Well after a _loooong_ d/l I installed SP5 and did a rebuild all on everything, client, server, bot.
+
+I now get the following access violation :/
+
+SW! 0433209c()
+SW! 04332475()
+SW! 0433269e()
+SW! 0433271b()
+SW! 0433271b()
+SW! 04332bd1()
+SW! 042e96ed()
+SW! 042e9742()
+UTIL_TraceLine(const Vector & {...}, const Vector & {...}, IGNORE_MONSTERS dont_ignore_monsters, edict_s * 0x018f77a0, TraceResult * 0x0012d908) line 63 + 39 bytes
+BotFindItem(bot_t * 0x056640ca) line 1098
+BotThink(bot_t * 0x05674844) line 1973 + 12 bytes
+StartFrame() line 1554
+SW! 04320949()
+SW! 0431c9e3()
+SW! 042d5f81()
+HL! 0040f0b3()
+
+I think the important thing to note is how the bot_t * in BotThink and BotFindItem are pointing to different memory locations! I checked &bots[bot_index] in StartFrame and it said 0x056b04c8, at bot_index was 0. It looks like the pointer is getting changed some how, I have done minimal changes to these methods, and not set or modify pBot.
+
+The shift is not even uniform :/
+
+The nasty non-zero values for the statics on the first call has been fixed :)
+
+--------------------------------------------------
+01/23/02 at 06:13:19  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+If you are trying to implement the HPB_Bot source into your own mod, you should trty the Bot10 source first, as HPBBot sourcee is used only for mods that don't have the source code provided... so it will be using methods of hooking your DLL which it may not like :).
+
+--------------------------------------------------
+01/23/02 at 07:35:58  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+I'd bet this error occurs when you forget a link_entity_to_class or an enginefunc in the structure ; or maybe function lists are incorrectly exchanged between the engine and the DLL (as it tries to bind at wrong address). I'd double-check this stuff if I were you.
+
+[modified on 01/23/02 at 07:35:58]
+--------------------------------------------------
+01/24/02 at 23:44:51  Reply by: DarthBobo (DarthBobo@swarm.edgegaming.com)
+--------------------------------------------------
+If you dont link an entity it spits out a big error about it.
+
+I don't se how it could be a problem of communication between the HPB bot and my mod dll, after all the problems are within the HPB bot code.
+
+I will try the bot ten code, my reason for using the HPB bot was so that sopmeone outside the team could do it if they ever wanted. Or that someone who is using the HPB template could just take the code and merge it with there own. I really don't have the time to improve the bot, so any code in the main dll will no be easily modified.
+
+--------------------------------------------------
+01/27/02 at 16:51:52  Reply by: DarthBobo (DarthBobo@swarm.edgegaming.com)
+--------------------------------------------------
+So, I changed to using bot 10 and guess what? Yeah I still get the same problem with UTIL_TraceLine, only ever happens for bots. I found that it happened all the time if I added lots of bots in a short period. So I increased the pause time to 5 seconds and this seemed to fix it when spawning. Now it happens at irregular intervals, trying to track down why.
+

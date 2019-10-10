@@ -1,0 +1,265 @@
+--------------------------------------------------
+Subject: My bot can not receive VGUIMenu message ?
+--------------------------------------------------
+05/11/02 at 23:27:43  Posted by: qwedcxza (qwedcxza0@163.com)
+--------------------------------------------------
+This problem is after I create a bot, and connect bot to server, then put it to server( by use ClientPutInServer() ), now I can see the bot name in score. but can not receive VGUIMenu message for this bot, for example, normal player will receive these messages:
+    
+ 
+ClientConnect: pent=6d06850 name=Tian yang                    // player connect
+pfnMessageBegin: edict=6d06850 dest=1 type=87
+String CT 
+pfnWriteShort: 0
+pfnMessageBegin: edict=6d06850 dest=1 type=87
+String TERRORIST 
+pfnWriteShort: 0
+pfnMessageBegin: edict=6d06850 dest=1 type=111
+pfnWriteByte: 0
+ 
+... ...                                                      
+... ...
+ 
+pfnMessageBegin: edict=6d06850 dest=1 type=101
+pfnWriteShort: 299
+pfnMessageBegin: edict=0 dest=2 type=76
+pfnWriteByte: 1
+String #Game_connected                                        // game prompt
+String Tian yang                                              // or String MyBot
+ 
+... ...
+... ...
+
+pfnMessageBegin: edict=6d06850 dest=1 type=107
+pfnWriteByte: 0
+String defuser 
+pfnMessageBegin: edict=6d06850 dest=1 type=114                // VGUIMenu display
+pfnWriteByte: 2
+pfnWriteShort: 51
+pfnWriteChar: -1
+pfnWriteByte: 0
+ 
+        
+    After "game prompt" messages, my bot don't receive any message. so I can't get bot select a team. my create bot code is:
+ 
+    
+    newbot = ( *g_engfuncs.pfnCreateFakeClient )( "Bot" );
+    player( VARS( newbot ) );
+    infobuffer =  ( *g_engfuncs.pfnGetInfoKeyBuffer )( newbot );
+    clientIndex = ENTINDEX( newbot );
+    ( *g_engfuncs.pfnSetClientKeyValue )( clientIndex, infobuffer, "model", "gina" );    
+    ClientConnect( newbot, "Mybot", "127.0.0.1", ptr );
+    ClientPutInServer( newbot );
+    newbot->v.flags |= FL_FAKECLIENT;
+ 
+    My game is Counter-Strike 1.4, you HPB Bot can work whih CS1.4, I already tryed it. So I think you know how to resolve this problem. My english very poor. Sorry!! but I already readed you HPB Bot readme file.
+ 
+    Thank you! 
+
+
+--------------------------------------------------
+05/12/02 at 13:08:48  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+Do you hook correctly these messages ? Look at botman's pfnRegUserMsg() and pfnMessageBegin() in his engine.cpp. I bet you don't do it correctly and your BotMsgFunctions can therefore never be called.
+
+
+--------------------------------------------------
+05/12/02 at 17:41:41  Reply by: qwedcxza (qwedcxza0@163.com)
+--------------------------------------------------
+
+  In my test code, pfnMessageBegin() only record these messages, So I can see other message( as TextMsg, ShowMenu, etc. ) fro this bot.
+
+
+
+--------------------------------------------------
+05/12/02 at 17:51:29  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+Would you mind posting your pfnRegUserMsg () and pfnMessageBegin () functions here (strip the non-CS related stuff) ? Sure it will help.
+
+Mine:code:
+int pfnRegUserMsg (const char *pszName, int iSize)
+{
+   // only process bots if we are in multiplayer mode
+   if (is_multiplayer_game)
+   {
+      int msg = (*g_engfuncs.pfnRegUserMsg) (pszName, iSize);
+
+      if (strcmp (pszName, "VGUIMenu") == 0)
+         message_VGUI = msg;
+      else if (strcmp (pszName, "ShowMenu") == 0)
+         message_ShowMenu = msg;
+      else if (strcmp (pszName, "WeaponList") == 0)
+         message_WeaponList = msg;
+      else if (strcmp (pszName, "CurWeapon") == 0)
+         message_CurWeapon = msg;
+      else if (strcmp (pszName, "AmmoX") == 0)
+         message_AmmoX = msg;
+      else if (strcmp (pszName, "AmmoPickup") == 0)
+         message_AmmoPickup = msg;
+      else if (strcmp (pszName, "WeapPickup") == 0)
+         message_WeapPickup = msg;
+      else if (strcmp (pszName, "ItemPickup") == 0)
+         message_ItemPickup = msg;
+      else if (strcmp (pszName, "Health") == 0)
+         message_Health = msg;
+      else if (strcmp (pszName, "Battery") == 0)
+         message_Battery = msg;
+      else if (strcmp (pszName, "Damage") == 0)
+         message_Damage = msg;
+      else if (strcmp (pszName, "Money") == 0)
+         message_Money = msg;
+      else if (strcmp (pszName, "DeathMsg") == 0)
+         message_DeathMsg = msg;
+      else if (strcmp (pszName, "SayText") == 0)
+         message_SayText = msg;
+      else if (strcmp (pszName, "TextMsg") == 0)
+         message_TextMsg = msg;
+      else if (strcmp (pszName, "ScreenFade") == 0)
+         message_ScreenFade = msg;
+      else if (strcmp (pszName, "StatusIcon") == 0)
+         message_StatusIcon = msg;
+
+      return msg;
+   }
+
+   return (*g_engfuncs.pfnRegUserMsg) (pszName, iSize);
+}
+
+andcode:
+void pfnMessageBegin (int msg_dest, int msg_type, const float *pOrigin, edict_t *ed)
+{
+   // only process bots if we are in multiplayer mode
+   if (is_multiplayer_game)
+   {
+      int index = -1;
+
+      if (ed)
+      {
+         index = UTIL_GetBotIndex (ed);
+
+         // is this message for a bot ?
+         if (index != -1)
+         {
+            botMsgFunction = NULL; // no msg function until known otherwise
+            botMsgEndFunction = NULL; // no msg end function until known otherwise
+            botMsgIndex = index; // index of bot receiving message
+
+            if (msg_type == message_VGUI)
+               botMsgFunction = BotClient_CS_VGUI;
+            else if (msg_type == message_ShowMenu)
+               botMsgFunction = BotClient_CS_ShowMenu;
+            else if (msg_type == message_WeaponList)
+               botMsgFunction = BotClient_CS_WeaponList;
+            else if (msg_type == message_CurWeapon)
+               botMsgFunction = BotClient_CS_CurrentWeapon;
+            else if (msg_type == message_AmmoX)
+               botMsgFunction = BotClient_CS_AmmoX;
+            else if (msg_type == message_WeapPickup)
+               botMsgFunction = BotClient_CS_WeaponPickup;
+            else if (msg_type == message_AmmoPickup)
+               botMsgFunction = BotClient_CS_AmmoPickup;
+            else if (msg_type == message_ItemPickup)
+               botMsgFunction = BotClient_CS_ItemPickup;
+            else if (msg_type == message_Health)
+               botMsgFunction = BotClient_CS_Health;
+            else if (msg_type == message_Battery)
+               botMsgFunction = BotClient_CS_Battery;
+            else if (msg_type == message_Damage)
+               botMsgFunction = BotClient_CS_Damage;
+            else if (msg_type == message_Money)
+               botMsgFunction = BotClient_CS_Money;
+            else if (msg_type == message_ScreenFade)
+               botMsgFunction = BotClient_CS_ScreenFade;
+            else if (msg_type == message_SayText)
+               botMsgFunction = BotClient_CS_SayText;
+            else if (msg_type == message_TextMsg)
+               botMsgFunction = BotClient_CS_TextMsg;
+            else if (msg_type == message_StatusIcon)
+               botMsgFunction = BotClient_CS_StatusIcon;
+         }
+
+         // has someone fired a bullet ?
+         if (msg_type == message_AmmoX)
+            UpdateBulletSounds (ed); // call this so bots hear bullet sounds
+      }
+      else if (msg_dest == MSG_ALL)
+      {
+         botMsgFunction = NULL; // no msg function until known otherwise
+         botMsgIndex = -1; // index of bot receiving message (none)
+
+         if (msg_type == message_DeathMsg)
+            botMsgFunction = BotClient_CS_DeathMsg;
+         else if (msg_type == message_TextMsg)
+            botMsgFunction = BotClient_CS_TextMsgAll;
+      }
+   }
+
+   (*g_engfuncs.pfnMessageBegin) (msg_dest, msg_type, pOrigin, ed);
+}
+
+Double-check yours, I bet your problem is somewhere in here.
+
+[modified on 05/12/02 at 17:51:29]
+--------------------------------------------------
+05/13/02 at 00:48:36  Reply by: qwedcxza (qwedcxza0@163.com)
+--------------------------------------------------
+
+    I know how to resolve this problem. Because I ignore a little detail of game.
+
+    When player join the game, Server is not directly display VGUIMenu of team choose. First thing, Server display a welcome menu, player need push "Enter" key to pass it, Then server can show VGUIMenu of team choose.
+
+    So I add this code follow my create bot code:
+
+    pfnRunPlayerMove( newbot, ..... 0, ... )    
+
+    But I don't know why HPB Bot call BotStart() function not only one time( In this function Bot push "Enter" key ), And this way ( get bot push "Enter" time after time ) seem is necessary, Otherwise Bot will receive abnormality message.
+
+    Thank you ! 
+
+
+
+--------------------------------------------------
+05/13/02 at 00:56:32  Reply by: qwedcxza (qwedcxza0@163.com)
+--------------------------------------------------
+     I  mention BotStart() function above, It actually is a part of BotThink() function, It run if not_started flag is set. 
+
+--------------------------------------------------
+05/13/02 at 01:46:52  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+My bots don't get annoyed with MOTDs, and no code makes them press the enter key. I'm sure your problem is elsewhere. Simple test to check if it is really that : disable MOTDs on your server to make the team selection menu the first menu displayed, then see if your bots join. I bet they don't.
+
+
+--------------------------------------------------
+05/13/02 at 04:15:36  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+MOTD is a network message that gets sent to players at the beginning of the game.  On human clients, the client code will display a screen and wait for the player to press ENTER to remove that screen.  This isn't needed for bots since they don't display anything for the MOTD message (that message is ignored by bots).  Bots just choose from the first menu without worrying about MOTD stuff (whether the server has it on or off).
+
+botman
+
+--------------------------------------------------
+05/13/02 at 07:12:27  Reply by: qwedcxza (qwedcxza0@163.com)
+--------------------------------------------------
+
+    This is a interesting, I will explain what way is my create a bot. 
+
+    First I use HPB Bot code to create a templet ( Create a DLL that only pass calls between engine and MOD ), I use follow HPB Bot files:
+    
+            h_export.cpp
+            linkfunc.cpp -- Already update to CS 1.4
+            namefunc.cpp
+            engine.cpp, dll.cpp -- Remove some thing that only use by HPB Bot
+            Some header files ...
+
+    Then I have a DLL that can instead MOD DLL in liblist.gam . Next step is add bot on server, Perhaps you already saw my code of create bot ( For test, It is very simple ), The next is messages control, I done it as follow:
+
+            ......
+            ClientPutInServer( newbot );
+            newbot->v.flags |= FL_FAKECLIENT;
+
+            g_engfuncs.pfnRunPlayerMove( newbot, newbot->v.v_angle, 100,
+                                         0, 0, 0, 0, 100); 
+
+            // This is must, or else my bot never recevie VGUIMenu message.
+
+            Then my bot had receive VGUIMenu message, I send "menuselect" command to MOD when bot receive VGUIMenu message, But after every "menuselect" command, I must call pfnRunPlayerMove() again. ( HPB Bot seems also ) 
+
+

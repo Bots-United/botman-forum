@@ -1,0 +1,201 @@
+--------------------------------------------------
+Subject: VGUI Codes not working.
+--------------------------------------------------
+12/16/00 at 09:43:53  Posted by: yotaku (acoates@uci.edu)
+--------------------------------------------------
+I'm trying to get buying to work with the VGUI interface properly, instead of the "wrong" way, just calling 3 fakeClientCommands in a row.  (which btw doesn't work on my computer)
+
+When I look in the bot.txt file though, I dont seem to be getting data that looks correct.  I get the submachine gun buy menu, once in a while...but dont get the buy menu before it.  How is that possible?  I got the VGUI codes from this post:
+http://dynamic.gamespy.com/~botman/yabb/YaBB.pl?board=2&action=display&num=836
+
+
+Plz help..
+
+Here is what I have..
+
+in bot_client.cpp:
+
+// This message is sent when the Counter-Strike VGUI menu is displayed.
+void BotClient_CS_VGUI(void *p, int bot_index)
+{
+
+   int i = *(int *)p;
+         edict_t *pEdict = bots[bot_index].pEdict;
+
+      FILE *fp=fopen("bot.txt","a"); fprintf(fp,"Menu: i=%d\n", i); fclose(fp);
+
+   if (i == 2)  // is it a team select menu?
+      bots[bot_index].start_action = MSG_CS_TEAM_SELECT;
+
+   else if (i == 26)  // is is a terrorist model select menu?
+      bots[bot_index].start_action = MSG_CS_T_SELECT;
+
+   else if (i == 27)  // is is a counter-terrorist model select menu?
+      bots[bot_index].start_action = MSG_CS_CT_SELECT;
+   
+   else if (i == 28) // Buy menu
+            bots[bot_index].start_action = MSG_CS_MENU_BUY_0;
+
+   else if (i == 29) // pistol buy
+            bots[bot_index].start_action = MSG_CS_MENU_BUY_1;
+
+   else if (i == 30) // shotgun
+            bots[bot_index].start_action = MSG_CS_MENU_BUY_2;
+
+   else if (i == 31) // sub-machine
+            bots[bot_index].start_action = MSG_CS_MENU_BUY_3;
+}
+
+
+
+in bot.cpp:
+
+   if (pBot->start_action == MSG_CS_MENU_BUY_0)
+   {
+        pBot->start_action = MSG_CS_IDLE;
+        UTIL_HostSay( pEdict, 0, "in buy menu, pressing 3" );
+        FakeClientCommand(pEdict, "menuselect", "3", NULL);
+
+        return;
+   }
+
+   if (pBot->start_action == MSG_CS_MENU_BUY_3)
+   {
+        pBot->start_action = MSG_CS_IDLE;
+            UTIL_HostSay( pEdict, 0, "in sub mach menu, pressing 1" );      
+      FakeClientCommand(pEdict, "menuselect", "1", NULL);
+
+        return;
+   }
+
+   // Check for new round
+   float distance_moved = (pEdict->v.oldorigin - pEdict->v.origin).Length();
+   if (distance_moved > 300)
+   {
+         
+            char txtt[250];
+            sprintf( txtt, "money=%d", pBot->bot_money);
+
+
+            UTIL_HostSay( pEdict, 0, txtt );
+  
+            if (pBot->bot_money > 2000)
+            {
+                  FakeClientCommand(pEdict, "buy", NULL, NULL);
+                  UTIL_HostSay( pEdict, 0, "issuing buy command" );
+            }
+   }
+
+--------------------------------------------------
+12/16/00 at 10:04:06  Reply by: MKlimstra (mklimstra@zonnet.nl)
+--------------------------------------------------
+In the post you mention, "to botman", I explained to eLiTe how to do this.
+(Hint: use a static state variable)
+
+--------------------------------------------------
+12/16/00 at 10:05:40  Reply by: yotaku (acoates@uci.edu)
+--------------------------------------------------
+But why would the static state variable make any difference to the VGUI codes that I am getting?
+
+--------------------------------------------------
+12/16/00 at 16:16:45  Reply by: MKlimstra (mklimstra@zonnet.nl)
+--------------------------------------------------
+Not all the bytes sent with a VGUI-message are identifiers for the message. Only the first one. To keep track of which one is the first byte, you have to use a static state var. Read the 'to botman' topic for more details.
+
+--------------------------------------------------
+12/16/00 at 17:32:33  Reply by: yotaku (acoates@uci.edu)
+--------------------------------------------------
+ok, I have the static thing in there now.
+
+It never seems to get to the VGUI stuff:
+It doesn't call it, even after my bots have called the fakeclientcalled the "buy" function.
+
+
+bot_client.cpp:
+
+// This message is sent when the Counter-Strike VGUI menu is displayed.
+void BotClient_CS_VGUI(void *p, int bot_index)
+{
+      static int state = 0; 
+
+   int i = *(int *)p;
+
+   FILE *fp=fopen("bot.txt","a"); fprintf(fp,"Menu: %d\n", i); fclose(fp);
+
+      if (state==0)
+      {
+
+            FILE *fp=fopen("bot.txt","a"); fprintf(fp,"*Menu: %d\n", i); fclose(fp);
+
+            if (i == 2)  // is it a team select menu?
+              bots[bot_index].start_action = MSG_CS_TEAM_SELECT;
+
+         else if (i == 26)  // is is a terrorist model select menu?
+              bots[bot_index].start_action = MSG_CS_T_SELECT;
+
+         else if (i == 27)  // is is a counter-terrorist model select menu?
+              bots[bot_index].start_action = MSG_CS_CT_SELECT;
+
+         else if (i == 28) // Buy menu
+                  bots[bot_index].start_action = MSG_CS_MENU_BUY_0;
+
+         else if (i == 29) // pistol buy
+                  bots[bot_index].start_action = MSG_CS_MENU_BUY_1;
+
+         else if (i == 30) // shotgun
+                  bots[bot_index].start_action = MSG_CS_MENU_BUY_2;
+
+         else if (i == 31) // sub-machine
+                  bots[bot_index].start_action = MSG_CS_MENU_BUY_3;
+      }
+
+      else if (state == 4) 
+            state = -1; 
+
+      state++; 
+}
+
+
+
+bot.cpp:
+
+if ((pBot->start_action == MSG_CS_ROUND_START) &&
+         ((pBot->last_round_start_time + 5.0) <= gpGlobals->time))
+   {
+          if (pBot->bot_money > 2000)
+            {
+                  pBot->start_action = MSG_CS_MENU_WAITING;
+                  //pBot->start_action = MSG_CS_MENU_BUY_0;
+                  FakeClientCommand(pEdict, "buy", NULL, NULL);
+                  FILE *fp=fopen("bot.txt","a"); fprintf(fp,"Issuing buy command.  Money=%d\n", pBot->bot_money); fclose(fp); // Gets here...
+                  //UTIL_HostSay( pEdict, 0, "issuing buy command" );
+                  return;
+            }
+
+            pBot->start_action = MSG_CS_IDLE;
+   }
+   
+   if (pBot->start_action == MSG_CS_MENU_BUY_0 )
+   {
+
+        // Never gets here?..why not?
+        pBot->start_action = MSG_CS_MENU_WAITING;
+        FakeClientCommand(pEdict, "menuselect", "3", NULL);
+        FILE *fp=fopen("bot.txt","a"); fprintf(fp,"In buy menu..pressing 3\n"); fclose(fp);
+        return;
+   }
+
+
+Help much appretiated..
+
+thanks.
+
+
+--------------------------------------------------
+12/16/00 at 18:06:23  Reply by: yotaku (acoates@uci.edu)
+--------------------------------------------------
+ok, got it working.. thanks Marcus
+
+
+Cool...bots with guns =)
+

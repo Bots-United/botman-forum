@@ -1,0 +1,149 @@
+--------------------------------------------------
+Subject: function pointer
+--------------------------------------------------
+08/30/02 at 13:33:35  Posted by: Zmeko (dosap29@msn.com)
+--------------------------------------------------
+code:
+
+void            ( *R_MuzzleFlash )                        ( float *pos1, int type );
+
+
+
+this is a function pointer right?
+what function does this point too?( i found this in the half-life SDK client project).
+
+or this one
+code:
+
+//file: ev_hldm.cpp line:1813
+shell = gEngfuncs.pEventAPI->EV_FindModelIndex ("models/shell.mdl");
+...
+//file: event_api.h  line:28
+
+int            ( *EV_FindModelIndex )( const char *pmodel );
+
+
+
+i heard of function pointers that can return stuff but the way i seen a function pointer defined to do a return doesn't look like EV_FindModelIndex.
+
+i am really lost...
+
+
+
+--------------------------------------------------
+08/30/02 at 13:39:47  Reply by: @$3.1415rin (joebot@botepidemic.com)
+--------------------------------------------------
+code:
+int            ( *EV_FindModelIndex )( const char *pmodel ); 
+
+
+well, this is a pointer to a function, named EV_FindModelIndex, returning an integer and needing a const char * as parameter. Where exactly is the problem here ?
+
+--------------------------------------------------
+08/30/02 at 14:05:56  Reply by: Zmeko (dosap29@msn.com)
+--------------------------------------------------
+i would also like to know how would they get the value of the parameters of a function pointer and pass it to the function?
+
+and also 
+code:
+
+In C, if you wanted to modify the contents of the pointer rather than what it points to, your
+function declaration would look like
+void f(int**);
+and you’d have to take the address of the pointer when passing it in:
+int i = 47;
+int* ip = &i;
+f(&ip);
+
+
+and does it apply to this?
+code:
+
+TEMPENTITY      *( *R_TempModel )                        ( float *pos, float *dir, float *angles, float life, int modelIndex, int soundtype );
+
+
+
+[modified on 08/30/02 at 13:56:23]
+
+[modified on 08/30/02 at 14:05:56]
+--------------------------------------------------
+08/31/02 at 07:42:53  Reply by: Zmeko (dosap29@msn.com)
+--------------------------------------------------
+AHHHHHHHHHHHHHHHHH......
+i am a moron.... but anyways i would still like to know what is the differnce between ** and *?
+
+code:
+
+int (*functionpointer)(int i);
+int usertest (int i);
+int main(int argc, char* argv[])
+{
+      functionpointer = usertest;
+
+      int i = functionpointer(30);
+      printf("Hello World!%d\n", i);
+
+      return 0;
+}
+
+
+int usertest(int i ){
+      return i;
+}
+
+
+
+you can call functionpointer and since it points to usertest it will call usertest, i mixed this up with callbacks
+code:
+
+int callbacktest(int i, int(*func)(int i));
+
+int test_one(int i);
+
+void main(){
+    int i;
+      i = callbacktest(10,test_one);
+      printf("%i", i);
+}
+
+int test_one(int i){
+      i+=20;
+      return i;
+}
+int callbacktest(int i, int(*func)(int i)){
+      int iN = func(i);
+      return iN;
+}
+
+
+
+
+
+[modified on 08/31/02 at 07:42:53]
+--------------------------------------------------
+08/30/02 at 15:11:37  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+'*' is used to dereference a pointer.
+
+If you have a pointer to an int, you would have...
+
+int *p;
+
+You access the value it points to like this...
+
+if (*p > 10)
+
+If you have a pointer that points to a pointer that points to an int (2 levels of indirection), you would have this...
+
+int **p;
+
+You could access what it points to like this...
+
+int *q;
+
+q = *p;  // set q to the pointer than p points to
+
+if (*q > 10)
+
+botman
+

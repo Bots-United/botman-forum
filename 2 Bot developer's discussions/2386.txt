@@ -1,0 +1,194 @@
+--------------------------------------------------
+Subject: Map dimensions & Autowaypointing
+--------------------------------------------------
+10/17/01 at 08:40:59  Posted by: DarkYouth (darkyouth@planetannihilation.com)
+--------------------------------------------------
+Hi, I know Ive been out and about, and very few peeps probably remember me, but school is settling down, Ive got some free time and SWAT Bot is foremost on my mind.
+
+Ive been trying to approach the BSP parsing aspect in the last few hours, and I think Ive got an idea which saves users parsing the pesky thing.
+
+I intend  create two arrays, the markers and the resultants. First task is to break the map into chunks of 50x50x50, or some suitable value, then check for each chunk if:
+1) It is in free space or water.
+2) Fall to the ground is less than 70 to 80 units (only if not in water)
+3) Point is inside a level (probably hard)
+
+If so, place the marker into the array and move on to the next until the entire map has been cycled.
+
+Now, we have an array of viable areas, that the bot could move in if it were present. Now the markers are scanned, and each one gets a "buddy" list of adjacent markers that are reachable.
+
+Now, if the buddy list for a marker is empty, remove it. This will eliminate erronious points, but relies on the quality of the WaypointReachable function used, probably very rigourous checks could be used seeing as this is not all performed at run time.
+
+Now we have the refined array, and one thing remains. I'd probably guess running a floyd/warshall algo and getting a fromto table would work here, abiet require lots of ram.
+
+Anyone got an idea on the exact dimensions and half life allows?
+
+x, y and z ranges are all I need to get looking into this. Anyone else been working on this?
+
+--------------------------------------------------
+10/17/01 at 09:53:46  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+I was thinking about making or speculating about  a bsp to map thing (like winbspc) and a program to look at it and decipher all the things in it. Because .MAP files are pretty simple to look at (if you know what it's doing) for example it has co-ordinates in it and the texture type of each wall etc. I just thought of this (theoretical) idea just now... (below:)) 
+
+1. Convert a BSP file to a MAP file...
+
+2. Look at every single wall that is in the map file and storing all of that in some sort of 3d area buffer. (Like, imagine a simple 3d model getting built up with walls)
+
+3. Look at all the "empty" space inside the 3darea and place waypoints in the middle of each empty space (By looking at the walls between). And place every so many X places.
+
+I'm not sure if thats what the AAS stuff really does though, because I just thought of all that there!
+
+You can tell if points are inside the level by looking at the VIS source code (used to build maps) you get it with the HL SDK. Because it searches for holes in the level.
+
+I think half-life allows up to 8192x8192x8192 size maps. Because any more then that would be considered "outside the world" and a map wouldn't compile.
+
+So if I wanted my theory to work I would need 8192 x's y's and z's 
+
+thats 549 million (short) integers meaning 549million*2 bytes, meaning you'll need umm
+
+1.1 GB of memory lol!!!:D (I think or am I wrong!!!)
+
+Cause I think my theory would work if I stored every single co-ordinate and if there was a wall at that place I would simply set a "used" flag or something at they co-ordinates...
+
+[modified on 10/17/01 at 09:53:46]
+--------------------------------------------------
+10/17/01 at 11:00:47  Reply by: William (william@cgf-ai.com)
+--------------------------------------------------
+AAS uses the game physics to try and reach other locations from locations that are known to be accessible.
+
+The whole design is actually documented and "publically" available as a MSc thesis were it not for the fact that I haven't seen the final version being posted on some ftp server. 
+(I know the guy behind AAS and Q3A (MrElusive) in person and reviewed earlier drafts of his thesis - that's where I have the information from. And, no, I cannot give you those documents).
+
+William
+
+[modified on 10/17/01 at 11:00:47]
+--------------------------------------------------
+10/18/01 at 11:34:42  Reply by: Dave2019 (bootdiskmaker@yahoo.co.uk)
+--------------------------------------------------
+
+QUOTE:
+AAS uses the game physics to try and reach other locations from locations that are known to be accessible.
+
+The whole design is actually documented and "publically" available as a MSc thesis were it not for the fact that I haven't seen the final version being posted on some ftp server. 
+(I know the guy behind AAS and Q3A (MrElusive) in person and reviewed earlier drafts of his thesis - that's where I have the information from. And, no, I cannot give you those documents).
+
+William
+
+[modified on 10/17/01 at 11:00:47]
+
+
+
+
+Why cannot give out the documents??
+
+--------------------------------------------------
+10/19/01 at 00:29:16  Reply by: William (william@cgf-ai.com)
+--------------------------------------------------
+Because, when you are given a draft for review purposes, that draft is for review purposes only. 
+
+The document most likely isn't as completed and as polished as the author intends before publishing it himself.
+
+You wouldn't want your half-completed code to be tossed around the internet to people who think that's the best you can do, do you?
+
+William
+
+--------------------------------------------------
+10/19/01 at 04:17:21  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Is Jan Paul getting a masters degree in Computer Science?
+
+botman
+
+--------------------------------------------------
+10/19/01 at 10:46:48  Reply by: William (william@cgf-ai.com)
+--------------------------------------------------
+He either just completed the last courses, or still has to do one or two. But he has the hard parts (Masters thesis) behind him.
+But working on DOOM probably is somewhat distracting :)
+
+William
+
+--------------------------------------------------
+10/20/01 at 05:37:15  Reply by: DarkYouth (darkyouth@planetannihilation.com)
+--------------------------------------------------
+Questions:
+What are the dimension ranges of the X, Y and Z coordinates of the maps in halflife?
+
+i.e. are they all bound to values between 0 and 8192 or somesuch? Im not too familiar with the engine limits any more.
+
+--------------------------------------------------
+10/20/01 at 05:42:35  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+The map coordinates can go from -4096 to +4096 in the X, Y, and Z directions.  See the CBaseEntity::IsInWorld() function (in cbase.cpp) where it checks for origin and velocity limits that Half-Life allows.
+
+botman
+
+--------------------------------------------------
+10/20/01 at 06:31:57  Reply by: DarkYouth (darkyouth@planetannihilation.com)
+--------------------------------------------------
+Thanks, one last thing.
+
+Players are 96 tall, 64x64 base when standing, and 64 tall when ducking right?
+
+or am I talking nonsense?
+
+btw, any idea on how to check if a given vector is inside level space? tracelines cant really tell if a wall they hit is internal or external can they.....
+
+
+--------------------------------------------------
+10/20/01 at 09:12:29  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+No, see this...
+
+http://www.karljones.com/halflife/metrics.asp
+
+botman
+
+--------------------------------------------------
+10/20/01 at 09:14:24  Reply by: DarkYouth (darkyouth@planetannihilation.com)
+--------------------------------------------------
+Thanks!
+
+
+--------------------------------------------------
+10/20/01 at 09:23:53  Reply by: DarkYouth (darkyouth@planetannihilation.com)
+--------------------------------------------------
+Heres the beginnings of my code
+code:
+
+void Waypoint_Floodfill(void)
+{
+      int x, y, z;
+      int offset = 4096;
+      int maxsize = 8192;
+      int areasize = 96;
+
+      int finished = 0;
+      int      minfriends = 0;      // Minimum other waypoints this one must touch to be created.
+
+      while (finished == 0)
+      {
+            finished = 1;
+            for (x = 0; x < maxsize; x++)
+            {
+                  x = x - offset + areasize;
+                  for (y = 0; y < maxsize; y++)
+                  {
+                        y = y - offset + areasize;
+                        for (z = 0; z < 8192; z++)
+                        {
+                              z = z - offset + areasize;
+                              
+                              // Move point to just above the ground(wpt hieght)                        //      1) Is inside level space
+                              //      2) Is within areasize hieght of the ground
+                              //      3) No other waypoints nearby
+                              z = z + offset;
+                        }
+                        y = y + offset;
+                  }
+                  x = x + offset;
+            }
+      }
+}
+
+
+
+

@@ -1,0 +1,149 @@
+--------------------------------------------------
+Subject: File Handling
+--------------------------------------------------
+04/11/01 at 11:22:45  Posted by: SilentSno (dustin@frostedsoftware.com)
+--------------------------------------------------
+Whats the best way to open up a txt file and put each line into a floating variable? The code I have crashes everytime.
+
+file = fopen("myfile.txt", "r");
+if (file)
+{
+  while(feof(file)!=1)
+  {
+   num2++;
+   fscanf(file,"%8.2f\n",stuff1[num2]);
+   fscanf(file,"%8.2f\n",stuff2[num2]);
+   fscanf(file,"%8.2f\n",stuff3[num2]);
+  }
+fclose(file);
+}
+
+Any ideas?
+Thanks
+SilentSno
+
+--------------------------------------------------
+04/11/01 at 12:35:55  Reply by: eLiTe (ali@elitegamer.fsnet.co.uk)
+--------------------------------------------------
+Hmm I don't think you should use the newline. I can't remember but doesn't scanf read a whole line at a time anyway? Try it without the '\n' at teh end of each string.
+
+Try finding a command that reads a line at a time, otherwise write your own. Just read the floating point number into a string a character at a time, then convert the string to a float. Not very efficient, but scanf should do what you want anyway.
+
+--------------------------------------------------
+04/11/01 at 14:15:28  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+scanf and fscanf take a pointer to a variable.  Use this...
+
+fscanf(file, "%8.2f\n", &stuff1[num2]);
+
+...instead of this...
+
+fscanf(file, "%8.2f\n", stuff1[num2]);
+
+...assuming stuff1 is an array of floats.
+
+botman
+
+--------------------------------------------------
+04/11/01 at 18:11:13  Reply by: eLiTe (ali@elitegamer.fsnet.co.uk)
+--------------------------------------------------
+DOH! I forgot that too. It's one of the strangest things when learning C, the pointers, although I do understand them it's easy to forget to use the & to specify the address...
+
+--------------------------------------------------
+04/11/01 at 20:28:35  Reply by: SilentSno (dustin@frostedsoftware.com)
+--------------------------------------------------
+Ok, i've revised the code now and it doesn't crash. But whatever fscanf reads in, it reads it to be 0.00 everytime. Heres the new code:
+
+char string;
+FILE *file;
+file = fopen("myfile.txt", "r");      
+int i;
+fscanf(file, "%d", &i);
+for(num1=1;num1<=i;num1++)
+{
+  fscanf(file, "%8.2f", &stuff1[num1]);
+  fscanf(file, "%8.2f", &stuff2[num1]); 
+  fscanf(file, "%8.2f", &stuff3[num1]);
+}
+fclose(file);
+
+So inside floating variables stuff1,2,3 they all are 0.00
+
+Thanks Elite and Botman for all your help, but any new ideas why its reading 0.00
+The files just look like this inside the text file.
+
+-2222.34
+3333.65
+4523.67
+
+Like that
+
+=)
+SilentSno
+
+--------------------------------------------------
+04/11/01 at 21:27:40  Reply by: BrianL (halfkiller@hotmail.com)
+--------------------------------------------------
+Download this file to see something:
+ members.nbci.com/blind_20/myfile.zipClick Here
+
+This will be puzzling!
+
+--------------------------------------------------
+04/11/01 at 21:45:24  Reply by: SilentSno (dustin@frostedsoftware.com)
+--------------------------------------------------
+And how does that help? I can make files open in DOS too! 
+
+I just don't see the point to your post Brian.
+
+SilentSno
+
+--------------------------------------------------
+04/12/01 at 05:45:56  Reply by: BrianL (halfkiller@hotmail.com)
+--------------------------------------------------
+Did you download the file is does exactly what you wanted:
+
+Displays
+-2222.34
+3333.65
+4523.67
+
+I used the exact same code as you did.
+
+--------------------------------------------------
+04/12/01 at 05:48:07  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+You might want to change this...
+
+file = fopen("myfile.txt", "r");
+
+...to this...
+
+if ((file = fopen("myfile.txt", "r")) == NULL)
+{
+   printf("Couldn't open file!  Aborting!\n");
+   return;
+}
+
+...since you may be getting 0.0 if the file was never really opened.
+
+botman
+
+--------------------------------------------------
+04/12/01 at 15:53:10  Reply by: SilentSno (dustin@frostedsoftware.com)
+--------------------------------------------------
+Thanks Botman and Elite for you help. I got it figured out, seemed in my for next loop i had a small error or such.
+
+But thanks again!
+
+SilentSno
+
+--------------------------------------------------
+04/13/01 at 17:11:08  Reply by: eLiTe (ali@elitegamer.fsnet.co.uk)
+--------------------------------------------------
+Cool so my newline thing was right too :p
+
+Happy to be of service! :)
+
+Also why have you got 8.2, should it not be 4.2 if there are only 4 points before the decimal place? I've not done any file access for a while so I can't remember...
+

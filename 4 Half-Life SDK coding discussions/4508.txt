@@ -1,0 +1,70 @@
+--------------------------------------------------
+Subject: Solid entities?
+--------------------------------------------------
+06/08/03 at 14:29:01  Posted by: LazyOne (the_lazy_one_09@hotmail.com)
+--------------------------------------------------
+This is driving me nuts, I've had info_targets solid before and I can't remember what I did.
+No matter what I do I can always walk through the damn thing, it must be something simple I'm overlooking... Any help is appreciated.
+
+code:
+
+      if ( FStrEq( pszCommand, "ball" ) && pEdict->v.deadflag == DEAD_NO )
+      {
+            Vector vecStart, vecEnd, vecFinal;
+            TraceResult tr;
+            MAKE_VECTORS( pEdict->v.v_angle );
+
+            vecStart = pEdict->v.origin;
+            vecEnd = vecStart + gpGlobals->v_forward * 50;
+
+            tr = UTIL_TraceLine( vecStart, vecEnd, dont_ignore_monsters, pEdict );
+            vecFinal = tr.vecEndPos;
+
+            edict_t *pEnt = CREATE_NAMED_ENTITY( MAKE_STRING( "info_target" ) );
+            MDLL_Spawn( pEnt );
+
+            pEnt->v.mins.x = -256;
+            pEnt->v.mins.y = -256;
+            pEnt->v.mins.z = -256;
+
+            pEnt->v.maxs.x = 256;
+            pEnt->v.maxs.y = 256;
+            pEnt->v.maxs.z = 256;
+
+            pEnt->v.renderfx = kRenderFxGlowShell;
+            pEnt->v.renderamt = 0;
+
+            pEnt->v.rendercolor = Vector( 25, 200, 30 );
+            pEnt->v.classname = MAKE_STRING( "ball" );
+            pEnt->v.nextthink = gpGlobals->time + 0.01;
+
+            pEnt->v.iuser1 = 0;            //      Wind down
+            pEnt->v.takedamage = DAMAGE_AIM;
+            pEnt->v.health = 500;
+            
+            SET_ORIGIN( pEnt, vecFinal );
+            SET_SIZE( pEnt, Vector( -256, -256, -256 ), Vector( 256, 256, 256 ) );
+            SET_MODEL( pEnt, "models/ball.mdl" );
+
+            pEnt->v.solid = SOLID_BBOX;
+            pEnt->v.movetype = MOVETYPE_BOUNCE;
+            
+            RETURN_META( MRES_SUPERCEDE );
+      }
+
+
+
+
+
+--------------------------------------------------
+06/08/03 at 16:04:02  Reply by: RobGP (rob@planetfortress.com)
+--------------------------------------------------
+try doing SET_SIZE() after SET_MODEL().
+
+--------------------------------------------------
+06/08/03 at 16:09:54  Reply by: LazyOne (the_lazy_one_09@hotmail.com)
+--------------------------------------------------
+That did it, thank you for the info.
+Now I gotta figure out the velocity stuff *shudders*.
+
+

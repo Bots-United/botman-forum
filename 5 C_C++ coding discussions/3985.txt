@@ -1,0 +1,113 @@
+--------------------------------------------------
+Subject: Commands executing in the wrong order
+--------------------------------------------------
+01/03/03 at 22:09:42  Posted by: predatory_kangaroo (predatory_kangaroo@hotmail.com)
+--------------------------------------------------
+Hi,
+I have been working on a small project, a basic timer, like the one used for think fundtions in half-life.
+The timer itself is working fine, i made it with two time functions and a while loop, but for some reason, the command before the while loop will only execute after the while loop has ended.
+I've included the source to the timer below, can anyone see what is making the problem?
+Thanks in advance,
+Predatory Kangaroo
+
+**Source code starts**
+
+// Timer - Written by Predatory Kangaroo
+
+#include <iostream.h>
+#include <stdio.h>
+#include <time.h>
+
+//Variable declarations
+int seconds, passed;
+time_t initial, checker;
+
+//Main Timer function
+void timer(int s)
+{
+      time( &initial );
+      time( &checker );
+      passed = (int)checker - (int)initial;
+      while(passed <= s)
+      {
+            time( &checker );
+            passed = (int)checker - (int)initial;
+      }
+      return;
+}
+
+//Main function, gathers time to wait for and passes it to the Timer function
+int main(int nArg, char* pszArgs[])
+{
+cout << "Please input the amount of time to wait.\n";
+cin >> seconds;
+cout << "\nNow starting the timer, set for " << seconds << " seconds.\n";
+timer(seconds);
+cout << seconds << " seconds have passed.\n";
+return 0;
+}
+
+**Source code ends**
+
+--------------------------------------------------
+01/04/03 at 00:06:06  Reply by: Zipster (skyork99@juno.com)
+--------------------------------------------------
+This is C++, the statements don't execute in the "wrong order".  You are probably misinterpreting program behavior.  You say the program is working fine, so what is your evidence that there is a problem?
+
+--------------------------------------------------
+01/04/03 at 01:17:55  Reply by: predatory_kangaroo (predatory_kangaroo@hotmail.com)
+--------------------------------------------------
+Because i've done test on multiple computers, tried different ways of doing this, and anyway i look at it, when i think it through, the program should do the following events, in the following order:
+Print "Please input the amount of time to wait."
+Store the amount of seconds to wait in variable 'seconds'
+Print "Ther timer is now starting, set for " then the value in variable 'seconds' then print " seconds"
+Then the program should call the timer function to stay in the while loop until the amount of seconds in 'seconds' has passed, then return to the main program
+Finally, the program should print the variable 'seconds' then print " seconds have passed".
+
+Since the program DOESN'T follow that plan, and i've triple-checked the plan, there must be a problem or bug in the program.  I think that it's a problem caused by the function being executed before the machine is ready to print the statement, so it has to wait until the function has exited it's while loop and relinquished control of the program.
+
+That is the only thing i can think of that could cause the problem, because there doesn't seem to be a problem in either the plan or the code.
+
+--------------------------------------------------
+01/04/03 at 05:57:39  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+What does the program ACTUALLY do? (i.e. describe exactly the output that you see).
+
+If you aren't seeing the text output before you input the number of seconds, try adding a "<< endl;" to the ends of your cout statements to flush the output stream.  i.e...
+code:
+cout << "Please input the amount of time to wait." << endl;
+
+
+botman
+
+--------------------------------------------------
+01/05/03 at 18:03:36  Reply by: predatory_kangaroo (predatory_kangaroo@hotmail.com)
+--------------------------------------------------
+Thanks botman, i already got that suggestion off my friend rustymonkey.  It fixed the program, so now it runs perfectly.
+
+The problem was that, just before the timer starts, the line 
+cout << "\nNow starting the timer, set for " << seconds << " seconds.\n";
+wasn't executing.
+With an endl on it, it works fine.
+Thanks all
+
+--------------------------------------------------
+01/06/03 at 05:49:50  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Actually, it WAS executing, you just couldn't see the output because the output stream buffers the output before sending it to the physical device so that it doesn't have to actually send output to the device for every single character (a performance enhancement).
+
+Adding the "endl" flushes the output stream and forces the C++ output code to send data on to the physical device.
+
+botman
+
+--------------------------------------------------
+01/08/03 at 21:26:51  Reply by: Zipster (skyork99@juno.com)
+--------------------------------------------------
+Darnfangled buffered streams.
+
+--------------------------------------------------
+01/09/03 at 04:52:12  Reply by: predatory_kangaroo (predatory_kangaroo@hotmail.com)
+--------------------------------------------------
+O, i was wondering why it was working with just that.
+Thanx
+

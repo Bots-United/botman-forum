@@ -1,0 +1,83 @@
+--------------------------------------------------
+Subject: Somebody answer the door
+--------------------------------------------------
+12/08/00 at 18:37:41  Posted by: swoop (jab@swoop.2y.net)
+--------------------------------------------------
+I am trying to make the bots open and go thru doors but can't seem to find the right combination. Here is a stippit of what i have in the botfinditem function:
+
+         else if (strcmp("func_door", item_name) == 0)
+         {
+               float distance = (vecEnd - vecStart).Length( );
+
+              // check if close enough and facing it directly...
+                  if (debug_engine) { fp=fopen("bot.txt","a"); fprintf(fp, "DOOR Distance = %f - %f\n", distance, angle_to_entity); fclose(fp); }
+
+              if ((distance < 100) &&
+                 (angle_to_entity <= 50))
+              {
+//                pBot->b_use_button = TRUE;
+//                pBot->b_lift_moving = FALSE;
+                             
+                  Vector v_item = entity_origin - pEdict->v.origin;
+
+                  Vector bot_angles = UTIL_VecToAngles( v_item );
+
+            pEdict->v.ideal_yaw = bot_angles.y;
+
+                  BotFixIdealYaw(pEdict);
+                        
+                pBot->f_pause_time = gpGlobals->time + 2;
+                pBot->b_see_tripmine = FALSE;
+                pBot->pEdict->v.button = IN_FORWARD;
+                pBot->f_move_speed = 0;
+                   if (debug_engine) { fp=fopen("bot.txt","a"); fprintf(fp, "Opening DOOR\n"); fclose(fp); }
+              }
+
+         } 
+
+
+Can someone help with this or share their func_door routine?
+
+
+
+
+
+--------------------------------------------------
+12/10/00 at 07:33:51  Reply by: DarkYouth (darkyouth@thegraze.freeserve.co.uk)
+--------------------------------------------------
+/Me pulls knife.
+**STAB****STAB****STAB****STAB****STAB****STAB****STAB****STAB****STAB****STAB****STAB****STAB****STAB****STAB****STAB****STAB****STAB****STAB****STAB****STAB****STAB****STAB****STAB****STAB****STAB****STAB****STAB****STAB****STAB****STAB****STAB****STAB****STAB****STAB****STAB****STAB**
+
+What I meant to say was:
+
+Make the waypoint reachable routine return true if the tracelines hit a door.. Simple!
+
+--------------------------------------------------
+12/11/00 at 01:18:04  Reply by: eLiTe (ali@elitegamer.fsnet.co.uk)
+--------------------------------------------------
+I don't detect doors automatically, I just have a 'door' waypoint.
+
+Could you actually say what the problem with this function is? If the waypoint placing works, then the problem must be with the bot's navigation. In Counter-Strike the bots simply need to run into doors and they will open, the only problem that you will have to face is getting the bots to see the 'door' waypoint from both sides of the door. Next update of my source at www.teambot.net has working 'door waypoint' support, so check my site in a week or so...
+
+--------------------------------------------------
+12/12/00 at 05:08:27  Reply by: theimann (theimann@stud.fh-heilbronn.de)
+--------------------------------------------------
+Alistair is right, you have to describe your problem more detailled: what's happening?
+Does the bot detect the door-entitiy?
+Does he walk up to the door?
+Does the door open?
+These are the things you have to check to debug this error. The code you gave doesn't say much about the reasons for failing.
+One problem I had with doors was that the bot tried to reach the next waypoint when the door hasn't opened yet. You can avoid this by tracing to the door origin: if the line of sight is free, the door is open.
+
+Tobias
+
+P.S.: Why do you set the bot's speed to 0?
+
+
+--------------------------------------------------
+12/12/00 at 08:08:29  Reply by: CountFloyd (countfloyd_1999@yahoo.com)
+--------------------------------------------------
+One obvious problem in the sourcecode above (and that's the answer to Tobias question I guess) is that you set the IN_FORWARD key and the movespeed to 0. Movement Keys are ignored by the engine except when using ladders or swimming so just setting the movespeed to something other than 0 could already be the solution to your door problem (Bots only need to walk into the door to open it).
+
+Hope this helps...
+

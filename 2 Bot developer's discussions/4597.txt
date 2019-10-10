@@ -1,0 +1,1128 @@
+--------------------------------------------------
+Subject: ROFLMAO
+--------------------------------------------------
+07/01/03 at 10:40:27  Posted by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+Just wanted to share this joke with you, and yes it belongs here...
+
+remember the old discussion about pEdict->v.v_angle and pEdict->v.angles ?
+
+I screwed them up, somehow i could not get them working. Now, since my bots had these strange 'i look at it but i cannot use it' bugs, i thought that had to be that angle bug i had all the time.
+
+Finally, after all these time, i had the sollution. Instead of using:
+
+code:
+
+g_engfuncs.pfnRunPlayerMove( pEdict, pEdict->v.v_angle, forward_speed, side_speed, 0, pEdict->v.button, 0, pBot->msecval);
+
+
+
+simply, create your own vector which should be passed and so you can leave the v_angle and angles stuff alone and keep the engine satisfied. My bots run now the entire paths, but looking at the same vector.. w00t. 
+
+code:
+
+g_engfuncs.pfnRunPlayerMove( pEdict, YOUROWNVECTOR ,forward_speed, side_speed, 0, pEdict->v.button, 0, pBot->msecval);
+
+
+
+ok, laugh at me, you deserved it ;)
+
+--------------------------------------------------
+07/01/03 at 12:14:42  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+LMAO aahh yeah I remember that good one ;D
+
+And do you know what ???
+
+I was the one boasting around pretending to have fixed that bug, quite a time ago... and now that I am rewritting the bot, I, uhh... simply... "forgot" what I did to have it fixed !!! Yeah ;D and I'm ashamed because all I can remember is that it was frikkin simple ;)
+
+Your handy trick will fit lovely in my code, Stefan, and you know what.... I'm even gonna credit you ;D
+
+
+--------------------------------------------------
+07/02/03 at 07:52:49  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+ROFLMAO again then! :D now i finally do understand. It was so easy, i simply overlooked it.
+
+The bots are totally smooth now, its really cool. Just be sure you have v_angle and v.angles the same!! they won't affect your walking angle!
+
+
+
+--------------------------------------------------
+07/02/03 at 11:07:13  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Uhhh.... I stop rolling on the floor just to ask you a question:
+Do your bots aim and fire correctly at a target that is either up or down ??
+
+Because with your trick, the bots look up and down correctly, they can plant and defuse the bomb and use switches using the right angle, but when it comes to firing, OMG!!
+
+The bots aim correctly at their enemy, they fire, looking through their eyes you see their crosshair just on the bastard's nose, and inexplicably when they aim up the bullets go DOWN and when they aim down the bullets go UP !
+
+My aiming code is very simple :
+code:
+
+   // move the aim cursor
+   pBot->pEdict->v.v_angle = vecNewAngles; 
+
+   // set the body angles to point the gun correctly
+   pBot->pEdict->v.angles.x = pBot->pEdict->v.v_angle.x / 3;
+   pBot->pEdict->v.angles.y = pBot->pEdict->v.v_angle.y;
+   pBot->pEdict->v.angles.z = 0;
+
+
+
+It is called JUST before pfnRunPlayerMove() and that's the only place in my code where I touch either angles or v_angles during the frame time ???
+
+When the bots aim up, they can use items that are up, but their bullets go DOWN
+When the bots aim down, they can use items that are down, but their bullets go UP !!!
+
+What sort of witchery is that again ???
+
+
+--------------------------------------------------
+07/02/03 at 11:44:10  Reply by: rick (rick_helmus8@hotmail.com)
+--------------------------------------------------
+welll since i just implented your aiming code i had the same problem, the fix was that botman has in its code:
+
+code:
+
+if (v_aim.y > 180)
+   v_aim.y -=360;
+
+// Paulo-La-Frite - START bot aiming bug fix
+if (v_aim.x > 180)
+    v_aim.x -=360;
+
+// adjust the view angle pitch to aim correctly 
+//(MUST be after body v.angles stuff)
+v_aim.x = -v_aim.x;
+// Paulo-La-Frite - END
+
+
+
+its prolly only this:
+
+code:
+
+v_aim.x = -v_aim.x;
+
+
+
+well after i added this it seems to work(again)
+
+
+[NOOB]
+I don't get this can you explain a bit more :(
+what do you do now what you didn't first ??
+
+have you instead of this:
+code:
+
+g_engfuncs.pfnRunPlayerMove( pEdict, pEdict->v.v_angle, forward_speed, side_speed, 0, pEdict->v.button, 0, pBot->msecval);
+
+
+
+this:
+code:
+
+Vector look_vec = pEdict->v.v_angle;
+
+g_engfuncs.pfnRunPlayerMove( pEdict, look_vec, forward_speed, side_speed, 0, pEdict->v.button, 0, pBot->msecval);
+
+
+
+??
+
+[/NOOB]
+--------------------------------------------------
+07/02/03 at 11:53:43  Reply by: @$3.1415rin (johannes@_-removeifnotavirus-_lampel.net)
+--------------------------------------------------
+no, if you are referring to stefan's post, YOUROWNVEC is the direction of movement (as angle representation), not the view angles.
+
+--------------------------------------------------
+07/02/03 at 12:00:27  Reply by: rick (rick_helmus8@hotmail.com)
+--------------------------------------------------
+erm the pEdict->v.angles one ??
+
+--------------------------------------------------
+07/02/03 at 13:54:43  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+I think you are mistaken @$3.1415rin (copy'n'pasted yer name again, no way I write it correctly otherwise). The angles that should be passed to RunPlayerMove are the view angles of the player model (...and to bitch everyone again, I'd add it is assumed that the body angles are the same as the view angles, always ;))
+
+@Rick:
+I'm not sure I get you right... having botman's (well, Paulo-La-Frite's) "aimbug fix" is roughly the same as doingcode:
+
+pfnRunPlayerMove (pEdict, Vector (-pEdict->v.v_angle.x, pEdict->v.v_angle.y, pEdict->v.v_angle.z), forward_speed,
+                  side_speed, up_speed, pEdict->v.button, pEdict->v.impulse, pEdict->v.msecval);
+
+
+and this just makes the bot looks in the wrong direction. It looks up when it should be looking down ; and <i>vice versa</i>.
+
+
+--------------------------------------------------
+07/02/03 at 14:13:49  Reply by: rick (rick_helmus8@hotmail.com)
+--------------------------------------------------
+hmm yes I know that you experienced this as a bug, well a while ago i added your aim code like I said. I changed some stuff so it should work with my bot. But when i started to testing I saw that when I fly up (its possible to fly in this mod) the bot aimed down and <i>vice versa</i> so I added that line and it worked...
+I know for sure that the look angles aren't changed anywhere else.... well a very weird bug as I can say :S
+
+btw when I draw a beam where the bot is aiming at, in some cases it just draws backwards instead of forwards
+
+(sry for my crappy english)
+
+--------------------------------------------------
+07/03/03 at 05:42:09  Reply by: @$3.1415rin (johannes@_-removeifnotavirus-_lampel.net)
+--------------------------------------------------
+hm pierre, I thought I said the same as stefan ... that YOUROWNVECTOR vector like stefan called it has nothing to do with the view angles, that's just the movement direction.
+
+--------------------------------------------------
+07/03/03 at 06:05:15  Reply by: rick (rick_helmus8@hotmail.com)
+--------------------------------------------------
+hmm im still a bit confused :
+
+so like botman always did:
+code:
+
+pEdict->v.v_angle = EnemyVec;
+pEdict->v.angles.x= pEdict->v.v_angle.x/3;
+pEdict->v.angles.y=pEdict->v.v_angle.y;
+
+
+
+then i want the bot walk backwards (but aim at the enemy) i do this :
+
+code:
+
+Vector walk_vec = pEdict->v.v_angle.y+180;
+
+g_engfuncs.pfnRunPlayerMove( pEdict, walk_vec, forward_speed, side_speed, 0, pEdict->v.button, 0, pBot->msecval);
+
+
+
+is this right ??
+
+
+[modified on 07/03/03 at 06:05:15]
+--------------------------------------------------
+07/03/03 at 08:02:49  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+here is my full code:
+
+code:
+
+   // At the end, calculate the angle we MOVE to. (VecMoveAngle).
+   Vector v_target = pBot->vBody - pBot->pEdict->v.origin;
+   vecMoveAngles = UTIL_VecToAngles(v_target);
+
+   // Paulo-La-Frite - START bot aiming bug fix
+   if (vecMoveAngles.x > 180)
+      vecMoveAngles.x -=360;
+  
+   vecMoveAngles.x = -vecMoveAngles.x;
+       vecMoveAngles.z = 0;
+       UTIL_FixAngles(&vecMoveAngles);
+
+   // Look
+   BotFaceVector((pBot->vHead - pBot->pEdict->v.origin), pBot);
+   
+   g_engfuncs.pfnRunPlayerMove( pEdict, vecMoveAngles, pBot->f_move_speed,
+                                pBot->f_strafe_speed, 0, pEdict->v.button, 0, pBot->msecval);
+
+
+
+
+you just do like you are 'aiming' at an enemy. (BotShootAtEnemy function in botmans template). 
+
+
+note:
+BotFaceVector() will make the pent->v.angles and pent->v.angle look at one direction. But because you pass 'your own vector' through RunPlayerMove. The engine will make it walk to that vector and at the same time 'look' at the other vector (set in BotFaceVector)
+
+and to be more clear:
+code:
+
+// Let bot completely focus on target (head & Body)
+void BotFaceVector(Vector v_target, bot_t *pBot)
+{
+    edict_t *pEdict = pBot->pEdict;
+    pEdict->v.v_angle = UTIL_VecToAngles( v_target );
+   
+   if (pEdict->v.v_angle.y > 180)
+      pEdict->v.v_angle.y -=360;
+
+   // Paulo-La-Frite - START bot aiming bug fix
+   if (pEdict->v.v_angle.x > 180)
+      pEdict->v.v_angle.x -=360;
+ 
+   Vector v_shouldbe = pBot->pEdict->v.angles;
+
+   // Vector how it should be, however, we don't allow such a fast turn!
+   v_shouldbe.x = pEdict->v.v_angle.x / 3;
+   v_shouldbe.y = pEdict->v.v_angle.y;
+   v_shouldbe.z = 0;
+
+   // set the body angles to point the gun correctly
+   pEdict->v.angles.x = ReturnTurnedAngle( pBot, 5, pEdict->v.angles.x, v_shouldbe.x);
+   pEdict->v.angles.y = ReturnTurnedAngle( pBot, 5, pEdict->v.angles.y, v_shouldbe.y);
+   pEdict->v.angles.z = 0;
+
+   // adjust the view angle pitch to aim correctly (MUST be after body v.angles stuff)
+   pEdict->v.v_angle.x = -pEdict->v.v_angle.x;
+   // Paulo-La-Frite - END
+
+   pEdict->v.ideal_yaw = pEdict->v.v_angle.y;
+   pEdict->v.idealpitch= pEdict->v.v_angle.x;
+
+   BotFixIdealYaw(pEdict); 
+   BotFixIdealPitch(pEdict);
+}
+
+
+
+
+oh, before you ask:
+
+code:
+
+int ReturnTurnedAngle( bot_t *pBot, float speed, float current, float ideal)
+{
+      // hope this fix the unnescesary turning of bots. 
+      // how? we save the values here, andc alculate the new value.
+      // this part is copied from botchangeyaw/pitch so it SHOULD work :)
+   float current_180;  // current +/- 180 degrees
+   float diff;
+
+   // turn from the current v_angle pitch to the idealpitch by selecting
+   // the quickest way to turn to face that direction
+   
+   // find the difference in the current and ideal angle
+   diff = abs(current - ideal);
+
+   // check if the bot is already facing the idealpitch direction...
+   if (diff <= 1)
+      return current;  // return number of degrees turned
+
+   // check if difference is less than the max degrees per turn
+   if (diff < speed)
+      speed = diff;  // just need to turn a little bit (less than max)
+
+   // here we have four cases, both angle positive, one positive and
+   // the other negative, one negative and the other positive, or
+   // both negative.  handle each case separately...
+
+   if ((current >= 0) && (ideal >= 0))  // both positive
+   {
+      if (current > ideal)
+         current -= speed;
+      else
+         current += speed;
+   }
+   else if ((current >= 0) && (ideal < 0))
+   {
+      current_180 = current - 180;
+
+      if (current_180 > ideal)
+         current += speed;
+      else
+         current -= speed;
+   }
+   else if ((current < 0) && (ideal >= 0))
+   {
+      current_180 = current + 180;
+      if (current_180 > ideal)
+         current += speed;
+      else
+         current -= speed;
+   }
+   else  // (current < 0) && (ideal < 0)  both negative
+   {
+      if (current > ideal)
+         current -= speed;
+      else
+         current += speed;
+   }
+
+   // check for wrap around of angle...
+   if (current > 180)
+      current -= 360;
+   if (current < -180)
+      current += 360;
+
+   return current;  // return what it should be
+
+}
+
+
+
+The 'should be' vector is the ideal vector. But because i don't want to get into this direction asap, i use the above function to go to it 'smoothly'.. don't laugh about my comments in the code though ;) 
+
+
+--------------------------------------------------
+07/03/03 at 08:27:30  Reply by: Cheesemonster!!! (cheeseh@houstondod.com)
+--------------------------------------------------
+I do this differently, I pass pev->angles into RunPlayerMove but work out move and view angles differently, so I can get the bot's walking where they want while looking where they want, but my walk to function is a bit sketchy :P
+
+--------------------------------------------------
+07/03/03 at 08:39:07  Reply by: @$3.1415rin (johannes@_-removeifnotavirus-_lampel.net)
+--------------------------------------------------
+I think every bot is able to do that ... at least those we talk about here :D
+
+old joebot had some strange part in it 'reinventing the wheel' calculating the strafe and move speed components of a move : code:
+if(!bReplay && 
+            f_LookTo > gpGlobals->time){            // f_LookTo code
+            float f_newspeed;
+            float f_newstrafe;
+            float f_Dot;
+            float f_DotMin = -.5;
+            Vector VLDiff,VRDiff;
+            
+            f_DotMin = -1.1f;
+            
+            UTIL_MakeVectors(pEdict->v.v_angle);
+            VLDiff = gpGlobals->v_forward;
+            VLDiff.z = 0;
+            VLDiff = VLDiff.Normalize();
+            
+            VRDiff = VRunningTo - pEdict->v.origin;
+            VRDiff.z = 0.0;
+            VRDiff = VRDiff.Normalize();
+            
+            f_Dot = DotProduct(VRDiff,VLDiff);
+            if(f_Dot > f_DotMin){
+                  Vector VCross = CrossProduct(VLDiff,VRDiff);
+                  
+                  f_newspeed = f_Dot * f_move_speed;
+                  float fTemp = f_move_speed*f_move_speed-f_newspeed*f_newspeed;
+                  if(fTemp > 0)
+                        f_newstrafe = sqrt(fTemp);
+                  else
+                        f_newstrafe = 0;
+                  
+                  if(VCross.z>0.0)
+                        f_newstrafe = -f_newstrafe;
+                  
+                  f_strafe = f_newstrafe;
+                  f_move_speed = f_newspeed;
+                  
+                  if(f_LookTo-.3 > gpGlobals->time){
+                        HeadToward(VLookTo);
+                        
+#ifdef DEBUGMESSAGES
+                        if(g_b5th)
+                              WaypointDrawBeam(listenserver_edict,pEdict->v.origin+Vector(0,0,15),VLookTo+Vector(0,0,15),4,1,0,255,200,200,100);
+#endif
+                  }
+                  else{
+                        if(Action.lAction & BA_FIGHT){
+                        }
+                        else{
+                              HeadToward(VRunningTo);
+                        }
+                  }
+            }
+            else{
+                  f_LookTo = gpGlobals->time - .1;
+            }
+      }
+
+redundant I'd say now, but that time I didnt know better and it's working :)
+
+in my current project i'm using this :
+code:
+void CAction::move(void){
+      look();
+      m_pEntity->v.button = m_lPressButton;
+
+      if(m_fSlower > g_pGame->getTime()){
+            m_fSpeed = m_fMaxSpeed * m_fSlowDownF;
+      }
+      else{
+            m_fSpeed = m_fMaxSpeed;
+      }
+      
+      if(m_bJump){
+            m_bJump = false;
+            m_pEntity->v.button |= IN_JUMP;
+      }
+      
+      if(m_fDuck > g_pGame->getTime()){
+            m_pEntity->v.button |= IN_DUCK;
+      }
+
+      if(m_fUseTill > g_pGame->getTime()){
+            m_pEntity->v.button |= IN_USE;
+      }
+      
+      if(m_fAttackPause < g_pGame->getTime()){
+            if(m_fAttackTill > g_pGame->getTime()){
+                  m_pEntity->v.button |= IN_ATTACK;
+            }
+      }
+      if(m_fAttack2Till > g_pGame->getTime()){
+            m_pEntity->v.button |= IN_ATTACK2;
+      }
+      
+      // call engine
+      g_engfuncs.pfnRunPlayerMove( m_pEntity, m_VRunDirAngles, m_fSpeed,
+            m_fStrafe, 0, m_pEntity->v.button, 0, msec());
+}
+
+
+setting m_VRunDirAngles here:
+code:
+void CAction::runTo(const Vector &VRunTo){
+      m_VRunDir = (VRunTo - m_pEntity->v.origin).normalize();
+      m_VRunDirAngles = UTIL_VecToAngles(m_VRunDir);
+
+      m_VRunDirAngles.x = -m_VRunDirAngles.x;
+}
+
+
+so that's almost the same like stefan's stuff
+
+--------------------------------------------------
+07/03/03 at 09:19:36  Reply by: rick (rick_helmus8@hotmail.com)
+--------------------------------------------------
+Alrighty thanx for some code :P
+
+heh I think I get it now :) so in other words I was right in my previous posts; 
+To aim somewhere you set the v.angle and the v.v_angle correctly. But if you don't want to walk where you're aiming at you make a second Vector which you pass to the RunPlayerMove function(isn't that cheating btw :P )
+
+ohw and btw do you still need to set the
+v.ideal_yaw and the v.idealpitch or is this only needed for your own calculations ?? or is the engine using this fields to ?? just wondering
+
+--------------------------------------------------
+07/03/03 at 10:58:46  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+QUOTE:
+
+I do this differently, I pass pev->angles into RunPlayerMove but work out move and view angles differently, so I can get the bot's walking where they want while looking where they want, but my walk to function is a bit sketchy :P 
+
+
+
+
+and you don't have any issues? Like, bots look like they are facing something, but when you run a check (if the object is within angle of 45 degrees) it will fail? I had these problems, thats why i completely seperated them.
+
+rule #1:
+do never, ever, seperate v.angles and v.v_angle. VERY BAD :D
+
+--------------------------------------------------
+07/03/03 at 13:15:11  Reply by: Cheesemonster!!! (cheeseh@houstondod.com)
+--------------------------------------------------
+I haven't tried doing the button pressing etc yet, I will tell results when I get to that stage :P
+
+I am curious about Joe's code, where do the strafe and speed come into this, and how are they worked out? Especially the strafe ;P
+
+--------------------------------------------------
+07/03/03 at 14:01:25  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+People, try tracing beams in the bot's view angles and body angles directions... if you were not confused yet, I assure you you will... ???
+
+Just do something like:
+code:
+
+MAKE_VECTORS (pEdict->v.v_angle);
+UTIL_DrawBeamOrWhatever (pEdict, /*start*/GetGunPosition (pEdict), /*end*/GetGunPosition (pEdict) + gpGlobals->v_forward * 200, etc.);
+MAKE_VECTORS (pEdict->v.angles);
+UTIL_DrawBeamOrWhatever (pEdict, /*start*/pEdict->v.origin, /*end*/pEdict->v.origin + gpGlobals->v_forward * 200, etc.);
+
+I'd love to see your comments after that...
+
+
+[modified on 07/03/03 at 14:01:25]
+--------------------------------------------------
+07/03/03 at 14:33:36  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+Already did, is okay for me now.
+
+--------------------------------------------------
+07/03/03 at 14:46:03  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Stefan, could you post the exact aiming code you're using, and where you put things and how often you call them ? (don't need the aiming algo of course, just the way you deal with your vectors)
+
+Please, I'm turning mad !
+
+If someone can remind me the angle bug fix, or if someone post here an aiming code that WORKS, where the bots look at where they should look, where the bullets go in the right direction, and where usable objects don't refuse to be used when you look at them, well, well, I dunno what I'll do for the exchange but I'll think of it !!!
+
+[€dited]
+Mr. botman, if you're reading that stuff, since you're at Gearbox, you must know people who have, or had, or know where to find, information about the HL engine... could you please investigate a little bit about this fakeclient aim bug and set things straight for everyone once for all ??
+
+[modified on 07/03/03 at 14:46:03]
+--------------------------------------------------
+07/03/03 at 16:55:03  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+"Mr. botman, if you're reading that stuff, since you're at Gearbox, you must know people who have, or had, or know where to find, information about the HL engine... could you please investigate a little bit about this fakeclient aim bug and set things straight for everyone once for all ??"
+
+I'm not aware of the "aiming bug" that you're talking about.
+
+I do have access to the Half-Life engine source code (from the Condition-Zero work that Gearbox was doing), but there isn't anything in the engine that will effect the angles that a player is facing (unless they are colliding with something in which case they will be given a small velocity away from the colliding object).
+
+When aiming (players or bots), the body pitch is inverted from the view pitch and the body pitch is one third of the view pitch (because of the way the player's models are rendered).  So basically set pev->angles.x to (-1 * pev->v_angle.x / 3) and the player's model should be pointing the gun in the same direction the player is looking (as viewed from a third person point of view).
+
+Of course, each gun will have weapon accuracy that will affect any shots fired, so even if you are 2 feet away from something and aimed directly at a point on the wall, if the gun's inaccuracy angle is 45 degrees, you shot could miss the spot by 6 inches or more.  Using a weapon with a 0 degree cone for aiming will help eliminate this problem when testing.
+
+Also remember when aiming up or down, the client code will prevent players from aiming upwards and downwards more than 89 degrees (so you never can aim exactly straight up in the air or straight down at your feet).  This also effects bots since the engine rotations are kept between the -90 and +90 degrees range (you can't have a bot aim at 120 degrees, the engine will clamp it at the max value).  That just has to do with how the player's pitch is handled in the engine.
+
+IF you are trying to get to bots to aim one direction an move a different direction, you just pass two different values into the pfnRunPlayerMove() function.  The direction they are looking (and firing) is in the 2nd argument.  The direction they are moving (forwards, backwards, and sideways) is controlled by the 3rd and 4th parameters.  If you wanted them to move 45 degrees from the direction they are facing, just set the forward move and side move to the same value (+forward some amount and at the same time +sideways some amount) and they will move at 45 degrees from the direction they are aiming.
+
+If you keep the movement direction as an angle (instead of a vector), you can just use something like this to determine the forward and side speed...
+code:
+
+float forward_speed = sin(movement_angle) * scale;
+float side_speed = cos(movement_angle) * scale;
+
+Where 'scale' is how fast you want them to be moving.
+
+botman
+
+--------------------------------------------------
+07/04/03 at 03:01:37  Reply by: rick (rick_helmus8@hotmail.com)
+--------------------------------------------------
+Well Pierre if you care this is my aim code:
+code:
+
+
+void BotAim (bot_t *pBot, Vector TargetVec)
+{
+   edict_t *pEdict = pBot->pEdict;
+   Vector v_aim;
+
+   v_aim = pBot->AimVec;
+
+   Vector v_angle = pEdict->v.v_angle;
+
+   if (v_aim.y > 180)
+      v_aim.y -=360;
+
+   // Paulo-La-Frite - START bot aiming bug fix
+   if (v_aim.x > 180)
+      v_aim.x -=360;
+
+   // adjust the view angle pitch to aim 
+   // correctly (MUST be after body v.angles 
+   // stuff)
+   v_aim.x = -v_aim.x;
+   // Paulo-La-Frite - END
+
+   if (pBot->aim_delay < gpGlobals->time)
+   {
+     pEdict->v.v_angle = v_aim;
+     pBot->aim_delay = gpGlobals->time +  
+         RANDOM_FLOAT(aim_delays[pBot->bot_skill] 
+     [0],aim_delays[pBot->bot_skill][1]);
+   }
+
+   // set the body angles to point the gun 
+   // correctly
+   pEdict->v.angles.x = pEdict->v.v_angle.x / 3;
+   pEdict->v.angles.y = pEdict->v.v_angle.y;
+   pEdict->v.angles.z = 0;
+
+   Vector vecDest = (pEdict->v.origin + pEdict->v.view_ofs) + ReferentialOfAngles (pEdict->v.v_angle).v_forward * 3000;
+
+   UTIL_DrawBeam(listenserver_edict, pEdict->v.origin + pEdict->v.view_ofs, 
+                   vecDest, 5, 0, 0, 0, 255, 250, 5);
+
+   UTIL_DrawBeam(listenserver_edict, pEdict->v.origin + pEdict->v.view_ofs, 
+                  (pEdict->v.origin + pEdict->v.view_ofs) + ReferentialOfAngles (pEdict->v.angles).v_forward * 3000,
+                         5, 0, 255, 255, 255, 250, 5);
+
+   return;
+}
+
+
+
+And I tried this btw:
+
+code:
+
+Vector look_angle = 
+   WrapAngles(pEdict->v.angles+Vector(0,180,0));
+
+g_engfuncs.pfnRunPlayerMove(pEdict, look_angle,pBot->f_move_speed, pBot->f_strafe_speed, pBot->f_updown_speed, pEdict->v.button, 0, pBot->msecval);
+
+
+
+Works fine for me, the bots where aiming good but where moving backwards.
+
+--------------------------------------------------
+07/04/03 at 13:40:17  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Just highlighting the most important part of it:
+QUOTE:
+When aiming (players or bots), the body pitch is inverted from the view pitch and the body pitch is one third of the view pitch (because of the way the player's models are rendered).  So basically set pev->angles.x to (-1 * pev->v_angle.x / 3) and the player's model should be pointing the gun in the same direction the player is looking (as viewed from a third person point of view).
+
+
+
+I suppose that was all I needed to know. I also guess that inversion was what I had forgotten.
+It works.
+Thanks botman.
+
+
+--------------------------------------------------
+07/05/03 at 09:23:40  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+It finally came back to my mind !!!
+Here's how to deal with bot angles.
+
+Bot angles should be touched only ONCE per frame, at the end of the bot's thinking cycle, just before calling pfnRunPlayerMove().
+
+You set the bot's VIEW angle first, to some new angle value you computed.
+Immediately after, you adapt the body angles this way :
+code:
+
+   // set the body angles to point the gun correctly
+   pBot->pEdict->v.angles.x = -pBot->pEdict->v.v_angle.x / 3;
+   pBot->pEdict->v.angles.y = pBot->pEdict->v.v_angle.y;
+   pBot->pEdict->v.angles.z = 0;
+
+
+
+But ALSO, when changing the bot's IDEAL angles, you have to be aware of that sign inversion, because utility functions like UTIL_VecToAngles() do NOT take it in account. That's to say, if you want to tell your bot to aim for the head of an enemy, you'll probably go something like :
+code:
+
+   // where is da bastard relatively to the bot ?
+   Vector v_enemy = GetHeadPosition (pBot->pBotEnemy) - GetGunPosition (pBot->pEdict);
+
+   // how should the bot turn to face him ?
+   Vector enemy_angles = UTIL_VecToAngles (v_enemy);
+
+   // tell the bot to face that bastard
+   pBot->BotAim.v_ideal_angles = enemy_angles;
+
+
+But it will NOT work, because UTIL_VecToAngles has NOT reverted the x component of enemy_angles for the angle to be valid for the bot.
+
+Hence the best way, is to create a function to automatically update the bot's ideal angles (the angles where the bot *wants* to look, and towards which you will make it turn slightly frame after frame), for example like this :
+code:
+
+void BotSetIdealAngles (bot_t *pBot, Vector ideal_angles)
+{
+   // this function is part of the fakeclient aim bug fix. We need to revert the x component.
+
+   pBot->BotAim.v_ideal_angles.x = -UTIL_WrapAngle (ideal_angles.x); // st00pid engine bug !
+   pBot->BotAim.v_ideal_angles.y = UTIL_WrapAngle (ideal_angles.y);
+   pBot->BotAim.v_ideal_angles.z = UTIL_WrapAngle (ideal_angles.z);
+   return; // done
+}
+
+
+
+And then, your code becomes :
+code:
+
+   // where is the bastard relatively to the bot ?
+   Vector v_enemy = GetHeadPosition (pBot->pBotEnemy) - GetGunPosition (pBot->pEdict);
+
+   // how should the bot turn to face him ?
+   Vector enemy_angles = UTIL_VecToAngles (v_enemy);
+
+   // tell the bot to face that bastard
+   BotSetIdealAngles (pBot);
+
+
+
+It works perfectly.
+Thanks to everybody who contributed in setting things straight for everyone. YAY!!! ;D
+
+
+[modified on 07/05/03 at 09:23:40]
+--------------------------------------------------
+07/05/03 at 10:48:38  Reply by: rick (rick_helmus8@hotmail.com)
+--------------------------------------------------
+lol thats why I never had problems ;-)
+I did it exactly the same way :)
+
+Though i've got another question:
+
+code:
+
+if (UTIL_IsValidPlayer(pBot->pBotEnemy))
+{
+    Vector enemy_vec = UTIL_VecToAngles(pBot->pBotEnemy->v.origin-GetGunPosition(pEdict));
+    pBot->AimVec = WrapAngles(enemy_vec);
+}
+
+
+
+This won't work for some reason the bot just keep heading to the same place. I thought it shouldn't cause pBotEnemy is a pointer to the enemy's edict...
+
+Though this works:
+code:
+
+pBot->pBotEnemy = BotFindEnemy(pBot);
+
+
+
+This is like botman's botfindenemy function; first it look if the enemy is still valid, if so it will face it otherwise it searches for a new one. So why doesn't get the origin of the enemy updated then ??
+
+--------------------------------------------------
+07/05/03 at 14:30:18  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+Although i don't know about the ideal_yaw stuff... it works for me? I wonder if the engine really uses ideal_yaw? 
+
+Anyhow.
+
+One tip for Rick: Add a vector you want your bot to look at and to walk at. Hard-coding the bots vision like this (when detecting an enemy, look at it, etc), you could mess up. Don't worry though, we all began with the same code and such.
+
+What i mean:
+
+(example code)
+code:
+
+void BotThink(bot_t *pBot)
+{
+ pBot->vHead = NAV_GetNextWaypointFromPath();
+ pBot->vBody = NAV_GetNextWaypointFromPath();
+
+ // when enemy
+ if (pBot->pBotEnemy != NULL)
+  pBot->vHead = pBot->pBotEnemy->v.origin;
+
+ // Your angle stuff to calculate the correct angles to face vHead and vBody
+
+ /* your code */
+
+ // Just make sure pBot->pEdict->v.angles and pBot->pEdict->v.v_angle are THE SAME and they point to pBot->vHead.
+ 
+
+ RunPlayerMove(yada, YOURWALKVECTOR, , , , );
+}
+
+
+
+--------------------------------------------------
+07/06/03 at 03:54:06  Reply by: rick (rick_helmus8@hotmail.com)
+--------------------------------------------------
+Ehm I think I already have...
+In my bot_t structure I've got a Vector field AimVec, this stores the ideal look angles of the bot, at the end of my bot think function i call a function bot_aim:
+
+code:
+
+// nevermind the targetvec, was to lazy to
+// remove it
+void BotAim (bot_t *pBot, Vector TargetVec)
+{
+  edict_t *pEdict = pBot->pEdict;
+  Vector v_aim;
+
+  v_aim = pBot->AimVec;
+
+  Vector v_angle = pEdict->v.v_angle;
+
+  if (v_aim.y > 180)
+     v_aim.y -=360;
+
+  // Paulo-La-Frite - START bot aiming bug fix
+  if (v_aim.x > 180)
+     v_aim.x -=360;
+
+  // adjust the view angle pitch to aim 
+  // correctly (MUST be after body v.angles 
+  // stuff)
+  v_aim.x = -v_aim.x;
+  // Paulo-La-Frite - END
+
+  if (pBot->aim_delay < gpGlobals->time)
+  {
+    pEdict->v.v_angle = v_aim;
+    pBot->aim_delay = gpGlobals->time +  
+        RANDOM_FLOAT(aim_delays[pBot->bot_skill] 
+    [0],aim_delays[pBot->bot_skill][1]);
+  }
+
+  // set the body angles to point the gun 
+  // correctly
+  pEdict->v.angles.x = pEdict->v.v_angle.x / 3;
+  pEdict->v.angles.y = pEdict->v.v_angle.y;
+  pEdict->v.angles.z = 0;
+
+  Vector vecDest = (pEdict->v.origin + pEdict->v.view_ofs) + ReferentialOfAngles (pEdict->v.v_angle).v_forward * 3000;
+
+  UTIL_DrawBeam(listenserver_edict, pEdict->v.origin + pEdict->v.view_ofs, 
+                  vecDest, 5, 0, 0, 0, 255, 250, 5);
+
+  UTIL_DrawBeam(listenserver_edict, pEdict->v.origin + pEdict->v.view_ofs, 
+                 (pEdict->v.origin + pEdict->v.view_ofs) + ReferentialOfAngles (pEdict->v.angles).v_forward * 3000,
+                        5, 0, 255, 255, 255, 250, 5);
+
+  return;
+}
+
+
+
+after that the runplayermove function gets called.
+
+Anyway this is my BotFindEnemy function:
+code:
+
+edict_t *BotFindEnemy( bot_t *pBot )
+{
+   if (BotDontSearchEnemy)
+        return NULL;
+
+   Vector vecEnd;
+   Vector vecEnd2;
+
+   edict_t *pInConeEnemy = NULL;
+   edict_t *pOnScouterEnemy = NULL;
+   edict_t *pNewEnemy = NULL;
+
+   float nearestdistance1, nearestdistance2;
+   float distance;
+   int i;
+   bool DontCheckBotInCone = false;
+
+   edict_t *pEdict = pBot->pEdict;
+
+   if (pBot->pBotEnemy != NULL)  // does the bot already have an enemy?
+   {
+      vecEnd = pBot->pBotEnemy->v.origin + pBot->pBotEnemy->v.view_ofs;
+        int BotsEnemyIndex = UTIL_GetBotIndex(pBot->pBotEnemy);
+
+        // if the enemy is dead?
+      if (!IsAlive(pBot->pBotEnemy))  // is the enemy dead?, assume bot killed it
+      {
+         // don't have an enemy anymore so null out the pointer...
+         pBot->pBotEnemy = NULL;
+      }  
+      else if ((bots[BotsEnemyIndex].is_used == FALSE) && (BotsEnemyIndex != -1))
+              pBot->pBotEnemy = NULL;
+      else if (IsNull (pBot->pBotEnemy))
+          pBot->pBotEnemy = NULL;
+      else if (UTIL_IsValidPlayer(pBot->pBotEnemy))
+          pBot->pBotEnemy = NULL; 
+        else if (FInViewCone( &vecEnd, pEdict ) &&
+               FVisible( vecEnd, pEdict ))
+      {
+         // if enemy is still visible and in field of view, keep it
+
+         // face the enemy
+         Vector v_enemy = pBot->pBotEnemy->v.origin - pEdict->v.origin;
+         Vector bot_angles = UTIL_VecToAngles( v_enemy );
+
+         pBot->AimVec = WrapAngles(bot_angles);
+             pBot->BodyVec = pBot->AimVec;
+
+         // keep track of when we last saw an enemy
+         pBot->f_bot_see_enemy_time = gpGlobals->time;
+
+         return (pBot->pBotEnemy);
+      }
+      else
+         pBot->pBotEnemy = NULL; 
+   }
+
+   if (!pBot->MadePlayerList)
+      MakePlayerList(pBot);
+
+   if (pBot->PlayerCount)
+   {
+      // check the nearest player who is in view cone
+      int n;
+
+        for (n = 0; n <= 1; n++)
+        {
+          nearestdistance1 = 9000; //3500;
+          nearestdistance2 = 9000; //3500;
+
+            for (i = 0; i < pBot->PlayerCount; i++)
+            {
+                  edict_t *pPlayer = &pBot->PlayerList[i];
+                  int n = 0;
+
+                 // is team play enabled?
+            if (isesfteamplay)
+                  {
+                    int player_team = UTIL_GetTeam(pPlayer);
+               int bot_team = UTIL_GetTeam(pEdict);
+
+                 // don't target your teammates...
+                 if (bot_team == player_team)
+                        continue;
+                 }
+
+                  vecEnd = pPlayer->v.origin + pPlayer->v.view_ofs;
+                  vecEnd2 = pEdict->v.origin + pEdict->v.view_ofs;
+
+                  Vector v_dist = vecEnd - GetGunPosition(pEdict);
+                  v_dist.z = 0;
+                  distance = v_dist.Length();
+
+                  if (((distance <= maxbotdistance[pBot->bot_skill])  (pBot->SBotType > 0))  &&
+                      (!FInViewCone( &vecEnd, pEdict )))
+            {
+                  if (distance < nearestdistance2)
+                  {
+                        nearestdistance2 = distance;
+                        pOnScouterEnemy = pPlayer;
+                  }
+            }
+
+                  if ((!FInViewCone( &vecEnd2, pPlayer )) && (!DontCheckBotInCone))
+                     continue;
+
+                  if (FInViewCone( &vecEnd, pEdict ))
+                  {
+                        if (distance < nearestdistance1)
+                        {
+                              nearestdistance1 = distance;
+                              pInConeEnemy = pPlayer;
+                        }
+                  }
+            }
+            if (pInConeEnemy)
+                  break;
+            else
+                  DontCheckBotInCone = true;
+        }
+   }
+
+   pNewEnemy = NULL;
+
+   // final checks...
+
+   if ((pOnScouterEnemy) && (!pInConeEnemy))
+   {
+         pNewEnemy = pOnScouterEnemy;
+   }
+   else if ((!pOnScouterEnemy) && (pInConeEnemy))
+   {
+         pNewEnemy = pInConeEnemy;
+   }
+   else if ((pOnScouterEnemy) && (pInConeEnemy))
+   {
+         float distance1 = UTIL_Distance(pBot, pOnScouterEnemy);
+       float distance2 = UTIL_Distance(pBot, pInConeEnemy);
+
+         if (distance1 > distance2)
+               pNewEnemy = pInConeEnemy;
+         else
+         {
+               float dist_diff = distance2 - distance1; // how big is the difference 
+                                                        // between the distances ?
+           // if the distance of the enemy 
+               // in the bots view-cone is much bigger...
+               if (dist_diff > RANDOM_LONG(200, 400)) 
+                     pNewEnemy = pOnScouterEnemy;
+               else // else take the enemy in the bots view cone anyway
+                     pNewEnemy = pInConeEnemy;
+         }
+   }
+
+   if (pNewEnemy)
+   {
+      pBot->pBotUser = NULL;  // don't follow user when enemy found
+      pBot->UsingTime = 0;
+     
+      pBot->pHuntingEdict = NULL;
+      pBot->HuntDelayTime = 0.0;
+      pBot->HuntDir = 0;
+
+        // face the enemy
+      Vector v_enemy = pNewEnemy->v.origin - pEdict->v.origin;
+      Vector bot_angles = UTIL_VecToAngles( v_enemy );
+      pBot->AimVec = WrapAngles(bot_angles);
+      pBot->BodyVec = pBot->AimVec;
+
+      // keep track of when we last saw an enemy
+      pBot->f_bot_see_enemy_time = gpGlobals->time;
+   }
+   return (pNewEnemy);
+}
+
+
+
+[modified on 07/06/03 at 03:54:06]
+--------------------------------------------------
+07/06/03 at 15:24:30  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+About pev->idealpitch and ideal_yaw:
+
+The engine uses it, but only for monsters I think. Botman could confirm, as usuals ;D
+Since the engine can't predict where a human client is willing to aim at, obviously, it can't be used for human players. And since there is no native AI for bots in the HL engine, it can't be used for bots as well. So I suppose we can use it safely ; that's what I did in that BotAim plugin of mine, and nobody ever experienced any problem to my knowledge.
+
+
+
+--------------------------------------------------
+07/06/03 at 15:44:23  Reply by: rick (rick_helmus8@hotmail.com)
+--------------------------------------------------
+Well I don't use it anymore and have no probs with it(so far anyway) but other then monsters (and maybe things like senty guns and stuff) I don't a reason why its there
+
+anyway after I posted my botfindenemy code I saw this line:
+
+code:
+
+else if (UTIL_IsValidPlayer(pBot->pBotEnemy))
+   pBot->pBotEnemy = NULL;
+
+
+
+well thats ofcourse not right, the enemy is never valid then, so I put a nice ! before it and well the same bug appears, the bots keep aiming to the same place, for some reason I think the pBotEnemy->v.origin variable never gets updated, dunno why :-(. 
+Also unlike me most bot coders whould see if the enemy is in their cone of view(or how do you say it :) ) (I also check if an enemy is on a radar) so when the bot reaches his destenation he passes this Vector and this Vector isn't in view cone anymore so the bot searches again for a enemy well hope someone get that l33t explenation :) (if not i could post in dutch for stefan ;) )
+
+--------------------------------------------------
+07/07/03 at 05:39:25  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+"The engine uses it, but only for monsters I think. Botman could confirm, as usuals"
+
+The engine only seems to use pev->idealpitch and pev->ideal_yaw for predicted movement of other players on you client machine (i.e. the engine knows other player's velocity and rotational velocity and smoothly interprets where you would move and/or rotate over time).
+
+The engine doesn't appear to use pev->idealpitch or pev->ideal_yaw for monsters.  I think the SDK source code in the DLL folder actually handles monsters turning (not the engine).
+
+botman
+
+--------------------------------------------------
+07/07/03 at 05:41:40  Reply by: rick (rick_helmus8@hotmail.com)
+--------------------------------------------------
+:O so we might need this ? Well it can't hurd to add it back I guess.
+
+--------------------------------------------------
+07/07/03 at 07:30:16  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+You can use pev->idealpitch and pev->ideal_yaw for anything you want to.
+
+The obvious use is to set these to the angle that you want your entity to rotate toward and gradualy change its current angle to match the 'ideal' angle.  That's what the variables are there for.  There is code in the HPB bot that does this (but the engine doesn't do this for bots automatically, you have to write the code to perform this function, which I have done).
+
+botman
+
+--------------------------------------------------
+07/07/03 at 08:31:12  Reply by: rick (rick_helmus8@hotmail.com)
+--------------------------------------------------
+ahh ok then o well then i leave it as it as now...
+ehm botman you have any idea why the origin field of an enemy isn't updated ??
+
+--------------------------------------------------
+07/07/03 at 10:27:21  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+"botman you have any idea why the origin field of an enemy isn't updated"
+
+Please start a new topic for new questions.
+
+botman
+
+--------------------------------------------------
+07/07/03 at 10:38:43  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Make sure you're always binding the right vector, i.e. pPlayerEdict->v.origin, and NOT a local copy of it. <i>In extenso</i>, if you do this...
+code:
+
+// in the bot_t structure: Vector v_enemy_origin;
+pBot->v_enemy_origin = pBot->pBotEnemy->v.origin; // save enemy's origin
+
+// a few frames later...
+
+BotFireAt (pBot->v_enemy_origin); // make the bot fire there, or whatever
+
+
+... it obviously won't work. Because the enemy will have moved, the engine will have updated its position, but NOT the local copy you made of it several frames before.
+
+Else use a pointer for the case...
+Vector *v_enemy_origin = &pBot->pBotEnemy->v.origin;
+
+
+[modified on 07/07/03 at 10:38:43]
+--------------------------------------------------
+07/07/03 at 11:39:27  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+In fact, in the same frame the enemy cannot move that fast. It does however slow down the reaction time of the bot. I do have a copy of the vector. So i remember the bots enemy vector. I update this every frame when the bot is still able to see him. If he is not able to see the enemy it will continue to look at the last seen valid position. With this , you can fool bots, but even bots can fool each other (gives nice effects).
+
+

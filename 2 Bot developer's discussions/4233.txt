@@ -1,0 +1,134 @@
+--------------------------------------------------
+Subject: having bots execute commands
+--------------------------------------------------
+03/20/03 at 13:26:09  Posted by: mole (molex5@cox.net)
+--------------------------------------------------
+hello, i am also a noob at this stuff so bare with me. i would like to know how to have a bot execute a command when i type it into the console.
+for example:
+botcommand <botname> <command>
+
+botcommand mole say hi
+
+--------------------------------------------------
+03/20/03 at 13:35:00  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+You can use...
+code:
+SERVER_COMMAND("your console command here\n");
+
+...to execute console commands.  Don't forget to include the '\n' at the end of the command string.
+
+botman
+
+--------------------------------------------------
+03/20/03 at 13:39:15  Reply by: mole (molex5@cox.net)
+--------------------------------------------------
+geez, that was a quick response, anyways, would that command work to get the bot to execute the command? that seems like it would just execute for me. im trying to get a bot to talk. for instance:
+if i type "botcommand bot kill"
+the bot named "bot" would kill it self.
+
+--------------------------------------------------
+03/20/03 at 14:58:37  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+I had this feature in my RACC preview. You can do this by adding a check in the MOD DLL's ClientCommand to have the bots execute the client commands you specify for them. Very useful.
+
+http://www.racc-ai.com/racc-preview.exe
+
+Browse through the source code, open dll.cpp and look for the ClientCommand() function. Then look for the "botorder" client command hook.
+
+
+--------------------------------------------------
+03/20/03 at 15:48:25  Reply by: mole (molex5@cox.net)
+--------------------------------------------------
+ah, thank you. exactly what i wanted :)
+/me huggles Pierre-Marie Baty
+
+actaually.. it dosen't work. :/
+
+[modified on 03/20/03 at 15:48:25]
+--------------------------------------------------
+03/20/03 at 17:32:06  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Post something more descriptive than "it doesn't work" then...
+
+It works in my bot. If it doesn't in yours, it's because of a bad implementation.
+
+I hope you did not just copy-and-pasted the code into your bot code, and that you made the appropriate changes as well to fit in your bot code architecture, in order for it to compile correctly.
+
+
+--------------------------------------------------
+03/20/03 at 17:45:13  Reply by: mole (molex5@cox.net)
+--------------------------------------------------
+ah compiles fine after i change FakeClientCommand() function. i havent edited mine from botman's source code. mine take 4 parameters instead of your 2 parameters. im not even sure what those last 2 params are for anyways.
+
+when i exec the command in game it echos in the console that it executes. but the bot just dosent do what i tell it to do, like "kill" for instance.
+
+--------------------------------------------------
+03/20/03 at 19:21:20  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Some real client commands don't work with fakeclients. I believe "kill" may be one of those.
+
+Try a simple command, for example "drop" for making the bot drop his current weapon (at least it's this way in Counter-Strike, if the MOD you use your bot for doesn't support this command choose another).
+
+[edited]
+BTW. To kill someone, either client or bot, have a call for
+code:
+
+   ClientKill (pEdict); // pEdict being a player entity
+
+
+
+[modified on 03/20/03 at 19:21:20]
+--------------------------------------------------
+03/20/03 at 19:39:53  Reply by: mole (molex5@cox.net)
+--------------------------------------------------
+ah it does work.
+/me claps
+i need support for two word commands now so i can execute impulse commands, or allow a '+' in the command so i could do +attack :/
+
+--------------------------------------------------
+03/20/03 at 20:16:37  Reply by: mole (molex5@cox.net)
+--------------------------------------------------
+hmm, i downloaded your template source code, it compiles fine, but crashes half-life. crashes before i load the level, any ideas?
+
+[edit]
+ah just read the other posts about the same proplems..
+[/edit]
+
+[modified on 03/20/03 at 20:16:37]
+--------------------------------------------------
+03/20/03 at 20:47:04  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Neither impulse commands nor "togglestate" commands can be passed through ClientCommands. Since they modify a client-side state (player buttons, etc.) they have to be passed to the engine inside the appropriate pfnRunPlayerMove arguments.
+
+"impulse XXX" and "+something" commands are not real client commands that are sent to the engine. They are aimed for the client DLL which intercepts them and toggles the appropriate states in the player class (light the torch, set or release a button, etc.).
+
+On the other hand, if you use my implementation of FakeClientCommand and my code to pass orders to bots, all you have to do is something like this :
+botorder BotName "command arg1 arg2 arg3"
+
+My Cmd_Argv parser handles both quote-encapsulated arguments and semicolon separated command lists.
+
+
+--------------------------------------------------
+03/22/03 at 02:36:48  Reply by: RobGP (rob@planetfortress.com)
+--------------------------------------------------
+some "+" commands are caught by the server, like "+gren1" in TFC, the only special thing the client does is send the equivalent "-" command when the key is depressed. Commands like "quit" or "kill" are examples of clientside commands. You can just set the pev->impulse property of the bot entity to emulate the impulse command.
+
+[modified on 03/22/03 at 02:36:48]
+--------------------------------------------------
+03/22/03 at 04:07:54  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+QUOTE:
+You can just set the pev->impulse property of the bot entity to emulate the impulse command.
+
+
+
+Doesn't it have to be passed through RunPlayerMove() ?
+
+
+
+--------------------------------------------------
+03/23/03 at 03:05:27  Reply by: RobGP (rob@planetfortress.com)
+--------------------------------------------------
+im pretty sure if you set it in prethink it will work as intended, I vaguely remember doing this some time ago.
+

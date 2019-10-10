@@ -1,0 +1,295 @@
+--------------------------------------------------
+Subject: turning one weapon into another
+--------------------------------------------------
+05/22/02 at 12:39:54  Posted by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+Okay, here's the second chapter of my marvellous trip to the Dispatch() wonderland.
+
+I want to turn all weapons in a level into the same one, say let's turn all weapons in boot_camp into crossbows... I'm inventing tactical deathmatch ;) (don't laugh you, there)
+
+I tried this in DispatchSpawn () :
+code:
+
+   if (strncmp (STRING (pent->v.classname), "weapon_", 7) == 0)
+   {
+      pent->v.classname = MAKE_STRING ("weapon_crossbow");
+      SET_MODEL (pent, "models/w_crossbow.mdl");
+   }
+
+
+...and you know what ? The first time weapons are spawned, they still look like what they should not be, and they can be picked up / used as such. And when they spawn again, then, they turn to the weapon I want. I don't understand.
+
+So I had a brute idea : put this stuff in DispatchThink() instead. What a good idea. Weapons definitely look like what I want them to be, but when I pick them up, they are still what they should not be (i.e. I pick up something that looks like a crossbow, and it gives me a shotgun). ROTFL, but not quite what I want. Anyway, like in the previous situation, when the weapons spawn again after being picked up, they turn into those I want correctly this time. The issue happens only for the first spawn.
+
+Why would this first spawn differ from the others ? What have I forgotten to do ? Heeeeeeeeeeeeeeeeeeelp (kaboom: PM killed self with worldspawn)
+
+
+[modified on 05/22/02 at 12:39:54]
+--------------------------------------------------
+05/22/02 at 13:47:54  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+One way to do this is to change all the stuff in linkfunc.cpp for weapons.  Instead of calling the "weapon_shotgun" function, call the "weapon_crossbow" instead.  Like this...
+code:
+#define LINK_ENTITY_TO_CROSSBOW(mapClassName) \
+ extern "C" EXPORT void mapClassName( entvars_t *pev ); \
+ void mapClassName( entvars_t *pev ) { \
+      static LINK_ENTITY_FUNC otherClassName = NULL; \
+      static int skip_this = 0; \
+      if (skip_this) return; \
+      if (otherClassName == NULL) \
+         otherClassName = (LINK_ENTITY_FUNC)GetProcAddress(h_Library, "weapon_crossbow"); \
+      if (otherClassName == NULL) { \
+         skip_this = 1; return; \
+      } \
+      (*otherClassName)(pev); }
+
+LINK_ENTITY_TO_CROSSBOW(weapon_357);
+LINK_ENTITY_TO_CROSSBOW(weapon_9mmAR);
+LINK_ENTITY_TO_CROSSBOW(weapon_9mmhandgun);
+LINK_ENTITY_TO_FUNC(weapon_crossbow);
+LINK_ENTITY_TO_CROSSBOW(weapon_crowbar);
+LINK_ENTITY_TO_CROSSBOW(weapon_egon);
+LINK_ENTITY_TO_CROSSBOW(weapon_gauss);
+LINK_ENTITY_TO_CROSSBOW(weapon_glock);
+LINK_ENTITY_TO_CROSSBOW(weapon_handgrenade);
+LINK_ENTITY_TO_CROSSBOW(weapon_hornetgun);
+LINK_ENTITY_TO_CROSSBOW(weapon_mp5);
+LINK_ENTITY_TO_CROSSBOW(weapon_python);
+LINK_ENTITY_TO_CROSSBOW(weapon_rpg);
+LINK_ENTITY_TO_CROSSBOW(weapon_satchel);
+LINK_ENTITY_TO_CROSSBOW(weapon_shotgun);
+LINK_ENTITY_TO_CROSSBOW(weapon_snark);
+LINK_ENTITY_TO_CROSSBOW(weapon_tripmine);
+
+...I'll leave it to you to figure out how to change this so that weapon X can be spawned as weapon Y instead.  :D
+
+botman
+
+--------------------------------------------------
+05/22/02 at 15:26:55  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+aaargh this one is crafty like a fox, botman you should sell your ideas, you would be richer than Cresus ;)
+
+YEs, good one, but let me point out the fact that with this method, the forced weapon is hardcoded, I wish I could select it at server boot time (what ? I'm impossible ? Doh, I know...) hmm... unless if... well... let me rummage around the SDK a bit, I'll post my results here if I manage to success. Fingers crossed ;)
+
+
+
+--------------------------------------------------
+05/22/02 at 16:02:45  Reply by: Zipster (skyork99@juno.com)
+--------------------------------------------------
+I would simply remove each weapon in the map and spawn crossbows at the same locations.  You wouldn't have to remove it in the first place if it was already a crossbow, of course.
+
+--------------------------------------------------
+05/22/02 at 18:49:32  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+erm uhm well, here it is.
+<b>wOOhOO !!!</b> ;D
+code:
+
+//////////////////////////////////////////////////////////////////////////////////////
+// this is the LINK_ENTITY_TO_FUNC definition allowing the MOD entities to be exported
+//////////////////////////////////////////////////////////////////////////////////////
+#define LINK_ENTITY_TO_FUNC(mapClassName) \
+extern "C" EXPORT void mapClassName (entvars_t *pev); \
+\
+void mapClassName (entvars_t *pev) \
+{ \
+   static LINK_ENTITY_FUNC otherClassName = NULL; \
+   static LINK_ENTITY_FUNC otherWeaponName = NULL; \
+   static int skip_this = 0; \
+\
+   if (skip_this) \
+      return; \
+\
+   if (strncmp (#mapClassName, "weapon_", 7) == 0) \
+   { \
+      if (otherWeaponName == NULL) \
+         otherWeaponName = (LINK_ENTITY_FUNC) GetProcAddress (h_Library, forceweaponname); \
+\
+      otherClassName = otherWeaponName; \
+   } \
+\
+   else if (otherClassName == NULL) \
+      otherClassName = (LINK_ENTITY_FUNC) GetProcAddress (h_Library, #mapClassName); \
+\
+   if (otherClassName == NULL) \
+   { \
+      skip_this = 1; \
+      return; \
+   } \
+\
+   (*otherClassName) (pev); \
+}
+//////////////////////////////////////////////////////////////////////////////////////
+
+
+What do you think of my nice LINK_ENTITY_TO_FUNC, botman ?
+
+One thing that one should not forget, is to initialize the "forceweaponname" string as soon as possible. I do it in GameDLLInit(), parsing the game.cfg to find the CVAR even before the engine sets it itself. This way I can have a nice drop-down menu in the advanced server options to let me choose the weapons I want to kick your ass with ! ;D
+
+And you know, playing Stalkyard with only grenades, between all those crates, is a damn whole lot of fun !!! :D
+
+Why not such a feature in the next Stripper, botman ? ;)
+
+
+
+--------------------------------------------------
+05/23/02 at 04:28:33  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+"Why not such a feature in the next Stripper, botman?"
+
+I think it would be better to have a separate metamod plugin that replaces one weapon with another (not necessarily replaces every weapon with the same thing).
+
+I would have created an array of weapon names (weapon_snark, weapon_mp5, weapon_shotgun, weapon_crossbow, etc.) with the function pointer of the weapon you want to replace it with (pointer obtained from the GetProcAddress function).  That way you could replace all shotguns with snarks or replace everything except the RPG with handgrenades.
+
+Since Stripper2 doesn't have the LINK_ENTITY_TO_XXX() function you'd have to handle this a different way.
+
+botman
+
+--------------------------------------------------
+05/23/02 at 11:06:38  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+nice idea !! (once more)
+
+Will think about it
+
+
+
+--------------------------------------------------
+05/23/02 at 16:22:10  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+Just a useless question, while I'm still here.
+
+Do you have a clue why the icons of the weapons are all the same, the hornetgun icon ? I am talking about the icon that is displayed on the HUD when you pick up the weapon, or in the weapon selection menu... Not that it prevents the game from running well, but it's not eye-candy and I find that quite illogical... normally by swapping the entity funcs addresses like you do, the entire classes are shuffled, so why would the engine decide to force the same icon on each of them, whatever the weapon is and whatever it is forced to ?
+
+I'm clueless here...
+???
+
+
+--------------------------------------------------
+05/24/02 at 04:20:28  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+I'm not sure I understand your question.  Are you saying that when you force all of the weapons to spawn as crossbows, when you pick any of these weapons up you get the hornet gun sprite on the HUD as the only valid weapon (other than the 9mm pistol and crowbar)?
+
+botman
+
+--------------------------------------------------
+05/24/02 at 06:14:07  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+lol yes it's not that easy to explain...
+
+The fact is, if I decide all the weapons in the level will be crossbows, when I pickup a weapon (which looks like a crossbow), it gives me a crossbow, *BUT*, its icon is the hornetgun icon. You know, the icon that appears on the right of your screen to notify you that you have picked up the weapon... it is the same icon as in the drop-down weapon selection menu, the one you pop up with your mouse wheel, usually. So I can pick up any weapon in my level, I will still pick up crossbows, but their icon will be the hornetgun icon. And moreover, the tiny ammo icon in the bottom right of your screen looks like the hornetgun's arrow. Whatever I want the weapons to be, it will always display that icon.
+
+If you still didn't understand, I can send you my code and you'll give it a try.
+
+
+--------------------------------------------------
+05/26/02 at 05:55:10  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+here I'm just trying to resurrect this thread because I still haven't found any answer to my problem... does someone have a clue ?
+
+
+--------------------------------------------------
+05/26/02 at 13:16:52  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+I tried this and you are correct.  The weapon pickup sprite is the hornet gun.
+
+Here's how to fix that.  Add a line in your LINK_FUNC_TO_CROSSBOW() that sets the pev->classname like so...
+code:
+#define LINK_ENTITY_TO_CROSSBOW(mapClassName) \
+ extern "C" EXPORT void mapClassName( entvars_t *pev ); \
+ void mapClassName( entvars_t *pev ) { \
+      static LINK_ENTITY_FUNC otherClassName = NULL; \
+      static int skip_this = 0; \
+      if (skip_this) return; \
+      if (otherClassName == NULL) \
+         otherClassName = (LINK_ENTITY_FUNC)GetProcAddress(h_Library, "weapon_crossbow"); \
+      if (otherClassName == NULL) { \
+         skip_this = 1; return; \
+      } \
+      pev->classname = ALLOC_STRING("weapon_crossbow"); \
+      (*otherClassName)(pev); }
+
+...this will make the MOD DLL code think that's it's a crossbow that being spawned.
+
+I did notice something else weird, if you pick up multiple crossbows and then use "drop" to drop the weapon, you still have a crossbow.  You have to use "drop" several times to get rid of all of them (even though you can only select one of them in the HUD).
+
+botman
+
+--------------------------------------------------
+05/26/02 at 13:36:15  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+thanks, Botman !!
+
+Yes, you are right, there is something odd with those forced weapons. I think it is related to another "bug" I experienced with them.
+
+Imagine you have the crossbow, and you have the maximal ammo for it. Normally when you walk up on another crossbow you should not pick it up, since you already have full ammo for your crossbow...
+
+...the bug is, if the weapon is a REAL crossbow (i.e. in that map it was originally meant to be a bare genuine crossbow), you won't pick it up. BUT, if it is a FORCED crossbow (for example, initially a hornetgun that you forced to be a crossbow), you WILL pick it up. It won't give you a hornetgun, though, but you should not be able to pick it up, right ?
+
+...even more strange, once the crossbow/hornetgun you picked up will respawn, this time you WON'T be able to pick it up (which is the expected normal behaviour). I guess there's a difference in the way the entities are spawned at level creation and during the game, don't you think ?
+
+And I think your bug and mine are related, because, with your crossbow full of ammo, if you manage to walk over, say, 3 other weapons that were initially OTHER weapons than crossbows (and which you forced to be crossbows), not only you will pick them up (while you should not be able to), but moreover then, you will have to drop your crossbow 4 TIMES (1 + 3) to get rid of it, like if you had 4 DIFFERENT WEAPONS.
+
+I hope you understand my curious explanations :) Anyway there's definitely something I don't understand here...
+
+Illogical ???
+
+
+[modified on 05/26/02 at 13:36:15]
+--------------------------------------------------
+05/26/02 at 14:06:32  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+anyway I tried your fix and it seems to get rid of all those problems. Just a last question (sorry for bugging you so much but I was told curiosity is virtue) : why do you use ALLOC_STRING() here and why not MAKE_STRING() ?
+
+
+[modified on 05/26/02 at 14:06:32]
+--------------------------------------------------
+05/26/02 at 20:00:08  Reply by: Zipster (skyork99@juno.com)
+--------------------------------------------------
+MAKE_STRING is used on constant strings, and returns the offset from the beginning of the global string table.  For example, the hornet gun always uses the model hornet.mdl, so you would use MAKE_STRING with that.  ALLOC_STRING is used on strings that can can change dynamically and thus don't stay at the same location in memory.  For example, if you have an env_message entity, the message you display can be practically anything, so you would want to allocate memory for it from the engine and store it.
+
+To clarify things a bit, a constant string is one that you would enter directly into the code, per say, like this:
+code:
+
+SET_MODEL(ENT( pev ), "models/hornet.mdl");
+
+
+Notice the string literal that is gauranteed to be at the same location.  A "dynamic" string would look like this:
+code:
+
+pev->message = ALLOC_STRING( pkvd->szValue );
+
+
+The string memory pointed to by pkvd->szValue is temporary and thus won't stay there.  Thus we need to allocate special memory from the engine.
+
+I'm not sure if constant strings are stored in the code segment or if the compiler is smart enough to move it to the data segment, but constant strings are there for good!
+
+[modified on 05/26/02 at 20:00:08]
+--------------------------------------------------
+05/27/02 at 04:51:53  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+Sure, but in Botman's code
+code:
+
+pev->classname = ALLOC_STRING("weapon_crossbow"); \ 
+
+
+..."weapon_crossbow" is a constant, or what ??? So ?
+
+
+
+--------------------------------------------------
+05/27/02 at 05:18:14  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Correct, so in that case it doesn't matter whether you use ALLOC_STRING or MAKE_STRING, since they both do the same thing.  ALLOC_STRING is always "safer" in case you forget that the string needs to be a static one.
+
+If I remember correctly, Valve stated that ALLOC_STRING will only allocate 1 instance of a string if that same string value is used over and over so it won't use up any more memory than MAKE_STRING (I think that the engine just takes a tiny bit longer since it must search the string table for a match first, whereas MAKE_STRING assumes that the string value is at a constant address and just stores that in the string table).
+
+botman
+
+--------------------------------------------------
+05/27/02 at 05:21:22  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+thanks :)
+

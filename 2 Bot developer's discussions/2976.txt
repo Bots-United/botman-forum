@@ -1,0 +1,218 @@
+--------------------------------------------------
+Subject: get rid of null edict memory access ?
+--------------------------------------------------
+04/11/02 at 12:31:46  Posted by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+Hi,
+
+I am upset with my crash bugs.
+I was wondering if implementing a thing like a kind of "garbage collector" edict that would substitute to everywhere an edict is NULL'ed (creation, removal); like this: pEdict = pDummyEdict; ... would be a good idea.
+This edict would have a special flag somewhere that would indicate it is a dummy edict.
+In my idea, the advantages would be that the engine would crash no more by the cause of an invalid memory access, and for the developer it would be as simple as checking if (!pEdict) like this, for example: if (IsDummyEdict (pEdict))...
+
+Is it worth the time to implement ? Ideas ? Comments ? Suggestions ?
+
+
+
+--------------------------------------------------
+04/11/02 at 12:57:28  Reply by: theimann (killaruna@botepidemic.com)
+--------------------------------------------------
+Have you tried working with EHANDLE instead of edict_t? If I remember right, this is a kind of wrapper for edicts and does pretty much what you want: if the underlying edict gets invalid the EHANDLE is set to NULL, so it's very easy to check.
+
+Tobias
+
+--------------------------------------------------
+04/11/02 at 14:32:56  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+No??? WTF is this?? Where can I find it? How do I use it? Wow I'm just gonna grep in the SDK right now ; if you're right I wonder why nobody thought about that before !!!
+
+
+--------------------------------------------------
+04/11/02 at 19:38:42  Reply by: CountFloyd (countfloyd@botepidemic.com)
+--------------------------------------------------
+QUOTE:
+
+I wonder why nobody thought about that before
+
+
+
+
+Perhaps more people use them than you thought (I'm using them too for almost all entity ptrs). If you're storing ptrs to dynamic entities then using EHANDLEs is the safest.  
+
+--------------------------------------------------
+04/12/02 at 05:00:59  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+I foundcode:
+
+//
+// EHANDLE. Safe way to point to CBaseEntities who may die between frames
+//
+class EHANDLE
+{
+private:
+      edict_t *m_pent;
+      int            m_serialnumber;
+public:
+      edict_t *Get( void );
+      edict_t *Set( edict_t *pent );
+
+      operator int ();
+
+      operator CBaseEntity *();
+
+      CBaseEntity * operator = (CBaseEntity *pEntity);
+      CBaseEntity * operator ->();
+};
+
+
+I know C but I don't understand anything of C++ (that's why I haven't used the classes and instances stuff in my bot code, I don't know how). I've already read botman's C++ tutorial, I think I understood but I'd like to know the best way to use the EHANDLE class.
+
+Let's take the following example:
+code:
+
+// I'll cycle through an array of edicts in which some of them may be dead...
+for (int index = 0; index < 32; index++)
+   FakeClientCommand (bots[index].pEdict, "say \"Hello I'm a valid bot slot.\"\n");
+
+
+
+What are the changes I must make to use EHANDLEs instead ? Please feel free to explain with as much detail as possible :)
+
+
+
+[modified on 04/12/02 at 05:00:59]
+--------------------------------------------------
+04/12/02 at 05:02:47  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+heres an example of an ehandle in action. I used it for my bots to shoot some entities that are linked through ehandles'
+
+this code is to remove those entities for the mod I made my bot for.
+
+code:
+
+                  edict_t *impailer = NULL;
+                  EHANDLE ehAttached;
+                  edict_t *attached_ent = NULL;                                                            
+                  
+                  bool valid = FALSE;
+                  bool kill_ent = FALSE;
+                  
+                  char stopsound[] = "weapons/rocket1.wav";
+                  
+                  while ((impailer = UTIL_FindEntityByClassname( impailer, "impailer_arrow" )) != NULL)
+                  {
+                        i = 0;
+                        attached_ent = NULL;
+                        kill_ent = FALSE;
+                        
+                        if( impailer->pvPrivateData != NULL )
+                        {
+                              ehAttached = *((EHANDLE *)((int) impailer->pvPrivateData + 0x0000026C)); 
+                              
+                              attached_ent = ehAttached.Get();
+                              
+                              if ( attached_ent != NULL )
+                              {
+                                    kill_ent = TRUE;
+                              }
+                        }
+                        
+                        if( kill_ent )
+                        {
+                              kill_ent = FALSE;
+                              
+                              while (( i < 32 )&&(!kill_ent))
+                              {
+                                    if( clients[i].anti_impailer )
+                                    {
+                                          if( attached_ent == clients[i].transform )
+                                                kill_ent = TRUE;
+                                          if( attached_ent == clients[i].client )
+                                                kill_ent = TRUE;
+                                    }
+                                    i ++;
+                              }
+                              
+                              if( kill_ent )
+                              {
+                                    impailer->v.flags = FL_KILLME;
+                                    
+                                    UTIL_StopSoundAll(stopsound);
+                                    
+                                    break;
+                              }
+                        }
+                  }
+            }
+
+
+
+[modified on 04/12/02 at 05:02:47]
+--------------------------------------------------
+04/12/02 at 05:04:13  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+thank you cheesy! LoL you were fast! Less than one minute, I'm sux ;D
+
+--------------------------------------------------
+04/12/02 at 05:26:35  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+Well so in my case it would be:
+code:
+
+// instead of edict_t *pEdict; in bot_t structure definition (bot.h)
+EHANDLE *pHandle; // was: edict_t *pEdict;
+
+
+then
+code:
+
+// Cycling through my array of bot edicts
+for (int index = 0; index < 32; index++)
+{
+   // the following line would make the engine crash on void edicts
+   //bots[index].pEdict->v.v_angles = Vector (0, 0, 0);
+
+   // this one, instead, shouldn't - if I understood right
+   bots[index].pHandle->Get ()->v.v_angles = Vector (0, 0, 0);
+}
+
+
+is it? And in case this bot slot is invalid, the EHANDLE class would still return a pointer to a safe zone in memory that would not make the engine crash ?
+
+
+[modified on 04/12/02 at 05:19:27]
+
+[modified on 04/12/02 at 05:23:45]
+
+[modified on 04/12/02 at 05:26:35]
+--------------------------------------------------
+04/12/02 at 05:24:43  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+No, not quite.
+
+Search through the Full SDK (with the monster AI) for places where m_hEnemy is used.  This is an EHANDLE pointer used by monsters to keep track of enemies (grunts enemies are monsters and monsters enemies are grunts).
+
+To make use of EHANDLEs, you'll need to include the EHANDLE:: code from the cbase.cpp file in the SDK.  There is has the functions that overload the assignment operator ('=') and the functions that overload the reference operators ('*' and '->').
+
+botman
+
+--------------------------------------------------
+04/12/02 at 05:30:16  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+sorry Botman I realized I just modified my post after you replied. Could you have a look at it and tell me if I am still right (provided that the EHANDLE class code is implemented) when I assume the last line would not crash the engine ?
+
+
+
+--------------------------------------------------
+04/12/02 at 06:12:26  Reply by: theimann (killaruna@botepidemic.com)
+--------------------------------------------------
+Pierre, the last line in your code would crash as well since EHANDLE->Get() returns NULL for invalid edicts. The advantage of EHANDLE is that it's easier to test if an edict is valid or not, because you might have an edict>0 that does not belong to a valid entity.
+
+Tobias
+
+--------------------------------------------------
+04/12/02 at 10:32:23  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+OK, nevermind (C++ and me makes weird things) - I finally got very angry against those bugs and I took the big guns. I've implemented my own checks. The crash bugs are all over. It works. Happy happy PM...
+
+

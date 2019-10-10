@@ -1,0 +1,92 @@
+--------------------------------------------------
+Subject: Getting a player name!
+--------------------------------------------------
+03/15/02 at 23:19:03  Posted by: DjZ (djz920@hotmail.com)
+--------------------------------------------------
+ I need my code to retrieve a player's name on an event. For instance, a bot kills bob, a message gets sent to bob to show his oh say class menu. doesn't matte what I'm gonna use it in many places so as long as I can get the name I think I could do the rest. It's gonna be something like pPlayer->Name or something in that direction but in HPB bot, it seems to use something like pEntity and others in other places.
+Sorry I'm a newbie sorta. I haven't coded for ever and don't remember anything.
+
+--------------------------------------------------
+03/16/02 at 02:37:41  Reply by: @$3.1415rin (joebot@botepidemic.com)
+--------------------------------------------------
+it's entvars_t.netname ... so you can get the string via STRING(pEdict->v.netname). netname itself is just some sort of index, therefore you need the STRING function
+
+--------------------------------------------------
+03/16/02 at 12:30:16  Reply by: DjZ (djz920@hotmail.com)
+--------------------------------------------------
+stwange that works but it gives me their won id instead of the name
+:-/ can I do the name?
+
+--------------------------------------------------
+03/16/02 at 14:48:38  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+The player name is STRING(pEdict->v.netname).
+
+You get the WONid using pfnGetPlayerWONId(pEdict).
+
+IF you are getting a WONid using STRING(pEdict->v.netname) then they have set the player name to the WONid.  Make ABSOLUTELY sure you aren't just using "pEdict->v.netname" but are using "STRING(pEdict->v.netname)" instead.
+
+botman
+
+--------------------------------------------------
+03/16/02 at 21:52:17  Reply by: DjZ (djz920@hotmail.com)
+--------------------------------------------------
+the problem is that the name is not set as the wonid and I am using the right thing 
+:-/
+:-\
+:'-(
+
+--------------------------------------------------
+03/17/02 at 07:56:40  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+You won't be able to get the wonid from a players name, why don't you show the code you have wrote to see what you're doing? ;)
+
+--------------------------------------------------
+03/17/02 at 08:56:11  Reply by: DjZ (djz920@hotmail.com)
+--------------------------------------------------
+eeeeeh that's the other problem, I got rid of it and for now moved on to a new function. But I swear it gave me the wonid of the player. 
+
+Here's what I had it do. I made a new pPlayer out of p_edict. I had it loops from 0-32 checking if the following pPlayer is existant, also if it was a human player. Then I made it in the console say player name or STRING(pEdict->v.netname)
+
+--------------------------------------------------
+03/17/02 at 11:03:53  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+What kind of odd server did you run this thing on ???
+
+--------------------------------------------------
+03/17/02 at 11:36:59  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+Make sure when you where printing the name you used 
+
+char msg[80];
+
+sprintf("%s",STRING(pEntity->v.netname));
+
+ClientPrint(pEntity,HUD_PRINTCONSOLE,msg);
+
+--------------------------------------------------
+03/17/02 at 11:41:55  Reply by: DjZ (djz920@hotmail.com)
+--------------------------------------------------
+whoah, that worked... lol!!! I love you!!!!!!! not really but THANK YOU!!!
+
+--------------------------------------------------
+03/17/02 at 12:18:30  Reply by: DjZ (djz920@hotmail.com)
+--------------------------------------------------
+Hmm one more thing now, how do I make it so the code recognizes the client commands, but the ones other's ender. For instance I'm on a server that uses my bot and I type in a command and it does something like add a bot. NOT if you're on the machine running the server, like in Admin Mod/metamod where people can start votes and such.
+
+--------------------------------------------------
+03/17/02 at 12:24:50  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Did you only want to execute a command for people not on the server (anybody, not just you)?  Or do you only want people with a specific WONid to be able to execute commands?
+
+If you only want clients to execute command, just put them in the ClientCommand() function.  If you look at the HPB bot template source code, it stores the edict pointer of the local client on a listenserver (so that that player is the only one than can execute commands).  You could copy this so that only the local client on a listen server executes commands, or you could negate the logic and allow only people OTHER than the local server client to execute commands (which seems kind of dumb to me).
+
+If you only want people with a specific WONid to execute a command you'll have to use the pfnGetPlayerWONId() function to return the WONid of the player that issued the command (in the ClientCommand function).  Then compare the WONid returned by the engine to some hard-coded value to see if that person is the only giving the command.
+
+botman
+
+--------------------------------------------------
+03/18/02 at 13:57:13  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+You could easily store an array of players you want to allow acces to commands, and when a client command is made, search through your array to see if this player is in it (perhaps you could store their edict or WonID) If they are in it then allow access to commands, otherwise dont!
+

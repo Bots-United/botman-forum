@@ -1,0 +1,75 @@
+--------------------------------------------------
+Subject: pEdict->v.origin not reliable !?
+--------------------------------------------------
+08/06/03 at 12:42:22  Posted by: LightNinja (technobot_mr@web.de)
+--------------------------------------------------
+it seeems as if some bot variables, especially the vector pEdict->v.origin, but also some others, won't work reliable. PMB mentioned something related to this a while ago. I think it was about framecount... 
+
+is it possible that you simply cannot rely on some variables? and why?
+
+I'm speaking about the POD-Bot source, but PMB had similar problems with his code, which is not based on POD-Bot. 
+
+Perhaps it is an HL engine problem. Or just someting about the "HPB engine", HL<->server stuff...
+
+--------------------------------------------------
+08/06/03 at 13:15:49  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+As far as I know, edict_s variables (the engine's entity structure) are always correct.  I've never seen cases where the origin of an entity becomes corrupted (except when you have bad pointers and are overwriting memory you shouldn't be, which is a VERY common problem in C/C++).
+
+botman
+
+--------------------------------------------------
+08/06/03 at 13:37:21  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Yes, I would side with botman on this point. For me, the entvars_t of an entity are always correct, since they're the very variables the engine itself uses. LightNinja, you should make sure you're not overwriting some of them by mistake. Else could you describe the problem more accurately ?
+
+
+--------------------------------------------------
+08/06/03 at 14:57:24  Reply by: Cheesemonster!!! (cheeseh@houstondod.com)
+--------------------------------------------------
+if you are trying to get the origin of world brushes, like func_walls and doors, breakables etc, use the VecBModelOrigin function or (get (absmin+absmax)/2)
+
+The origin of world brushes are always set at 0,0,0
+
+--------------------------------------------------
+08/07/03 at 05:51:38  Reply by: LightNinja (technobot_mr@web.de)
+--------------------------------------------------
+if I save the origin of a bot to new variables and later try to write the coordinates back to pEdict->v.origin, to "teleport" the bot to his previous position, he often appears stuck into the floor or in other odd positions (somewhere in the air). I first thought it is because of it saves the coords when he ducks or jumps and so will reset into the floor or in the air. but if I did something to prevent this (not saving the origin, when he crouches or jumps), the problem didn't disappear. 
+
+Also sometimes the bot suddenly dies when he is replaced.
+
+It seems as if x- and y-coords work correctly, but z isn't reliable at all. 
+
+
+I do not use any pointers to do this, just simple variable operations with "=" ;-)
+
+[modified on 08/07/03 at 05:51:38]
+--------------------------------------------------
+08/07/03 at 05:52:09  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+If you want to teleport a player (or bot), you have to "lift" them up off the ground first.
+
+See the "trigger_teleport" code in the SDK triggers.cpp file for details.
+
+botman
+
+--------------------------------------------------
+08/07/03 at 06:53:10  Reply by: rick (rick_helmus8@hotmail.com)
+--------------------------------------------------
+or use SET_POS(pEdict,Vec);
+
+--------------------------------------------------
+08/07/03 at 11:05:17  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+You can't change the origin of an entity reliably by forcibly setting its v.origin to some arbitrary value. This is especially true about players, about whom the engine is still making movement computations. You must notify explicitly the engine that you are moving the entity to a new origin.
+
+To do that, use the SET_ORIGIN() macro, or call g_engfuncs.pfnSetOrigin() directly.
+
+NEVER touch an entity's origin by hand.
+
+
+--------------------------------------------------
+08/07/03 at 13:20:07  Reply by: LightNinja (technobot_mr@web.de)
+--------------------------------------------------
+ok good, I will try that... I hope this will fix the odd crashes which appeared today, too...
+

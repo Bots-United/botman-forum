@@ -1,0 +1,255 @@
+--------------------------------------------------
+Subject: Strange FIND_ENTITY_IN_SPHERE() functionality
+--------------------------------------------------
+12/14/02 at 20:38:29  Posted by: AustinBotServer (AustinBotServer@MindSpring)
+--------------------------------------------------
+I have the following code that looks for items near the player.
+
+pEntityFound = NULL
+
+while ((pEntityFound = FIND_ENTITY_IN_SPHERE (pEntityFound, player->v.origin, 15.0)) != NULL)
+{
+      
+      if (FNullEnt(pEntityFound))
+            break; // break when the engine reports no more entities       
+      
+      UTIL_printf("Ent found = %s\n", STRING(pEntityFound->v.classname)); 
+
+}
+
+
+1) I see a gun on the ground and walk up to it as close as I can get without picking it up. The code above never reports that the gun is found.
+2)I pick up the gun then throw it. The gun ends up much farther away and the code above will report that the gun is found!
+3)If I then walk away from the gun until I get far enough away that the code above reports the gun is not found, then I can once again walk right up to the gun and it is never found until I pick it up again?
+
+This seems really strange to me.
+
+It is like FIND_ENTITY_IN_SPHERE()
+acts differently once you touch the item.
+
+What is going on with this?  
+
+
+--------------------------------------------------
+12/15/02 at 04:22:32  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+15 is a VERY small radius to check for entities. It doesn't even get the circle out of the player's model boundaries.
+
+I assume you are doing that in Counter-Strike.
+In Counter-Strike, weapons that appear on the ground AT THE START OF THE MAP *AND* weapons that a player is holding itself are named "weapon_xxx" (e.g, "weapon_hegrenade", "weapon_awp").
+BUT
+Weapons that are THROWN by a player are named "weaponbox". Whatever model they have.
+
+If you ever played HLDM, you'll notice that when a player dies, it throws away a little case that looks like a small cylinder. When you pick it up, you get the weapon the player was holding before its death. This is the weaponbox. What the Counter-Strike guys did is that they just changed the model of the weaponboxes the players were throwing to the model of the weapon that was inside them.
+
+Now when you pick up a weapon in Counter-Strike.
+EITHER
+it is a weapon_xxx the map designer placed in his map, in which case your code should report it (assuming you expect it to find weapon_xxx entities, and you give it a much larger radius)
+OR
+it is a weaponbox a player has dropped, in which case it is not reported by your code.
+
+BUT in both cases
+once you have picked that weapon up, a new entity is created at the location of your player origin, whose name is the "weapon_xxx" name of the weapon you've picked up (regardless it was a weaponbox or a real weapon). This entity is NOT drawn (flagged v->effects & EF_NODRAW) and moves together with your player. It holds data relative to the weapon as long as your player is holding it.
+
+ANYWAY
+Depending on how the CS programmers wrote their MOD, either when you throw a weaponbox, the corresponding "weapon_xxx" entity that is upon your player is killed (disappears), or it is blankened out but remains here.
+
+The main problems with your code was
+1°) your radius is WAY to small
+2°) you don't look for the right entities
+
+Cheers!
+:)
+
+--------------------------------------------------
+12/15/02 at 06:40:56  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+just have a look at botmans "search" code in clientcommand in HPB_Bot template/full source.
+
+Ps, you dont really need...
+     if (FNullEnt(pEntityFound)) 
+           break; // break when the engine reports no more entities  
+
+Youve already got the while loop doing that for you, you could also stick in FNullEnt in the while loop heading instead of != NULL, as I think FNullEnt is better, but no need since all these entities already exist in the game.
+
+--------------------------------------------------
+12/15/02 at 07:16:59  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Nope, cheesy, you <b>DO</b> need this if you use the macro FIND_ENTITY_IN_SPHERE() directly. This is a direct call for g_engfuncs.pfnFindEntityInSphere(). And look how botman wrote his UTIL_FindEntityInSphere():
+code:
+
+edict_t *UTIL_FindEntityInSphere( edict_t *pentStart, const Vector &vecCenter, float flRadius )
+{
+   edict_t  *pentEntity;
+
+   pentEntity = FIND_ENTITY_IN_SPHERE( pentStart, vecCenter, flRadius);
+
+   if (!FNullEnt(pentEntity))
+      return pentEntity;
+
+   return NULL;
+}
+
+
+
+If you don't, the engine function FindEntityInSphere will report a VALID pointer, but this pointer will NOT point to a registered entity. Hence the use of FNullEnt required here.
+
+If you don't -> infinite loop.
+
+
+
+--------------------------------------------------
+12/15/02 at 07:34:13  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Actually, the FNullEnt function (defined in util.h) will check if the entity pointer is NULL, or the entity offset is zero.
+
+FNullEnt() is usually used to check to see if an entity has been allocated by the engine and then freed up (and is not currently used).
+
+If you ever have a case where the engine allocated a bunch of entities, then frees some of them up in the middle (without setting the entity pointer to NULL), you would break out of the loop prematurely and not find the last items.
+
+For the case where UTIL_FindEntityInSphere() returns something other than NULL and FNullEnt() returns true (you KNOW the pointer isn't NULL), you would probably just want to continue the loop to skip that entity...
+code:
+pEntityFound = NULL
+
+while ((pEntityFound = FIND_ENTITY_IN_SPHERE (pEntityFound, player->v.origin, RADIUS)) != NULL)
+{
+   if (FNullEnt(pEntityFound))
+      continue;  // skip entities that aren't in use
+
+   UTIL_printf("Ent found = %s\n", STRING(pEntityFound->v.classname)); 
+}
+
+...Also don't forget that entities owned by you (like weapons) will have the same origin as the player and will always be found within the radius.  You can eliminate these by comparing the entvars_t owner field to the edict_t value of the entity you are searching from (i.e. the edict of the player).
+
+botman
+
+[modified on 12/15/02 at 07:34:13]
+--------------------------------------------------
+12/15/02 at 11:30:41  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+ah I was thinking about botmans UTIL_FindEntityInSphere not the engine func :P
+
+--------------------------------------------------
+12/15/02 at 14:57:14  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+botman, are you certain of this ???
+Each time I tried I was either going stuck in an infinite loop or the engine was just crashing...
+Your explanation looks good and sufficient but my experiments tell me the contrary ?
+
+
+--------------------------------------------------
+12/15/02 at 15:34:46  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+You will get a NULL pointer back from the engine when you have reached the end of the list.
+
+If you know that UTIL_FindEntityInSphere() is not returning NULL (i.e. it's pointing to SOMETHING), you then need to know if the entity you are pointing to is actually in use by the engine or not.  I think this should mainly apply to player entities since they normally don't get freed up by the engine when not in use, but other entities will be deleted from the engine's linked list when they are removed (as long as the engine has had a chance to look through them some time after the entity has the FL_KILLME flag set.  So it may be a moot point for non-player entities.
+
+I haven't tried this out, but I think the only entities that you will see that will have an edict_t pointer and FNullEnt() could return true would be for player entities that aren't in use.
+
+You DEFINITELY don't want to continue looping in the case where UTIL_FindEntityInSphere() returns NULL.
+
+botman
+
+--------------------------------------------------
+12/15/02 at 15:56:26  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+QUOTE:
+You will get a NULL pointer back from the engine when you have reached the end of the list.
+
+
+
+This is the point on which my experiments tell me it's not ALWAYS the case...
+
+I'm still getting an infinite loop when I do this in a metamod plugin. It seems to work in my bot DLL though, when I don't use your UTIL_FindEntity.
+
+Anyway, if you are right, why then did you design the UTIL_FindEntityInSphere() in the HPB_bot that way ?
+
+There is definitely something I don't understand here.
+
+--------------------------------------------------
+12/15/02 at 18:10:22  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Here's UTIL_FindEntityInSphere() from the Half-Life SDK...
+code:
+CBaseEntity *UTIL_FindEntityInSphere( CBaseEntity *pStartEntity, const Vector &vecCenter, float flRadius )
+{
+   edict_t *pentEntity;
+
+   if (pStartEntity)
+      pentEntity = pStartEntity->edict();
+   else
+      pentEntity = NULL;
+
+   pentEntity = FIND_ENTITY_IN_SPHERE( pentEntity, vecCenter, flRadius);
+
+   if (!FNullEnt(pentEntity))
+      return CBaseEntity::Instance(pentEntity);
+
+   return NULL;
+}
+
+...it uses CBaseEntity for the pointers, but it calls the engine FIND_ENTITY_IN_SPHERE() using edict_t pointers.  So if you get rid of all the CBaseEntity stuff, you have this...
+code:
+edict_t *UTIL_FindEntityInSphere( edict_t *pentEntity, const Vector &vecCenter, float flRadius )
+{
+   pentEntity = FIND_ENTITY_IN_SPHERE( pentEntity, vecCenter, flRadius);
+
+   if (!FNullEnt(pentEntity))
+      return pentEntity;
+
+   return NULL;
+}
+
+...and here's the code from the HPB bot util.cpp file...
+code:
+edict_t *UTIL_FindEntityInSphere( edict_t *pentStart, const Vector &vecCenter, float flRadius )
+{
+   edict_t  *pentEntity;
+
+   pentEntity = FIND_ENTITY_IN_SPHERE( pentStart, vecCenter, flRadius);
+
+   if (!FNullEnt(pentEntity))
+      return pentEntity;
+
+   return NULL;
+}
+
+That's where that code came from.  The HPB bot util.cpp code should only return NULL when FNullEnt() returns TRUE.  FNullEnt() will only return TRUE when the edict_t pointer is NULL or when the edict or the entity offset field is zero (indicating that memory for the edict is allocated, but it is not assigned to an entity).
+
+The HPB bot code just removes the CBaseEntity class (since it's not available to hook DLLs or metamod plugins anyway).
+
+botman
+
+--------------------------------------------------
+12/15/02 at 19:25:09  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Actually, I misspoke above, when I said that the engine will return NULL when it reaches the last entity.  What I meant was that the util.cpp UTIL_FindEntityInSphere() would return NULL when it finds the last entity.
+
+I don't believe the engine function (FIND_ENTITY_IN_SHPERE) will ever return NULL.  I believe the engine allocates a dummy entity (entity number 0, if I remember correctly) so that its entity linked list will ALWAYS have at least one entity in it).  When the engine loops through the list and you hit the unused entity (what FNullEnt returns TRUE for), you know you have hit the end of the list.  Thus the "break;" in Mark's example at the top of the thread IS necessary, because he's calling the ENGINE version of this function and not the util.cpp version of this function (his loop should never terminate due to the pointer being NULL).
+
+botman
+
+--------------------------------------------------
+12/15/02 at 22:42:47  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+ahhhh so I was right, it is needed when you use the engine function only.
+Thanks botman :)
+
+
+--------------------------------------------------
+12/16/02 at 17:24:06  Reply by: AustinBotServer (AustinBotServer@MindSpring)
+--------------------------------------------------
+QUOTE:
+Actually, the FNullEnt function (defined in util.h) will check if the entity pointer is NULL, or the entity offset is zero.
+
+
+
+
+FNullEnt() was the first thing I looked up but I didn't know why they were doing the offset check.  Now this make perfect sense.
+
+Also, thanks for clearing up the confusion over calling the engine function and the util function (which handles this check.)
+
+Thanks for the help everyone!
+
+
+[modified on 12/16/02 at 17:24:06]

@@ -1,0 +1,335 @@
+--------------------------------------------------
+Subject: Autowaypointing - A way?
+--------------------------------------------------
+10/02/01 at 02:29:13  Posted by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+Ok, just to share ideas, not code. At this moment i am trying to code (with Tub, a coder too, and a good math guy) an autowaypointing feature which could work quite well.
+
+What we do:
+allocate 2 tables
+1. For the real waypoints
+2. Temp table (max 2500 wpts, maybe even more).
+
+Then we follow the following steps basicly. After each step is finished, the user will be informed.. The whole process should not take more then 20 minutes on a PIII 500Mhz. We believe we can optimize it and lower this time. All depends on map size, etc etc etc.
+
+1. Init tables
+2. Flood fill / fill with wpts on a speficic way (quite close to each other)
+3. Do a simple check if wpts can see each other, or not etc.
+4. REmove unnescesary waypoints 
+5. Copy the remaining wpts (which should only be a few if done correctly!)
+6. Connect the 'real' wpts and do better checks on those
+7. Save into file
+
+I will let you know if this works out or not. But at th emoment we are convinced we can get this working.
+
+
+--------------------------------------------------
+10/02/01 at 08:30:07  Reply by: William (william@cgf-ai.com)
+--------------------------------------------------
+Sounds interesting (and not dissimilar from what Q3Arena does).
+
+To me, step 4 seems to be the most complicated one: what do you have in mind for that?
+
+William
+
+--------------------------------------------------
+10/02/01 at 08:48:57  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+Well william, nice you ask :)
+Step 4 is just the step we arrived to. At the moment we are still testing the flood fill, which is done in 2 seconds btw (2500 wpts). 
+
+The basic idea is to go through all waypoints, and check with what waypoints it is connected. Then, the connected waypoint should be checked if it has any other connection what the first waypoint does not have. If so, then it should remain untouched, else it can be removed.
+
+However, i may have said this wrong, as the filter idea is made up by Tub. He sais he has a better idea, or maybe he has the same idea, but he can code it better...
+
+Either way, things are going well:
+
+Max time it took to waypoint a map:
+2500 flood = 2 seconds
+250 waypoints on real table calculation ~ 20 seconds
+
+complete time:
+
+around 25 seconds.
+Estimated time INCLUDING filtering: 60 seconds, probably a bit less...
+
+
+
+--------------------------------------------------
+10/02/01 at 16:47:51  Reply by: Spyro (theoddbot@hotmail.com)
+--------------------------------------------------
+Hi,
+
+How do you implement the flood-fill?
+
+Starting a a player-start point and moving outwards?
+
+-Spyro
+
+--------------------------------------------------
+10/02/01 at 22:57:17  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+yes, for flooding you atleast need a start.
+So what we did, is simply place on all entities that are important, a waypoint. These are doors and ladders.
+
+For CS, you add:
+- spawn points
+- goals
+
+and then spread out. 
+As this will take some memory , we allocate a temp variable, and destroy it after we have waypointed the map. So its not declared the whole time..
+
+
+--------------------------------------------------
+10/02/01 at 23:29:24  Reply by: Spyro (theoddbot@hotmail.com)
+--------------------------------------------------
+Hi again,
+
+Does the method work well with variable heights?
+
+e.g. How well do you think the ramps in 2fort would be handled?
+
+This method has me pretty interested :)
+
+-Spyro
+
+
+
+--------------------------------------------------
+10/02/01 at 23:54:47  Reply by: Tub (tubpc@authmann.de)
+--------------------------------------------------
+ramps and stairs work very well when done right. :)
+
+
+As William noticed, Step 4 is the most problematic one. We've been trying some simple filters, but none of them gave satisfying results so far.
+
+I know a good and safe filter, but it would probably take hours to check a map... these simple algos did not take longer than 2:30 minutes to waypoint, filter and precalculate the whole map (on Athlon 1333 though), and it would be nice if we could keep within that time limit.
+
+--------------------------------------------------
+10/03/01 at 00:35:33  Reply by: Spyro (theoddbot@hotmail.com)
+--------------------------------------------------
+Hi,
+
+for step 4, did you think you could take all of the waypoints that have the same connections (disregarding each other) and take the average position of that?
+
+It should work ok for doorways and such, i think.
+
+For the ramps, do you do something like:
+1. Get the horizontal (x,y) location of the next waypoint
+2. New height (z) is up at 45degrees from the old height
+3. Trace down until you hit the ground
+4. Add 1/2 player height to the ground position
+
+Wish I could see it action, but i have assignments due :(
+
+good luck.
+
+-Spyro
+
+--------------------------------------------------
+10/03/01 at 05:46:57  Reply by: RedFox (redfox@nildram.co.uk)
+--------------------------------------------------
+I had an idea on the step 4 filter.
+If were saying we have lots of waypoints all connected, the basic idea for keeping the best ones would be to keep ones which have paths the closest to 45 degrees (corners in a path) or have paths closest to 90 degrees (straight parts of a paths).
+
+Once this is done, any extra waypoints on straight paths could be removed.
+
+Ok, in theory it works well, but converting it to useable code may be a pain.
+
+Just a thought :D
+
+--------------------------------------------------
+10/03/01 at 07:08:33  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+I had an idea about filtering, which worked (in my opinion) best of all the attempts we had at this moment.
+
+1. Scan for all waypoints if they are close to a wall (or blockable entity). Mark those
+2. Scan for any waypoints which are NOT close to a wall (not marked) and are NOT close to any marked waypoints which should remain. 
+
+If you have found no waypoints marked as 'remain' and no waypoints  marked as 'close to wall' you can mark this waypoint as 'remain'.. 
+
+This theory works a bit, but it has lots of flaws.
+back to the drawing board!
+
+--------------------------------------------------
+10/03/01 at 08:20:25  Reply by: RedFox (redfox@nildram.co.uk)
+--------------------------------------------------
+check this out for a way to pick where waypoints should go to start with. Use this meathod to start with a smaller number of waypoints :)
+
+http://www.gamedev.net/reference/programming/features/motionplanning/page6.asp
+
+Oh, its not the intro page, but the picture on this page highlights the meathod. :)
+I'm going to try this at some point, just need to figure out how to turn bsp data into useful information. :D
+
+--------------------------------------------------
+10/03/01 at 09:40:48  Reply by: theimann (killaruna@botepidemic.com)
+--------------------------------------------------
+Why do you want to filter the waypoints at all? 2500 temporary waypoints are not too much after all and you could use them all for navigation. The more waypoints you've got the more flexible your navigation will get...
+
+Tobias
+
+--------------------------------------------------
+10/03/01 at 09:54:08  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+@Tobias, because precalc takes some hours then.. And a filesize of 6MB is not quite 'small' for some waypoints. 
+
+I also thought about 'why filtering?'... but keeping 2500 waypoints is to much..
+
+
+
+
+--------------------------------------------------
+10/03/01 at 10:11:33  Reply by: Tub (tubpc@authmann.de)
+--------------------------------------------------
+At least waypoints that reach nowhere have to be removed. There are maps where players can get stuck. When a waypoint gets placed there - have fun!
+
+It's also not unwise to remove useless waypoints. Not only because of memory usage and precalculation time..
+
+I guess we'll see how many waypoints the popular maps need and decide then.
+
+--------------------------------------------------
+10/03/01 at 11:40:00  Reply by: William (william@cgf-ai.com)
+--------------------------------------------------
+@Tom:
+what would you use to define represent the potential field? waypoints again? 
+
+@Stefan:
+(Having had earlier discussions with Tobias on this topic): 2500 waypoints isn't that much. You could store all paths in 3MB during the game without even resorting to hierarchical pathfinding.
+Just for reference, the QuakeIIIArena AI (not known for being slow) uses over 5000 areas in its largest ctf map.
+Why would file size be a concern if you develop automatic waypointing? The sole benefit of automatic waypointing is that gamers can play any map without having to wait for somebody to publish a good waypoint file. Besides, you could store the essential information (just the connections) for 2500 waypoints in 150KB.
+
+@Tub: how do you figure out at forehand that you have waypoints that go nowhere, or the player gets stuck at that spot. I would expect these waypoints not to be generated if you do a flood fill.
+
+William
+
+--------------------------------------------------
+10/03/01 at 13:30:08  Reply by: RedFox (redfox@nildram.co.uk)
+--------------------------------------------------
+Well, I thought about doing the potential feild in memory..perhaps breaking the map into blocks (32x32pixels), so not much calculation is needed.
+Once you have the potential feild you can go ahead an put waypoints in at only the strongest points.
+I suppose this is a replacement for the flood fill.
+but it will also help in part 4, as you will have good paths already setup (but which have lots of waypoints), so all you need todo is reduce the number of waypoints in the path.
+
+As to filling the level with waypoints..it may seem useful, but with using the current shortest path routing..you Will get problems with bots navigating corners properly (they won't be able to).
+So if you want a compromise, perhaps a flood fill that only fills upto a players width from a wall.
+But I like this meathod over it..saves on later removing waypoints, useful for working out paths in very small passage ways.
+
+--------------------------------------------------
+10/03/01 at 14:19:02  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+@ Everyone :)
+
+When saving the connections only , its indeed possible to reduce file size. The precalculations will only take place once (and will take some time with 2500 waypoints!).
+
+I had an idea, which could work. This idea is more like (very roughly described):
+
+- the most far away waypoint from a wall in a particular areay should be the waypoint to remain.
+
+I derived some information from the url that got posted.
+
+I will not post the entire idea just yet, as its still on paper, and not fully worked out. But i am convinced i can make something to work like this. The only flaws will be bridges (as they have no walls). But, i am sure there can be found simple methods to fix this.
+
+The general idea is like this:
+1. Set up a table what waypoint should be removed, all standard values are TRUE.
+2. Set all waypoints which are special, e.g. goals, etc, on FALSE
+3. Loop through all waypoints and find the closest object that blocks the waypoint for tracing into xx directions (we use 6)
+4. Now find the most far 'distance' in a particular area of a waypoint.
+
+On step 4, this can result in:
+- No waypoint found with higher distance then waypoint we are checking now:
+
+When this happends we simply mark this waypoint as FALSE, so it does not get removed.
+
+OR:
+
+- Waypoint found!
+  Simply set the check on this waypoint, the checks should be taken from this waypoint (so this waypoint is the center right now), and we redo the check.
+
+
+By doing it like this, you will get waypoints which remain who are close to walls, and in the middle and on logical places in hallways. 
+
+In the open, its a bit harder, but not impossible. Most likely , on specific parts of the map (e.g. DUST) you have a start position (not removed) and at the end, you probably have a waypoint which was in the middle of a T split (t split for: A -> CT , B -> underpass , C->HALLWAY).
+
+This idea is NOT tested, and as i said, its still theory and not even final. Any additions to this is handy.
+
+
+Its just the challange to make such a filter, instead of just saving 2500 waypoints. Waiting for 30 minutes for a simple precalc (while the extensive (bot simulation) check takes > 10 minutes for PLACING 2500 waypoints, and calculating takes 30 minutes then)..
+
+
+
+--------------------------------------------------
+10/10/01 at 08:39:10  Reply by: Tub (tubpc@authmann.de)
+--------------------------------------------------
+it's possible to fill the map with waypoints in a usable way (just finished coding), but cs_italy uses 470 waypoints now. The resulting waypoint file is 2.6 MB. That's too much to distribute with a bot..
+
+I will apply some simple filters, but that won't remove more than 20 waypoints..
+
+So I need an idea for a GOOD filter algo :)
+
+I'll tell you if I got one...
+
+--------------------------------------------------
+10/10/01 at 10:42:16  Reply by: William (william@cgf-ai.com)
+--------------------------------------------------
+Tub,
+
+what I did with CGF is just distribute the file that contains waypoint attributes and direct connections between waypoints. When the player launches the map for the first time, all paths are computed and the big file is written to disk.
+
+A file that just contains 470 waypoints and their connections is less than 100KB, and smaller when zipped.
+
+It's a good solution for small downloads, though it confused a good number of users - "my game seems to hang when launching your bots".
+
+CGF, when released in July 1999, already supported maps with 800+ waypoints (AQ2's city map).
+
+William
+
+If your waypoint file for 470 waypoints is over 500KB, something is wrong: There are only 470x470 possible paths, and you need only 1 'next' waypoint to represent that path. So you'd need just 470x470x2bytes ~ 430KB. This can easily be optimized to 215KB, and zipped afterwards.
+
+[modified on 10/10/01 at 10:42:16]
+--------------------------------------------------
+10/11/01 at 09:26:18  Reply by: Tub (tubpc@authmann.de)
+--------------------------------------------------
+470x470x2bytes is not exactly what we use. Our struct that's saved is a little more than 2 bytes (actually it uses 6 bytes ATM - don't ask! :), but that can (and will) be optimized. But that'll be about the latest thing to do ..
+
+--------------------------------------------------
+10/11/01 at 12:22:40  Reply by: William (william@cgf-ai.com)
+--------------------------------------------------
+great. you know when (not) to optimize.
+if you need help, let me know.
+
+William
+
+--------------------------------------------------
+10/16/01 at 15:19:39  Reply by: jldailey (jldailey@uchicago.edu)
+--------------------------------------------------
+I use a simliar flood idea in the waypoint system that I wrote. although mine is different in several ways and i liken it much more to 'growing' a map. the vine/moss growth analogy proved useful during the initial conception.
+
+there are two main benefits
+1. no post-processing
+2. parameterized performance (spare cycles = learn faster)
+
+Process:
+
+First concieve of a waypoint as a plant, capable of casting out children.
+  - A parent can cast C number of children per frame.
+  - C is a function of fps, (it goes inversely with fps, though it need not be continuous)
+
+  To spawn a child:
+    1. The parent picks two random x and y values, and a positively bounded random z-value. The resulting vector is normalized to a length equal to the desired graph density D.
+    2. Then drops it to some number of inches above the floor.
+    3. Runs the requisite checks to determine if we've found things like doors, ladders, etc. In order for a child to survive, it must be 'reachable' from its parent (given a Reachable() function).
+    4. If a child survives, it encodes the information about its new location (including its doorness, ladderness, visibility info, etc) into a waypoint and adds it to the waypoint table.
+(it's this last step that saves any postprocessing, and large wastes of temporary structures)
+
+Controlling the growth is an entity (affectionately reffered to as the Gardener) that think()s every frame about how many waypoints are allowed to attempt spawning children.
+ The Gardener keeps track of who spawned last in the waypoint list, and a parameter P (how many to spawn in a frame).
+  P is a function of the current fps, so when it bogs down, you spawn less, and the map grows less. 
+ The Gardener, once P is determined, simpy calls waypoint[i].spawn() for i = last to last + P.
+
+I typically can run with P = 100 and C = 2 with no real speed problems, though this is on a more or less empty server, ive never tested it under real load... but using these two parameters, you can get performance to scale however you want it.
+and there's virtually no post-processing (except to optionally save the resultant graph so you can 'remember' the map the next time the bot plays)
+
+my .02
+jesse.
+
+

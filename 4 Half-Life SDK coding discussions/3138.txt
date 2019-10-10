@@ -1,0 +1,121 @@
+--------------------------------------------------
+Subject: Changing the damage area of explosions
+--------------------------------------------------
+05/26/02 at 02:12:23  Posted by: kippie (da_matt@hotmail.com)
+--------------------------------------------------
+Well, I am making a new gun out of the hornetgun and I wanted the missiles to be explosive.
+I got the sprites working and all, but for some reason, the explosion area is about 2000-3000 ingame units, while I only want it to be 256*256*256.
+
+This is what I have done
+
+in missile.h, I have made the missile a CGrenade (like the rpg missiles)
+Then in missile.cpp I have changed all the SetTouch functions to ExplodeTouch.
+After that, I have added the following stuff:
+code:
+
+//=========================================================
+//This comes from the cgrenade thing, I just redo it here.
+//=========================================================
+void CMissile::ExplodeTouch( CBaseEntity *pOther )
+{
+      TraceResult tr;
+      Vector            vecSpot;// trace starts here!
+
+      pev->enemy = pOther->edict();
+
+      vecSpot = pev->origin - pev->velocity.Normalize() * 32;
+      UTIL_TraceLine( vecSpot, vecSpot + pev->velocity.Normalize() * 64, ignore_monsters, ENT(pev), &tr );
+
+      Explode( &tr, DMG_BLAST );
+}
+      
+      
+
+
+void CMissile::Explode( TraceResult *pTrace, int bitsDamageType )
+{
+      EMIT_SOUND(ENT(pev), CHAN_VOICE, "weapons/debris1.wav", 0.55, ATTN_NORM);
+
+      pev->model = iStringNull;//invisible
+      pev->solid = SOLID_NOT;// intangible
+
+      pev->takedamage = DAMAGE_NO;
+
+      // Pull out of the wall a bit
+      if ( pTrace->flFraction != 1.0 )
+      {
+            pev->origin = pTrace->vecEndPos + (pTrace->vecPlaneNormal * (pev->dmg - 24) * 0.6);
+      }
+
+      int iContents = UTIL_PointContents ( pev->origin );
+      
+      MESSAGE_BEGIN( MSG_PAS, SVC_TEMPENTITY, pev->origin );
+            WRITE_BYTE( TE_EXPLOSION );            // This makes a dynamic light and the explosion sprites/sound
+            WRITE_COORD( pev->origin.x );      // Send to PAS because of the sound
+            WRITE_COORD( pev->origin.y );
+            WRITE_COORD( pev->origin.z );
+            if (iContents != CONTENTS_WATER)
+            {
+                  WRITE_SHORT( g_sModelIndexFireball );
+            }
+            else
+            {
+                  WRITE_SHORT( g_sModelIndexWExplosion );
+            }
+            WRITE_BYTE( (pev->dmg - 50) * .60  ); // scale * 10
+            WRITE_BYTE( 15  ); // framerate
+            WRITE_BYTE( TE_EXPLFLAG_NONE );
+      MESSAGE_END();
+
+      CSoundEnt::InsertSound ( bits_SOUND_COMBAT, pev->origin, NORMAL_EXPLOSION_VOLUME, 3.0 );
+      entvars_t *pevOwner;
+      if ( pev->owner )
+            pevOwner = VARS( pev->owner );
+      else
+            pevOwner = NULL;
+
+      pev->owner = NULL; // can't traceline attack owner if this is set
+
+      RadiusDamage( pev->origin, pev, pev, 300, CLASS_NONE, DMG_BLAST );
+
+
+
+
+      
+}
+
+
+
+So, any ideas? :(
+
+
+ps: yes I am a newb to the sdk, plz don't flame me for it =(
+
+[modified on 05/26/02 at 02:12:23]
+--------------------------------------------------
+05/26/02 at 04:35:34  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+RadiusDamage can be found in the combat.cpp code...
+code:
+void CBaseMonster :: RadiusDamage( Vector vecSrc, entvars_t *pevInflictor,
+      entvars_t *pevAttacker, float flDamage, int iClassIgnore, int bitsDamageType )
+{
+   ::RadiusDamage( vecSrc, pevInflictor, pevAttacker, flDamage,
+                   flDamage * 2.5, iClassIgnore, bitsDamageType );
+}
+
+...so the radius that it is using is 2.5 times the damage amount.  In your cases this would be 2.5 * 300 = 750 units.  If you want a smaller damage radius, lower the damage amount or call this version of RadiusDamage directly...
+code:
+void RadiusDamage( Vector vecSrc, entvars_t *pevInflictor, entvars_t *pevAttacker,
+     float flDamage, float flRadius, int iClassIgnore, int bitsDamageType )
+
+...and pass in the damage amount and the radius that you want to use.
+
+botman
+
+--------------------------------------------------
+05/26/02 at 05:27:09  Reply by: kippie (da_matt@hotmail.com)
+--------------------------------------------------
+ouch, stupid me
+I didn't even look at Radiusdamage =(
+

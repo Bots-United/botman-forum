@@ -1,0 +1,170 @@
+--------------------------------------------------
+Subject: ATTAAAAAAACK!!!
+--------------------------------------------------
+11/16/00 at 02:16:20  Posted by: eLiTe (ali@elitegamer.fsnet.co.uk)
+--------------------------------------------------
+I just noticed yesterday that my CTs only fire one shot then just stand there staring at the enemy - while the Ts keep on shooting. All the bots are using EXACTLY the same combat code, so I wondered if it might be something to do with the weapons?
+
+I also noticed that if you go out of a CTs FOV then back in again he will shoot you (if you circle-strafe round him for example), so I take it this is because the IN_ATTACK is being taken out of v.button, then being set again when the bot sees me? This makies me think that IN_ATTACK should be set to 0, then 1, then 0, then 1, just like a real player presses the mouse button, but why does it work for the Ts and not the CTs?
+
+--------------------------------------------------
+11/16/00 at 02:21:00  Reply by: theimann (theimann@stud.fh-heilbronn.de)
+--------------------------------------------------
+You are right. You have to release the IN_ATTACK button to let the bot shoot again. No idea why it does work for the Ts - they have the same weapons, don't they? Btw.: In HL-deathmatch it works without releasing IN_ATTACK - you can empty an entire magazine on your enemy. You only have to stop pressing the button for a reload...
+
+Tobias
+
+--------------------------------------------------
+11/16/00 at 02:47:20  Reply by: eLiTe (ali@elitegamer.fsnet.co.uk)
+--------------------------------------------------
+Phew - thanks a lot!!! I thought I had messed something up and spent most of yesterday trying to sort it out!!!
+
+Yeah!! Now I can get back to my waypointing system!
+
+--------------------------------------------------
+11/20/00 at 05:17:33  Reply by: theimann (theimann@stud.fh-heilbronn.de)
+--------------------------------------------------
+Note that just releasing IN_ATTACK for one frame doesn't help much. You need a specific fire-delay (weapon-specific?) - I guess that's why botman has these weapon-delay values in his code... About 0.3 sec work fine for the base CS-pistol.
+
+Tobias
+
+--------------------------------------------------
+11/20/00 at 12:14:11  Reply by: CountFloyd (countfloyd_1999@yahoo.com)
+--------------------------------------------------
+Also note that you need to release the button for some secs to reload them (in Cs). So you need to have another table with the correct reload times...
+
+--------------------------------------------------
+11/20/00 at 15:05:40  Reply by: DarkYouth (darkyouth@thegraze.freeserve.co.uk)
+--------------------------------------------------
+Ive observed that reload times arent actualled nesecary. Heres some psuedo code for botfireweapon:
+
+if (ammo in clip(curr weapon)) < 2)
+___if (has ammo to reload with)
+_______press reload
+___else (switch guns)
+else
+if (RANDOM_LONG(1,100) <= 30) // Allow gun to refire
+_____fire!!!! 
+
+Totally eliminating the need for any crappy reload code (the random values can be substitued and that is all you need)
+
+Why should reload times be needed. The gun will not abort a reload sequence in progress and with the code above it will carry on reloading until the game registers more than one bullet in the clip.
+
+
+--------------------------------------------------
+11/20/00 at 16:05:43  Reply by: CountFloyd (countfloyd_1999@yahoo.com)
+--------------------------------------------------
+But the above code will hold the reload button until the ammo amount has increased. Sadly this won't happen since the reloading will never occur when the button keeps pressed. At least that's what happened to me, try it for yourself...
+Yes I know it's quite a hassle to get the correct reload times for each weapon but in the end it's worth it, I believe. 
+
+--------------------------------------------------
+11/21/00 at 01:08:30  Reply by: theimann (theimann@stud.fh-heilbronn.de)
+--------------------------------------------------
+If the probem only is that you have to release the RELOAD button after pressing it you could get rid of your reload-delay-table by modifying Dark Youths code like that:
+
+if (ammo in clip(curr weapon)) < 2) {
+___if (has ammo to reload with && !reloading)
+_______reloading = true;
+_______press reload
+___else (switch guns) }
+else {
+  reloading = false;
+  if (RANDOM_LONG(1,100) <= 30) // Allow gun to refire
+  _____fire!!!! 
+}
+
+Anybody tried that?
+
+Tobias
+
+--------------------------------------------------
+11/21/00 at 01:21:33  Reply by: eLiTe (ali@elitegamer.fsnet.co.uk)
+--------------------------------------------------
+I like the idea of a random number for firing, it's quite realistic, but simple too - last night I tryed putting a delay on the firing so that the bot would only press attack every 0.3 seconds, but it didn't work.
+
+Does the bot also need to press attack for more than one frame, as well as releasing attack for a few frames?
+
+--------------------------------------------------
+11/21/00 at 05:52:10  Reply by: theimann (theimann@stud.fh-heilbronn.de)
+--------------------------------------------------
+> Does the bot also need to press attack for more than one frame, as well as releasing attack for a few frames? 
+
+No, pressing ATTACK for one frame will do. Be careful with the random numbers - the bot might try to fire more often than possible which would result in no fire. The delay approach is definately better. Keep working on the implementation and don't give up if something doesn't work the first time.
+
+Tobias
+
+--------------------------------------------------
+11/21/00 at 06:34:49  Reply by: eLiTe (ali@elitegamer.fsnet.co.uk)
+--------------------------------------------------
+Dont worry, I won't give up, I'm just looking for better (easier/more efficient) ways of doing things. My delay system is probably way more complicated than necessary (although I'm making it that way so that I can have different delays for each weapon).
+
+I'll test different parts of my system tonight and find out what is causing the problem(s).
+
+--------------------------------------------------
+11/21/00 at 10:56:05  Reply by: DarkYouth (darkyouth@thegraze.freeserve.co.uk)
+--------------------------------------------------
+Count, Ive never ever ever ever ever ever ever ever ever ever ever ever ever ever ever ever ever ever ever ever ever ever ever ever ever ever ever ever ever ever ever ever ever ever ever ever ever ever ever ever ever EVER used a value for reload time and nor do I see it as neeeded in future.
+
+Simple is a good thing. Finding all those values is unnececary. 
+
+The code tobias added is a lot easier than all that manual reload time and the overall effect looks identical.
+
+
+
+--------------------------------------------------
+11/21/00 at 14:59:07  Reply by: CountFloyd (countfloyd_1999@yahoo.com)
+--------------------------------------------------
+Ahem...I appologize for doing more things than I have to do, sorry :)
+Offtopic:
+Did you check out this promising Bot ?
+http://fremen.freehosting.net/
+(I already fear its release - reading bsp trees *shiver*)
+
+--------------------------------------------------
+11/22/00 at 02:07:26  Reply by: eLiTe (ali@elitegamer.fsnet.co.uk)
+--------------------------------------------------
+Well my PC just messed up again, not sure why. Could be something to do with me being online a lot recently, or maybe Deus Ex is wasting the system. My dad is going to order the new PC today, so I'll soon be able to get coding again...
+
+I think the random firing thing SHOULD work, and it COULD be more realistic, as humans don't fire at set intervals. One very unlikely possibility is that the bots will NEVER EVER fire in a million years, if the random number stays above 30, but how likely is that? :P
+
+--------------------------------------------------
+11/22/00 at 02:07:40  Reply by: eLiTe (ali@elitegamer.fsnet.co.uk)
+--------------------------------------------------
+Well my PC just messed up again, not sure why. Could be something to do with me being online a lot recently, or maybe Deus Ex is wasting the system. My dad is going to order the new PC today, so I'll soon be able to get coding again...
+
+I think the random firing thing SHOULD work, and it COULD be more realistic, as humans don't fire at set intervals. One very unlikely possibility is that the bots will NEVER EVER fire in a million years, if the random number stays above 30, but how likely is that? :P
+
+--------------------------------------------------
+11/22/00 at 06:50:01  Reply by: William (william@botepidemic.com)
+--------------------------------------------------
+Random firing COULD be more realistic [than always firing immediately and as fast as possible].
+
+The human ways of firing is a bit unpredictable (that's where random would be useful), but is primarily driven by:
+- loss of accuracy during firing
+- distance to target
+- amount of ammo available
+
+It makes sense to model the firing accuracy of a bot:
+- for every shot the bot fires, accuracy decreases
+- for every game tick aiming but not firing, accuracy improves
+- accuracy loss would depend on the gun (and gun mode, but that's not so relevant in Counter-Strike), and on posture, movement, and receiving damage
+Note that the CS reticule (in good old Rainbow Six style) illustrates this loss of accuracy.
+
+By having the bot consider his accuracy and the distance to the target, he would make a decision to continue firing or ease of the trigger. 
+The effect would be a bot that would rip half a M249 Para chain at a nearby target, while firing the Para in 3 round burst at long distance.
+Nearing the end of the clip or chain, the bot should prefer shorter bursts as well.
+
+Indeed you'd need a slight random effect to prevent the bot from firing too rhythmically (the human ear is quite sensitive to rhythms).
+
+William
+p.s. if there's a single bot, no round limit, 32MB of memory (used for rand() values), solely 1 memory value resulting in rand() < 30, rand() being called 10 x a second, the bot would fire once every 5 years. Does that answer your question?
+
+--------------------------------------------------
+11/23/00 at 04:27:41  Reply by: eLiTe (ali@elitegamer.fsnet.co.uk)
+--------------------------------------------------
+Hehe, great topic I've created!!!
+
+Well my dad's ordered a new PC, so I'm going to have loads of time for adding stuff into my bot, and I'll also be able to have LAN games with our older PC to test the bots with my brother.
+
+Thanks for all your help, I'm going to try and make the fighting code realistic, but I'm going to make the skill 1 bot almost invincible, and the skill 5 bots with a reaction time of over a second and REALLY crappy aim
+

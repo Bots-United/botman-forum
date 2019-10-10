@@ -1,0 +1,90 @@
+--------------------------------------------------
+Subject: dll load error.. :>(
+--------------------------------------------------
+09/08/00 at 13:38:30  Posted by: ZoIcCeLi (zoicceli@gmx.net)
+--------------------------------------------------
+Hi!
+I get a load error when I'm trying to test my bot. Here's what I did:
+
+I compiled the dll with ming (no compile errors) Put the dll in cstrike/dlls, modified the liblist.gam, started a lan game, then I got this error.
+"Loadlibrary failed on c:\...\dlls\zbot.dll (1157)
+Host_Error: couldn't get api from C:\...\dlls\zbot.dll"
+
+Can you plz help me :>))))
+
+(I only stripped the hpb alpha3 code for cs. Didn't modify anything else)
+
+
+
+
+
+--------------------------------------------------
+09/08/00 at 13:35:51  Reply by: [SIS]M&M (voodoo@travelmail.de)
+--------------------------------------------------
+you can do 2 things
+
+1.u rename the dll in the dlls folder to zbot.dll
+
+or
+
+2.you change the dll name in liblist.gam to dlls\HPB_Bot.dll
+
+the name of the dll must be the same in liblist.gam and in the dlls folder
+
+[SIS]M&M
+
+
+
+--------------------------------------------------
+09/08/00 at 13:45:01  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+You may also need to change the makefile.  Try this for a makefile....
+code:
+
+CPP = gcc
+CPPFLAGS = -march=pentium -O2 -w -I../engine -I../common -I../pm_shared
+
+OBJ = bot.o bot_client.o bot_combat.o dll.o engine.o h_export.o \
+<<tab>>linkfunc.o util.o waypoint.o
+
+HPB_bot.dll:<<tab>>${OBJ} HPB_bot_ming.def
+<<tab>>dllwrap -s --def HPB_bot_ming.def --driver-name gcc -o HPB_bot.dll \
+<<tab>>${OBJ}
+
+HPB_bot_ming.def:<<tab>>${OBJ}
+<<tab>>dllwrap -s --output-def HPB_bot_ming.def --driver-name gcc -o HPB_bot.dll \
+<<tab>>${OBJ}
+<<tab>>type GiveFnpt.dat >> HPB_bot_ming.def
+
+clean:
+<<tab>>-del *.o
+<<tab>>-del *_ming.def
+<<tab>>-del *.dll      
+
+%.o:<<tab>>%.cpp
+<<tab>>${CPP} ${CPPFLAGS} -c $< -o $@
+
+%.o:<<tab>>%.c
+<<tab>>${CPP} ${CPPFLAGS} -c $< -o $@
+
+
+...make SURE you replace the <<tab>> references with actual TAB characters (NOT SPACES!!!).
+
+Change the HPB_bot parts to whatever you want, but make SURE you don't delete the "type GiveFnpt.dat >> XXX_ming.def" part!!!
+
+botman
+
+
+
+--------------------------------------------------
+09/08/00 at 13:47:52  Reply by: ZoIcCeLi (zoicceli@gmx.net)
+--------------------------------------------------
+I found what was wrong. I had written the file name wrong in the liblist.gam ;>))))
+
+--------------------------------------------------
+09/08/00 at 18:33:21  Reply by: Baggy (webmaster@baggyskrib.fsgs.com)
+--------------------------------------------------
+Now you made botman write all that down for nothing. Wow, that must be hell for you botman.
+
+-Baggy =)
+

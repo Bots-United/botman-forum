@@ -1,0 +1,426 @@
+--------------------------------------------------
+Subject: Bot's Aiming
+--------------------------------------------------
+01/07/02 at 19:49:36  Posted by: BlackJ@CK (mypcpost@usa.net)
+--------------------------------------------------
+instead of letting ppl to complain about the accuracy of bot's aiming... (too poor or too good), is there any way to make use of the 'autoaim' code on the bots? is it possible to port 'autoaim' function on bots, even if it's disabled by the server? 
+
+i mean call out the 'autoaim' functions of hl engine, instead of writing our own aiming code...
+
+--------------------------------------------------
+01/08/02 at 04:17:19  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Sure, see CBasePlayer::GetAutoAimVector() in the player.cpp file of the SDK.  The autoaiming is pretty bad though so you might not want to use it.
+
+botman
+
+--------------------------------------------------
+01/14/02 at 16:55:24  Reply by: bigjesus (holybigjesus@hotmail.com)
+--------------------------------------------------
+Ive been thinking about this too but off topic type ideas. Like in not messing with bot aim but how many frames the cpu runs for bots cause of the way that some people have better machines then others and most people who serve with good machines find the bot is too good and people with like a p2 300 mhz thinks the bot is too easy. but then again this could also be handled with reaction times.
+
+--------------------------------------------------
+01/14/02 at 23:45:18  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+I've just implemented a very realistic bot aiming system in my PMBot. Here's what it looks like :
+code:
+
+void BotShootAtEnemy (bot_t *pBot)
+{
+   float f_distance;
+   Vector v_enemy, v_target_angle;
+   TraceResult tr;
+
+   // if bot can see his enemy's head, aim for the head, else aim for the feet
+   UTIL_TraceLine (pBot->pEdict->v.origin + pBot->pEdict->v.view_ofs,
+                   pBot->pBotEnemy->v.origin + pBot->pBotEnemy->v.view_ofs,
+                   ignore_monsters, pBot->pEdict->v.pContainingEntity, &tr);
+   if (tr.flFraction == 1.0) // aim for the head, either enemy ducking or not
+      v_enemy = pBot->pBotEnemy->v.origin + pBot->pBotEnemy->v.view_ofs - GetGunPosition (pBot->pEdict);
+   else if (pBot->pBotEnemy->v.flDuckTime > 0) // aim for the feet, enemy is ducking
+      v_enemy = pBot->pBotEnemy->v.origin + Vector (0, 0, -12) - GetGunPosition (pBot->pEdict);
+   else // aim for the feet, enemy is NOT ducking
+      v_enemy = pBot->pBotEnemy->v.origin + Vector (0, 0, -28) - GetGunPosition (pBot->pEdict);
+
+   // offset target angle at some time interval
+   if (pBot->f_aim_adjust_time < gpGlobals->time)
+   {
+      v_target_angle = UTIL_VecToAngles (v_enemy) - pBot->pEdict->v.v_angle;
+      while (v_target_angle.x > 180)
+         v_target_angle.x -= 360;
+      while (v_target_angle.x < -180)
+         v_target_angle.x += 360;
+      while (v_target_angle.y > 180)
+         v_target_angle.y -= 360;
+      while (v_target_angle.y < -180)
+         v_target_angle.y += 360;
+
+      v_target_angle.y = v_target_angle.y * 0.75; // offset yaw at 75 percent of the angle
+
+      if (v_target_angle.x < 0)
+         v_target_angle.x = v_target_angle.x + v_target_angle.y / 10; // influence on x angle
+      else
+         v_target_angle.x = v_target_angle.x - v_target_angle.y / 10; // influence on x angle
+
+      // move the aim cursor
+      BotAddViewAngles (pBot, v_target_angle);
+
+      // set the body angles to point the gun correctly
+      pBot->pEdict->v.angles.x = pBot->pEdict->v.v_angle.x / 3;
+      pBot->pEdict->v.angles.y = pBot->pEdict->v.v_angle.y;
+      pBot->pEdict->v.angles.z = 0;
+
+      // adjust the view angles to aim correctly (MUST be after body v.angles stuff)
+      pBot->pEdict->v.v_angle.x = -pBot->pEdict->v.v_angle.x;
+      BotSetIdealYaw (pBot, pBot->pEdict->v.v_angle.y); // make body face eye's direction
+
+      // next aim adjustment in fraction second (based on skill)
+      pBot->f_aim_adjust_time = gpGlobals->time + (6 - pBot->bot_skill) / 20;
+   }
+
+   // rest of BotShootAtEnemy() follows...
+}
+
+
+
+It can be adjusted by setting a higher aim sample rate (f_aim_adjust_time), or with the percentage applied to v_target_angle.y
+
+The advantage of this method is that the aim variation is logarithmic with time, just like normal players do (e.g. in the first milliseconds you aim quick and dirty and you adjust aim better and better with time).
+
+Try it out!
+
+[modified on 01/14/02 at 23:45:18]
+--------------------------------------------------
+01/14/02 at 23:50:25  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+furthermore in section where bots choose to aim for the head or for the feet you could add check depending on the weapon (e.g. if RPG, aim for the feet).
+
+....ummmm... didn't do that yet ? Am gonna write this rite now ! ;-)
+
+
+--------------------------------------------------
+01/15/02 at 00:32:20  Reply by: William (william@cgf-ai.com)
+--------------------------------------------------
+For more ideas and inspiration, check out:
+http://www.botepidemic.com/aid/cgf/design_vision.shtml
+
+William
+
+--------------------------------------------------
+01/25/02 at 05:30:24  Reply by: CountFloyd (countfloyd@botepidemic.com)
+--------------------------------------------------
+Although Pierre's way is better than a lot of implementations it still lacks some things like visibility (are the feets visible at all?) and target velocity to name just a few. William's Design om the CGF pages is too general for me so why not discuss aiming a bit more here ? For a start I'll try to give an overview of the different methods from different Bots I know (some of it is approximated so don't flame me if it's wrong. Also when I'm talking about weapons I mean weapons using bullets not grenades etc.):
+
+1. Half-Life Monsters
+
+Depending on Class & Skill use different Turnspeeds. Always aim for the Waist and shoot once the target is within a certain FOV (again class/skill depending). Don't need to care for weapon recoil since they don't have it. Higher skilled Grunts do burst firing nevertheless. Not too humanlike...
+
+2. HPB-Bot (and lots of derieved Bots)
+
+Checks every frame for Visibility of Waist only. Has one fixed Turnspeed (25.0 degree each frame ?)for every skill. Every frame a headshot probability is recalculated (even if the Head's not visible). Adds skill based offsets to the target position every frame. Doesn't care about different aiming with different weapons or enemies velocity. Doesn't care about weapon recoil.
+
+3. POD-Bot (for CS)
+
+Checks every Frame for Visibility setting Flags what's visible. Uses different Turnspeeds for every skill. If Head's visible calculates Headshot probability like HPB-Bot and also adds offsets to the seen position. Doesn't care about different aiming with different weapons or enemies velocity. Cares about weapon recoil/burst firing.
+
+4. ParaBot (for HL)
+
+Seems to add past turns to the current number of degrees causing them to shake. Shoots when target is within LOF Cone. Tries to adjust aim. Has different aiming for weapons. Probably also adjusts for weapon recoil.
+
+5. BSD Bot (for CS)
+
+Checks Visibility of Waist only, every Frame. Aiming is affected by enemies velocity which adds offsets to the Target Vector. AFAIK no different weapon handling. Smoothes angles by calculating average degrees. Shoots when calculated error (calculated aim & target aim) is within skill boundaries. Uses Burstfire to adjust recoil. Tries to steady aim if assumes unseen.
+
+5. Q3 Bots and derieved Games
+
+Recalculates Visibility every 0.5 secs, tries to improve the aim within the bounding box of the enemy. Cares about different weapon handling and is also affected by enemy velocity. No recoil in Q3 ? Turnspeeds ?
+
+6. CGF Bots for AQ2
+
+Is affected by each and everything and has a different handling for each weapon ;)
+Probably the most perfect aiming I've ever seen. Don't know if visibility is updated every frame (William?).
+1 bad thing:
+Turnspeeds depending on weapon.
+
+
+So far there's no convincing aiming in any Bot for a HL MOD (or at least I don't know any). Best would probably be a mix between Q3, BSD Bot and ParaBot (or the very complete aiming of the CGF Bots). Especially visibility shouldn't be checked every frame (too costly, no human eye can react in 1 frame). Q3's method of picking an offset depending a new offset within the bounding box is also worth a thought or two I think. Finally letting the Bots improve their aim when unseen should also make the Bots more realistic and different weapon handling is a must...
+Please post your ideas about aiming here !
+
+--------------------------------------------------
+01/25/02 at 07:54:41  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+very simple thing im using...
+
+code:
+ <b>BotThink</b>
+                        if( !pBot->is_in_transformation )
+                        {
+                              if(( pBot->f_lastchangetarget > 0.0 )&&((pBot->f_lastchangetarget + 0.1 +
+                                   (0.5-(0.1*pBot->bot_skill))) <= gpGlobals->time ))
+                              {
+                                    pBot->got_target = FALSE;
+                                    pBot->f_lastchangetarget = 0.0;
+                              }
+                        }
+
+
+
+code:
+ <b>BotBodyTarget(Top)</b>
+      Vector v_enemy = VecBModelOrigin(pBotEnemy);
+
+      if( !pBot->is_in_transformation )
+      {            
+                  if( pBot->got_target )            
+                    return (v_enemy + pBot->gun_target);                        
+      }
+      else
+            pBot->got_target = FALSE;
+
+
+
+code:
+<b>BotBodyTarget (after adding offsets with skill)</b>
+      Vector base_target = target;
+
+
+
+code:
+ <b>BotBodyTarget (bottom)</b>
+
+      if( !pBot->is_in_transformation )
+      {            
+            pBot->got_target = TRUE;
+            pBot->f_lastchangetarget = gpGlobals->time;
+      }
+      else
+            pBot->got_target = FALSE;
+
+      
+      pBot->gun_target = base_target - target;
+      
+      return target;
+
+
+
+
+U can ignore the transformation stuff, thats for the mod im using the bot with :p
+
+[modified on 01/25/02 at 06:53:06]
+
+edited by botman to wrap long lines
+
+[modified on 01/25/02 at 07:54:41]
+--------------------------------------------------
+01/25/02 at 06:51:35  Reply by: William (william@cgf-ai.com)
+--------------------------------------------------
+QUOTE:
+
+6. CGF Bots for AQ2
+Is affected by each and everything and has a different handling for each weapon ;)
+Probably the most perfect aiming I've ever seen. Don't know if visibility is updated every frame (William?).
+1 bad thing:
+Turnspeeds depending on weapon.
+
+
+
+
+Visibility is updated each tick (10Hz). However, tracelines are preceded by a PVS check and a dot-product check. In other words, tracelines are only used when it is likely a bot can see another bot. On average, that's not 5 but closer to 1 tracelines for each combination of bots.
+
+CGF distinguishes between 'perception' and 'detection': the fact that I have a valid line-of-sight (perceive) to some distant object doesn't mean I detect it. The detection threshold typically is exceeded when:
+- the AI watches a static object for a long time
+- the object moves
+- the distance to the object decreases
+Once seen, the object continues to be seen until the line-of-sight quality drops under another threshold (lower than the detection threshold).
+To properly model detection, the AI indeed samples visibility every frame, but does not necessarily see within .1 s.
+
+Note that casting 5 rays from one location to almost the same destination isn't that much more expensive than casting the 1 ray. Subsequent traces in general require the same parts of the BSP datastructure to be traversed, which most likely now are in the CPU cache. 
+
+Turnspeeds depend on zoom-factor (the weapon mode) and skill, not on the weapon itself (if I remember correctly).
+
+Shoot when target is within a (narrow) cone. Special aiming for indirect fire weapons (arc trajectory and around the corner grenade tossing), though this was never fully integrated in the combat code.
+
+Note that it isn't the cool techno story about the 'AI vision and aiming' that counts; what counts is how the enemy vision 'feels' in the game.
+
+William
+
+--------------------------------------------------
+01/25/02 at 07:48:04  Reply by: @$3.1415rin (joebot@botepidemic.com)
+--------------------------------------------------
+with joebot i'm using a system using momentum. it doesn't care about what is seen of the enemy, just if it is seen. The ideal aiming angles are the angles to the exact position of the enemy + avoidance of recoil. If an enemy doesn't see the bot the bot can 'slowly' ( depends on the skill ) aim directly for the head.
+if there isn't much movement of the bot or its enemy, this aiming is quite accurate. Problems are the adaptation to the current fps ( I'm not sure if my calculation for aNow is right :) ) and the danger of getting no stable end angle, but some oscillating view :(
+
+code:
+
+float a=f_AMomentum,idealSpeed,c=f_ASpeed,aNow;
+      
+      idealSpeed = (ideal - current);
+      idealSpeed = idealSpeed*c;
+      aNow = exp(log(a) * msecval / 50.0);
+      fViewSpeedPitch = fViewSpeedPitch*aNow + idealSpeed*(1.0-aNow);      // a+b=1, etwa a = 0.8, b=0.2
+      
+      current += fViewSpeedPitch * 1/*pEdict->v.pitch_speed*/ * (msecval/50.0)
+
+
+--------------------------------------------------
+01/25/02 at 08:22:16  Reply by: CountFloyd (countfloyd@botepidemic.com)
+--------------------------------------------------
+QUOTE:
+
+However, tracelines are preceded by a PVS check and a dot-product check. In other words, tracelines are only used when it is likely a bot can see another bot
+
+
+
+Same with me but unfortunately I'm not sure if it works with Fakeclients. I'm doing this (adapted from the HL SDK):
+code:
+
+      // Setup Potentially Visible Set for this Bot
+      Vector vecOrg = pEdict->v.origin + pEdict->v.view_ofs;
+      if ( pEdict->v.flags & FL_DUCKING )
+      {
+            vecOrg = vecOrg + ( VEC_HULL_MIN - VEC_DUCK_HULL_MIN );
+      }
+      unsigned char *pvs = ENGINE_SET_PVS ( (float *)&vecOrg );
+
+
+
+Later in the loop which checks for enemies:
+code:
+
+                  // Let the Engine check if this Player is potentially
+                  // visible
+                  if(!ENGINE_CHECK_VISIBILITY(pPlayer, pvs ) )
+                        continue;
+
+
+
+I tried this stuff on me and it really eliminates unnecessary checks but sometimes the PVS seems to be really weird.
+
+QUOTE:
+
+Problems are the adaptation to the current fps I'm not sure if my calculation for aNow is right
+
+
+Oh yes I forgot about JoeBot which also seems to have a very realistic aiming although I find it almost too limited because even on higher skills they can be beaten.
+I'm using the frametime stored in the Edict to calculate fps independant turns:
+
+code:
+ 
+      // Get Speed Multiply Factor by dividing Target FPS by
+      // real FPS
+      float fSpeedFactor = CVAR_GET_FLOAT("fps_max")/(1.0/gpGlobals->frametime);
+      if(fSpeedFactor < 1)
+            fSpeedFactor = 1.0;
+
+
+
+After that you can use your desired amount multiplied with this Variable like this:
+fTurnThisFrame = 25.0 * fSpeedFactor;
+
+--------------------------------------------------
+01/25/02 at 09:25:30  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+btw, I've changed my method a bit. I created a FPlayerIsVisible() function that returns a vector to the most interesting visible piece of the body to aim to (head, waist, arm, feet...). It will be in the next release (in a few weeks).
+
+... and for the target velocity I think it will be sufficient to add pBotEnemy->v.velocity to the final aim vector, isn't it ?
+
+Count Floyd and William : Thanks a lot for the ideas !
+
+
+[modified on 01/25/02 at 09:25:30]
+--------------------------------------------------
+01/25/02 at 10:11:03  Reply by: CountFloyd (countfloyd@botepidemic.com)
+--------------------------------------------------
+QUOTE:
+btw, I've changed my method a bit. I created a FPlayerIsVisible() function that returns a vector to the most interesting visible piece of the body to aim to (head, waist, arm, feet...). It will be in the next release (in a few weeks).
+
+
+
+
+Why not checking if one of the 2 major parts are visible (head or waist) and if not, checking random offsets inside the bounding box ? 
+
+QUOTE:
+
+... and for the target velocity I think it will be sufficient to add pBotEnemy->v.velocity to the final aim vector, isn't it ?
+
+
+
+
+No, that would be too much in most cases. For example Vector vecPredict = pBot->pBotEnemy->v.origin + pBotEnemy->v.velocity * 0.5;
+vecPredict would then contain the origin of that enemy if it would continue movement with that velocity for 0.5 secs (in an ideal world without friction and gravity). You probably want to choose smaller offsets. Also I think humans care more about horizontal than vertical movement.
+
+--------------------------------------------------
+01/26/02 at 09:58:18  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+QUOTE:
+Why not checking if one of the 2 major parts are visible (head or waist) and if not, checking random offsets inside the bounding box ?
+
+
+
+That would not be realistic. The function first checks for the head, then if visible, it returns a vector to it ; if not, it checks successively for the waist, the arms (not exactly, but points that are on the edge of the bounding box), then for the feet. If none of those locations are visible, the function assumes the player is not, and returns Vector (0, 0, 0). Imagine a well known in-game situation: the camper hiding behind his window who gets shot by AWP in the arm because he thought nobody could see him (as himself could see nobody). I want my bots to react correctly to these situations too, else they would be too easy to shoot down (you approach carefully until you see bot's arm, then you fire one or two shots with a deagle. Bot won't even have noticed that YOUR arm was visible too). I think we humans check for aim points in that order.
+
+QUOTE:
+No, that would be too much in most cases. For example Vector vecPredict = pBot->pBotEnemy->v.origin + pBotEnemy->v.velocity * 0.5;
+vecPredict would then contain the origin of that enemy if it would continue movement with that velocity for 0.5 secs (in an ideal world without friction and gravity). You probably want to choose smaller offsets. Also I think humans care more about horizontal than vertical movement.
+
+
+
+
+;-P of course I won't add the full vector but a fraction of it ! The deal is to figure out what fraction is sufficient for good aiming. I think I'll make it skill-based. Then for the vertical movement trick, I will divide the vector's z coordinate by a number based on skill too (thanks for the idea)...
+
+
+[modified on 01/26/02 at 09:58:18]
+--------------------------------------------------
+02/04/02 at 21:55:17  Reply by: CountFloyd (countfloyd@botepidemic.com)
+--------------------------------------------------
+QUOTE:
+
+That would not be realistic. The function first checks for the head, then if visible, it returns a vector to it ; if not, it checks successively for the waist, the arms (not exactly, but points that are on the edge of the bounding box), then for the feet. If none of those locations are visible, the function assumes the player is not, and returns Vector (0, 0, 0).
+
+
+
+I think we misunderstood each other because that's exactly what I was trying to say, it's necessary to check for the usual positions of head, waist etc. but if all fails the bounding box should be scanned to check if there's anything else left which can be seen.
+
+To continue this thread I would like to know how you all deal with weapon recoil and spread. I'm struggling with it for quite some time now and still don't have a 100% solution. I'm *always* subtracting the punchangle from the aiming direction and this seems to work somewhat, but there's still the weapon spread. Higher skills in POD also use burst-firing to get rid of this but that weapon spread still climbs up causing the Bots either to miss or even worse giving low skilled Bots bonus headshot kills. Of course I try to avoid it by having the Bots aim lower over time but it's hard to find good values since it's distance and time-based. I'm curious to hear your solutions if there are any.   
+
+--------------------------------------------------
+02/05/02 at 09:24:00  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+for recoil. I think its hard to 'compensate' it because its done after the bot code. E.g. you never can make a bot 100% aim in CS because when a bot holds the trigger it still has recoil due the cs recoil code.
+
+I don't know any real fix for this, unless you know the recoil code and you can compensate the angles..
+
+
+--------------------------------------------------
+02/05/02 at 12:49:13  Reply by: CountFloyd (countfloyd@botepidemic.com)
+--------------------------------------------------
+QUOTE:
+
+I don't know any real fix for this, unless you know the recoil code and you can compensate the angles..
+
+
+
+
+Well you've got the HL SDK, haven't you ? If you take a look into pm_shared.c you can see how the view angles get calculated for example:
+code:
+
+      PM_DropPunchAngle( pmove->punchangle );
+
+      // Take angles from command.
+      if ( !pmove->dead )
+      {
+            VectorCopy ( pmove->cmd.viewangles, v_angle );         
+            VectorAdd( v_angle, pmove->punchangle, v_angle );
+
+
+
+As you can see the punchangle (the Vector which is increased for weapon recoil etc. drops slowly over time and the final punchangle is added to the current view. So removing the weapon recoil is just a matter of subtracting the current punchangle when aiming. I was talking about aiming lower to even get rid of huge weapon spreads (which are independant from recoil).
+
+
+--------------------------------------------------
+02/10/02 at 11:50:19  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+actually thats my point, i don't have the cs recoil code to know how to compensate. 
+
+Anyhow, i can't help you further with the weapon spread / lowering aiming issue.
+

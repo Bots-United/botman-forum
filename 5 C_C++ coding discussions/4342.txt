@@ -1,0 +1,67 @@
+--------------------------------------------------
+Subject: 64bit coding, what will it be?
+--------------------------------------------------
+04/24/03 at 04:30:50  Posted by: Sweeper (Mercenary_aim_@hotmail.com)
+--------------------------------------------------
+Okay, now that AMD and Intel are bumping up their new 64 bit CPU's, In September comes the Athlon 64 so I guess 64bit coding is right around the corner.
+But I am a bit worried, as I am learning C++ primarly for bot coding but I might use the skills for other stuff too, so will all what I have learned be useless when the 64 bit hits?
+Current code I am learning is 32bit Intel based.
+
+--------------------------------------------------
+04/24/03 at 05:19:16  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+It's not much different from going from 16 bits to 32 bits.
+
+If you write your code assuming that an 'int' is always 32 bits, then you aren't writing good portable code.  There's always ways to write code so that you don't have to assume the size of your variables in some arbitrary number of bits.
+
+In most cases, you won't even notice the size of integers, the major exceptions that I can think of are encryption and/or compression where you are manipulating bits in integers directly and you need to be aware of whether something is 8 bits, 16 bits, 32 bits or 64 bits.
+
+botman
+
+--------------------------------------------------
+04/24/03 at 13:46:39  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+that's why instead of using platform-dependent types, I suggest to use fixed types. Such as:
+
+typedef unsigned char u8
+typedef signed char i8
+typedef unsigned short u16
+typedef signed short i16
+and so on...
+
+
+--------------------------------------------------
+04/25/03 at 09:32:22  Reply by: <LunchBox> (hllunchbox@hotmail.com)
+--------------------------------------------------
+Can you explain to me what:
+
+typedef unsigned char u8
+typedef signed char i8
+typedef unsigned short u16
+typedef signed short i16
+
+actually do 
+
+--------------------------------------------------
+04/25/03 at 11:32:39  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+With these lines basically you tell the compiler you define a new type for data.
+
+'int' is a type. 'char' is a type. For a 'char' which is a type coded on eight bits, for example, when this type is 'signed', it ranges from -127 to +128. When it is 'unsigned', as it is for character strings, it ranges from 0 to +255. The differences lies within the 8th bit of the memory footprint. When it is signed, this last bit determines the sign. When not, it is used as a 8th bit for extending the data range from the [0-127] you have with 7 bits (2^7) to the [0-255] range you have with 8 bits (2^8). I guess if you knew a bit of electronics and already had the chance to program some touchy microcontrollers, that would help a lot :)
+
+The fact that you tell the compiler: "I want to define a new type of data, which memory footprint is like this, and I want to name it this way", ensures your code will always be portable, provided you then use these types only for all of your data.
+
+Of course, when you tell the compiler about a new type of data like I do, you ought to use platform-independent types. In C, the type 'int' is not always the same. On either platform, it will be 8 bits, on the other, it will be 16, and on another one, 32. You just can't compile the same way on an Intel 8051, a Motorola 68xx00, an Alpha station and one of the latest 64-bit processors. That's why, some of the types in C are REALLY bound to a fixed amount of bits. The type 'char', for example, is ALWAYS bound to 8 bits. In extenso, whether your platform is, 00101011 or 10111011 will be bytes, and the number of digits they use for representing the data will always be the same. Depending on if you use a signed char or unsigned char for representing them, either both will be unsigned bytes (in this case they'll range from 0 to 255 and both will be positive) or signed bytes (and in this case the second one will be a NEGATIVE number -because of the 8th byte, the one on the left, being 1- ranging from 0 to 127, twice less because they have a bit less for representing the data). That was for the 'char' example. Now you also have the type 'short', and others, which are platform-independent as well. 'Short' uses 16-bit for example.
+
+Now when you use such types, and define yours, and later on always call your own types of data when you declare a new variable, i.e. instead of 'int dummy1 = 0;' you use 'u16 dummy1 = 0', you ENSURE your 'dummy1' variable will ALWAYS be 16-bit width, whatever the platform you intend to compile your code on.
+
+Of course, it's not that important when you're used to write Hello World's and such. But when it comes to optimization, you'll learn the many tricks there are for doing math with binary numbers, shifting bits, ANDing, XORing, and so on, and then you OUGHT to be certain of the type of the variable you're working on.
+
+I'm sorry I can't explain this better, for I'm one of the guys who never learned programming at school. I just barely made a bit of electronics (when I was not sleeping during the lessons) and then it excited my curiousity and I moved on to 8086 assembly and C, thanks to botman's bots. Since I'm a self-taught, I probably can't be the most 'educative' person to teach you that. I'm sure botman is around the corner... ;D
+
+
+--------------------------------------------------
+04/25/03 at 18:53:49  Reply by: Zipster (skyork99@juno.com)
+--------------------------------------------------
+Another method is to surround truly size-dependent code in #ifdef blocks (i.e botman's bit manipulation example).  Usually there are certain symbols defined that identify the type of system or machine the code is being compiled on, that you can usually figure out if it's a 16-, 32-, or 64-bit machine, as well as certain base sizes and stuff.
+

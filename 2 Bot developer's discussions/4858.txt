@@ -1,0 +1,66 @@
+--------------------------------------------------
+Subject: Meta_Detach not getting called..
+--------------------------------------------------
+09/27/03 at 06:52:44  Posted by: Cheesemonster!!! (cheeseh(at)rcbot(dot)net)
+--------------------------------------------------
+Im having troubles with my bot as a metamod plugin, It isn't calling Meta_Detach so I know when to free all memory, so theres a big memory leak.
+
+I've got this in the meta_api cpp, Meta_Attach gets caled okay but Ive tried putting breakpoints in meta_detach and they wer just never called when I quit the game and close HL.
+
+code:
+
+
+plugin_info_t Plugin_info = { 
+    META_INTERFACE_VERSION, // interface version 
+            BOT_NAME, // plugin name 
+            BOT_VER, // plugin version 
+            BOT_DATE, // date of creation 
+            BOT_AUTHOR, // plugin author 
+            BOT_WEBSITE, // plugin URL 
+            BOT_DBG_MSG_TAG, // plugin logtag 
+            PT_STARTUP, // when loadable 
+            PT_ANYTIME, // when unloadable 
+}; 
+
+//......
+C_DLLEXPORT int Meta_Detach (PLUG_LOADTIME now, PL_UNLOAD_REASON reason) 
+{ 
+      // this function is called when metamod unloads the plugin. A basic check is made in order 
+      // to prevent unloading the plugin if its processing should not be interrupted. 
+      
+      // is metamod allowed to unload the plugin ? 
+      if ((now > Plugin_info.unloadable) && (reason != PNL_CMD_FORCED)) 
+      { 
+            LOG_CONSOLE (PLID, "%s: plugin NOT detaching (can't unload plugin right now)", Plugin_info.name); 
+            LOG_ERROR (PLID, "%s: plugin NOT detaching (can't unload plugin right now)", Plugin_info.name); 
+            return (FALSE); // returning FALSE prevents metamod from unloading this plugin 
+      }       
+
+      gBotGlobals.FreeGlobalMemory();
+      
+      return (TRUE); // returning TRUE enables metamod to unload this plugin 
+}
+
+
+
+Is there a problem with this? Or is there another way to know if the dll file has been detached from the metamod dll file in metamod?
+
+[modified on 09/27/03 at 06:52:44]
+--------------------------------------------------
+09/27/03 at 08:55:31  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+meta_detach() seems to be called when you detach the plugin from metamod WHILE metamod is still running, not if you shutdown metamod.
+
+If I were you, I'd put the free() stuff in DllMain(), or in _fini() if you're compiling for Linux.
+
+
+
+--------------------------------------------------
+09/27/03 at 09:21:12  Reply by: Cheesemonster!!! (cheeseh(at)rcbot(dot)net)
+--------------------------------------------------
+Does DLL Main get called when you are using the bot as a metamod plugin?
+
+
+edit: alright, should have tried it, tried it, it worked yay :D
+
+[modified on 09/27/03 at 09:21:12]

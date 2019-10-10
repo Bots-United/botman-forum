@@ -1,0 +1,337 @@
+--------------------------------------------------
+Subject: Forcing a team change
+--------------------------------------------------
+08/21/03 at 08:36:28  Posted by: Dummy (BigDummy@myrealbox.com)
+--------------------------------------------------
+This question is specifically for CS, but probably applies to most other mods as well.
+
+How can you force a player/bot to change teams at the end of a round?
+
+Currently I have been doing this by duplicating the actions a live person would take.  I send the menuselect message that brings up a change team menu, then I duplicate their actions by making them either press 1 or 2.  I do this when they receive the ResetHud Message (which happens at the beginning of each round for each player).
+
+While this method works.  It is quite sloppy.  They are spawned and then immediately die, and then usually have to sit out the next round as a spectator before finally being spawned on the other team.  Just as if they had hit the buttons themselves.
+
+Does anyone know a better, easier or cleaner way to force a team change at the beginning/end of a round?
+
+--------------------------------------------------
+08/21/03 at 15:01:35  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+In Counter-Strike, the "end round" message is usually trigerred by a call to FindEntityByString() to the "info_map_parameters" entity. This entity is triggered when and only when the round RESTARTS, and not when it is finished. In Counter-Strike, the round finishes when the clients receive either the "CT Win" or "Ts Win" HUD message, and it can elapses 5 seconds before the round is actually restarted. This is more than enough for a real player to change teams and be present on the other team as soon as the new round starts, but if a bot decides to issue the same commands only when the "info_map_parameters" entity is triggered, it probably isn't soon enough for it to be allowed to play the new round.
+
+So, either trigger your change teams command upon receiving of a CT/T win message, or perhaps send the bot client commands in a burst, like:
+"chooseteam";"menuselect 1";"menuselect 5"
+in a row, during the same frame. You might want to look at my FakeClientCommand() implementation for this. Have a search on this forum for it.
+
+
+--------------------------------------------------
+08/23/03 at 12:47:56  Reply by: Dummy (BigDummy@myrealbox.com)
+--------------------------------------------------
+Thanks.  That works better.  Now, the bot/player does not have to sit out the next round.
+
+However, it is still a bit sloppy.  My plugin will need to automatically change real players to the other team as well, and even though I print a message to their screen, it is still a bit of a shock when they suddenly die at the end of the battle to be respawned on the other team.
+
+Is there any way to force a team change in a similar fashion as when the engine does it with autoteambalance?  Without them dying, simply being respawned on the other team?  Is it possible to skip the fake client commands altogether and simply work with the engine vars/functions to accomplish a team change?
+
+I guess what I am asking is:
+Do we know how the engine forces a team change when the teams are in violation of mp_autoteambalance?
+
+--------------------------------------------------
+08/24/03 at 06:12:29  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+http://www.racc-ai.com/swapteams_plugin.exe does what you want (source code included).
+
+
+--------------------------------------------------
+08/24/03 at 12:47:10  Reply by: Lazer (lazer@devin-afshin.com)
+--------------------------------------------------
+What would be the parameters for FindEntityByString()? I found this in another plugin but it gives me errors...
+
+void FindEntityByString( CBaseEntity *pStartEntity, const char *szKeyword, const char *szValue );
+
+--------------------------------------------------
+08/24/03 at 13:34:40  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Actually FindEntityByString() is the low-level engine function that will return the next entity in the entity list after the one pointed by pStartEntity, whose szKeyword key has the value szValue. It has been wrapped inside several other functions for convenience. For example, FindEntityByClassname() finds any entity having the specified classname. Since "classname" is a member of the entity's key/value pairs, what FindEntityByClassname() actually does is that it calls FindEntityByString, passing it "classname" as the szKeyword parameter, and the requested classname as the szValue parameter.
+
+Look again at how the FindEntityBy functions are made:
+code:
+
+edict_t *UTIL_FindEntityByString( edict_t *pentStart, const char *szKeyword, const char *szValue )
+{
+   edict_t *pentEntity;
+
+   pentEntity = FIND_ENTITY_BY_STRING( pentStart, szKeyword, szValue );
+
+   if (!FNullEnt(pentEntity))
+      return pentEntity;
+   return NULL;
+}
+
+
+edict_t *UTIL_FindEntityByClassname( edict_t *pentStart, const char *szName )
+{
+      return UTIL_FindEntityByString( pentStart, "classname", szName );
+}
+
+edict_t *UTIL_FindEntityByTarget( edict_t *pentStart, const char *szName )
+{
+      return UTIL_FindEntityByString( pentStart, "target", szName );
+}
+
+
+edict_t *UTIL_FindEntityByTargetname( edict_t *pentStart, const char *szName )
+{
+      return UTIL_FindEntityByString( pentStart, "targetname", szName );
+}
+
+
+
+
+--------------------------------------------------
+08/24/03 at 16:16:28  Reply by: Lazer (lazer@devin-afshin.com)
+--------------------------------------------------
+Well I was doing this in metamod, and when I try and add the function I get this error:
+QUOTE:
+d:\metamod\metamod-1.16.1\mm_alt_players\hookedfunctions_table.h(201) : error C2440: 'initializing' : cannot convert from '' to 'struct edict_s *(__cdecl *)(struct edict_s *,const char *,const char *)'
+        None of the functions with this name in scope match the target type
+
+
+--------------------------------------------------
+08/24/03 at 18:16:34  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Post your code, this is very likely to be a syntax error.
+
+
+--------------------------------------------------
+08/24/03 at 20:31:27  Reply by: Lazer (lazer@devin-afshin.com)
+--------------------------------------------------
+in the .h file:
+
+void FindEntityByString( edict_t *pentStart, const char *szKeyword, const char *szValue );
+
+In the .cpp file:
+
+void FindEntityByString( edict_t *pentStart, const char *szKeyword, const char *szValue )
+{
+      player_t* pPlayer;
+      for (int i = 1; i <= gpGlobals->maxClients; ++i) {
+            pPlayer = INDEXPLAYER(i); //ENTINDEX(i);
+            if (pPlayer->ingame){
+                  if (pPlayer->alt = true){
+                        char *infobuffer = GET_INFOBUFFER( pPlayer->pEdict );
+                        int clientIndex = ENTINDEX( pPlayer->pEdict );
+                        SET_CLIENT_KEY_VALUE( clientIndex, infobuffer, "model", "osama" );
+                        CLIENT_PRINTF( pPlayer->pEdict, print_console, "You are now Osama Bin Laden.");
+                  }
+            }
+      }
+}
+
+(and i've tried commenting out the code inside the function, doesn't matter)
+
+Then in my hookedfunctions_table.h:
+
+enginefuncs_t meta_engfuncs = {
+FindEntityByString,                              // pfnFindEntityByString()
+};
+
+Oh, and there are a bunch of NULLs in the function table along with "FindEntityByString". It works with everything else I've declared this way, I don't get why it won't work with this one...
+
+--------------------------------------------------
+08/25/03 at 08:55:01  Reply by: Lazer (lazer@devin-afshin.com)
+--------------------------------------------------
+Actually, I just remembered that I haven't been able to get anything working in the enginefuncs_t meta_engfuncs table without the same error. I can only seem to declare stuff in the other tables.
+
+--------------------------------------------------
+08/25/03 at 09:18:15  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Well for starters, if what you want is to make players switch models or teams, I really don't understand why you hook FindEntityByString() this way. The code you put in this function will be called EACH TIME FindEntityByString() is called by the game somehow, and it happen quite a couple of times - and you can double this amount if you're running a bot DLL.
+
+Wouldn't it be more simple to check in StartFrame() if a CVAR has changed, or directly hook the command in ClientCommand() ?
+
+And occasionally, what you have here is incorrect. You're writing for metamod, aren't you ? So where's your META_RETURN() macro ? No wonder you can't seem to hook a single function properly in either of the DLL interfaces :)
+
+I suggest you read the "coding for metamod" docs again, a little bit more closely this time :)
+
+
+--------------------------------------------------
+08/25/03 at 11:08:59  Reply by: Dummy (BigDummy@myrealbox.com)
+--------------------------------------------------
+Concerning the earlier post:
+
+QUOTE:
+http://www.racc-ai.com/swapteams_plugin.exe does what you want (source code included).
+
+
+
+
+This sounds great, but I get a 404 error when I try the link.  I have also searched for swapteams_plugin on google to no avail.  Is there a typo in the URL or do you know another source for this plugin & code?
+
+[modified on 08/25/03 at 11:08:12]
+
+[modified on 08/25/03 at 11:08:59]
+--------------------------------------------------
+08/25/03 at 12:57:19  Reply by: Lazer (lazer@devin-afshin.com)
+--------------------------------------------------
+Woops, I forgot the macro return. I just ripped it from my original command. Also, that was incomplete code. I'm gonna have this around the code you saw
+
+QUOTE:
+if (*szKeyword = 'info_map_parameters'){
+<<code>>
+}
+
+
+
+But ya, it's probably the macro return I forgot.
+
+EDIT: well that didn't seem to fix the problem. But let me explain a little better of how this plugin works. I made an rcon command that will change the player's model in cs. When it is changed the mod dll picks up and puts the model back. So, I put this and it works:
+
+QUOTE:
+void ClientUserInfoChanged( edict_t *pEntity, char *infobuffer )
+{
+      player_t *pPlayer = ENTPLAYER(pEntity);
+      if (pPlayer->alt){
+            SERVER_PRINT("Info changed.");
+            RETURN_META(MRES_SUPERCEDE);
+      }
+}
+
+
+
+The problem is that on the round restart, cs reverts the player back to their original model. So I need to have the plugin recognize a round start and then check if pPlayer->alt = true and if it is then it puts it back as the alternate model.
+
+[modified on 08/25/03 at 12:57:19]
+--------------------------------------------------
+08/25/03 at 14:45:52  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+In short, you want CS players to disguise as the other team, without actually changing teams ?
+I'm not sure I understand... could you be more explicit ?
+
+Sorry for the broken link, my server is down ATM, looks like my host is undergoing hardware upgrades and their DNS is a bit f-ed up. I suppose trying again later can work... else I can email it to you, if you want, provided you give me your email address.
+
+[modified on 08/25/03 at 14:45:52]
+--------------------------------------------------
+08/25/03 at 17:44:42  Reply by: Lazer (lazer@devin-afshin.com)
+--------------------------------------------------
+Well you're close, but I want to actually add _extra_ models. This will allow admins to play as players that look like their team, but make them stand out. Eventually I'll make it so players can too and make it like a 5th or 6th player on each team to chose from. It does require the models to be downloaded though... It can also have many other uses, but right now I'm just messing around with this since the only thing I've found using a similar (but different) style was chicken mod. But that doesn't change your model, it just makes you invisible and spawns a chiken model ontop of you. That is also why chickens always appear laggy. If it wasn't for it having to update the position and instead just changing the player's model, the laggy look would go away.
+
+Anyway, the problem is that the model reverts back to the original on round restart, and I'm not sure how to find out when the round restarted.
+
+--------------------------------------------------
+08/26/03 at 09:12:03  Reply by: Lazer (lazer@devin-afshin.com)
+--------------------------------------------------
+QUOTE:
+void StartFrame( void )
+{
+      if (checktime < gpGlobals->time){
+            checktime = gpGlobals->time + 1.0;
+
+            player_t* pPlayer;
+            for (int i = 1; i <= gpGlobals->maxClients; ++i) {
+                  pPlayer = INDEXPLAYER(i); //ENTINDEX(i);
+                  if (pPlayer->ingame){
+                        if (pPlayer->alt = true){
+                              char *infobuffer = GET_INFOBUFFER( pPlayer->pEdict );
+                              int clientIndex = ENTINDEX( pPlayer->pEdict );
+                              SET_CLIENT_KEY_VALUE( clientIndex, infobuffer, "model", "osama" );
+                              CLIENT_PRINTF( pPlayer->pEdict, print_console, "Adjusting model again.");
+                        }
+                  }
+            }
+      }
+      RETURN_META(MRES_IGNORED);
+}
+
+
+
+I tried using this to keep the model as the alternate player if pPlayer->Alt is true. For some reason it returns pPlayer->Alt as true even though I make it false on connect for every player. Plus the default for a boolean is false right? So this is starting to confuse me...
+
+What gets done on connect:
+
+QUOTE:
+void ClientPutInServer( edict_t *pEntity ) {  
+      int index = ENTINDEX(pEntity);
+      player_t *pPlayer = INDEXPLAYER(index);
+      pPlayer->pEdict = pEntity;
+      pPlayer->index = index;
+      pPlayer->ingame = true;
+      pPlayer->alt = false;
+      RETURN_META(MRES_IGNORED);
+}
+
+
+
+And here is the player_t structure:
+
+QUOTE:
+struct player_t {
+      edict_t*      pEdict;
+      edict_t*      pAPlayer;
+      int                  viewmodel;            //v.viewmodel
+      int                  index;
+      int                  team;
+      bool            ingame;
+      bool            alt;
+};
+
+
+
+[modified on 08/26/03 at 09:12:03]
+--------------------------------------------------
+08/26/03 at 09:48:18  Reply by: Cheesemonster!!! (cheeseh(at)houstondod(dot)com)
+--------------------------------------------------
+for a start, player index  you get for the array "index" should be 
+
+ENTINDEX(pEntity) - 1
+
+minus 1 :p
+
+because if it was 32 then thats above the array and there could be problems
+
+
+--------------------------------------------------
+08/26/03 at 10:33:34  Reply by: Lazer (lazer@devin-afshin.com)
+--------------------------------------------------
+Well I've never had problems with it before. Maybe it's what's causing it though...
+
+Hmm chickenmod does it like ths too:
+QUOTE:
+void ClientPutInServer( edict_t *pEntity ) {  
+      int index = ENTINDEX(pEntity);
+      player_t *pPlayer = INDEXPLAYER(index);
+      pPlayer->pEdict = pEntity;
+      pPlayer->index = index;
+      pPlayer->ingame = true;
+      RETURN_META(MRES_IGNORED);
+}
+
+
+
+[modified on 08/26/03 at 10:33:34]
+--------------------------------------------------
+08/26/03 at 13:16:34  Reply by: Dummy (BigDummy@myrealbox.com)
+--------------------------------------------------
+QUOTE:
+
+Sorry for the broken link, my server is down ATM, looks like my host is undergoing hardware upgrades and their DNS is a bit f-ed up. I suppose trying again later can work... else I can email it to you, if you want, provided you give me your email address.
+
+
+
+
+It would be wonderful if you could email it to me.  My email address is: capt_kevman@yahoo.com
+Thanks very much
+
+
+
+[modified on 08/26/03 at 13:16:34]
+--------------------------------------------------
+08/26/03 at 11:30:21  Reply by: Lazer (lazer@devin-afshin.com)
+--------------------------------------------------
+Alright, I made a few adjustments and it now works.
+
+--------------------------------------------------
+08/27/03 at 17:37:35  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+All I can say is that, when I wrote my own "chicken mod" plugin (which has extra features for admins like, say, filling the punished player's hard disk with garbage data), I ran into exactly the same problem as you, and it seems that the Counter-Strike MOD is very regarding about the player's models. Not only the problem would be to force players to display a specific model, but more than that it would break completely the team code, which seems heavily based on model recognition (oddily enough, since CS should have access to the player's private data, and hence their team). Personally, I gave up. You may have more chance than me though, but all I can say is: good luck, I can't help you...
+
+

@@ -1,0 +1,206 @@
+--------------------------------------------------
+Subject: Navigation Code?
+--------------------------------------------------
+07/08/01 at 15:39:38  Posted by: ProgramMan (thevbfreak.pa@netzero.net)
+--------------------------------------------------
+I used the HPB_Bot template #3 to create a bot for Science & Industry, but the bots keep bumping into walls, basically going nowhere (In other words, they do not even leave the spawn room, and yes, I did place waypoints for them to follow).  Do I have to create my own bot navigation code, and if so, how would I implement this code?  If not, does anyone have any tips for making waypoint files (If the navigation code isn't the problem, this must be what's wrong)?
+
+--------------------------------------------------
+07/08/01 at 16:19:48  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+If you look in bot_navigate.cpp at BotFindWaypoint() and BotHeadTowardWaypoint() you'll see that these are just stubs that will require you to create your own waypoint navigation code.  There are many functions in the waypoint.cpp file that will be useful in doing this.  WaypointFindNearest(), WaypointFindNearestGoal(), WaypointFindReachable() and WaypointRouteFromTo() will help in creating your own navigation code.
+
+botman
+
+--------------------------------------------------
+07/08/01 at 20:55:12  Reply by: ProgramMan (thevbfreak.pa@netzero.net)
+--------------------------------------------------
+I looked through waypoint.cpp and found the WaypointFind*() functions.  Noting that these functions return integers referring to the waypoint index found, what am I supposed to do with these waypoint values (considering also that BotFindWaypoint()/BotHeadTowardWaypoint() return boolean values)?
+
+--------------------------------------------------
+07/09/01 at 04:33:59  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+The waypoints are stored in an array appropriately called "waypoints".  The index will be the position in the array for that specific waypoint (i.e. index 37 would be waypoints[37]).  The waypoint array is composed of the waypoint structure.  The waypoint structure contains the origin and a bit mask of waypoint flags that hold information about that waypoint (crouch here, flag goal location, for team #2 only, etc.).
+
+You use the origin to get the bot to turn towards that waypoint from it's current position.  You use the flags to search for a specific type of waypoint (for example, you bot is getting low on health and you want to find a waypoint that is next to a health kit).
+
+The WaypointRouteFromTo() will allow you to find the shortest route from the current waypoint index to any other waypoint index in the map (for example, your bot is on one side of the map and you want it to go get the flag on the other side of the map.  You use the waypoint Find functions to return the index of the flag waypoint and pass the current waypoint index and the goal waypoint index into RouteFromTo() and it will tell you the next waypoint to need to navigate towards that will eventually get you to the goal).
+
+botman
+
+--------------------------------------------------
+07/11/01 at 21:31:02  Reply by: ProgramMan (thevbfreak.pa@netzero.net)
+--------------------------------------------------
+I have basic navigation code right now (so that I can see if I am actually doing something right :-) ).  But when the bot joins a team, the game crashes.  Here is my basic navigation code (or at least an attempt at it :-\ ):
+
+bool BotFindWaypoint( bot_t *pBot )
+{
+   // Do whatever you want here to find the next waypoint that the
+   // bot should head towards
+   int wpindex,nextwp;
+   bool foundwp = FALSE;
+
+   if (pBot->bot_carry_type == SI_CARRY_NOTHING)
+   {
+      // In other words, if there is a science lab waypoint...
+      if ((wpindex = WaypointFindNearestGoal(pBot->pEdict,pBot->curr_waypoint_index,pBot->bot_team - 1,W_FL_SI_SCILABS)) > -1)
+      {
+         nextwp = int(WaypointRouteFromTo(pBot->curr_waypoint_index,wpindex,pBot->bot_team - 1));
+         foundwp = TRUE;
+      }
+   }
+   else  // Bot is carrying scientist or resource...
+   {
+      if ((wpindex = WaypointFindNearestGoal(pBot->pEdict,pBot->curr_waypoint_index,pBot->bot_team - 1,W_FL_SI_ADMIN)) > -1)
+      {
+         nextwp = int(WaypointRouteFromTo(pBot->curr_waypoint_index,wpindex,pBot->bot_team - 1));
+         foundwp = TRUE;
+      }
+   }
+         
+   if (foundwp)
+   {
+      Vector v_wp = waypoints[nextwp].origin - pBot->pEdict->v.origin;
+
+      Vector bot_angles = UTIL_VecToAngles(v_wp);
+
+      pBot->pEdict->v.ideal_yaw = bot_angles.y;
+
+      BotFixIdealYaw(pBot->pEdict);
+   }
+
+   return foundwp;
+}
+
+
+bool BotHeadTowardWaypoint( bot_t *pBot )
+{
+   // You could do other stuff here if you needed to.
+
+   // This would probably be a good place to check to see how close to a
+   // the current waypoint the bot is, and if the bot is close enough to
+   // the desired waypoint then call BotFindWaypoint to find the next one.
+
+   if (BotFindWaypoint(pBot))
+      return TRUE;
+   else
+      return FALSE;
+}
+
+[modified on 07/11/01 at 21:31:02]
+--------------------------------------------------
+07/12/01 at 04:33:14  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+You must check to see if the waypoint found is NOT -1 or more than max_waypoints, cause that can cause a crash.
+
+Bascially something like 
+
+if ((found_waypoint != -1) && (found_waypoint < MAX_WAYPOINTS))
+
+If its still causes a crash afetr you check that then it may be the routefromto, cause I have probs with that!!!
+
+--------------------------------------------------
+07/12/01 at 11:12:06  Reply by: ProgramMan (thevbfreak.pa@netzero.net)
+--------------------------------------------------
+OK, I fixed the waypoint checking (I didn't know that the programmer himself had to set curr_waypoint_index and prev_waypoint_index[]). The game no longer crashes, but when I use WaypointRouteFromTo(), the bot obviously is trying to get to a waypoint that is on the other side of a wall!  Any idea why this may be happening?  I set a constant goal waypoint depending on where the bot is supposed to go, and use the bot's curr_waypoint_index, the goal waypoint index, and the bot's team number (adjusted for team-specific waypoints) for WaypointRouteFromTo()'s parameters.  Furthermore, I do not have any waypoints in this corner in which the bot gets stuck.
+
+--------------------------------------------------
+07/12/01 at 11:44:30  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+When you use WaypointRouteFromTo it just finds the nearest waypoint to the goal, not within a path. I don't know how to check for a path, I need to do that myself for my bot! :) Instead you can check to see if it is visible by using
+
+BotEntityIsVisible(pBot, waypoints[i].origin)
+
+where "i" is the index of what waypointroutefromto returned!
+
+--------------------------------------------------
+07/12/01 at 13:07:12  Reply by: ProgramMan (thevbfreak.pa@netzero.net)
+--------------------------------------------------
+I tried using BotEntityIsVisible(), but the bot still runs around pretty stupidly (at least now it doesn't get stuck in a corner!).  I found a WaypointFindPath() function in waypoint.cpp, but I have no idea how in the hell I'm supposed to use it (or even if it would be beneficial in this case).
+
+I think that botman should provide basic navigation code in his template so that people like me wouldn't be confused on how to write navigation code (but then again, I'm always confused :-)  ).
+
+--------------------------------------------------
+07/15/01 at 19:36:31  Reply by: ProgramMan (thevbfreak.pa@netzero.net)
+--------------------------------------------------
+OK, i pretty much fixed the code that I was trying to use, but now my bot finds a waypoint (using WaypointFindNearest()) and keeps circling around it.  According to a log that I created to see what the problem was:
+
+Current Waypoint: 7
+Next Waypoint: 65535
+Goal Waypoint: 108
+Prev. Waypoint[0]: -1
+Prev. Waypoint[1]: -1
+Prev. Waypoint[2]: -1
+Prev. Waypoint[3]: -1
+Prev. Waypoint[4]: -1
+
+Therefore, WaypointRouteFromTo() is returning a -1 (== 65535 for the unsigned short type that WaypointRouteFromTo() returns).  Does anybody know why this may be happening?
+
+Example line of code using WaypointRouteFromTo():
+nextwp = WaypointRouteFromTo(pBot->curr_waypoint_index,pBot->bot_goal_wp,pBot->bot_team - 1);
+
+BTW, pBot->bot_team is either 1 or 2, so the from_to[] matrix used in WaypointRouteFromTo() should not be invalid.
+
+--------------------------------------------------
+07/16/01 at 04:26:39  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+These #defines in waypoint.h are used by the waypoint functions...
+code:
+#define WAYPOINT_UNREACHABLE   USHRT_MAX
+#define WAYPOINT_MAX_DISTANCE (USHRT_MAX-1)
+
+USHRT_MAX is "unsigned short max" which is a 16 bit unsigned integer with a value of 65535.  This value is used as a return value when the waypoint you are trying to get to is unreachable from the current waypoint (i.e. no paths exist from the current waypoint to the goal waypoint).
+
+This can happen if you have a single path (like down a narrow hallway) leading toward a waypoint and one of the waypoints in the middle of the path is marked as being team specific and for the other team.
+
+Turn on the waypoint paths to make them visible, and double check that paths exist from the current waypoint in question to the goal waypoint.  To make things easier on yourself, you may want to modify the WaypointThink() code to display team specific waypoints in different colors (i.e. blue=team1, red=team2, etc.).
+
+botman
+
+--------------------------------------------------
+07/16/01 at 05:08:16  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+Heres a nice run down of what i did with WaypointFindPath
+
+Find a random goal or goal index by using WaypointFindRandomGoal or something. (store it in goal_index or something)
+
+then what I done is put all the found paths in an array using waypointfindpath and checking them by seeing if they are valid i.e. They are NOT any previous waypoints (I did this in a for loop) and stuck the valid ones in a new array, then I set a bool value to TRUE.
+
+if the bool value was still FALSE then I did another for loop checking all previous waypoints and then set to TRUE once one was found.
+
+If the bbool value was stil FALSE, change the current waypoint to -1 and return FALSE.
+
+Else
+
+Check to see if any indexes in the validpaths array is the same as the goal index. If yes then use this for the next waypoint, if not, then...
+
+Find a random value between 0 and ( amount of paths found - 1 ) and use that for the array index in the valid paths to get the index youre looking for and use that for the next wpt.
+
+Once all is well,
+
+prev wpt[4] = prev wpt[3]
+prev wpt[3] = prev wpt[2]
+prev wpt[2] = prev wpt[1]
+prev wpt[1] = prev wpt[0]
+Current waypoint = nextwpt
+
+and return TRUE :)
+
+Do all the movement code in BotHeadTowardWaypoint
+
+--------------------------------------------------
+07/17/01 at 19:23:13  Reply by: ProgramMan (thevbfreak.pa@netzero.net)
+--------------------------------------------------
+I tried a different map in which to lay waypoints and checked to make sure that they were connected in paths (damn those stairs ;-) ).  After that, the bot worked smoothly.  Thanks, botman & cheesemonster!  Cheesemonster, if it's okay with you, I am going to put your name in my credits :-).
+
+--------------------------------------------------
+07/18/01 at 02:37:41  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+:D okay, just remember (I did this wrong :-/ !)
+
+prev wpt[1] = prev wpt[0]
+prev wpt[0] = Current waypoint <-- I forgot that bit !!! ;-)
+Current waypoint = nextwpt
+
+
+

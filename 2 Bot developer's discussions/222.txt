@@ -1,0 +1,164 @@
+--------------------------------------------------
+Subject: Botman, heres a quick one....
+--------------------------------------------------
+10/08/00 at 00:45:57  Posted by: DarkYouth (darkyouth@thegraze.freeserve.co.uk)
+--------------------------------------------------
+What do I set up the shortest[a][b] array as....
+
+I've tried float, const float, arrrrghhhh
+
+
+--------------------------------------------------
+10/08/00 at 05:46:30  Reply by: DarkYouth (darkyouth@thegraze.freeserve.co.uk)
+--------------------------------------------------
+IT JUST BECAME A LONG ONE.....
+code:
+
+"
+void FloydSetup(edict_t *pEntity)
+{
+      int      a = 0;
+      int z = num_waypoints[ a ];
+      for (int b = 0; b < z; b++)
+      {
+            for (int c = 0; c < z; c++)
+            {
+                  Vector strt = waypoints[ a ][ b ].origin;
+                  Vector dest = waypoints[ a ][ c ].origin;
+                  if (WaypointReachable(strt, dest, pEntity))
+                  {
+                        float distance = (strt - dest).Length();
+                        if (distance > 800)
+                        {
+                              dist[ b ][ c ] = 0;
+                        }
+                        else if (distance < 10)
+                        {
+                              dist[ b ][ c ] = 0;
+                        }
+                        else
+                              dist[ b ][ c ] = distance;
+                        }
+                        else
+                              dist[ b ][ c ] = 0;
+                  }
+            }
+      
+}
+
+void Floyd()
+{
+   int u, v, w;
+   int changed = 1;
+   int b = num_waypoints[0];
+
+
+   for (v = 0; v < num_waypoints[0]; v++)
+      for (w = 0; w < num_waypoints[0]; w++)
+      { 
+              shortest[ v ][ w ] = dist[ v ][ w ];
+         to[ v ][ w ] = w;
+      }
+   
+   while (changed)
+   {
+        changed = 0;
+
+      for (u = 0; u < num_waypoints[0]; u++)
+         for (v = 0; v < num_waypoints[0]; v++)
+            for (w = 0; w < num_waypoints[0]; w++)
+               if (shortest[ v ][ u ] + shortest[ u ][ w ] < shortest[ v ][ w ])
+               {  shortest[ v ][ w ] = shortest[ v ][ u ] + shortest[ u ][ w ];
+                  to[ v ][ w ] = to[ v ][ u ];
+                  changed = 1;
+               }
+   }
+
+}        
+
+void FloydDisplay(int a, int b, edict_t *pEntity)
+{
+      char *msg = "";
+      sprintf(msg, "the shortest path between %d and %b consists of:\n", a, b);
+    ClientPrint( VARS(pEntity), HUD_PRINTNOTIFY, msg);
+ 
+    while (a != b)
+    {    sprintf(msg, "from %d goto %d (distance %d)\n", a, to[ a ][ b ], shortest[ a ][ b ]);
+         ClientPrint( VARS(pEntity), HUD_PRINTNOTIFY, msg);
+                  a = to[ a ][ b ];
+    }
+}
+"
+Edited by botman
+
+THATS THE CODE I USE
+
+I made it so typing FLOYD in the console does this.
+ FloydSetup
+ Floyd
+ FloydDisplay (a,b are specified as arg1/2)
+
+Floyd Setup crashes the program tho....
+
+Any ideas why?
+
+
+
+
+
+
+--------------------------------------------------
+10/08/00 at 01:15:42  Reply by: DarkYouth (darkyouth@thegraze.freeserve.co.uk)
+--------------------------------------------------
+DAMN IT...
+
+The BB took some of the code as signals to use special features....
+
+The code may have missing characters where the bb interperates them as font changes (ie bold)
+
+But it does compile
+
+--------------------------------------------------
+10/08/00 at 05:55:54  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+If you still have the PATH paths[] array in your code, you should use that to fill in the "shortest" array.  Since the paths code allows you to remove the paths you don't want between waypoints (for one-way paths) and since the WaypointReachable() code does a VERY poor job of determining whether another waypoint is actually reachable.
+
+I've set my shortest array up as "short int" since you want to pick the smallest representation in memory that will hold all valid values.  Remember the Floyd matrix will be N x N elements in size (one for each team).  So if you have 250 waypoints and the size of each element was 4 bytes (sizeof int or float) then the Floyd matrix would be 250 x 250 x 4 = 250,000 bytes per team (or 1/2 a megabyte for 2 teams).  Now you've also got the "to" matrix for each team which will be the same size (thus for 250 nodes you chew up 1 megabyte of memory for 2 teams).  Picking a "short int" (only 2 bytes) cuts the amount of memory in half.
+
+The short int will allow distances up to 65,535 units in length.  Since the longest distance you could ever have between points is 8192 units (the width of the map) the short int will work just fine.
+
+Just calculate the distance and recast the result to a short int like so...
+
+   short int dist;
+   dist = (short int)((n1.origin - n2.origin).Lenght());
+
+botman
+
+botman
+
+--------------------------------------------------
+10/08/00 at 07:56:04  Reply by: DarkYouth (darkyouth@thegraze.freeserve.co.uk)
+--------------------------------------------------
+Does that make the crashing stop......
+
+Arggggggghhhhhhh
+
+The FloydSetup causes a crash, but where......
+
+--------------------------------------------------
+10/08/00 at 13:04:45  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+No, that has nothing to do with things crashing.
+
+Where do you allocate your "dist", "shortest" and "to" arrays?  Are they dynamically allocated (with malloc or new) or are they static (which could be a bad idea since you don't know how many waypoints may be in a map and you DON'T want to always allocate the max).
+
+botman
+
+--------------------------------------------------
+10/08/00 at 13:10:17  Reply by: DarkYouth (darkyouth@thegraze.freeserve.co.uk)
+--------------------------------------------------
+Tell me what to change them to please....
+
+I currently define them as normal arrays (Like the waypoint array)
+
+

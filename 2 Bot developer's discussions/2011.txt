@@ -1,0 +1,46 @@
+--------------------------------------------------
+Subject: sv_bot?
+--------------------------------------------------
+07/21/01 at 14:49:40  Posted by: flaegren (flaegren@hotmail.com)
+--------------------------------------------------
+In the dll.cpp file in see this declared as a global var:
+cvar_t sv_bot = {"bot",""};
+
+the sv_bot is used only once in the GameDLLInit function like so:
+CVAR_REGISTER (&sv_bot);
+
+Anyone have any words of wisdom why this is being done and why it's being stored globally?
+
+--------------------------------------------------
+07/21/01 at 18:15:19  Reply by: Spyro (theoddbot@hotmail.com)
+--------------------------------------------------
+Hi,
+
+The cvar_t is passed to the engine by address, which stores this pointer until half-life exits. If sv_bot was declared as a local variable in a function, this address would become invalid as soon as the function exits.
+
+-Spyro
+
+--------------------------------------------------
+07/22/01 at 04:33:01  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+If you are going to create dedicated server bot commands I would recommend using pfnAddServerCommand() in place of CVARs.  I used a CVAR because pfnAddServerCommand() didn't exist at the time the HPB bot was created.
+
+botman
+
+--------------------------------------------------
+07/22/01 at 13:14:35  Reply by: flaegren (flaegren@hotmail.com)
+--------------------------------------------------
+Ah, I see.  
+I do understand the scope issues but I was not clear under what circumstance the sv_bot variable would be used or if it was doing something just by virtue of being registered.
+Since I didn't see any obvious reason for it to be there, I wanted to delete it.
+Thanks for the responses, I'll just delete this.
+
+--------------------------------------------------
+07/23/01 at 04:21:51  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+It sounds like you are asking "What does the CVAR bot do?".
+
+This CVAR is used to issue bot commands on a dedicated server.  Since you can't issue ClientCommand() commands from a dedicated server console (it's not a client), you have to have another method to allow the dedicated server operator to add or remove bots.  The "bot" CVAR does this.  You issue a command by setting the "bot" CVAR to the command you want to issue (i.e. "bot addbot") and the CVAR will be checked every second to see if it has been set to a command.  That command will get executed and then the code will set the CVAR back to blank (to keep the command from being executed over and over).
+
+botman
+

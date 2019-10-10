@@ -1,0 +1,173 @@
+--------------------------------------------------
+Subject: PLEASE HELP ME ! ! !
+--------------------------------------------------
+12/29/01 at 04:54:43  Posted by: SLAVIK (slava@deep-shadows.com)
+--------------------------------------------------
+I don't know C++ good, I know delphi/pascal, that's why I am here. Can you tell me please, what these strings of code mean, I don't understand everything here :(
+
+ data=new BYTE[fat_size];//fat_size is int
+ read(hFile,data,fat_size);
+ srand((filelength(hFile)+'SZ') % 0xFFFF);
+ for(i=0;i < fat_size;i++) data[i]^=rand() % 0xFF;
+ ptr=data;
+
+>>then>>
+
+ ptr=get_w(ptr,str_len); // word
+ ptr=get_a(ptr,szFileName,str_len);
+ szFileName[str_len]=0;
+ ptr=get_i(ptr,offset);
+ ptr=get_i(ptr,size);
+ ptr+=4;
+
+>>and>>
+
+ cur_offset=tell(hFile);//what means TELL?
+ lseek(hFile,offset,SEEK_SET);//what is SEEK_SET
+
+PLEASE, HELP !!!!!!!!
+
+--------------------------------------------------
+12/29/01 at 08:04:48  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+>> data=new BYTE[fat_size];//fat_size is int 
+
+Allocates a BYTE (unsigned char) array of "fat_size" bytes.
+
+>> read(hFile,data,fat_size); 
+
+Reads "fat_size" bytes from file "hFile" and stores them in buffer "data".
+
+>> srand((filelength(hFile)+'SZ') % 0xFFFF); 
+
+Initializes the random number generator with a seed.
+
+>> for(i=0;i < fat_size;i++) data[i]^=rand() % 0xFF; 
+
+Loops from 0 to fat_size-1, storing a random number in data[i].
+
+>> ptr=data; 
+
+Assigns a pointer to the block of data "data".
+
+>> ptr=get_w(ptr,str_len); // word 
+
+Calls a function named get_w (which probably returns a word (2 bytes) and stores it in the second argument "str_len", then increments the pointer argument "ptr" and returns the new pointer value (stored in ptr)).
+
+>> ptr=get_a(ptr,szFileName,str_len); 
+
+Same as above except calls a function named "get_a" which probably returns a string of characters (stored in szFileName).
+
+>> szFileName[str_len]=0; 
+
+Terminates the string with a null character.
+
+>> ptr=get_i(ptr,offset); 
+
+Calls a function named "get_i" which probably reads an integer (4 bytes) and stores it in "offset".
+
+>> ptr=get_i(ptr,size); 
+
+Same as above, except stores the integer in "size".
+
+>> ptr+=4; 
+
+Adds 4 bytes to the "ptr" pointer.
+
+>> cur_offset=tell(hFile);//what means TELL? 
+
+Tell returns the current file position.  "cur_offset" will be the current position in the file "hFile".
+
+>> lseek(hFile,offset,SEEK_SET);//what is SEEK_SET 
+
+lseek sets the file pointer to a specific position in the file.  In this case, it will set the file pointer to "offset" bytes from the beginning of the file.  SEEK_SET sets the file position to the value of the second argument.
+
+botman
+
+--------------------------------------------------
+12/29/01 at 09:30:58  Reply by: SLAVIK (slava@deep-shadows.com)
+--------------------------------------------------
+thanks botman :), but I have one question.
+Can you tell me some procedure to extract bytes ot integers from array (get_i,get_w, etc.)
+
+thanks
+
+--------------------------------------------------
+12/29/01 at 10:19:22  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+if not 'private' C++, as this seems C only, you can bind data in an array like this:
+
+code:
+
+value = array[position];
+
+
+
+where position starts at 0 and ends at length of array less one.
+
+If you define an array like this:
+
+code:
+
+char array[128];
+
+
+
+you can bind bytes from index 0 to 127 in it.
+
+
+--------------------------------------------------
+12/29/01 at 10:23:46  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+<OFF-TOPIC>
+btw, last time I saw code like this was when I was studying viruses. Are you a bad ugly cracker ? (i am joking ;-))
+</OFF-TOPIC>
+
+--------------------------------------------------
+12/29/01 at 11:17:13  Reply by: SLAVIK (slava@deep-shadows.com)
+--------------------------------------------------
+Nope, I am not bad ugly cracker :-)
+I am working אשך developers of one good-known :)game and I am writing now program which works with its packages (like Quake PAK) and I have function to extract them (but on C++ and I am writing it on Delphi). I must port it Delphi or export from C++ dll. This file has files table, which must be read in one time (into Data byte array) and then all the info is "extracted" from array ;-)
+
+--------------------------------------------------
+12/29/01 at 11:42:37  Reply by: SLAVIK (slava@deep-shadows.com)
+--------------------------------------------------
+If you can, please, (PLS,PLS,PLS,PLS,PLS) write here example of some of these get_X functions:
+
+    ptr=get_w(ptr,str_len); // word
+    ptr=get_a(ptr,szFileName,str_len);
+        szFileName[str_len]=0;
+    ptr=get_i(ptr,offset);
+    ptr=get_i(ptr,size);
+Oops, this are variables:  BYTE *buffer,*data,*ptr;
+
+--------------------------------------------------
+12/29/01 at 12:39:22  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Untested code, use at your own risk...
+code:
+char *get_w(char *ptr, short int *arg)
+{
+   *arg = (short int *)ptr;
+   ptr += 2;
+   return ptr;
+}
+
+char *get_a(char *ptr, char *string, int length)
+{
+   strncpy(string, ptr, length);
+   string[length-1] = 0;
+   ptr += length;
+   return ptr;
+}
+
+char *get_i(char *ptr, int *arg)
+{
+   *arg = (int *)ptr;
+   ptr += 4;
+   return ptr;
+}
+
+botman
+
+[modified on 12/29/01 at 12:39:22]

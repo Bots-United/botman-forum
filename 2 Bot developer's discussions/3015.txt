@@ -1,0 +1,145 @@
+--------------------------------------------------
+Subject: [botman] fakeclients and reconnections, again...
+--------------------------------------------------
+04/24/02 at 00:53:11  Posted by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+Hello botman,
+
+First thank you for your intervention on Nukebox forums that clarified things very well. Once again, I was believing to understand a thing I had actually got totally wrong.
+
+I wanted to continue the thread on your forums because I thought it might be interesting for bot developers to know what we were talking about.
+
+OK :) so let's sum up things.
+
+When a player requests a connection, ClientConnect() is called. OK.
+When this player has finished downloading resources and all other stuff, ClientPutInServer() is called. Got it.
+When a player that has been Put In Server drops down the connection / disconnects, ClientDisconnect() is called.
+However ClientDisconnect() is NOT called for clients that have Connected() the server but were not Put In Server() yet (when they cancel the download of resources for example).
+
+From your point of view, the playerCount integer has to be incremented at each ClientPutInServer() call, and decremented at each ClientDisconnect() call. Well done, this is symmetrical. Now I wonder:
+
+
+
+What happens if the DLL tries to add a bot when a client is already downloading ressources but not in game yet ? Does the engine refuses to create the fake client ? I obviously can't test such a behaviour at home, is there anybody aware of it ?
+
+
+<b><i>Forcibly freeing disconnected client's pvPrivateData slows down the engine and is not required</i></b>. So how do you explain that upon CLEAN disconnection ("kick" server command) and CLEAN reconnection of a fake client, the frags/death count is not resetted ? I am pretty sure that both ClientDisconnect(), ClientConnect(), and ClientPutInServer() are all three called normally, because the playerCount is decremented in ClientDisconnect(), incremented in ClientPutInServer(), my bots get added automatically by a periodic check for playerCount in StartFrame(), and I don't allow bots to be added when playerCount equals the maximal number of clients less one. So question ?
+
+
+<b><i>We need to kick bots two times in Team Fortress Classic</i></b>. This is a problem I am aware of. We need to issue TWO TIMES a "kick" server command. First, is there another way to remove fake clients than "kick" server commands ? Why don't the "disconnect", "drop" or "exit" client commands work on fake clients ? The reason is not obvious for me... But the main problem seems to be everywhere the same: the engine does disconnect clients, but keeps their data structures and feeds them back to new fakeclients connecting after that. That's the only logical explanation I see. Question 1: Am I right? Question 2: Does anyone have a clue on why this happen? Question 3, last but not least: How can we work this around?
+
+
+
+It's up to you...
+
+Damn, I just wanted my bots to reset their frags/death counts upon reconnection... ???
+
+
+[edited: oh btw, Cheesemonster reported that calling FREE_PRIVATE() on a client/fakeclient edict makes your BotMixer crash...]
+
+[modified on 04/24/02 at 00:53:11]
+--------------------------------------------------
+04/24/02 at 05:30:57  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+"What happens if the DLL tries to add a bot when a client is already downloading ressources but not in game yet ?"
+
+I would assume that the engine claims a player edict at the point when the client begins connecting to the server (i.e. prior to the engine calling ClientConnect).  If this new player is taking the last player edict (determined by the maxplayers setting), then when you try to create a bot you will get a NULL back indicating that there are no free player slots.  I don't have the engine source code so I can't confirm this without actually trying it but you can try it yourself by running a dedicated server and a separate client on the same machine.
+
+You can test real clients connecting and disconnecting while bots are on the server by running a dedicated server, then start up Half-Life using a different client port and connect to the dedicated server running on your machine (using +port on the command line).
+
+You can access variables within the CBasePlayer class if you are willing to "hack" the server a bit.  The pvPrivateData portion points to the game DLL C++ class member variables.  You can dump this block of memory to a file (using standard C I/O routines) to see what the initial state of the bytes in this block are.  After getting some frags, or deaths, or health, or money or whatever, you can dump the same block again.  Compare the two to find out what changed.  From this you can determine which byte offset corresponds to which member variable in the Counter-Strike CBasePlayer class.
+
+I don't think you should have to go to this extreme though.  If a normal client disconnects and another client connects, the Counter-Strike code will HAVE to initialize it's CBasePlayer memeber variables SOMEWHERE, either in ClientConnect (which would be kind of stupid doing it in there), ClientPutInServer (which would be a little better place for one time initialization stuff) or in the CBasePlayer::Spawn function (which would get called from the DispatchSpawn call).  One of these 3 places would have to initialize the Counter-Strike CBasePlayer member variables.
+
+You would probably save yourself a lot of work by e-mailing someone with access to the Counter-Strike source code (cough, CF, cough) and asking them where the death member variable gets initialized.
+
+botman
+
+--------------------------------------------------
+04/24/02 at 05:40:19  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+urrghh...
+
+I dunno if this will work
+
+code:
+
+
+// Reset them frags and deaths!!!!
+edict_t *pEdict = pBot->pEdict;
+
+CBasePlayer *m_pBot = (CBasePlayer*)GET_PRIVATE(pEdict);
+
+if (m_pBot)
+  m_pBot->m_iDeaths = 0;
+
+pEdict->v.frags = 0;
+
+
+
+edit: I don't know if you need to included player.h to use CBasePlayer in your bot.
+
+[modified on 04/24/02 at 05:40:19]
+--------------------------------------------------
+04/24/02 at 06:38:12  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+
+QUOTE:
+urrghh...
+I dunno if this will work
+
+// Reset them frags and deaths!!!!
+edict_t *pEdict = pBot->pEdict;
+CBasePlayer *m_pBot = (CBasePlayer*)GET_PRIVATE(pEdict);
+if (m_pBot)
+  m_pBot->m_iDeaths = 0;
+pEdict->v.frags = 0;
+
+edit: I don't know if you need to included player.h to use CBasePlayer in your bot.
+
+
+
+
+I already tried, Cheesy... first I had to include whole a bunch of includes, then the compiler complained that m_pbot was not in the good class for GET_PRIVATE() to be called upon it... I'm no C++ guru but I couldn't find what was wrong...
+
+
+--------------------------------------------------
+04/24/02 at 08:10:48  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+just include "player.h"
+
+and remove #include "pm_materials.h" or comment it our in player.h :) I tried it myself but it doesn't look as though CBaseplayer is working :( gives me loads of weird values in it
+
+--------------------------------------------------
+04/24/02 at 08:56:49  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+You DON'T have the player.h for Counter-Strike (at least I don't think you do).  The player.h file for the Half-Life SDK won't do you any good.  The CS guys have changed this all around and nothing will be the same.
+
+Like I said above, you will need to dump a block of memory and see which bytes change.  Once you know the offset, you can just use something like...
+code:
+char *pData = (char *)pEdict->pvPrivateData;
+ 
+pData[37] = 0;  // zero out byte offset 37
+
+...but you gotta know which byte(s) to change before you start wiping out memory.
+
+botman
+
+[modified on 04/24/02 at 08:56:49]
+--------------------------------------------------
+04/24/02 at 12:41:01  Reply by: CountFloyd (countfloyd@botepidemic.com)
+--------------------------------------------------
+I don't have much time so just a quick reply. In CS the m_iDeath Variable is increased in void CHalfLifeMultiplay :: PlayerKilled which gets called from CBasePlayer::Killed which gets called from CBaseEntity :: TakeDamage.
+For getting the offset do as Botman told, no use in including the standard headers (and obviously the offsets will change everytime the MOD changes something around). So you would have to track down version changes and imho this is way to much work for such a trivial thing. If you're freeing the private data upon creation you shouldn't have that problem anyway.
+
+
+[modified on 04/24/02 at 12:41:01]
+--------------------------------------------------
+04/24/02 at 19:24:51  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+Thanks for your intervention, Markus.
+
+I may be a major perfectionnist but there's still something that gets on my nerves.
+WHY, bullshit goddamn hell WHY do we have to free it by ourselves ??? There's definitely a bug somewhere, if not in my bots then in the engine, but I don't like that.
+
+

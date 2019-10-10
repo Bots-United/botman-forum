@@ -1,0 +1,118 @@
+--------------------------------------------------
+Subject: Server zeros entvars_t components
+--------------------------------------------------
+08/04/02 at 20:34:29  Posted by: zenureo (startux@hotmail.com)
+--------------------------------------------------
+From the SDK's comments, the clbasevelocity vector of the entvars_t struct is zeroed by the server. However, when i tried to printout the other values such as movetype, speed and basevelocity, they are all zeroed. My target entity is a hostage_entity. So does the server zeros all the float and integer values in th entvars_t struct???
+
+I need a way to check whether the entity is moving or not. If the entvars_t's values are zeroed by the server, i'm screwed.
+
+Any way to get pass this?
+
+
+--------------------------------------------------
+08/04/02 at 20:40:19  Reply by: zenureo (startux@hotmail.com)
+--------------------------------------------------
+Just to add, intercepting the values at DispatchThink or DispatchThink_Post does not matter, they are zeros all the same.
+
+--------------------------------------------------
+08/05/02 at 03:20:06  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+2D Speed (Left, right, forward, back) = Hostage->v.velocity.Length2D();
+
+3D Speed (Up, down, Left, right, forward, back)= Hostage->v.velocity.Length();
+
+--------------------------------------------------
+08/06/02 at 04:22:45  Reply by: zenureo (startux@hotmail.com)
+--------------------------------------------------
+Hi Cheese,
+
+Thanks, i no longer see zeros now ;)
+
+Another question:
+I used the following 'If' statement for chosing hostages near to me:
+
+if ((pHostage = UTIL_FindEntityInSphere( pHostage, vecSrc, fRadius )) != NULL)
+
+fRadius is 300. vecSrc is origin of current player.
+It works fine if no hostage is following me. But if a hostage is following me, it totally mess up the above line cause all those hostages far away from me GOT selected, but the one following right behind me does not. *puzzeled*
+
+
+--------------------------------------------------
+08/06/02 at 05:59:20  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+code:
+
+if ((pHostage = UTIL_FindEntityInSphere( pHostage, vecSrc, fRadius )) != NULL) 
+
+
+
+Will only return ONE value for pHostage, it could be any hostage in the map, what you should do is run a while loop and check each hostage within it.
+
+e.g.
+code:
+
+while ((pHostage = UTIL_FindEntityInSphere( pHostage, vecSrc, fRadius )) != NULL) 
+{
+  //Do stuff in here, each loop a new hostage is in pHostage
+}
+// While loop will finish when the pHostage is invalid (When we've been through them all)
+
+
+
+
+--------------------------------------------------
+08/06/02 at 06:01:20  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+To get a pointer to every hostage near your player, you should do this instead.
+
+while (edict_t *pHostageEntity = UTIL_FindEntityInSphere (pHostageEntity, pPlayerEntity->v.origin, 300) != NULL)
+{
+   // here at each iteration every pHostageEntity points to some hostage nearby
+}
+
+if you do just one 'if', the cycle stops at the first hostage entity returned by the engine and it doesn't check for the others.
+
+
+--------------------------------------------------
+08/06/02 at 06:04:32  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+damn once again I was too slow :D
+"this town is too small for us, cowboy" ;D lol
+
+
+[modified on 08/06/02 at 06:04:32]
+--------------------------------------------------
+08/06/02 at 09:42:03  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+hehe :)
+
+--------------------------------------------------
+08/06/02 at 10:50:37  Reply by: @$3.1415rin (joebot@botepidemic.com)
+--------------------------------------------------
+btw, != NULL isnt necessary, for me that always looks kind of scary, with one = and one == ( ok, here it's a !=, but the type is the same )
+
+--------------------------------------------------
+08/06/02 at 12:05:04  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+Yeah I know, its just good practice for 'newbies' ;) I've had to explain how you can leave out things like == TRUE/FALSE == 1/0 > 0 != 0 etc. :p because If() just returns a boolean value (1 or 0) and it will go through the If statement if it's 1 and not if it's 0... kinda confusing for the newbie, even though the guy I talked to wasn't a newbie, he just stuck to the old fashioned method for too long!
+
+--------------------------------------------------
+08/06/02 at 18:47:19  Reply by: zenureo (startux@hotmail.com)
+--------------------------------------------------
+Hi all,
+Thanks guys, i'll try it out.
+
+QUOTE:
+damn once again I was too slow 
+
+
+Pierre, next time post a msg first, any msg, then take ur own time to compose the reply and modify your "hog post" lol.
+
+QUOTE:
+btw, != NULL isnt necessary
+
+
+Yup, i agree, but i cut n paste that line from the SDK's code ;)
+
+[modified on 08/06/02 at 18:47:19]

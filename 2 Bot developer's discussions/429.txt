@@ -1,0 +1,101 @@
+--------------------------------------------------
+Subject: BOTMAN HELP ME AND BRIAN
+--------------------------------------------------
+10/26/00 at 20:19:25  Posted by: tweak3d (Tweak3d@home.com)
+--------------------------------------------------
+Me and Brian L. have talked and both of our bots are crashing after exiting out of TFC. anyone else have this problem with their TFC bot?
+
+Justin
+
+--------------------------------------------------
+10/26/00 at 20:37:16  Reply by: BrianL (halfkiller@hotmail.com)
+--------------------------------------------------
+When me and Justin run a regular TFC game with the bots. I even used some of my OLD code and get his error:
+
+Link to the error message pic:
+  members.nbci.com/blind_20/HalfLifeERROR.jpgHere
+
+You have to right click and Save As
+
+--------------------------------------------------
+10/26/00 at 21:16:23  Reply by: BrianL (halfkiller@hotmail.com)
+--------------------------------------------------
+Nevermind we figured it out.
+When we added the new Entities to the list it gave us this error after we exited Half-Life with the new Patch 1.1.0.4
+
+So we took the code out and it worked fine but we can't play on the new maps though.
+
+The new entities are:
+LINK_ENTITY_TO_FUNC(info_areadef, "info_areadef");
+LINK_ENTITY_TO_FUNC(func_nogrenades, "func_nogrenades");
+LINK_ENTITY_TO_FUNC(info_tf_teamcheck, "info_tf_teamcheck");
+LINK_ENTITY_TO_FUNC(info_tf_teamset, "info_tf_teamset");
+
+?????
+Help?
+
+--------------------------------------------------
+10/27/00 at 05:57:29  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+I've added these new entities from the 1.1.0.4 update and have had no problems using "quit" to exit the game...
+
+func_nogrenades
+info_areadef
+info_tf_teamcheck
+info_tf_teamset
+
+I also noticed the following 2 new functions...
+
+CreateInterface() and GetNewDLLFunctions().  Which is obviously stuff for the new SDK (which according to Yahn should be out VERY soon now).
+
+botman
+
+--------------------------------------------------
+10/27/00 at 13:41:24  Reply by: Ewatch (ewatch@counter-strike.de)
+--------------------------------------------------
+How do you know that these Functions are new, i mean where do you get the names of all those Functions and entities?
+I've to learn much about programming so please understand my question! :D
+
+--------------------------------------------------
+10/27/00 at 14:26:28  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+See these...
+
+http://dynamic.gamespy.com/~botman/yabb/YaBB.pl?board=2&action=display&num=303
+
+http://dynamic.gamespy.com/~botman/yabb/YaBB.pl?board=2&action=display&num=262
+
+Dump the list of exported functions (entities) from the DLL file.  Compare that list to what's currently in the linkfunc.cpp file.  Anything that appears in the list of functions from the new DLL is something that was added in the lastest release of the MOD.  Good thing CS quit putting out releases every other week.  For a while there it was getting REAL tiresome comparing the list of entities every time a new Beta release came out.
+
+botman
+
+--------------------------------------------------
+10/28/00 at 08:35:28  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+Dooooh!  Okay, now I've got the "quit" problem you were talking about.  The entity creating the problem is "info_areadef".  You can add the others fine without HL crashing.  This also seems to have nothing to do with bots, just the way the HPB bot hooks into the engine and DLL functions.
+
+You can create a game, join a team then type "quit" and it will crash (if info_areadef) is defined in the linkfunc.cpp file.  I haven't determined why this is yet.
+
+One thing I have discovered is that there is a new function in the enginefuncs_t structure in the engine\eiface.h file (which won't be out until the new SDK is released).  If you look at the machine code for the MOD DLL's copy of GiveFnptrsToDll() you'll see that it copies 141 function pointers (not 140 like in the HPB bot code).  I'm not sure what the new function is, but I've added a new function prototype to my eiface.h file like so...
+
+   void (*pfnGetPlayerStats)( const edict_t *pClient, blah, blah, blah,
+
+   void     (*pfnX)(void);
+} enginefuncs_t;
+
+
+By the way, this crash also occurs if you use ESC to exit back to the menu then disconnect from the server.  So it's not just the "quit" command that causes the crash.
+
+I'll keep poking around with this to see if I can figure out what's going on here.
+
+botman
+
+--------------------------------------------------
+10/28/00 at 09:57:07  Reply by: BrianL (halfkiller@hotmail.com)
+--------------------------------------------------
+Great!
+Good that we caught this though :)
+I'll keep on searching.
+
+Thanx
+

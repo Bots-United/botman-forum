@@ -1,0 +1,66 @@
+--------------------------------------------------
+Subject: distance to wall from trace result
+--------------------------------------------------
+12/29/01 at 10:31:34  Posted by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+Hello
+
+I need to know the distance to first wall when using tracelines. I found the flPlaneDist variable in the TraceResult structure, but this one seems not to behave how I expect it to. It returns me negative values, or worse, values that do not match at all the approximative distance I expect to find.
+
+I saw that Botman uses flFraction * 1000 instead, in the WaypointReachable () function of his HPB template. Is it the right way to do it ?
+
+[to Botman, before he goes on holidays ;-) ]: If so, where did you learn that ? / where can I find documentation that explains the flFraction usage ?
+
+If there is another way to do this, please let me know how too...
+
+
+[modified on 12/29/01 at 10:31:34]
+--------------------------------------------------
+12/29/01 at 10:45:12  Reply by: @$3.1415rin (joebot@botepidemic.com)
+--------------------------------------------------
+yes, you can use flFraction * (distance between both points you are tracing between) or if you are sure that sth. is hit you can as well use the end vector of the trace, TraceResult.vecEndPos, but i think the first method is the fastest and safest method
+
+--------------------------------------------------
+12/29/01 at 12:06:49  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+The flFraction is the fraction of the distance it went from start to finish.  If it goes all the way from start to finish without hitting anything then the fraction will be 1.0.  If it goes only 25% of the way from the start to the finish and hits something then flFraction will be 0.25.
+
+You should multiply the fraction by the distance from the start to the finish...
+code:
+Vector start, finish;
+float distance;
+
+// after the UTIL_Traceline returns tr...
+
+distance = tr.flFraction * (finish - start).Length();
+
+Also see this thread...
+
+http://dynamic.gamespy.com/~wavelength/ubb/Forum3/HTML/000775.html
+
+I learned about the flFraction by trial and error.
+
+botman
+
+--------------------------------------------------
+12/29/01 at 12:23:29  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+botman where are the start/finish vectors used?
+
+--------------------------------------------------
+12/29/01 at 12:41:45  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+They are the 2 Vector arguments you pass into UTIL_Traceline.  How you set them up depends on what you are tracing a line between.  They could be the origins of 2 entities...
+code:
+start = pPlayer->pev->origin;
+finish = pEnemy->pev->origin;
+
+...or they could be between any 2 points in space.
+
+botman
+
+--------------------------------------------------
+12/31/01 at 07:34:14  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+Thank you very much and have a happy new year !
+

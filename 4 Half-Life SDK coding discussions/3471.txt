@@ -1,0 +1,68 @@
+--------------------------------------------------
+Subject: m_iDeaths and pev->frags
+--------------------------------------------------
+07/24/02 at 09:47:02  Posted by: Honk (honk-online@gmx.de)
+--------------------------------------------------
+I'm currently trying to find a way to get a player's frags and deaths from the engine. I get the player's name from the logmessages (meta_engfuncs.pfnAlertMessage).
+
+Then I use 
+      for (int i = 1; i <= gpGlobals->maxClients; i++) {
+            CBaseEntity *pPlayer = UTIL_PlayerByIndex(i);
+            if (STRING(pPlayer->pev->netname) == name) {
+                  return i;
+            }
+      }
+this to get the player's id.
+
+CBaseEntity *spieler_ent = UTIL_PlayerByIndex(index);
+
+Having the Entity for the player, i try to get the frags 
+ spieler_ent->pev.frags
+and the deaths 
+ ((CBasePlayer*)spieler_ent->MyMonsterPointer())->m_iDeaths
+
+This works fine in hldm. In CS though i get a zeropointer for the frags. (didnt look at the deaths, but i dont think i get a correct value for 'em).
+thanks for your help =)
+
+
+--------------------------------------------------
+07/24/02 at 10:14:47  Reply by: @$3.1415rin (joebot@botepidemic.com)
+--------------------------------------------------
+the problem is that you don't have the sources for CS. The basePlayer class of CS doesnt have to be the same like the one of hldm ( which you know ). So now you can either hack your way forward or leave it :) ( or wait for the release of the cs sources in the next sdk ;) )
+
+--------------------------------------------------
+07/24/02 at 10:48:20  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+code:
+
+if (STRING(pPlayer->pev->netname) == name) 
+
+
+
+Here you are trying to compare two strings with "==", this wont work, to compare strings use 
+
+code:
+
+if (!strcmp(STRING(pPlayer->pev->netname),name))
+
+
+
+[modified on 07/24/02 at 10:48:20]
+--------------------------------------------------
+07/24/02 at 13:11:38  Reply by: Honk (honk-online@gmx.de)
+--------------------------------------------------
+actually using string as class, it works quite well =)
+it's easier than using char* :p
+hmm.. dammit
+:/
+
+--------------------------------------------------
+07/28/02 at 01:45:05  Reply by: Zipster (skyork99@juno.com)
+--------------------------------------------------
+In most cases you would be correct, but I don't think std::string defines the operator for checking itself against a const char* using ==.  You would have to use compare().
+
+--------------------------------------------------
+07/28/02 at 02:35:54  Reply by: @$3.1415rin (joebot@botepidemic.com)
+--------------------------------------------------
+maybe his STRING(...) function returns an instance of a string class ... we dont know ...
+

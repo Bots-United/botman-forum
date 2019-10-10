@@ -1,0 +1,298 @@
+--------------------------------------------------
+Subject: Waypointing Example and v.origin.z problem...
+--------------------------------------------------
+09/10/01 at 18:37:26  Posted by: Ghoul (oneeyedghoul@aol.com)
+--------------------------------------------------
+Ok, does any one care to share your code of BotFindWaypoint and BotHeadTowardWaypoint cause I don't have a clue where to begin...  
+
+Another problem, I have it set up so that if the enemy is higher than 256 units then the bot should stop and not continue walking at its enemy, I stole this from the bullsquid...
+
+   if (pBot->pBotEnemy != NULL)
+   {
+         if ( fabs(pEdict->v.origin.z - pBot->pBotEnemy->v.origin.z) > 256)
+         {
+                  // don't try to shoot at someone up really high or down really low.
+                  pBot->f_move_speed = 0;  // don't move if the enemy is too high up..
+         }
+   }
+
+Now when I go ingame the bots still run at me, whats up with that?
+
+--------------------------------------------------
+09/10/01 at 19:12:31  Reply by: Ghoul (oneeyedghoul@aol.com)
+--------------------------------------------------
+Ok, nevermind the bot pausing stoping when enemy is to heigh thing, thats figured out.  Now, any one have some waypoint examples?
+
+--------------------------------------------------
+09/11/01 at 06:01:37  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Here's an example of what you can do in the BotFindWaypoint() and BotHeadTowardWaypoint() functions.  This is from the HPB bot Alpha 3 source code...
+code:
+bool BotFindWaypoint( bot_t *pBot )
+{
+   int i, wpt_index[3], select_index;
+   int team;
+   float distance, min_distance[3];
+   Vector v_src, v_dest;
+   TraceResult tr;
+
+   edict_t *pEdict = pBot->pEdict;
+
+   team = UTIL_GetTeam(pEdict);
+
+   for (i=0; i < 3; i++)
+   {
+      wpt_index[i] = -1;
+      min_distance[i] = 9999.0;
+   }
+
+   for (i=0; i < num_waypoints[team]; i++)
+   {
+      // ignore current waypoint and previous recent waypoints...
+      if ((i == pBot->curr_wpt_index) ||
+          (i == pBot->prev_wpt_index[0]) ||
+          (i == pBot->prev_wpt_index[1]) ||
+          (i == pBot->prev_wpt_index[2]) ||
+          (i == pBot->prev_wpt_index[3]) ||
+          (i == pBot->prev_wpt_index[4]))
+         continue;
+
+      if ( WaypointReachable(pEdict->v.origin, waypoints[team][i].origin, pEdict) )
+      {
+         distance = (waypoints[team][i].origin - pEdict->v.origin).Length();
+
+         if (distance < min_distance[0])
+         {
+            wpt_index[0] = i;
+            min_distance[0] = distance;
+         }
+         else if (distance < min_distance[1])
+         {
+            wpt_index[1] = i;
+            min_distance[1] = distance;
+         }
+         else if (distance < min_distance[2])
+         {
+            wpt_index[2] = i;
+            min_distance[2] = distance;
+         }
+      }
+   }
+
+   select_index = -1;
+
+   // about 20% of the time choose a waypoint at random
+   // (don't do this any more often than every 10 seconds)
+
+   if ((RANDOM_LONG(1, 100) <= 20) &&
+       (pBot->f_random_wpt_time <= gpGlobals->time))
+   {
+      pBot->f_random_wpt_time = gpGlobals->time + 10.0;
+
+      if (wpt_index[2] != -1)
+         i = RANDOM_LONG(0, 2);
+      else if (wpt_index[1] != -1)
+         i = RANDOM_LONG(0, 1);
+      else if (wpt_index[0] != -1)
+         i = 0;
+      else
+         return FALSE;  // no waypoints found!
+
+      select_index = wpt_index[i];
+   }
+   else
+   {
+      // see if there's a waypoint in front of the bot...
+
+//      if (wpt_index[2] != -1)
+//         fprintf(fp, "BotFindWaypoint: 3 waypoints available\n");
+//      else if (wpt_index[1] != -1)
+//         fprintf(fp, "BotFindWaypoint: 2 waypoints available\n");
+//      else if (wpt_index[0] != -1)
+//         fprintf(fp, "BotFindWaypoint: 1 waypoints available\n");
+
+      select_index = wpt_index[0];
+   }
+
+   if (select_index != -1)  // was a waypoint selected?
+   {
+      pBot->prev_wpt_index[4] = pBot->prev_wpt_index[3];
+      pBot->prev_wpt_index[3] = pBot->prev_wpt_index[2];
+      pBot->prev_wpt_index[2] = pBot->prev_wpt_index[1];
+      pBot->prev_wpt_index[1] = pBot->prev_wpt_index[0];
+      pBot->prev_wpt_index[0] = pBot->curr_wpt_index;
+
+      pBot->curr_wpt_index = select_index;
+      pBot->wpt_origin = waypoints[team][select_index].origin;
+
+      return TRUE;
+   }
+
+   return FALSE;  // couldn't find a waypoint
+}
+
+
+bool BotHeadTowardWaypoint( bot_t *pBot )
+{
+   int i, team;
+   Vector v_src, v_dest;
+   TraceResult tr;
+   int index;
+   bool status;
+   float wpt_distance;
+   edict_t *pEdict = pBot->pEdict;
+
+   team = UTIL_GetTeam(pEdict);
+
+   // check if we need to find a waypoint...
+   if (pBot->curr_wpt_index == -1)
+   {
+      // find the nearest waypoint that bot can see
+      i = 0;
+      while ((i < num_waypoints[team]) &&
+             !(WaypointReachable(pEdict->v.origin, waypoints[team][i].origin, pEdict)))
+      {
+         i++;
+      }
+
+      if (i == num_waypoints[team])
+         return FALSE;
+
+      pBot->curr_wpt_index = i;
+      pBot->wpt_origin = waypoints[team][i].origin;
+   }
+   else
+   {
+      // check if we can still see our target waypoint...
+
+      v_src = pEdict->v.origin + pEdict->v.view_ofs;
+      v_dest = waypoints[team][pBot->curr_wpt_index].origin;
+
+      // trace a line from bot's eyes to destination...
+      UTIL_TraceLine( v_src, v_dest, ignore_monsters,
+                      pEdict->v.pContainingEntity, &tr );
+
+      // check if line of sight to object is blocked (i.e. not visible)
+      if (tr.flFraction < 1.0)
+      {
+         // find the nearest waypoint that bot can see
+         i = 0;
+         while ((i < num_waypoints[team]) &&
+                !(WaypointReachable(pEdict->v.origin, waypoints[team][i].origin, pEdict)))
+         {
+            i++;
+         }
+
+         if (i == num_waypoints[team])
+            return FALSE;
+
+         pBot->curr_wpt_index = i;
+         pBot->wpt_origin = waypoints[team][i].origin;
+      }
+   }
+
+   // find the distance to the target waypoint
+   wpt_distance = (pEdict->v.origin - pBot->wpt_origin).Length();
+
+   // are we close enough to a target waypoint...
+   if (wpt_distance < 50)
+   {
+      index = 4;
+
+      // try to find the next waypoint
+      while (((status = BotFindWaypoint( pBot )) == FALSE) &&
+             (index > 0))
+      {
+         // if waypoint not found, clear oldest prevous index and try again
+
+         pBot->prev_wpt_index[index] = -1;
+         index--;
+      }
+
+      if (status)
+      {
+         // found waypoint, adjust ideal yaw...
+
+         Vector v_direction = pBot->wpt_origin - pEdict->v.origin;
+
+         Vector v_angles = UTIL_VecToAngles(v_direction);
+
+         if (v_angles.y > 180)
+            v_angles.y -= 360;
+
+         pEdict->v.ideal_yaw = v_angles.y;
+      }
+      else
+      {
+         pBot->curr_wpt_index = -1;  // indicate no waypoint found
+
+         // clear all previous waypoints...
+         for (index=0; index < 5; index++)
+            pBot->prev_wpt_index[index] = -1;
+      }
+   }
+   else
+   {
+      // keep turning towards the waypoint...
+
+      Vector v_direction = pBot->wpt_origin - pEdict->v.origin;
+
+      Vector v_angles = UTIL_VecToAngles(v_direction);
+
+      pEdict->v.ideal_yaw = v_angles.y;
+
+      BotFixIdealYaw(pEdict);
+   }
+
+   return FALSE;
+}
+
+...it basically just wanders around running from waypoint to waypoint keeping track of the last five waypoints and trying not to head toward a waypoint that it's recently been at thus tending to go in a straight line (more or less).
+
+This code was all before I had the Warshall-Floyd nagivation code working so DON'T expect bots to head towards a goal waypoint using the above code (but it should still get you started with crude waypoint navigation).
+
+botman
+
+--------------------------------------------------
+09/11/01 at 09:27:09  Reply by: jerry_stoel (jerry_stoel@hotmail.com)
+--------------------------------------------------
+Check my downloads page at:
+http://www.geocities.com/flamerbot
+
+I gave out the source of my bot, so you can see how I did the waypoint structure.
+
+Seeya,
+
+--------------------------------------------------
+09/11/01 at 13:44:52  Reply by: Ghoul (oneeyedghoul@aol.com)
+--------------------------------------------------
+Ok, I tried you code botman and my bots spawned and then just kinda turned back and forth really fast, like they couldn't decide what waypoint to go to...  Why can't it be simple...  I tried the FlamerBots code and they just seemed to pick a random waypoint and run at it, even if the waypoint wasn't visible or anything...  Urgh...
+
+--------------------------------------------------
+09/15/01 at 13:43:15  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+there is no real simple waypoint picking routine, that is, when you want a logical roaming bot.
+
+For starters you could make a function which
+
+- loops through all wpts
+- The most far away
+- The one in the FOV
+- And visible
+
+that could make SOME nav. It is not that logical at all, but it could make your bots kind of move around, you can also change the 'Most far away"  value into 'the most close wpt'.. or something. 
+
+Just play around... 
+
+--------------------------------------------------
+09/15/01 at 15:48:06  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+The only way I got my bots to follow waypoints was to get them to follow paths, using the waypointfindpath function.
+
+--------------------------------------------------
+09/16/01 at 04:34:45  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+i use an own path finder too. First Depth Search, and i can change the table any time i like, no reprecalc needed :D
+
+
+

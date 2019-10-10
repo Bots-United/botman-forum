@@ -1,0 +1,94 @@
+--------------------------------------------------
+Subject: Checking waypoints
+--------------------------------------------------
+07/14/02 at 09:54:59  Posted by: laextr (laextr@icqmail.com)
+--------------------------------------------------
+Hey,
+I'm busy creating my own bot (havn't got a name for it yet), and I already modified the waypoint editing. You can now see if a waypoint is two-way or one-way. You can also find a specific waypoint by typing in its number and a green line will show you to the waypoint. 
+
+I've also changed some stuff in the AI but very MINOR!
+
+ I was wondering, how can I make it possible to check if all the waypoints are connected to each other(like POD-Bot)? Should I use the Reachable function and FindPath or something else?
+
+--------------------------------------------------
+07/14/02 at 11:57:43  Reply by: @$3.1415rin (joebot@botepidemic.com)
+--------------------------------------------------
+just count the paths connected to a waypoint, where is the problem ? and then produce an error message if a waypoint is only connected with 1 other waypoint or if this connections are all into one direction. ( the variable the paths are stored in is an array called paths, if I remember right )
+
+--------------------------------------------------
+07/23/02 at 04:42:43  Reply by: laextr (laextr@icqmail.com)
+--------------------------------------------------
+Could you give me an example (maybe in pseudo code) of how to acomplish this.
+
+Thanks @$3.1415rin!
+
+--------------------------------------------------
+08/02/02 at 04:56:22  Reply by: @$3.1415rin (joebot@botepidemic.com)
+--------------------------------------------------
+well a bit of half-pseudo C/C++ code ... i hope it's understandable ...
+code:
+int piPathTo[MAX_WAYPOINTS];                              // connections to waypoint
+int iConnectTo,iW,iP;
+memset(piPathTo,0,sizeof(int)*MAX_WAYPOINTS);            // reset counters
+
+// count paths
+for(iW = 0; iW < MAX_WAYPOINTS;iW++){
+      if(!pWaypoints[iW].isValid())
+            continue;
+      for(iP = paths[iW].getConnectionCount()-1; iP>= 0;iP--){
+            iConnectTo = paths[iW].getConnection(iP);
+            if(iConnectTo != -1){
+                  piPathTo[iConnectTo]++;
+            }
+      }
+}
+
+// check waypoints / paths
+for(iW = 0; iW < MAX_WAYPOINTS;iW++){
+      if(!pWaypoints[iW].isValid())
+            continue;
+
+      if(!piPathTo(iW) && !paths.getConnectionCount() ){
+            cout << iW << " : no connections to or from this waypoint" << endl;
+      }
+      else if(!paths.getConnectionCount()){
+            cout << iW << " : no connections from this waypoint" << endl;
+      }
+      else if(!piPathTo[iW]){
+            cout << iW << " : no connections to this waypoint" << endl;
+      }
+}
+
+
+[modified on 08/02/02 at 04:56:22]
+--------------------------------------------------
+08/02/02 at 04:49:09  Reply by: laextr (laextr@icqmail.com)
+--------------------------------------------------
+Yeah, I've inserted the code, but could you tell me what these are (and optional, what they do or where to find them)?:
+  * pWaypoints[iW].isValid()
+  * paths.getConnectionCount()
+
+I tried it in my code but the compiler couldn't find it.
+
+Thanks man!
+
+
+[modified on 08/02/02 at 04:49:09]
+--------------------------------------------------
+08/02/02 at 04:59:17  Reply by: @$3.1415rin (joebot@botepidemic.com)
+--------------------------------------------------
+yes, i know, if you are using botman's waypoint structures, there are no such functions.
+
+isValid : This function could e.g. check if the W_FL_DELETED flag is set or not
+
+getConnectionCount : Returns the number of connections to a waypoint. In botman's structure you have to go thru all the connections with a loop like this:
+code:
+PATH*p = paths[wp];
+while(p)
+{
+p=p->next;
+}
+
+
+
+[modified on 08/02/02 at 04:59:17]

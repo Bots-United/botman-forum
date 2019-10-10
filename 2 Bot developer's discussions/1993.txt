@@ -1,0 +1,131 @@
+--------------------------------------------------
+Subject: BotFindEnemy, can't find monsters right...
+--------------------------------------------------
+07/18/01 at 22:51:24  Posted by: Ghoul (oneeyedghoul@aol.com)
+--------------------------------------------------
+Ok, I downloaded Bot 10, and got that into my MOD.  It works ok, and the bots do everything they are suposed to.  But when it comes to finding an enemy, they only find players.  My MOD has monsters in multiplayer and when the bots don't fight them back, they get mass murdered.  To make my bots find monsters, I did:
+
+      CBaseEntity *pEntity = NULL;
+
+   while  ((pEntity = UTIL_FindEntityInSphere( pEntity, pev->origin, 1024 )) != NULL)
+   {
+            vecEnd = pEntity->EyePosition();
+            // see if bot can see its enemy
+            if (FInViewCone( &vecEnd ) && FVisible( vecEnd ))
+            {
+                  float distance = (pEntity->pev->origin - pev->origin).Length();
+                  if (distance < nearestdistance)
+                  {
+                        nearestdistance = distance;
+                        pNewEnemy = pEntity;
+
+                        pBotUser = NULL;  // don't follow user when enemy found
+                  }
+            }
+   }
+
+And then at the top of the function:
+
+
+  if (pBotEnemy != NULL)  // does the bot already have an enemy?
+   {
+      vecEnd = pBotEnemy->EyePosition();
+
+      // if the enemy is dead or has switched to botcam mode...
+      if (!pBotEnemy->IsAlive() && (pBotEnemy->pev->effects & EF_NODRAW) && pBotEnemy->pev->takedamage != DAMAGE_YES && pBotEnemy->pev->deadflag != DEAD_NO && (pBotEnemy->pev->flags & !(FL_CLIENT|FL_MONSTER|FL_FAKECLIENT)) )
+      {
+             blah blah...
+      }
+      pBotEnemy = NULL;
+}
+
+When the bots spawn, they just sorta start shooting at the wall.  And when they find a monster, they shoot at it but the bullets go straight through it, and the bot ends up dying.  If you need more info about the error, just ask...  If anyone has any fixes are suggestions for code or something, reply or e-mail me at oneeyedghoul@aol.com.  Over and out...
+
+--------------------------------------------------
+07/19/01 at 06:39:12  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+This is what I done with my bot to find monsters
+
+I made a new function which returns the edict of a monster.
+
+PS: This is using the HPBBot template 3...
+
+so use it like .. 
+
+code:
+
+if (pBot->pBotEnemy == NULL)
+ pBot->pBotEnemy = BotFindMonsters(pBot);
+
+
+
+something like this...
+
+code:
+
+edict_t *BotFindMonsters(bot_t *pBot)
+{
+   Vector vecEnd;
+
+   edict_t *pent = NULL;   
+   edict_t *pEdict = pBot->pEdict;
+   
+   char bMonsterName[50];   
+
+   while ((pent = UTIL_FindEntityInSphere( pent, pEdict->v.origin, 4096 )) != NULL)
+   {
+    
+    vecEnd = pent->v.origin + pent->v.view_ofs;
+    Vector v_enemy = pent->v.origin - pEdict->v.origin; 
+    
+    float distance = v_enemy.Length();                         //How far away is the enemy?
+    strcpy(bMonsterName,STRING(pent->v.classname));
+
+    if ((strncmp(bMonsterName, "monster_", 8) == 0)&&(IsAlive(pent))&&(BotEntityIsVisible( pBot, vecEnd )))
+    {
+      if (strcmp(bMonsterName, "monster_gman") == 0)             // Dont try to kill a gman since it cant be killed anyway!!!
+        return(NULL);
+      else if (strcmp(bMonsterName, "monster_sitting_scientist") == 0) // Dont try to kill a sitting scientist since it cant be killed anyway!!!
+        return(NULL);
+      else if (strcmp(bMonsterName, "monster_cockroach") == 0) // Dont try to shoot cockroaches, waste of time anyway!!!
+        return(NULL);
+      else if ( (strcmp(bMonsterName, "monster_scientist") == 0)  (strcmp(bMonsterName, "monster_barney") == 0) )
+      { 
+       if(distance < 512)
+        return(pent); // Don't waste their time by shooting far away scientists or barneys!
+       else
+        return(NULL);
+      }
+      else
+         return(pent);
+    }
+   }
+  return(NULL); // No Monster found
+}
+
+
+
+
+
+
+[modified on 07/19/01 at 06:39:12]
+--------------------------------------------------
+07/19/01 at 06:53:44  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+another thing is that monsters origin is at their feet! Spyro told me that! So the middle of the monster would be...
+
+code:
+
+pBotEnemy->v.origin + (pBotEnemy->v.view_ofs/2)
+
+
+although I prefer to let the bots shoot above the origin just add a vector to it like this
+
+code:
+
+pBotEnemy->v.origin + (pBotEnemy->v.view_ofs/2) + Vector(0,0,1); 
+
+
+
+Even 1 unit higher makes the bots shoot monsters a bit better, you can tweak it yourself by making a bot shoot a small monster like a snark and see if it misses it or not.
+

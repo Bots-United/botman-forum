@@ -1,0 +1,231 @@
+--------------------------------------------------
+Subject: Weapon Problems
+--------------------------------------------------
+03/21/03 at 00:34:35  Posted by: Phreak (dead_sexy_simon@hotmail.com)
+--------------------------------------------------
+Howdy all,
+
+
+Just a quick question which someone knows the answer to. I am currently creating an M4A1 as a test, so I can begin on Weapons Programming.
+
+While Creating the Weapon, I came across a problem.
+
+When I reload, deply, primary or secondary attack, the animations are all wrong :S
+
+Well, not all wrong. They play the right ones, then sometimes they choose a random animation and play that.
+
+Here:
+
+code:
+
+
+BOOL Silenced = FALSE;
+
+void CM4A1::PrimaryAttack()
+// don't fire underwater
+      if (m_pPlayer->pev->waterlevel == 3)
+      {
+            PlayEmptySound( );
+            m_flNextPrimaryAttack = 0.15;
+            return;
+      }
+
+      if (m_iClip <= 0)
+      {
+            PlayEmptySound();
+            m_flNextPrimaryAttack = 0.15;
+            CM4A1::Reload();
+            return;
+      }
+
+
+      m_pPlayer->m_iWeaponVolume = NORMAL_GUN_VOLUME;
+      m_pPlayer->m_iWeaponFlash = NORMAL_GUN_FLASH;
+
+      m_iClip--;
+
+/* Commented out because of my problem (thought this was it)
+      if ( Silenced == TRUE )
+      {
+            int iShootAnim = RANDOM_LONG(1,3);
+
+            switch (iShootAnim)
+            {
+            case 1:
+            SendWeaponAnim( M4A1_SHOOT1 );
+                  break;
+            case 2:
+                  SendWeaponAnim( M4A1_SHOOT2 );
+                  break;
+            case 3:
+                  SendWeaponAnim( M4A1_SHOOT3 );
+                  break;
+            }
+      }
+      else
+      {
+            int iShootAnim = RANDOM_LONG(1,3);
+
+            switch (iShootAnim)
+            {
+            case 1:
+            SendWeaponAnim( M4A1_SHOOT1_UNSILENCED );
+                  break;
+            case 2:
+                  SendWeaponAnim( M4A1_SHOOT2_UNSILENCED );
+                  break;
+            case 3:
+                  SendWeaponAnim( M4A1_SHOOT3_UNSILENCED );
+                  break;
+            }
+      }
+*/
+
+      if ( Silenced == TRUE )
+      {
+            EMIT_SOUND( ENT( m_pPlayer->pev ), CHAN_WEAPON, "weapons/m4a1-1.wav", 0.8, ATTN_NORM );
+            SendWeaponAnim( M4A1_SHOOT1 );
+      }
+      else
+      {
+            EMIT_SOUND( ENT( m_pPlayer->pev ), CHAN_WEAPON, "weapons/m4a1_unsil-1.wav", 0.8, ATTN_NORM );
+            SendWeaponAnim( M4A1_SHOOT1_UNSILENCED );
+      }
+
+
+      m_pPlayer->pev->effects = (int)(m_pPlayer->pev->effects) | EF_MUZZLEFLASH;
+
+      // player "shoot" animation
+      m_pPlayer->SetAnimation( PLAYER_ATTACK1 );
+
+      Vector vecSrc       = m_pPlayer->GetGunPosition( );
+      Vector vecAiming = m_pPlayer->GetAutoaimVector( AUTOAIM_5DEGREES );
+
+#ifdef CLIENT_DLL
+      if ( !bIsMultiplayer() )
+#else
+      if ( !g_pGameRules->IsMultiplayer() )
+#endif
+      {
+            // optimized multiplayer. Widened to make it easier to hit a moving player
+            m_pPlayer->FireBulletsPlayer( 1, vecSrc, vecAiming, VECTOR_CONE_6DEGREES, 8192, BULLET_PLAYER_MP5, 2, 0, m_pPlayer->pev, m_pPlayer->random_seed );
+      }
+      else
+      {
+            // single player spread
+            m_pPlayer->FireBulletsPlayer( 1, vecSrc, vecAiming, VECTOR_CONE_3DEGREES, 8192, BULLET_PLAYER_MP5, 2, 0, m_pPlayer->pev, m_pPlayer->random_seed );
+      }
+
+  int flags;
+#if defined( CLIENT_WEAPONS )
+      flags = FEV_NOTHOST;
+#else
+      flags = 0;
+#endif
+
+      Vector vecShellVelocity = m_pPlayer->pev->velocity + gpGlobals->v_right * RANDOM_FLOAT(50,70) + gpGlobals->v_up * RANDOM_FLOAT(100,150) + gpGlobals->v_forward * 25;
+
+      EjectBrass ( pev->origin + m_pPlayer->pev->view_ofs + gpGlobals->v_up * -12 + gpGlobals->v_forward * 15 + gpGlobals->v_right * 6 , vecShellVelocity, pev->angles.y, m_iShell, TE_BOUNCE_SHELL ); 
+
+
+      if (!m_iClip && m_pPlayer->m_rgAmmo[m_iPrimaryAmmoType] <= 0)
+            // HEV suit - indicate out of ammo condition
+            m_pPlayer->SetSuitUpdate("!HEV_AMO0", FALSE, 0);
+
+      m_flNextPrimaryAttack = UTIL_WeaponTimeBase() + 0.1;
+
+      if ( m_flNextPrimaryAttack < UTIL_WeaponTimeBase() )
+            m_flNextPrimaryAttack = UTIL_WeaponTimeBase() + 0.1;
+
+      m_flTimeWeaponIdle = UTIL_WeaponTimeBase() + UTIL_SharedRandomFloat( m_pPlayer->random_seed, 10, 15 );
+      return;
+}
+
+
+
+
+I am not completely sure about the return; in the attack functions and such. I thought the code was running past here and needed to return.
+
+Please tell me if you spot anything unusual :)
+
+Phreak
+
+--------------------------------------------------
+03/21/03 at 03:45:04  Reply by: Lazer (lazer@devin-afshin.com)
+--------------------------------------------------
+The problem is your probably not defining what animations are what and in what order:
+
+// our weapons animation sequences
+enum railgun_e {
+      RAILGUN_IDLE1 = 0,
+      RAILGUN_SHOOT,
+      RAILGUN_UP
+};
+
+That's an example from my railgun. When I modelled it, I gave it three animations, and they were in that order. If your not sure on the order of the animations, open up the model in the Half-Life Model viewer. (not sure on the link but its on the milkshape homepage)
+
+--------------------------------------------------
+03/21/03 at 05:03:40  Reply by: Phreak (dead_sexy_simon@hotmail.com)
+--------------------------------------------------
+Thanks,
+
+but, Since i started Half Life Programming (Mostly Bots) i've had milkshape 3d studio max Half Life Model Viewer(s) and such. The animations are in the right order [sm]:S[/sm]
+
+i know they are, thats what i checked before i posted :)
+
+--------------------------------------------------
+03/21/03 at 17:51:28  Reply by: Phreak (dead_sexy_simon@hotmail.com)
+--------------------------------------------------
+
+EG: I have checked this.
+
+Does anyone know why it randomly chooses an animation to play while im shooting and such.
+
+(The animations are in the exact order)
+
+Phreak
+
+--------------------------------------------------
+03/22/03 at 02:44:11  Reply by: RobGP (rob@planetfortress.com)
+--------------------------------------------------
+beause of this line
+
+int iShootAnim = RANDOM_LONG(1,3); 
+
+;)
+
+--------------------------------------------------
+03/22/03 at 02:45:25  Reply by: RobGP (rob@planetfortress.com)
+--------------------------------------------------
+maybe the 1,3 should be 0,2? Are you remembering that the first animation is 0 and not 1?
+
+--------------------------------------------------
+03/23/03 at 02:46:54  Reply by: Phreak (dead_sexy_simon@hotmail.com)
+--------------------------------------------------
+No, it couldn't be this. Because, I am simply asking for a random number, to order my animations in. I can't use this
+
+code:
+
+
+<font color="blue">int</font> iShootAnim = RANDOM_LONG(1,3);
+
+SendWeaponAnim( M4A1_SHOOT(iShootAnim) );
+
+
+
+
+
+:S
+
+
+Any other ideas ??
+
+
+[edited]
+
+Besides, in the code i supplied, i have commented out that whole section, and it still picks a random animation *cries*
+
+[/edited]
+
+
+[modified on 03/23/03 at 02:46:54]

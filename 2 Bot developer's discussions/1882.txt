@@ -1,0 +1,114 @@
+--------------------------------------------------
+Subject: Finding client by name
+--------------------------------------------------
+06/27/01 at 16:25:42  Posted by: ABot-Steve (Steve1219@Yahoo.com)
+--------------------------------------------------
+How can i find a client on a server by a username?  i need to also take that username and get the pEdict of it (i.e. pEdict->etc...)
+
+Any help would be accepted.  thanks again
+
+--------------------------------------------------
+07/02/01 at 11:20:04  Reply by: BrianL (halfkiller@hotmail.com)
+--------------------------------------------------
+This is used to find:
+
+code:
+
+edict_t *clients[32];  // <-- Get some Clients
+edict_t *foundPlayer;  // <-- This is the player found by the name.
+
+edict_t *ClientSearchByName(const char *info)
+{
+int c = 0;
+
+ while (c < 32)
+ {
+   if ((clients[c] != NULL) && (strcmp(STRING(clients[c]->v.netname),info) == 0))
+      return (clients[c]);
+ c++;
+ }
+
+return NULL;
+}
+
+// Now put this below line of code somewhere to check.
+
+// Like in StartFrame Function put this:
+ foundPlayer = ClientSearchByName("name");
+
+// or,
+char name[80];
+
+ strcpy(name,arg2);
+ 
+ foundPlayer = ClientSearchByName(name);
+
+
+
+
+Well this code worked for me. :)  
+Hope this helps.
+
+
+
+--------------------------------------------------
+06/28/01 at 05:49:07  Reply by: theimann (killaruna@botepidemic.com)
+--------------------------------------------------
+Right idea, but the code won't work: compilers generally don't like methods that should return an edict_t* but return TRUE of FALSE instead... Also the clients-array isn't initialized.
+
+So, Steve: There is method like UTIL_GetPlayerByIndex( int i) or similar that returns the edict of player i or zero. You could use that:
+
+edict_t *findPlayerByNetname( char *username )
+{
+  edict_t *player = 0;
+  for (int i=0; i<32; i++) {
+    player = UTIL_GetPlayerByIndex( i );
+    if (!player) continue;
+    if (strcmp(STRING(player->v.netname),username)==0) return player; 
+  }
+  return 0;
+}
+
+Call this method from ClientCommand, passing the playername you are looking for. If it returns a value !=0 that is your edict and you can change its health/armor values as explained in the other thread.
+
+Cheers, Tobias
+
+
+--------------------------------------------------
+07/02/01 at 10:59:48  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+basically the same rule here...
+
+code:
+
+edict_t *FindPlayerByName(bot_t *pBot, char *p_netname) 
+{ 
+
+ int i;
+ edict_t *pEdict = pBot->pEdict;
+
+ for (i = 1; i <= gpGlobals->maxClients; i++) 
+ { 
+   edict_t *pPlayer = INDEXENT(i); 
+   // skip invalid players and skip self (i.e. this bot) 
+   if ((pPlayer) && (!pPlayer->free) && (pPlayer != pEdict)) 
+   { 
+     if (strcmp(STRING(pPlayer->v.netname),p_netname)==0) 
+       return(pPlayer); 
+   }
+ } 
+ return(NULL); 
+} 
+
+
+
+
+
+
+
+
+
+
+
+
+

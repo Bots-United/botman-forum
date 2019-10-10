@@ -1,0 +1,198 @@
+--------------------------------------------------
+Subject: Reply (for chat)
+--------------------------------------------------
+06/17/02 at 16:00:24  Posted by: heart_of_the_ocean (muratalkan5@hotmail.com)
+--------------------------------------------------
+I want to make a reply chat. ( i want replies for chat words, like PODbot)
+
+Help me
+
+[modified on 06/17/02 at 16:00:24]
+--------------------------------------------------
+06/17/02 at 16:22:47  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+It is pretty simple. Yet very difficult to explain, there are many things you need to do.
+
+Store all your chat words in a file and parse them into different keywords using a suitable data structure.
+
+You can catch a person saying something when the "SayText" message is sent, which you can find in engine.cpp and add a good function in bot_client.cpp that it will call. You will want to find out the sender of the message in the function you made in bot_client.cpp and then call your own function that will check for keywords using the message and the sender found in it.
+
+In your function that will check for the keywords, you will need to check the message for any keyword in the data structure which holds all your keywords and response chat lines.
+
+If a keyword is in it (using strstr() function) then make a suitable bot say the chat line that corresponds with that keyword. You might want to set a flag in the bot that it wants to say a message and store the actual message in the bot.
+
+In bot think you can check this bot flag and check if the message is valid (not null or first index position of the string is not 0) and make the bot say the message using UTIL_HostSay() function. Once the bot says the message set the flag to FALSE and the message index postion [0] to 0 (or '\0').
+
+I've porbably missed a few things out here tho..!
+
+--------------------------------------------------
+06/18/02 at 01:58:45  Reply by: theimann (killaruna@nuclearbox.com)
+--------------------------------------------------
+Do a search for the "Eliza" program on the net - that's how the chat works. The author is Jospeh Weizenbaum. Maybe you can find some example source code.
+
+--------------------------------------------------
+06/18/02 at 09:15:43  Reply by: @$3.1415rin (joebot@botepidemic.com)
+--------------------------------------------------
+you are using eliza in your bot ?
+
+--------------------------------------------------
+06/23/02 at 10:16:55  Reply by: theimann (killaruna@nuclearbox.com)
+--------------------------------------------------
+Well, I'm using the Eliza system, i.e. responding to specific keywords. Once you understand how the original Eliza works it's very easy to program versions for specific tasks like HL chatting...
+
+--------------------------------------------------
+06/23/02 at 17:46:25  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+I get astounded by Parabot evey once a while. When will it stop ? ;D
+
+
+--------------------------------------------------
+06/24/02 at 00:31:34  Reply by: @$3.1415rin (joebot@botepidemic.com)
+--------------------------------------------------
+well, i wrote my own system too ... btw, do you use hash tables for the keywords or a lot of strstr calls ?
+
+--------------------------------------------------
+06/24/02 at 09:32:09  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+I used a table with a keyword and a table of responses.
+
+I didn't look at any eliza stuff I just made it myself, it seemed pretty simple, but probably not the most efficient way.
+
+Two small structures like this done me..
+
+code:
+
+typedef struct
+{
+    char bchatline[MAX_CHAT_LENGTH];
+}chatline_t;
+
+typedef struct
+{
+      char keyword[MAX_KEYWORD_LENGTH];
+    chatline_t chatline[MAX_LINES];
+} keywords_t;
+
+
+
+I prefer using structures than using arrays of strings though, thats why I've got two of em.
+
+declared like this...
+
+code:
+
+keywords_t botkeywords[MAX_KEYWORDS];
+
+
+
+I loads the file into the structure and I've got a structure full of keywords and responses.
+
+
+
+--------------------------------------------------
+06/24/02 at 09:45:45  Reply by: @$3.1415rin (joebot@botepidemic.com)
+--------------------------------------------------
+well, when already beganning to post code here :D
+
+well, this should be a class somewhen :-)
+code:
+
+
+struct CChatElem{
+      char szText[MAXL_TEXT];
+};
+[code]
+This class organizes texts and keywords
+
+
+class CChatIElem{
+      friend class CChat;
+public:
+      CChatIElem();
+      ~CChatIElem();
+
+      bool Cmp2Key(const char *);
+      CChatIKeyElem *AddKey(const char *);
+      CChatITextElem *AddText(const char *);
+      CChatITextElem *GetRandomText(void);
+protected:
+      CChatIElem *prev,*next;
+      CChatIKeyElem *pKeys;
+      CChatITextElem *pTexts;
+private:
+};
+code:
+
+This class just stores keys
+
+
+class CChatIKeyElem{
+      friend class CChat;
+      friend class CChatIElem;
+public:
+      CChatIKeyElem();
+      ~CChatIKeyElem();
+bool Compare(const char *);
+protected:
+      CChatIKeyElem *prev,*next;
+      char szKey[MAXL_KEY];
+private:
+};
+code:
+This the text items
+
+class CChatITextElem{
+      friend class CChat;
+      friend class CChatIElem;
+public:
+      CChatITextElem();
+      ~CChatITextElem();
+protected:
+      CChatITextElem *prev,*next;
+      char szText[MAXL_TEXT];
+      float fTime;
+private:
+};
+code:
+And this is the main class
+
+class CChat:private CParser{
+      friend class CChatBot;
+public:
+      CChatIElem *AddIElem(void);
+      CChat();
+      ~CChat();
+      //int Talk(CBotBase *);
+      bool to1337(char *szText);
+      void InitChat(void);
+      int Load(CBotBase *);
+      int LoadFile(const char *);
+      void ConvertName(char *szChangP);
+//protected:
+      int ProcessChatString(CBotBase *,char *);
+
+      char *Associate(const char *);
+
+private:
+      bool bNeed2Init;
+      CChatElem szTexts[3][_MAX_TAGS][_MAX_SENTENCES_PER_PART];
+      float fTime[3][_MAX_TAGS][_MAX_SENTENCES_PER_PART];
+      long lCounter[3][_MAX_TAGS];
+
+      CChatIElem *pIChatData;
+};
+[/code]
+--------------------------------------------------
+06/25/02 at 01:44:39  Reply by: theimann (killaruna@nuclearbox.com)
+--------------------------------------------------
+QUOTE:
+do you use hash tables for the keywords or a lot of strstr calls ?
+
+
+I'm using STL vectors to store keywords and the corresponding replies. Since chatting does not need any measurable CPU resources, I did not even think of hashtables...
+
+--------------------------------------------------
+06/25/02 at 03:23:31  Reply by: @$3.1415rin (joebot@botepidemic.com)
+--------------------------------------------------
+well,i just looked how many keywords i'm actually using and it was 41 keywords ... I agree that there's no need for hashtables :D
+

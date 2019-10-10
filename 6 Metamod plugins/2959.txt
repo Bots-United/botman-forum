@@ -1,0 +1,521 @@
+--------------------------------------------------
+Subject: TFC, sniper rifles for everybody!
+--------------------------------------------------
+04/07/02 at 15:59:05  Posted by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Here's sample Stripper2 .cfg file for 2fort that creates a sniper rifle in the upper resuply room that any player can pick up and use...
+code:
+[strip]
+info_player_teamspawn  // remove all the old player spawn points
+
+[add]
+{
+   // add the player spawn point that enables the weapon(s)...
+   classname/info_player_teamspawn
+   team_no/1
+   angles/0 0 0
+   origin/-1536 -1280 -196
+   target/enable_weapons
+}
+
+{
+   // create a multimanager that enables the weapons...
+   classname/multi_manager
+   targetname/enable_weapons
+   origin/0 0 0
+   sniperrifle/0  // trigger the sniper rifle target
+
+   // you could add other weapons here (for example, rpg/0 or
+   // flamethrower/0) but you gotta add the trigger_hurts for them.
+}
+
+{
+   // trigger_hurt, you gotta have one for each team (per weapon)
+   classname/trigger_hurt
+   spawnflags/2
+   team_no/1  // the BLUE team
+   dmg/0
+   targetname/sniperrifle  // sniperrifle target
+   origin/0 0 0
+}
+
+{
+   // trigger_hurt, you gotta have one for each team (per weapon)
+   classname/trigger_hurt
+   spawnflags/2
+   team_no/2  // the RED team
+   dmg/0
+   targetname/sniperrifle  // sniperrifle target
+   origin/0 0 0
+}
+
+{
+   // add a sniperrifle weapon in the resuply area
+   classname/tf_weapon_sniperrifle
+   angles/0 0 0
+   origin/-1180 -1440 -210
+   // I tried making the bounding box smaller, but it doesn'
+   // seem to be working properly.  :(
+   bbox_min/-5 -5 -30
+   bbox_max/5 5 30
+}
+
+{
+   // create a sprite to show the sniper rifle
+   classname/env_sprite
+   angles/50 0 0
+   PRECACHE_MODEL(models/p_sniper.mdl)
+   model/models/p_sniper.mdl
+   // I can't make this stupid thing lay on the floor (probably
+   // something to do with using a player model for the weapon).
+   origin/-1170 -1430 -240
+}
+
+There are a couple of problems...
+
+#1 Some players have another command bound to the 2nd mouse button so it won't zoom properly for them (the medic is one that I know of).  You can still shoot, just not zoomed in.
+
+#2 The laser dot doesn't appear so you don't know how long you are charging the rifle (I'm not even sure if charging actually does anything for classes other than snipers).
+
+There's some other quirky stuff like WHY THE HELL DOES THIS EVEN WORK AT ALL???  I figured this out by looking at the entities in another TFC map that did something similar (it gave the flamethrower to players), but DON'T ASK ME HOW IT WORKS, because I don't know.  Also, when the sniperrifle spawns, there isn't a model shown so I created one using the env_sprite entity with a player model for the sniper.  I had to rotate it to get it level, but I can't seem to get it to draw close enough to the ground to look like it's sitting on the ground.
+
+botman
+
+--------------------------------------------------
+04/15/02 at 12:14:13  Reply by: WFB (williamfbuckleyjr@yahoo.com)
+--------------------------------------------------
+botman: I guess this answers my email to you where I asked you how to achieve this as executed on the banana_r.bsp.
+
+Thanks 
+
+--------------------------------------------------
+04/15/02 at 13:51:41  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Yes, I tried to reply to you but the e-mails to the verizon.net account bounced and said they couldn't be delivered after 48 hours.
+
+botman
+
+--------------------------------------------------
+04/15/02 at 14:46:35  Reply by: WFB (williamfbuckleyjr@yahoo.com)
+--------------------------------------------------
+Thanks for trying to contact me.  It seems that if i have 2 unread emails on the verizon server new mail gets bounced.:(
+
+Question: Why did you use an "env_sprite" and not an "info_tfgoal" to associate the p_sniper.mdl?
+ 
+
+
+--------------------------------------------------
+04/15/02 at 16:38:55  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+I just wanted some entity to display a model.  "env_sprite" or "info_tfgoal" should both do that, so you could use either one.
+
+It's just that I had the source code (in the SDK) to "env_sprite" to see what it does with the angles key/value to make sure that it wasn't resetting any of them to zero.
+
+botman
+
+--------------------------------------------------
+04/15/02 at 18:46:14  Reply by: WFB (williamfbuckleyjr@yahoo.com)
+--------------------------------------------------
+Another question:  why is the dmg/0 in the trigger_hurt and not set to 9999999?  
+
+thanks
+
+--------------------------------------------------
+04/16/02 at 04:34:47  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+The dmg key value didn't seem to matter.  0 and 999999999 both did the same thing (which is nothing) any damage amount would probably work.  I just picked 0 since it wasn't really doing any damage anyway.
+
+Again, I have NO IDEA why this works.  It looks like some kind of VERY weird TFC bug to me and I'm pretty sure this wasn't what the TFC developers intended since it isn't documented anywhere.
+
+botman
+
+[modified on 04/16/02 at 04:34:47]
+--------------------------------------------------
+04/16/02 at 06:32:53  Reply by: WFB (williamfbuckleyjr@yahoo.com)
+--------------------------------------------------
+So is the key to this curious event the info_player_teamspawn triggering the target enable_weapons?  
+
+Also, what is the key value of '0' that follows the sniperrifle (sniperrifle/0)?  (I generally think of these things in an ent file format).
+
+Thanks again!
+
+--------------------------------------------------
+04/16/02 at 08:01:18  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+When you create a multi_manager, you create a list of targets that it will fire.  You put a delay value (in seconds) after the name of the target (for when you want that target to fire).
+
+For example...
+
+code:
+classname/multi_manager
+target1/0
+target2/10
+target3/30
+
+...would create a multi_manager that would fire target1 immediately (no delay), would fire target2 after 10 seconds and would fire target3 after 30 seconds.
+
+This allows you to sequence events triggered by the multi_manager so that they don't all happen at once.
+
+So in this case, the info_player_teamspawn triggers the multi_manager, the multi_manager then triggers "sniperrifle" which is the targetname of the 2 trigger_hurts.  As the comments indicate, you could add other weapons in the multi_manager to make several of them trigger their own trigger_hurts all at the same time (each with a delay of 0).
+
+botman
+
+--------------------------------------------------
+04/16/02 at 17:04:36  Reply by: WFB (williamfbuckleyjr@yahoo.com)
+--------------------------------------------------
+What can I say botman?  You are the best!
+
+--------------------------------------------------
+04/18/02 at 07:17:01  Reply by: LunaticWithCandy (candyranger@hotmail.com)
+--------------------------------------------------
+Hey botman, are you sure this works?
+
+I was talking to Fry Guy (fry_complex, fry_backed, etc) he told me to post this:
+
+"You need to target the trigger_hurt twice for the entire game, and not on a per-weapon basis. Also the trigger_hurt must be encompassing the weapon, I'm pretty sure.. I've got an example map for it if you want. "
+
+At least that's how he did it, hmm.
+
+--------------------------------------------------
+04/18/02 at 07:44:00  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+The .cfg file that I posted works for me in 2fort.  The triggers hurts were located at (0,0,0) (not around the weapon) and it still worked.  Like I said above, I don't know why this works.
+
+Try it yourself, just cut-and-paste the 2fort_str.cfg file from my message above, start the game on the Blue team (since all the other spawn points are gone, and you can spawn as a scout, solder, medic, etc. and pickup and fire the sniper rifle.
+
+Other people doing something similar may just be taking it for granted that the trigger_hurt has to surround the weapon (it may not actually need to do this).
+
+botman
+
+--------------------------------------------------
+04/18/02 at 08:54:34  Reply by: LunaticWithCandy (candyranger@hotmail.com)
+--------------------------------------------------
+I'll get the map from him to see how he did it and post it, his stlye may make more sense?
+
+--------------------------------------------------
+04/19/02 at 11:04:26  Reply by: WFB (williamfbuckleyjr@yahoo.com)
+--------------------------------------------------
+I now have a flamethrower working for all classes and all teams. I found that I did not need to add an env_sprite because the tf_weapon_flamethrower alone made the weapon appear. 
+
+However, I'd like to limit the availability to pick up and use this weapon to scouts only.  Would I need to add an "info_tfgoal" with the proper goal states ("g_e" "1" ;
+"g_a" "1") vis-a-vis "playerclass" "1" in order to do this?  If so, do you have any suggestions for how I associate an info_tfgoal with the weapon?
+
+
+Thanks
+
+[modified on 04/19/02 at 11:04:26]
+--------------------------------------------------
+04/19/02 at 11:12:44  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+I don't know much about TFC entities.  Is there something in the info_player_teamspawn that can trigger certain entities based on the class of the player?  If so, you can use this to trigger the multi_manager only for the class you want to allow (I assume this would be a bit mask to allow multiple classes to get the weapon).
+
+botman
+
+--------------------------------------------------
+04/19/02 at 12:59:31  Reply by: LunaticWithCandy (candyranger@hotmail.com)
+--------------------------------------------------
+There is, well sort of.
+
+Make a teamspawn class specific and have it target the multimanager.
+
+{
+classname/info_player_teamspawn
+goal_state/2
+angles/0 0 0
+team_no/1
+playerclass/1 //1 Scout, 2 sniper, 4 soldier, 8 demoman, 16 medic, 32 hwguy, 64 pyro, 128 spy, 256 engineer, -1 civilian. Add them together for whatever combination (aside from civilian).
+g_a/3
+origin/0 0 0
+}
+
+
+--------------------------------------------------
+04/19/02 at 15:08:35  Reply by: WFB (williamfbuckleyjr@yahoo.com)
+--------------------------------------------------
+I've never seen info_tfdetect bitfields used for info_player_teamspawn.  You've tried this and it works?
+
+--------------------------------------------------
+04/19/02 at 22:01:22  Reply by: LunaticWithCandy (candyranger@hotmail.com)
+--------------------------------------------------
+Wait, maybe I misunderstood what you said? Because I didn't think I said that?
+
+You want only a specific class to spawn with a weapon, but not let any other classes spawn with it?
+
+Oh! I see, don't use info_tfdetect, you mean info_tfgoal right? Or info_tfitem, either should work, and both can be class specific.
+
+--------------------------------------------------
+04/20/02 at 04:39:46  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+According to the TFC .fgd file (updated aug. 23, 2000), "playerclass" is NOT a bit mask...
+code:
+//#desc Set which class is allowed to activate goal. You can only select 1, you can't add these bits up.
+playerclass(choices) : "Player class" : 0 =
+[
+   0 : "Any"
+   1 : "Scout"
+   2 : "Sniper"
+   3 : "Soldier"
+   4 : "Demolitions man"
+   5 : "Medic"
+   6 : "Heavy Weapons Guy"
+   7 : "Pyro"
+   8 : "Spy"
+   9 : "Engineer"
+]
+
+...which is part of TFCriteria (which is part of info_player_teamspawn).  But the TFCriteria bits seems to set items that DON'T activate a goal (so you would need to set them to the opposite of what you want).
+
+botman
+
+--------------------------------------------------
+04/20/02 at 05:15:41  Reply by: WFB (williamfbuckleyjr@yahoo.com)
+--------------------------------------------------
+However, the values posted by Lunatic With Candy are bitfields for info_tfdetect that limit classes. 
+
+1 =    No Scouts allowed.  
+2 =    No Snipers allowed.  
+4 =    No Soldiers allowed.  
+8 =    No Demos allowed.  
+16 =   No Medics allowed.  
+32 =   No HW's allowed.  
+64 =   No Pyros allowed.  
+128 =  No Random selection allowed.  
+256 =  No Spies allowed.  
+512 =  No Engies allowed.  
+-1 =   ONLY CIVILIANS allowed on this team.  
+
+
+--------------------------------------------------
+04/20/02 at 05:29:16  Reply by: WFB (williamfbuckleyjr@yahoo.com)
+--------------------------------------------------
+Curious, when I added tf_weapon_sniperrifle, tf_weapon_ic, tf_weapon_flamethrower I didn't need to add a sprite to make them visible, but when I added tf_weapon_knife or tf_weapon_tranq those weapons were not visible and I needed to add the p_ mdls. 
+
+Also, it seems that in order for the added weapons to work properly when picked up by a player they have to be approach from the proper direction.  I.e., pick up the flamethrower from the left side and it's inactive but pick it up from the right side and it's active.  In addition, scouts tend to have problems getting active weapons (might be because of their small size, ?) Any idea how to correct this? 
+
+Thanks
+
+
+--------------------------------------------------
+04/20/02 at 09:38:16  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+The pickup problem probably has to do with the angles.
+
+In the SDK, when you spawn certain types of entities, the code checks which yaw angle has been assigned to it.  If it is 0, it assumes you can pick it up from any angle.  If the angle is non-zero, it assumes you must approach it from that angle to pick it up.  Try changing the yaw (the middle number in the "angles" key) to zero to see if that makes a difference.
+
+botman
+
+--------------------------------------------------
+04/20/02 at 09:55:45  Reply by: WFB (williamfbuckleyjr@yahoo.com)
+--------------------------------------------------
+The inability to select weapon happens even with angles 0 0 0.  
+
+It's not that the player isn't picking up the weap, he is.  It's that it doesn't activate.  In other words, when a player picks a pyro flamethrower one of two things occurs: 1) a red symbol of the weap appears on the HUD, which seems to mean that even though the player picked it up it's not activated (it can't be selected); or 2) a yellow symbol of the weap appears in the HUD, which means it is functional (it can be selected).
+
+
+--------------------------------------------------
+04/20/02 at 12:52:13  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+The red hud icon means the player doesn't have ammo yet for that weapon.  Give the player some ammo for it when they spawn or place some ammo right beside the weapon in a backpack.
+
+botman
+
+--------------------------------------------------
+04/20/02 at 13:11:35  Reply by: WFB (williamfbuckleyjr@yahoo.com)
+--------------------------------------------------
+doh! 
+
+--------------------------------------------------
+04/21/02 at 08:25:29  Reply by: WFB (williamfbuckleyjr@yahoo.com)
+--------------------------------------------------
+Yet another problem.  We added the flamethrower to a Murder ball map.  In Murder ball the team and its individual players with the ball get 1 point per every 5 seconds they hold the ball.  The player with the ball sees  4 carry object icon in his HUD (blue, red, yellow, green).  
+
+Since the flamethrowers were added the scoring no longer works and when the player picks up the ball he doesn't see the carry object icons.  
+
+I have a feeling it's the classname/trigger_hurt that is causing the trouble.  I base this on the fact that new fancier versions of the basic Murder ball map have incorporated a "classname" "trigger_hurt" that is designed to  kill players that camp in a certain areas (the elevator) after a certain amount of time lapses, and the same non-scoring no icon bug is present after a player is killed in the elevator for camping (which is why we don't use the newer versions of the map).
+
+Any chance of solving this problem?  
+
+Thanks
+
+
+
+--------------------------------------------------
+04/21/02 at 09:29:12  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Perhaps the HUD icons have something to do with the info_player_teamspawn entities.  Did you use my BSP tools to dump the entities in this map to see what the default info_player_teamspawn entities look like?
+
+botman
+
+--------------------------------------------------
+04/21/02 at 14:05:30  Reply by: LunaticWithCandy (candyranger@hotmail.com)
+--------------------------------------------------
+You're probably giving the eneties names that are used for the scoring. By doing this you are over writing them... IE if the scoring system triggers goal 1, and you decide to name one of your weapons goal 1, then the scoring wont work.
+
+--------------------------------------------------
+04/21/02 at 16:16:24  Reply by: WFB (williamfbuckleyjr@yahoo.com)
+--------------------------------------------------
+As far as I can tell the trigger_hurt was interfering with the item_tfgoal (because it contains the HUD item bitfields) and the info_tfgoal_timer which makes the score advance.
+
+I solved the problem by trial and error. Here's how:  I removed all of the trigger_hurt's (4 teams 4 trigger_hurt's). Then I added 1 trigger_hurt at origin 0 0 0 that was NOT associated with any one team or targeted to any specific tf_weapon, at which point both the extra pickup weaps worked and the scoring/icon HUD worked.  
+
+It seems that if the trigger_hurt was targeted to any pickup weapon, all of which were inside the team bases, it interfered as I stated above.  Once the trigger_hurt was placed outside of the bases and not targeted to one of the weaps inside the bases everything it worked fine. STRANGE!
+
+This problem, then, may occur on other maps that rely on info_tfgoal_timer, such as CZ2 and Avanti.
+
+Thanks for your input.
+
+--------------------------------------------------
+05/12/02 at 23:39:41  Reply by: thePsychoticUnderpants (benrules@quirke.net)
+--------------------------------------------------
+hmm. i am now doing map ripping (coz stripper2 ceased functioning after 3 reinstalls of metamod and stripper2 and dont ask me why) and i have so far made a invincible civilian team, two super dispensers and a class limit.
+
+i want to make a auto-rifle (no i didnt say sniper-rifle) to spawn right under the civilian ONLY for him and strip his umbrella, i know how to do the umbrella thing. (thats right i said an invincible civilian with only an autorifle, and, bags only for him all around the map :O)
+
+yes he is going to kick-ass ;)
+
+--------------------------------------------------
+05/13/02 at 00:18:06  Reply by: thePsychoticUnderpants (benrules@quirke.net)
+--------------------------------------------------
+ok. i took botmans stuff and chnaged it to auto-rifle. the civ spawns with it but it has no ammo. so i made it gie him ammo but it still doesn't work. here's what it looks like:
+
+code:
+{
+"origin" "0 0 -570"
+"angles" "0 309 0"
+"team_no" "3"
+"message" "Annoy!"
+"armorvalue" "80"
+"armortype" "0.8"
+"ammo_shells" "75"
+"ammo_rockets" "200"
+"ammo_nails" "75"
+"ammo_cells" "200"
+"no_grenade_1" "4"
+"no_grenade_2" "4"
+"health" "90"
+"skin" "0"
+"items" "0"
+"target" "enable_weapons"
+"classname" "info_player_teamspawn"
+"invincible_finished" "999999999999" //guess.
+}
+{
+"classname" "multi_manager"
+"origin" "0 0 0"
+"autorifle" "0"
+"targetname" "enable_weapons"
+}
+{
+"classname" "trigger_hurt"
+"spawnflags" "2"
+"team_no" "3"
+"dmg" "0"
+"targetname" "autorifle"
+"origin" "0 0 0"
+}
+{
+"classname" "tf_weapon_autorifle"
+"angles" "0 0 0"
+"origin" "0 0 -630"
+"bbox_min" "-5 -5 -30"
+"bbox_max" "5 5 30"
+"delay" "2"
+}
+{ 
+"classname" "info_tfgoal"
+"origin" "0 0 -700"
+"angles" "0 0 0" 
+"message" "Full Auto-Rifle Ammo" 
+"noise" "weapons/scock1.wav"
+"ammo_detpack" "0" 
+"team_no" "3" 
+"ammo_nails" "0" 
+"ammo_rockets" "0" 
+"ammo_cells" "0" 
+"ammo_shells" "200" 
+"armorvalue" "0" 
+"health" "0" 
+"wait" "10"
+"model" "models/backpack.mdl"
+"g_e" "1" 
+"g_a" "1" 
+}
+{
+PRECACHE_MODEL(models/p_sniper.mdl)
+"origin" "0 0 -630"
+"classname" "env_sprite"
+"angles" "50 0 0"
+"model" "models/p_sniper.mdl"
+}
+
+
+of course this looks different to stripper2's way off formatting it but this is in a .ent file and this is how you do it so ignore the "s
+
+[modified on 05/13/02 at 00:18:06]
+--------------------------------------------------
+05/13/02 at 05:18:33  Reply by: bmccartn (Hogweed@optonline.net)
+--------------------------------------------------
+I tried a flamethrower for the civilian, didn't work either. I'll have to try it later, but maybe the problem is that the civilian doesn't seem to be able to hold any ammo, maybe a weapon like a shotgun or rpg (where there is at least some ammo loaded in the weapon) would work. I know I have seen civilians with rpg's with cheats on, I don't know if the same rules apply.
+
+As I said in another thread, I do know a medipack works for the civilian, I imagine a spanner would also.
+
+[modified on 05/13/02 at 05:18:33]
+--------------------------------------------------
+05/13/02 at 06:47:34  Reply by: Chet (chico552@hotmail.com)
+--------------------------------------------------
+I have tried to give the civilian conc grenades but my server always seems to crash. Can you only give them weapons?
+
+ Also if your giving the civilian weapons just put a ammo pack a bit after he falls. I think that should work, maybe don't put a model or a sound on the ammo pack so people won't notice.
+
+--------------------------------------------------
+05/13/02 at 07:12:30  Reply by: LunaticWithCandy (candyranger@hotmail.com)
+--------------------------------------------------
+Grenades are only class specific, you would have to edit the mod code like what neotf or the silly zone do in order to add grenades to any class.
+
+Civilian can have ammo, try sv_cheats 1 reload map then use give tf_weapon_ac (or whatever). If I remember right the civilian carries as much ammo as the scout can.
+
+That's odd that it wont work by using this... my only guess is that the origin might be off. Or that not all the right required fiels are there.
+
+{ 
+"classname" "info_tfgoal"
+"origin" "0 0 -700"
+"angles" "0 0 0" 
+"message" "Full Auto-Rifle Ammo" 
+"noise" "weapons/scock1.wav"
+"ammo_detpack" "0" 
+"team_no" "3" 
+"ammo_nails" "0" 
+"ammo_rockets" "0" 
+"ammo_cells" "0" 
+"ammo_shells" "200" 
+"armorvalue" "0" 
+"health" "0" 
+"wait" "10"
+"model" "models/backpack.mdl"
+"g_e" "1" 
+"g_a" "1" 
+}
+
+Try giving ammo for all types including ammo_medkit
+
+--------------------------------------------------
+05/15/02 at 02:37:28  Reply by: thePsychoticUnderpants (benrules@quirke.net)
+--------------------------------------------------
+origin is fine. when he spawns, theres a pack there and when you go in it its says Full Auto-rifle Ammo and when i take the team limit off the blue/red team can pick up the shells. 
+
+no i want people to notice so they can come back for ammo when they are out :P
+
+--------------------------------------------------
+08/15/02 at 13:30:36  Reply by: StealthingIT (sinch60@hotmail.com)
+--------------------------------------------------
+Wow, this is sweet. Can I use this to add the crossbow from hldm to other mods?
+
+--------------------------------------------------
+08/15/02 at 13:45:58  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Nope.  There is no crossbow code in the other MODs.
+
+See some of the other metamod threads in this group about adding weapons to MODs.  (use the "Search" at the top to search the Metamod Plugins group for "metamod weapon").
+
+botman
+

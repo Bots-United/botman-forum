@@ -1,0 +1,73 @@
+--------------------------------------------------
+Subject: Behaviour when camping
+--------------------------------------------------
+10/11/00 at 13:36:07  Posted by: CountFloyd (countfloyd_1999@yahoo.com)
+--------------------------------------------------
+Hi all !
+
+I've implemented camping waypoints to my version of HPB Bot and I'm having much trouble with this since a week (I really can't believe it myself). I want them to switch directions from a campstart position to an endposition as long as they are camping (not just pausing them, which is not human-like IMHO). First I tried to save the v.v_angle.x/y of the Edict setting the waypoint (then setting those angles in the Botcamp routine). This didn't work well, since the Bots approached the waypoints from different directions. Now, when I place a camping waypoint  I do the following:
+
+// when setting the campstart
+Vector v_forward = pEntity->v.origin + pEntity->v.view_ofs + gpGlobals->v_forward * 1024;
+// p is a pointer to my actual Pathnode
+p->fcampstartx=v_forward.x;
+p->fcampstarty=v_forward.y;
+
+Setting p->fcampendx/y is basically the same. I thought that way I get a distant Vector Origin (ignoring z) the Bot could look at...
+
+In BotHeadTowardWaypoint I've added this (among other things):
+
+if(paths[pBot->curr_wpt_index]->flags & W_FL_CAMP)
+{
+if((BotHasPrimaryWeapon(pBot)) && (pBot->f_camp_time+10.0<gpGlobals->time))
+{
+pBot->f_camp_time=gpGlobals->time+RANDOM_FLOAT(BotSkillDelays[pBot-fBotCampStartDelay,BotSkillDelays[pBot->bot_skill/20].fBotCampEndDelay);
+v_src.x=paths[pBot->curr_wpt_index]->fcampstartx;
+v_src.y=paths[pBot->curr_wpt_index]->fcampstarty;
+v_src.z=0;
+v_src.x+=paths[pBot->curr_wpt_index]->fcampendx;
+v_src.x/=2;
+v_src.y+=paths[pBot->curr_wpt_index]->fcampendy;
+v_src.y/=2;
+Vector v_direction = v_src - pEdict->v.origin;
+Vector v_angles = UTIL_VecToAngles(v_direction);
+pEdict->v.ideal_yaw = v_angles.y;
+pBot->iCampDirection=RANDOM_LONG(0,1);
+return TRUE;
+}
+}
+
+As you can see this should point the Bot to the middle of both directions and set the direction to change the ideal_yaw. Surprisingly this works well!
+But here's the main camp routine in BotThink:
+
+if(pBot->iCampDirection==0)
+{
+v_dest.y=paths[pBot->curr_wpt_index]->fcampstarty;
+v_src=pEdict->v.origin+pEdict->v.view_ofs+gpGlobals->v_forward * 2;
+Vector v_direction = v_dest - v_src;
+Vector v_angles = UTIL_VecToAngles(v_direction);
+diff = abs(pEdict->v.v_angle.y - pEdict->v.ideal_yaw);
+if(diff<=1)
+   pBot->iCampDirection^=1;
+else
+   pEdict->v.ideal_yaw=v_angles.y;
+}
+
+This is only the part to reach the campstarty Value (I didn't want to mess up this forum with code snippets and the other way round is nearly the same routine). As you can see, I try to set the ideal_yaw with the calculated direction to point to. If the Bot angle is the same as the ideal_yaw it has reached its position and should switch direction. But it fails when it comes to the line where it says:
+diff = abs(pEdict->v.v_angle.y - pEdict->v.ideal_yaw);
+diff (a float) is always <=1 even when the bot is looking in the wrong direction. It doesn't even turn !!! Do I have a serious flaw my thoughts (maybe right in the waypoint set routine) ? Before you post: no, ideal_yaw isn't reset in the flow of the routines. I now let the Bot just rotate by doing a ideal_yaw+=2; and it works. So it's not that easy. Does anybody have a clue ?
+
+Thanks for reading.
+
+--------------------------------------------------
+10/12/00 at 05:14:14  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+You're not calling UTIL_MakeVectors() before using the gpGlobals->v_forward vector.  The UTIL_MakeVectors() function take a set of angles and converts them to a set of vectors.  The vectors are stored in gpGlobals->v_forward, gpGlobals->v_up, and gpGlobals->v_right.  All of these being global variables that can (and will) be overwritten by the MOD and the engine code.  Try using UTIL_MakeVectors(pEntity->v.v_angle) before using the v_forward vector.
+
+botman
+
+--------------------------------------------------
+10/12/00 at 10:00:47  Reply by: CountFloyd (countfloyd_1999@yahoo.com)
+--------------------------------------------------
+Jeeessuuss ! Such a damn newbie mistake ! You're absolutely right ! I had MakeVectors in it some time ago but removed it by accident...thank you very much !!
+

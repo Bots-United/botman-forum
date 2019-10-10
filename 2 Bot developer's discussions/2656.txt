@@ -1,0 +1,219 @@
+--------------------------------------------------
+Subject: [please help] tracelines and vector maths
+--------------------------------------------------
+01/18/02 at 00:05:15  Posted by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+Ok, here's a tough one:
+
+When using tracelines, if the traceline hit something it will return the hit plane normal vector in the traceresult.
+
+I would like to compute the coordinates of a vector that is PARALLEL to the hit plane but facing the same way as the traceline ; e.g. a vector that "follows" the plane in the same direction the traceline was. I guess I have to use the hit plane normal for this.
+
+I'm not very good in vector mathemathics and my poor head is broken! This problem is really too tough for me... :-(
+
+I have made a small bmp (I luv mspaint) on http://perso.libertysurf.fr/pm0001/vectors.html
+
+If you know how to do, please tell me!
+
+[modified on 01/18/02 at 00:05:15]
+--------------------------------------------------
+01/18/02 at 01:15:25  Reply by: @$3.1415rin (joebot@botepidemic.com)
+--------------------------------------------------
+( well, i hope my english isn't too bad )
+
+ok, some names first. the traceline is called g1, the plane that is hit is called e1. ( big letters are vectors, cause we havn't really good possibilities to write such stuff here )
+code:
+
+g1: R=Ra + vU;
+e2: N (dotproduct) Rhit = N (dotproduct) R;
+
+
+
+Rhit is a vector on the plane, best thing is the vector where the tracelinie hits the plane
+
+Then you make a plane, using g1 and the normal of the hit plane, i.e.
+code:
+
+e1 : R = Ra + vU + wN
+
+
+
+( N is the plane's normal )
+
+Now you can calculate the line g2 which is element of both planes, i.e. g2 € e1,e2
+code:
+
+N (dotproduct) Rhit = N (dotproduct) ( Ra + vU + wN )
+
+
+now you have a term with 2 unknown variables, but one of them can be calculated and you get the describing vectors of the line g2
+
+
+well, looks a bit difficult, but i cannot think of a easier version right now :)
+
+[modified on 01/18/02 at 01:15:25]
+--------------------------------------------------
+01/18/02 at 02:49:25  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+phew.... Thanks, I barely understood...
+
+A friend of mine was saying this:
+
+code:
+
+         Vector v_normal = tr.vecPlaneNormal; // normal from traceresult
+         Vector v_parallel; // vector parallel to plane
+
+         v_parallel.x = 0;
+         v_parallel.y = -v_normal.z;
+         v_parallel.z = -v_normal.y;
+
+
+
+... assuming x is the axis that goes from left to right, y is the axis that goes from backwards to front, and z the axis that goes from downwards to upwards (but in fact I don't know at all between x and y, is it that with the HL engine ?)
+
+... and v_parallel.x would be 0 because UTIL_MakeVectors() would have been called before the traceline would be made.
+
+I have difficulties to figure out what it would look like...
+
+[modified on 01/18/02 at 02:49:25]
+--------------------------------------------------
+01/18/02 at 04:31:05  Reply by: William (william@cgf-ai.com)
+--------------------------------------------------
+Pierre-Maria,
+
+indeed, given the plane normal (as vOrig = [x, y, z]), there might be three possible vectors that are in line with a coordinate axis and perpendicular to the plane normal:
+- a: [ -y, +x, 0]
+- b: [ -z, 0, +x]
+- c: [ 0, -z, +y]
+(for all of them (vP) holds: dotproduct(vP, vOrig) == 0, which means perpendicular).
+
+You can pick the vector most close to your original vector vOrig by:
+- normalizing a, b, and c
+- computing the dot product with vOrig
+and pick the vector a, b, c yielding the highest absolute dotproduct value (if the dotproduct < 0, flip the sign of the vector)
+
+btw, what are you really trying to achieve?
+
+William
+
+[modified on 01/18/02 at 04:30:34]
+
+[modified on 01/18/02 at 04:31:05]
+--------------------------------------------------
+01/18/02 at 04:33:30  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+You don't want to set the X component to zero.
+
+If you want a vector going in the opposite direction of the trace result normal, you can just subtract the normal from (0,0,0) which will create a negative vector.  There's a function called VectorInverse() in the utils\mathlib.c file that does the same thing (it just negates each of the X, Y and Z components.  Here's how you can do it using the Vector class...
+code:
+Vector v_normal = tr.VecPlaneNormal;
+Vector v_negative_normal = Vector(0,0,0) - v_normal;
+
+That will give you a vector going in the opposite direction of the normal (towards the wall).
+
+If you wanted something parallel, but away from the original traceline, you could add an X, Y, and/or Z offset to the original start position, then use this negative vector to determine an end point (by adding them together).
+
+botman
+
+--------------------------------------------------
+01/18/02 at 04:58:18  Reply by: @$3.1415rin (joebot@botepidemic.com)
+--------------------------------------------------
+@william : did he tell something about parallel to coordinate axis ? it should be parallel to the plane, i.e. the dot product of the normal and the resulting direction should be 0
+
+@botman : did i understand you right, that you are calculating a parallel to the traceline ?
+
+everything would be easier if we say the normal's z coordinate would be 0, i.e. we got a wall so something similar .... so it would be really nice to know what you want to do :)
+
+--------------------------------------------------
+01/18/02 at 06:17:04  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+Answering to William,
+
+My bots don't use waypoints at all. Neither any sort of pre-computed map locations to navigate. I make them sample their field of view (kinda like we do as humans) and store the distance to what they see to decide then which direction is the best for them to go.
+
+This navigation system is working impressively well, but still two problems remain.
+
+-The first one is to make the bots detect staircases,
+
+-The second one is to make bots detect slopes. That's what I want to achieve here.
+
+By firing a traceline in a direction from his point of view and looking at the z value of the vecPlaneNormal returned, my bot is able to detect a slope. What I want to do is to make them able to 'see' up (or down) the slope, i.e. add the distance from a traceline fired with this famous vector I want to compute, to the distance from the traceline bot fired that permitted him to detect this slope. Do you see what I mean ?
+code:
+
+                                              __..--> bot's idea of the slope
+   my bot                             __..--°°__..--°° slope
+   _o_  --->--->--->--->--->--->--->°°__..--°°
+    I                         __..--°°
+---/-\------------------..--°°
+
+
+
+I love the beauty of ascii art... 8)
+
+In fact, "@$3.1415rin" (yer name is unpronouncable!) was right, he understood very well what I wanted to do. My friend was wrong telling me just to swap some coordinates, I just figured that out.
+
+I want to build a vector that represents the intersection between two planes:
+-the hit plane from the traceresult,
+-the plane described with the trace vector and the hit plane normal.
+
+That's exactly it, but I don't know how to compute that.
+
+[modified on 01/18/02 at 06:08:01]
+
+To botman: you might want to have a look at http://perso.libertysurf.fr/pm0001/vectors.html which is a bmp I made describing what I want to do.
+
+To be more explicit again, let's say that in my picture, the traceline starts from the right and go <b>forward</b> up to the plane (i.e. it doesn't start <i>behind</i> it.
+
+[modified on 01/18/02 at 06:17:04]
+--------------------------------------------------
+01/18/02 at 13:30:19  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+The CrossProduct of the plane normal and the original traceline vector will give you a vector that is perpendicular to the plane normal (and therefore parallel to the plane).  Unfortunetly this cross product vector is not pointing in the direction you want, but is pointing perpendicular to the direction you want.  Perhaps that will get you started and a little bit closer to what you want.
+
+botman
+
+--------------------------------------------------
+01/19/02 at 06:46:01  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+To @$3.1415rin:
+
+I think I understood your method, but could you detail it more ? I haven't studied how to find plane coordinates in mathemathics and a little help would be welcome... You cand send me an e-mail if you think it will be difficult to write it down in the forum... Thanx in advance
+
+--------------------------------------------------
+01/19/02 at 10:24:34  Reply by: @$3.1415rin (joebot@botepidemic.com)
+--------------------------------------------------
+i put the whole stuff into a better format  www.joebot.net/lampel/johannes/botmansf/g1.htmhere
+
+[modified on 01/19/02 at 10:24:34]
+--------------------------------------------------
+01/20/02 at 04:39:12  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+thank u very much
+
+--------------------------------------------------
+01/20/02 at 07:17:48  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+heheh. One more time I am a perfect idiot.
+"why would I make simple, when I could make horribly complex?"
+
+I know the hit point coordinates. I know the traceline's direction. So I trace one step ahead (start location given by plane normal direction) in the same direction, and I get a new hit point. Then I compute the vector that is the difference between the two hit points, I normalize it, and.............. that's all.
+
+Monstrously simple. I'm ashamed.
+
+--------------------------------------------------
+01/20/02 at 07:59:32  Reply by: @$3.1415rin (joebot@botepidemic.com)
+--------------------------------------------------
+i wouldn't say my approach is horrible difficult, it's normal school math, so that cannot be called complex. 
+The main disadvantage of your approach is in my opinion the cost of a second traceline where it is not necessary. As i read your bot shouldn't be waypoint depending .... so i guess you have to do a lot of tracelines and you should be happy for every saved cpu cycle i guess ... - just telling my opinion on this topic - i don't think my approach is as computationally expensive as a single additional traceline :)
+
+--------------------------------------------------
+01/21/02 at 04:56:06  Reply by: @$3.1415rin (joebot@botepidemic.com)
+--------------------------------------------------
+btw, my approach still needs an additional dotproduct at the end for determining the direction :)
+
+--------------------------------------------------
+01/21/02 at 07:05:30  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+sure, I would save a traceline...... but I'm perfectly unable to write this down correctly in C ;D
+

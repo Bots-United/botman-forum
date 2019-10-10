@@ -1,0 +1,30 @@
+--------------------------------------------------
+Subject: linkfunc.cpp what is it?
+--------------------------------------------------
+03/21/01 at 07:56:16  Posted by: Clean (botmans@xlat.cjb.net)
+--------------------------------------------------
+I've got botman's HPB template working on the first try and went ahead at looking at the HL SDK. Then, I decided I might just try to beautify and rewrite the entire template since I'm usually pretty anal about the ease of source code reading. Anyway, I spotted linkfunc.cpp that contains all the lowercased export functions from CS mp.dll. These functions, as I currently understand, are called to initialize each unique entity belonging to CS or HL MODs. I also assume these entities are all included in hl.dll. What puzzles me is that I don't seem to see where these functions are called in the HPB bot source code or from any GetProcAddress xref's from sw.dll, hl.dll, or mp.dll to those entity functions except for the basic GiveFnptrToDLL and GetXXX's. Are these functions here for us to retrieve, use, or filter? I'm sure I'm missing the point. I've already been analyzing/tinkering with the source code for some hours now and some comments or documentation would be eye-candy. Thanks!
+
+
+
+
+--------------------------------------------------
+03/21/01 at 08:12:24  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+This comes straight from the ReadMe.txt file included with the latest template source code (if you haven't downloaded the latest version you should get it, it you have, you should read ReadMe.txt)...
+
+QUOTE:
+Perhaps this would be a good time to explain how entities get spawned in Half-Life.  When you create a map (using Worldcraft or other map editing tools), you specify the name of an entity that you want to create at a specific location in the level.  These names are stored as ASCII text strings (like "weapon_shotgun", "item_healthkit", or "ammo_crossbow"). When the Half-Life engine wants to create one of these items, it calls a function in the MOD DLL that has the same name as the item.  For example, in Half-Life deathmatch one of the functions exported from the DLL file is called "weapon_shotgun".  You won't find this function in the Standard SDK source code if you go looking for it.  It actually gets created by a macro called "LINK_ENTITY_TO_CLASS()".  This macro is defined in the util.h file in the Standard SDK.  This  macro creates a function that calls GetClassPtr().  GetClassPtr() is defined in the cbase.h file in the Standard SDK.  GetClassPtr() will allocate space for an entity if it does not exist yet and then will return a pointer to the private data portion of that entity.  What this means is that whenever you have an entity in a map, you will have to have an exported function in the MOD DLL with the same name as that entity.  This becomes important later on when you create the intermediate DLL that I referred to above.  You will have to create one function in your bot DLL for each exported function in the MOD DLL.  This way when the engine tries to create a "weapon_shotgun", it will call the weapon_shotgun() function in the bot DLL and the bot DLL weapon_shotgun() will call the MOD DLL's weapon_shotgun() function (thus completing the chain).
+
+
+
+To summarize, the Half-Life engine is the one to call these functions (based on entity names contained within the .bsp map file).
+
+botman
+
+
+--------------------------------------------------
+03/21/01 at 11:07:36  Reply by: Clean (botmans@xlat.cjb.net)
+--------------------------------------------------
+You're right. I'll take a nap and reread that thing for the 3rd time. Ha... Thanks...
+

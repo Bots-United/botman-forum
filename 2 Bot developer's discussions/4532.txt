@@ -1,0 +1,119 @@
+--------------------------------------------------
+Subject: Waypoint editor - show the WP number how?
+--------------------------------------------------
+06/14/03 at 11:15:22  Posted by: AustinBotServer (AustinBotServer@MindSpring)
+--------------------------------------------------
+I am working on a waypoint editor based on the HPB template and I want to enhance it so it shows the WP number next to the waypoint.
+
+Is there a way to show numbesr on the screen?
+If not I might be able to do this by showing colored bars.
+
+Anyone have some ideas on how this could be done?
+Thanks.
+
+
+[modified on 06/14/03 at 11:15:22]
+--------------------------------------------------
+06/14/03 at 11:51:39  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+The UTIL_HudMessage() in the Half-Life SDK util.cpp file is probably the best way to send text to a screen position on the client.
+
+The really hard part will be converting from World 3D X,Y,Z coordinates to screen X,Y coordinates (to place the text at the position of the entity in the world).
+
+On the client side you can use gEngfuncs.pTriAPI->WorldToScreen() to convert world coordinates to screen coordinates, but, since the server doesn't know what size the client's screen is, you can't do this function on the server.
+
+I would recommend just allowing someone to display the number of the waypoint that's currently being "looked at" (checking if the waypoint origin is closest to the center of the viewcone, i.e. smallest dot product of view vector and vector between waypoint origin and player origin), then draw the text at a fixed position on the HUD, something like (10,10) or (20,20), etc.
+
+botman
+
+--------------------------------------------------
+06/14/03 at 20:05:17  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Mark, just ask @$3.1415rin (Johannes Lampel) from JoeBot. He has already written the stuff you want. I'm sure he'll be glad to help you out.
+
+I also have something in the look of what you want, but mine is prolly buggy and complicated. Better Ask Joe.
+
+
+--------------------------------------------------
+06/15/03 at 06:22:58  Reply by: @$3.1415rin (johannes@_-removeifnotavirus-_lampel.net)
+--------------------------------------------------
+yes, old joebot displays some information about the nearest waypoint. it's actually pretty simple.
+
+take a look at the waypoint.cpp of joebot, line 3138
+
+code:
+if (g_waypoint_on && g_b5th)  // display the waypoints if turned on...
+      {
+            // display information :
+            if(listenserver_edict && listenserver_edict == pEntity){
+                  char szWPInfo[1000];
+                  strcpy(szWPInfo,"Waypoint Information :\n\n");
+                  WaypointPrintInfo(pEntity,szWPInfo);
+                  hudtextparms_t message_params;
+
+                  szWPInfo[510] = 0;
+                  
+                  message_params.x = 0;
+                  message_params.y = 0;
+                  message_params.effect = 0;
+                  message_params.r1 = 0;
+                  message_params.g1 = 255;
+                  message_params.b1 = 0;
+                  message_params.a1 = 1;
+                  message_params.r2 = message_params.r1;
+                  message_params.g2 = message_params.g1;
+                  message_params.b2 = message_params.b1;
+                  message_params.a2 = 1;
+                  message_params.fadeinTime = 0.00;
+                  message_params.fadeoutTime = 0;
+                  message_params.holdTime = gf_5thd+0.02f;
+                  message_params.fxTime = 0;
+                  message_params.channel = 4;
+                  
+                  UTIL_ShowText(listenserver_edict,message_params,szWPInfo);
+            }
+
+
+WaypointPrintInfo(pEntity,szWPInfo); just writes some text about the nearest waypoint to pEntity to szWPInfo.
+
+--------------------------------------------------
+06/15/03 at 07:01:51  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+I think Mark was talking about displaying hudtext in an arbitrary location on the screen, so as to have it displayed NEAR the waypoint itself...
+
+I think I remember having seen Joebot debug screenshots that were using rather complicated hudtext stuff for that ?
+
+
+--------------------------------------------------
+06/15/03 at 10:17:46  Reply by: @$3.1415rin (johannes@_-removeifnotavirus-_lampel.net)
+--------------------------------------------------
+oops ...
+
+that only works with hldm, 'cause I have the sources there. I think you saw it here : http://joebot.de/modules/newbb/viewtopic.php?topic_id=4&forum=5 ( btw, this was again a killaruna(tm)-idea )
+
+another possibility : one could create texts like in opengl, you call some function to get the outlines of the character and then you draw the lines seperately ... although the HL engine won't like this bunch of UTIL_DrawBeam calls :D
+
+or why not use show_hud functions and just draw a beam from the editors origin to the waypoint's origin ? would that be sufficient ?
+
+[modified on 06/15/03 at 10:17:46]
+--------------------------------------------------
+06/15/03 at 09:19:24  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+QUOTE:
+although the HL engine won't like this bunch of UTIL_DrawBeam calls :D
+
+
+I strongly second this statement :D
+
+
+--------------------------------------------------
+06/15/03 at 13:28:29  Reply by: AustinBotServer (AustinBotServer@MindSpring)
+--------------------------------------------------
+Showing the WP# for each visible WP might be a little over kill.
+For now I will stick to showing the WP being visited, and 
+The WP being “pointed to” using  UTILShowText(). 
+
+I keep forgetting I have the JB source!  I need to spend some time with this.
+Thanks everyone and a special thanks to @$3.1415rin for the JB source!
+
+

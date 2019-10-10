@@ -1,0 +1,66 @@
+--------------------------------------------------
+Subject: bleeding compiling problems
+--------------------------------------------------
+07/17/03 at 17:35:33  Posted by: phil2004 (phil2004@hotmail.com)
+--------------------------------------------------
+i have been trying to make my players bleed when shot by opening player.cpp and adding:
+
+void CBasePlayer :: TraceAttack( entvars_t *pevAttacker, float flDamage, Vector vecDir, TraceResult *ptr, int bitsDamageType)
+{
+      if ( pev->takedamage )
+      {
+            m_LastHitGroup = ptr->iHitgroup;
+
+            switch ( ptr->iHitgroup )
+            {
+            case HITGROUP_GENERIC:
+                  break;
+            case HITGROUP_HEAD:
+                  flDamage *= gSkillData.plrHead;
+                  ClientPrint(pevAttacker, HUD_PRINTCENTER, "Headshot!\n");
+                  break;
+            case HITGROUP_CHEST:
+                  flDamage *= gSkillData.plrChest;
+                  UTIL_BloodStream( tr.vecEndPos, gpGlobals->v_forward * -35 + gpGlobals->v_up * 2, (unsigned short)73, 100 );
+                  break;
+            case HITGROUP_STOMACH:
+                  flDamage *= gSkillData.plrStomach;
+                  UTIL_BloodStream( tr.vecEndPos, gpGlobals->v_forward * -35 + gpGlobals->v_up * 2, (unsigned short)73, 100 );
+                  break;
+            case HITGROUP_LEFTARM:
+            case HITGROUP_RIGHTARM:
+                  flDamage *= gSkillData.plrArm;
+                  break;
+            case HITGROUP_LEFTLEG:
+            case HITGROUP_RIGHTLEG:
+                  flDamage *= gSkillData.plrLeg;
+                  break;
+            default:
+                  break;
+            }
+
+i tried compiling, but it says:
+
+Compiling...
+player.cpp
+G:\HL\bmg\dlls\player.cpp(410) : error C2065: 'tr' : undeclared identifier
+G:\HL\bmg\dlls\player.cpp(410) : error C2228: left of '.vecEndPos' must have class/struct/union type
+G:\HL\bmg\dlls\player.cpp(414) : error C2228: left of '.vecEndPos' must have class/struct/union type
+
+[modified on 07/17/03 at 17:35:33]
+--------------------------------------------------
+07/17/03 at 17:57:15  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+'tr' is a traceresult from calling a UTIL_Traceline() function.  You're not calling defining a tr variable inside your function and you're not calling a UTIL_Traceline() function either.
+
+If you just want to turn on blood, see MOD FAQ question #27...
+
+http://planethalflife.com/botman/MOD_FAQ.shtml
+
+botman
+
+--------------------------------------------------
+07/18/03 at 15:57:04  Reply by: phil2004 (phil2004@hotmail.com)
+--------------------------------------------------
+thanks
+

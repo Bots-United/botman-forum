@@ -1,0 +1,347 @@
+--------------------------------------------------
+Subject: Botman pls help
+--------------------------------------------------
+10/30/01 at 17:40:50  Posted by: Onslaught (None)
+--------------------------------------------------
+Even though I didn't change anything in the waypointload and just added these to the waypoint save function:
+
+   memset(header.author, 0, sizeof(header.author));
+   strncpy(header.author, STRING(listenserver_edict->v.netname), 31);
+   header.author[31] = 0;
+
+header.author is already defined in waypoint.h
+
+One of these functions (or both) saves/loads paths that are not pathed by the author. (usually paths from waypoint N to waypoint 0)
+
+What's causing this?
+
+If you need to look at the full source, i'll send it to you.
+
+--------------------------------------------------
+10/30/01 at 17:41:22  Reply by: Onslaught (None)
+--------------------------------------------------
+and oh, even before I added those lines, this problem was already existent
+
+--------------------------------------------------
+10/31/01 at 04:26:37  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+I don't think I understand your question.  If you are just adding a name in the header of the waypoint file how do you know who created a specific path?  There's nothing in a path that identifies who created it.  When you load the waypoint it reads the number of paths from the waypoint file.  If you add waypoints and paths you will increment the number of waypoints.  If you delete waypoints and paths the waypoint will be marked as deleted, but it doesn't get removed from the list of waypoints (you still have N waypoints not N-1) unless the waypoint you deleted is the very last waypoint (then you will have N-1 waypoint).  The number of waypoints is not decremented because if you delete a waypoint in the middle of the list you would have to shuffle all the remaining waypoints down one slot.  This would cause all the path information to be incorrect (since they just use the index of the waypoint for the path).  You would have to cycle through all of the waypoint paths and change them from N to N-1 (where N is a number larger than the index of the waypoint that you just deleted).  It's much easier just to mark that waypoint as deleted and not use it than to shuffle everything else around.
+
+botman
+
+--------------------------------------------------
+10/31/01 at 06:17:22  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+remember that you need to take into account that your bot will load the waypoints thinking that you're "author.header" is part of a path or waypoints, you'll need to distinguish between them.
+
+--------------------------------------------------
+11/01/01 at 00:35:09  Reply by: Onslaught (None)
+--------------------------------------------------
+Forget about the header... I just wanted to say that the waypointload function (or waypointsave, i don't really know) load/saves paths that i haven't added. I just thought that the lines of code above was the cause of the problem.
+
+Another thing that i have observed:
+
+In order to try to debug this problem, i've added a counter variable to the waypointrouteinit function the counts all the 'bad paths' that have distances greater than the reachable range (800 units)
+
+When I start a server and the bot loads the waypoints, the 'bad path' counter returns 71000+
+
+After the server finishes loading, I run my makepaths function which deletes all paths using the unmodified function:
+
+void WaypointDeletePath(short int del_index)
+
+and reconnects waypoints according to their visibility to each other using the unmodified WaypointAddPath function.
+
+After this, I called the WaypointRouteInit function ONLY (not from WaypointLoad) and the counter returns 0 bad paths.
+
+I save my waypoints and reloaded it and the counter returns a LOT of bad paths again (but not the same as the count before)
+
+What the hell is causing this? Is this because of my makepaths function? If you have time to check my source code to identify the problem, I will greatly appreciate it, or have you identified the problem already?
+
+[modified on 11/01/01 at 00:34:02]
+
+[modified on 11/01/01 at 00:35:09]
+--------------------------------------------------
+11/01/01 at 05:24:21  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+If you get over 71,000 bad paths when loading the waypoints it sounds like you got something screwed up in the WaypointLoad() function.
+
+I have no idea what you are doing wrong but I would suggest that you add some code to the WaypointSave() and WaypointLoad() to print out the waypoint indexes and waypoint paths values to a text file when the waypoints are saved and loaded.  You can compare the text output files to each other to make sure that you are indeed loading the EXACT same thing that you saved.  I suspect that you currently aren't loading the same thing that you saved due to a bug you've introduced in the WaypointLoad() function.
+
+botman
+
+--------------------------------------------------
+11/01/01 at 05:56:28  Reply by: Onslaught (None)
+--------------------------------------------------
+i've tried doing this, while most of the indexes in the file are valid, some have very large indexes. I haven't changed anything in the waypointload function and i'm quite sure that it's not the change with the waypoint header because the waypoints load correcly, only the paths are messed up.
+
+Here's my waypointload() function (maybe i DID change something):
+--------------------------------------------------
+bool WaypointLoad(edict_t *pEntity)
+{
+   char mapname[64];
+   char filename[256];
+   WAYPOINT_HDR header;
+   char msg[80];
+   int index, i;
+   short int num;
+   short int path_index;
+
+   strcpy(mapname, STRING(gpGlobals->mapname));
+   strcat(mapname, ".fb3");
+
+   UTIL_BuildFileName(filename, "freedombot\\wpt", mapname);
+
+   if (IS_DEDICATED_SERVER())
+      printf("loading waypoint file: %s\n", filename);
+
+   FILE *bfp = fopen(filename, "rb");
+
+   // if file exists, read the waypoint structure from it
+   if (bfp != NULL)
+   {
+      fread(&header, sizeof(header), 1, bfp);
+
+      header.filetype[7] = 0;
+      if (strcmp(header.filetype, "FB3_WPT") == 0)
+      {
+         if (header.waypoint_file_version != WAYPOINT_VERSION)
+         {
+            if (pEntity)
+               ClientPrint(pEntity, HUD_PRINTNOTIFY, "Incompatible FreedomBot waypoint file version!\nWaypoints not loaded!\n");
+
+            fclose(bfp);
+            return FALSE;
+         }
+
+         header.mapname[31] = 0;
+
+         if (strcmp(header.mapname, STRING(gpGlobals->mapname)) == 0)
+         {
+            WaypointInit();  // remove any existing waypoints
+
+            for (i=0; i < header.number_of_waypoints; i++)
+            {
+               fread(&waypoints[i], sizeof(waypoints[0]), 1, bfp);
+               num_waypoints++;
+            }
+
+            // read and add waypoint paths...
+            for (index=0; index < num_waypoints; index++)
+            {
+               // read the number of paths from this node...
+               fread(&num, sizeof(num), 1, bfp);
+
+               for (i=0; i < num; i++)
+               {
+                  fread(&path_index, sizeof(path_index), 1, bfp);
+
+                  WaypointAddPath(index, path_index);
+                     }
+            }
+
+            g_waypoint_paths = TRUE;  // keep track so path can be freed
+         }
+         else
+         {
+            if (pEntity)
+            {
+               sprintf(msg, "%s FreedomBot waypoints are not for this map!\n", filename);
+               ClientPrint(pEntity, HUD_PRINTNOTIFY, msg);
+            }
+
+            fclose(bfp);
+            return FALSE;
+         }
+      }
+      else
+      {
+         if (pEntity)
+         {
+            sprintf(msg, "%s is not a FreedomBot waypoint file!\n", filename);
+            ClientPrint(pEntity, HUD_PRINTNOTIFY, msg);
+         }
+
+         fclose(bfp);
+         return FALSE;
+      }
+
+      fclose(bfp);
+
+      WaypointRouteInit();
+   }
+   else
+   {
+      if (pEntity)
+      {
+         sprintf(msg, "Waypoint file %s does not exist!\n", filename);
+         ClientPrint(pEntity, HUD_PRINTNOTIFY, msg);
+      }
+
+      if (IS_DEDICATED_SERVER())
+         printf("waypoint file %s not found!\n", filename);
+
+      return FALSE;
+   }
+
+   return TRUE;
+}
+--------------------------------------------------
+
+and here's my waypointsave function (added a few lines):
+
+--------------------------------------------------
+void WaypointSave(void)
+{
+   char filename[256];
+   char mapname[64];
+   WAYPOINT_HDR header;
+   int index, i;
+   short int num;
+   PATH *p;
+
+   strcpy(header.filetype, "FB3_WPT");
+
+   header.waypoint_file_version = WAYPOINT_VERSION;
+
+   header.waypoint_file_flags = 0;  // not currently used
+
+   header.number_of_waypoints = num_waypoints;
+
+   memset(header.author, 0, sizeof(header.author));
+   strncpy(header.author, STRING(listenserver_edict->v.netname), 31);
+   header.author[31] = 0;
+
+   memset(header.mapname, 0, sizeof(header.mapname));
+   strncpy(header.mapname, STRING(gpGlobals->mapname), 31);
+   header.mapname[31] = 0;
+
+   strcpy(mapname, STRING(gpGlobals->mapname));
+   strcat(mapname, ".fb3");
+
+   UTIL_BuildFileName(filename, "freedombot\\wpt", mapname);
+   
+   remove(filename); // Delete the existing file
+
+   FILE *bfp = fopen(filename, "wb");
+
+   // write the waypoint header to the file...
+   fwrite(&header, sizeof(header), 1, bfp);
+
+   // write the waypoint data to the file...
+   for (index=0; index < num_waypoints; index++)
+   {
+      fwrite(&waypoints[index], sizeof(waypoints[0]), 1, bfp);
+   }
+
+   // save the waypoint paths...
+   for (index=0; index < num_waypoints; index++)
+   {
+      // count the number of paths from this node...
+
+      p = paths[index];
+      num = 0;
+
+      while (p != NULL)
+      {
+         i = 0;
+
+         while (i < MAX_PATH_INDEX)
+         {
+            if (p->index[i] != -1)
+               num++;  // count path node if it's used
+
+            i++;
+         }
+
+         p = p->next;  // go to next node in linked list
+      }
+
+      fwrite(&num, sizeof(num), 1, bfp);  // write the count
+
+      // now write out each path index...
+
+      p = paths[index];
+
+      while (p != NULL)
+      {
+         i = 0;
+
+         while (i < MAX_PATH_INDEX)
+         {
+            if (p->index[i] != -1)  // save path node if it's used
+               fwrite(&p->index[i], sizeof(p->index[0]), 1, bfp);
+
+            i++;
+         }
+
+         p = p->next;  // go to next node in linked list
+      }
+   }
+
+   fclose(bfp);
+}
+--------------------------------------------------
+
+--------------------------------------------------
+11/01/01 at 07:37:25  Reply by: Onslaught (None)
+--------------------------------------------------
+After the server loads I have to call the makepaths function and call the WaypointRouteInit function in order to get the bots to navigate properly. (the bad path counter returns 0)
+
+But when I run the makepaths function, save the waypoint, then run the WaypointRouteInit function, the bad path counter returns a nonzero value again.
+
+What did I do wrong?
+
+--------------------------------------------------
+11/01/01 at 08:18:11  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+In the HPB bot template code you will see where it calls WaypointInit() and WaypointLoad() whenever a new map is loaded (see in the DispatchSpawn for the "worldspawn" entity).
+
+This is all you should have to do to initialze the waypoint information from a waypoint (.wpt) file.
+
+botman
+
+--------------------------------------------------
+11/01/01 at 10:00:05  Reply by: Onslaught (None)
+--------------------------------------------------
+it was already placed there and i never changed it... I have to run makepaths and routeinit because it is the only way to initialize the paths correctly. when I start using waypoint save and waypoint load, then the 'bad paths' appear
+
+--------------------------------------------------
+11/01/01 at 22:07:36  Reply by: Onslaught (None)
+--------------------------------------------------
+I think I found the problem, unlike in the original template #3, my MAX_PATH_INDEX is 20.
+
+I found these lines in the waypointadd function:
+code:
+
+   p->index[0] = path_index;
+   p->index[1] = -1;
+   p->index[2] = -1;
+   p->index[3] = -1;
+
+
+
+so I changed it to:
+code:
+
+   p->index[0] = path_index;
+
+   for (int k = 1; k < MAX_PATH_INDEX; k++)
+   {
+         p->index[k] = -1;
+   }
+
+
+
+gonna test it now...
+
+--------------------------------------------------
+11/01/01 at 22:11:42  Reply by: Onslaught (None)
+--------------------------------------------------
+Yep, stupid me, that was the problem. Thanks for your replies!
+
+--------------------------------------------------
+11/02/01 at 00:06:50  Reply by: jerry_stoel (jerry_stoel@hotmail.com)
+--------------------------------------------------
+Lol. Well we all make some stupid mistakes like me, I changed MSVC++ from release to debug and my bot won't join teams anymore, it took me a day too realise that I have to rebuild all my bot ;D oops :)
+
+[modified on 11/02/01 at 00:06:50]

@@ -1,0 +1,123 @@
+--------------------------------------------------
+Subject: Bot eyesight
+--------------------------------------------------
+08/16/01 at 07:05:25  Posted by: Pembunuh (yip_omar@hotmail.com)
+--------------------------------------------------
+Hi..
+
+I would really like to know the bot position of the eyes during standing, crouching and prone.
+
+Does anyone knows this? 
+
+
+--------------------------------------------------
+08/16/01 at 07:37:53  Reply by: SuperMangoMan (emperorstuart@hotmail.com)
+--------------------------------------------------
+Its the same as the player, mainly because the bot is a player.
+
+--------------------------------------------------
+08/16/01 at 08:17:44  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+The entvars_t field "view_ofs" is the view offset from the origin (i.e. the distance between the center of the body and the eye position).  If you look at the SDK function EyePosition() (in cbase.h) you will see how this is calculated.
+
+The view_ofs field is adjusted when the bot is ducking so that it will still be the correct eye position, thus if you use the EyePosition() function you will always know where the eye position is.
+
+botman
+
+--------------------------------------------------
+08/16/01 at 08:23:54  Reply by: Pembunuh (yip_omar@hotmail.com)
+--------------------------------------------------
+Great thanks..for all the help
+
+--------------------------------------------------
+08/17/01 at 10:14:16  Reply by: Pembunuh (yip_omar@hotmail.com)
+--------------------------------------------------
+Hi..
+
+Just another question...I wanted to know the eye position in advance before the action(just to check)...how can I do that?
+
+
+--------------------------------------------------
+08/17/01 at 10:56:26  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+huh? Not even C++ can read the future!!! (Unless you're doing the action at a later time) :)
+
+--------------------------------------------------
+08/17/01 at 11:56:40  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+"I wanted to know the eye position in advance before the action"
+
+???
+
+You'll have to give a better description of what you want.  The eye position is just the offset from the origin (it's slightly different when ducking than when standing but it's still just a distance from the origin).
+
+Are you trying to find out which way they are looking?  If so, examing the pEdict->v.v_angles to get the view angles of the other player.
+
+botman
+
+--------------------------------------------------
+08/17/01 at 16:59:26  Reply by: Pembunuh (yip_omar@hotmail.com)
+--------------------------------------------------
+Well what I  wanted the bot to do is that they can know whether they can still see the enemy from a different body position(crouch or prone for example) if they do the action.
+
+So that's why I wanted to know the eye offset position so I can draw some tracelines to the head of the enemy from the bot(in 3 options, stand, crouch and prone) to check whether the enemy is still seen if the bot changes its' body position.
+
+--------------------------------------------------
+08/18/01 at 05:58:26  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+If you are writing a bot for a MOD that uses the Standard SDK player sizes then you can find these offsets by searching the Standard SDK for "view_ofs" to see where it gets changed.  This will tell you what the values will be for standing and crouching.
+
+If you are working on a MOD with non-standard player sizes then you can determine this by printing out the value for your player (just print out the view_ofs value when standing and crouching).
+
+Then you will know what the origin and view_ofs values will be before the bot crouches or stands and you can use a UTIL_TraceLine() from that new position.  Don't forget that the gun does NOT fire from the same position as the eye position, so just because you can see an enemy doesn't mean you can shoot them.
+
+botman
+
+--------------------------------------------------
+08/18/01 at 09:44:43  Reply by: Pembunuh (yip_omar@hotmail.com)
+--------------------------------------------------
+Thanx again..
+
+But I am still blur about the line of sight(LOS) and line of fire(LOF)ng.
+
+What does it mean to have a LOS?
+ANd what does it mean to have a LOF>
+
+When we play the game, all we see is a crosshair in the middle. Is that the LOF? or is it the LOS?
+
+DOes having a LOF means I have a LOS too?
+Please clarify.
+
+--------------------------------------------------
+08/18/01 at 11:36:33  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+Line of sight means you can see something.
+
+Line of fire means that you can shoot something.
+
+If you are standing very close to a low wall or crate (where you gun doesn't stick out over the top of the wall), you can see an enemy but you may not be able to shoot it (i.e. the bullets just hit the wall or crate, not the enemy).  I'm sure you've seen this many times in the game where you see the richochet from bullets hitting something in front of you even though you have the crosshair centered on the head of the victim.
+
+The position where the gun shoots from is between the player's origin and the player's view offset.  This position is different for different weapons.  Look for comments in the SDK about "hacked gun position", etc. and you'll see what I mean.
+
+Since you don't have the source code to MODs that you are making bots for, you will not have access to the actual positions that the MOD code is using.  The best you can do is guess to what offset is being used.  For example the shotgun (held low to the body) is going to have a lower position than the rocket launcher RPG (held at shoulder height).
+
+botman
+
+--------------------------------------------------
+08/21/01 at 05:21:08  Reply by: theimann (killaruna@botepidemic.com)
+--------------------------------------------------
+Another example for LOF <-> LOS:
+If you are looking through an unbreakable glass window you have clear LOS but no LOF...
+
+Tobias
+
+--------------------------------------------------
+08/21/01 at 06:10:19  Reply by: William (william@cgf-ai.com)
+--------------------------------------------------
+if you are underwater, and your gun does not work there...: LOS but no LOF
+
+if you toss a grenade around the corner, or use that weirdo HL weapon with the bouncing rays: you can have "line-of-fire" without a LOS.
+these non-linear weapon trajectories are really troublesome to deal with, since they involve aiming at locations different from the target's location.
+
+William
+

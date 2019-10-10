@@ -1,0 +1,181 @@
+--------------------------------------------------
+Subject: need help with ichthyosaur
+--------------------------------------------------
+06/07/02 at 09:54:36  Posted by: VIPER (castiron@adelphia.net)
+--------------------------------------------------
+I was able to get the icky to work in the water room , but when he dies they just stay in the water and float upsidedown how can i get them to disapear shortly after they get killed ?
+
+--------------------------------------------------
+06/07/02 at 10:50:59  Reply by: hullu (hullu@jussikivilinna.cjb.net)
+--------------------------------------------------
+I made these changes to 
+case TASK_ICHTHYOSAUR_FLOAT in
+ void CMIchthyosaur :: RunTask ( Task_t *pTask )
+
+code:
+
+      case TASK_ICHTHYOSAUR_FLOAT:
+            pev->angles.x = UTIL_ApproachAngle( 0, pev->angles.x, 20 );
+            pev->velocity = pev->velocity * 0.8;
+            if (pev->waterlevel > 1 && pev->velocity.z < 64)
+            {
+                  pev->velocity.z += 8;
+            }
+            else 
+            {
+                  pev->velocity.z -= 8;
+            }
+            
+            //SUB_FadeOut
+            if ( pev->renderamt > 7 )
+            {
+                  pev->renderamt -= 7;
+            }
+            else 
+            {
+                  pev->renderamt = 0;
+                  pev->nextthink = gpGlobals->time + 0.2;
+                  SetThink ( &CMBaseMonster::SUB_Remove );
+            }
+            
+            // ALERT( at_console, "%f\n", pev->velocity.z );
+            break;
+
+
+
+and to 
+case TASK_ICHTHYOSAUR_FLOAT in
+ void CMIchthyosaur::StartTask(Task_t *pTask)
+code:
+
+      case TASK_ICHTHYOSAUR_FLOAT:
+            pev->skin = EYE_BASE;
+            SetSequenceByName( "bellyup" );
+            
+            //Start Fade Out
+            if (pev->rendermode == kRenderNormal)
+            {
+                  pev->renderamt = 255;
+                  pev->rendermode = kRenderTransTexture;
+            }
+            
+            break;
+
+
+
+Those changes make corpse to fadeout and removed.
+
+If you dont get ichthy attack then add next lines to end of CMIchthyosaur::Spawn
+code:
+
+      m_flEnemyTouched = gpGlobals->time;
+      m_bOnAttack = TRUE;
+
+
+
+
+--------------------------------------------------
+06/07/02 at 10:52:32  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+The Monster plugin will intercept when a monster entity has been killed (by looking at the health and by looking for the FL_KILLME bit set in the flags variable).  Just have it call the FadeMonster() function when the monster has died and it will slowly fade away and then get removed.
+
+botman
+
+--------------------------------------------------
+06/07/02 at 11:24:52  Reply by: VIPER (castiron@adelphia.net)
+--------------------------------------------------
+I am very new to this how and where would i put that ? this is what i have where would i put it with this ;
+
+
+// Precache models needed for map 
+PRECACHE_MODEL(models/icky.mdl) 
+// Add a monstermaker that spawns ichthyosaur under the waterfall  
+{ 
+classname/monstermaker 
+origin/1053 -49 -575 
+angle/-2 
+monstercount/-1   
+m_imaxlivechildren/1  
+monstertype/monster_ichthyosaur
+delay/3  
+}
+
+
+--------------------------------------------------
+06/07/02 at 11:45:00  Reply by: hullu (hullu@jussikivilinna.cjb.net)
+--------------------------------------------------
+QUOTE:
+botman:
+Just have it call the FadeMonster() function when the monster has died and it will slowly fade away and then get removed.
+
+
+
+
+doesn't work well .. ichthy stays playing last animation that it had before dying.
+
+Those changes that I posted make ichthy fade as with fademonster and play ichthy's own death animation.
+
+QUOTE:
+Dave Leopold:
+I am very new to this how and where would i put that ? this is what i have where would i put it with this 
+
+
+
+Oh .. you are using stripper2 :) .. sorry thought that you had been modifing monster plugin source :)
+
+
+--------------------------------------------------
+06/07/02 at 12:35:33  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Try adding...
+
+spawnflags/512
+
+...to the entity group to get it to fade the monster (512 is SF_MONSTER_FADECORPSE).
+
+botman
+
+--------------------------------------------------
+06/07/02 at 15:51:00  Reply by: VIPER (castiron@adelphia.net)
+--------------------------------------------------
+Like this ?
+
+{ 
+classname/monstermaker 
+origin/1053 -49 -575 
+angle/-2 
+monstercount/-1   
+m_imaxlivechildren/1  
+monstertype/monster_ichthyosaur
+delay/3
+spawnflags/512  
+}
+
+this is how i tried it but they are still there.
+
+:(
+
+--------------------------------------------------
+06/07/02 at 16:25:01  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+The icky may not support the MONSTER_FADECORPSE stuff.
+
+From hullu's posts, it looks like he had to change the icthyosaur's code to get it to fade.  I don't think I've ever seen a single player Half-Life level where the icky fades after death.  They always float to the surface and stay there forever.  So you probably can't make them fade away once the get killed (without modifying the hl.dll code).
+
+botman
+
+--------------------------------------------------
+06/07/02 at 17:41:06  Reply by: VIPER (castiron@adelphia.net)
+--------------------------------------------------
+Thanks for the help botman , one more question , I tried to use a xen_tree but it was up off the ground, I added it like anything else but it hovers in air why ??????
+
+--------------------------------------------------
+06/08/02 at 03:37:20  Reply by: WFB (williamfbuckleyjr@yahoo.com)
+--------------------------------------------------
+I assume that you added the xen tree via stripper2 after first finding it's xyz coords.  For xen trees and some other entities you have to play with the z axis to get it where you want the object.  Sometimes it's value is lower than you'd think.  On a map that I modded I was sure that the z should have been -155 but that only placed the xen tree very high in the air.  So I lowered the z by increments of 10 and finally at -185 it worked.  Good luck.
+
+--------------------------------------------------
+06/09/02 at 07:41:30  Reply by: VIPER (castiron@adelphia.net)
+--------------------------------------------------
+Thanks for the help botman !!
+

@@ -1,0 +1,721 @@
+--------------------------------------------------
+Subject: A question for you math brutes
+--------------------------------------------------
+01/10/03 at 14:20:46  Posted by: PM (pm@racc-ai.com)
+--------------------------------------------------
+I definitely can't line up 3 lines of code without writing a state-of-the-art bug.
+
+Help me hunting this obnoxious one, please.
+
+I have divided my map's BSP data (at least, the polygons a player can stand upon), in a "quadtree". Much like a world map is divided into parallels and meridians, forming sectors.
+
+When I build my map data, I cycle through all these walkable polygons in order to determine which one belongs to which sector. I also consider that a polygon can be represented in several sectors.
+
+That's the purpose of my function below. When I want to check if a polygon belongs to a sector, I take one after the other each segment of the polygon, and check if this segment is either completely included, or crosses the sector boundaries in at least one point.
+
+As usual, there's a bug. When I display in game the polygons that are supposed to belong to a certain sector, I often see certain polygons that are far away from it, and completely out of it. It works for most of them, but some of them are completely wrong.
+
+So my question is: what am I doing wrong ?
+This is mostly geometry math, not difficult code, so if you know math better than I do, I would be glad you give it a go.
+code:
+
+bool SegmentBelongsToSector (Vector v_bound1, Vector v_bound2, int sector_i, int sector_j)
+{
+   // this function returns TRUE if the *flattened* segment bounded by the v_bound1 and v_bound2
+   // vertices beclongs to the topological sector whose position in the global array is [sector_i]
+   // [sector_j], FALSE otherwise. The local variables of this function are defined static in
+   // order to speedup recursive calls of this function, which is extensively used in
+   // LookDownOnTheWorld().
+
+   static float sector_left, sector_right, sector_top, sector_bottom, slope, offset;
+
+   // first compute the left, right, top and bottom coordinates indices of the sector
+   sector_left = map.v_worldmins.x + (map.v_worldmaxs.x - map.v_worldmins.x)
+                                                   / map.parallels_count * sector_i;
+   sector_right = map.v_worldmins.x + (map.v_worldmaxs.x - map.v_worldmins.x)
+                                                   / map.parallels_count * (sector_i + 1);
+   sector_top = map.v_worldmins.y + (map.v_worldmaxs.y - map.v_worldmins.y)
+                                                   / map.meridians_count * sector_j;
+   sector_bottom = map.v_worldmins.y + (map.v_worldmaxs.y - map.v_worldmins.y)
+                                                   / map.meridians_count * (sector_j + 1);
+
+   // is at least one of the two bounds of the segment inside the sector ?
+   if (((v_bound1.x >= sector_left) && (v_bound1.x <= sector_right)
+        && (v_bound1.y >= sector_bottom) && (v_bound1.y <= sector_top))
+       -OR- ((v_bound2.x >= sector_left) && (v_bound2.x <= sector_right)
+             && (v_bound2.y >= sector_bottom) && (v_bound2.y <= sector_top)))
+      return (TRUE); // if so, segment belongs to sector
+
+   // special case: is the segment vertical ?
+   if (v_bound1.x == v_bound2.x)
+   {
+      // does the segment completely crosses the sector vertically ?
+      if ((v_bound1.x >= sector_left) && (v_bound1.x <= sector_right)
+          && (((v_bound1.y <= sector_bottom) && (v_bound2.y >= sector_top))
+              -OR- ((v_bound2.y <= sector_bottom) && (v_bound1.y >= sector_top))))
+         return (TRUE); // if so, then it belongs to it
+      else
+         return (FALSE); // else not
+   }
+
+   // while we're at here, is the segment horizontal ?
+   if (v_bound1.y == v_bound2.y)
+   {
+      // does the segment completely crosses the sector horizontally ?
+      if ((v_bound1.y >= sector_bottom) && (v_bound1.y <= sector_top)
+          && (((v_bound1.x <= sector_left) && (v_bound2.x >= sector_right))
+              -OR- ((v_bound2.x <= sector_left) && (v_bound1.x >= sector_right))))
+         return (TRUE); // if so, then it belongs to it
+      else
+         return (FALSE); // else not
+   }
+
+   // AFTER SOME TESTING, IT APPEARS THAT THE BUG IS DEFINITELY BELOW :
+
+   // segment is not axial, compute the segment equation in the form "y = slope * x + offset"
+   slope = (v_bound2.y - v_bound1.y) / (v_bound2.x - v_bound1.x);
+   offset = v_bound1.y - slope * v_bound1.x;
+
+   // does the segment intersects one of the sector boundaries in at least one point ?
+   if ((slope * sector_left + offset >= sector_bottom)
+       && (slope * sector_left + offset <= sector_top)
+       && (((v_bound1.x <= sector_left) && (v_bound2.x >= sector_left))
+           -OR- ((v_bound2.x <= sector_left) && (v_bound1.x >= sector_left))))
+      return (TRUE); // segment crosses sector's left delimiter segment
+   else if ((slope * sector_right + offset >= sector_bottom)
+            && (slope * sector_right + offset <= sector_top)
+            && (((v_bound1.x <= sector_right) && (v_bound2.x >= sector_right))
+                -OR- ((v_bound2.x <= sector_right) && (v_bound1.x >= sector_right))))
+      return (TRUE); // segment crosses sector's right delimiter segment
+   else if ((slope / (sector_bottom - offset) >= sector_left)
+            && (slope / (sector_bottom - offset) <= sector_right)
+            && (((v_bound1.y <= sector_bottom) && (v_bound2.y >= sector_bottom))
+                -OR- ((v_bound2.y <= sector_bottom) && (v_bound1.y >= sector_bottom))))
+      return (TRUE); // segment crosses sector's bottom delimiter segment
+   else if ((slope / (sector_top - offset) >= sector_left)
+            && (slope / (sector_top - offset) <= sector_right)
+            && (((v_bound1.y <= sector_top) && (v_bound2.y >= sector_top))
+                -OR- ((v_bound2.y <= sector_top) && (v_bound1.y >= sector_top))))
+      return (TRUE); // segment crosses sector's top delimiter segment
+
+   return (FALSE); // else this segment definitely doesn't appear in this sector
+}
+
+
+
+Any help would be greatly appreciated, since this one has been preventing me from working reliably on my pathfinder for a week now.
+
+[modified on 01/10/03 at 14:20:46]
+--------------------------------------------------
+01/10/03 at 14:59:21  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Maybe I don't understand the problem, but it seems to me your test cases are overly complicated.
+
+If this is the problem...
+
+1) You have a flat grid laid out representing the 2D surface of the world.  These grid boxes can be squares (all sides the same length) or they can be rectangles (2 sides the same length, 2 other sides some other same length).  The grid boxes are axis aligned with the world such that the edges of the boxes line up with the min and max boundries of the world.
+
+2) You have 4 points that define one of these grid boxes and you want to determine if a line segment between 2 points is completely contained within this box, whether the line segment crosses a side of this box, or whether the line segment lies completely outside the box.
+
+Is this the problem space?
+
+If so, lets say your grid box is ABCD and your line segment is XY.  You want to create 2 boolean flags, one for whether X lies within ABCD and one for whether Y lies within ABCD.  If case_X and case_Y are true, the line segment lies completely inside the grid box.  Otherwise (else) if case_X is true OR case_Y is true, the line segment XY crosses one (and only one) of the edges of grid box ABCD.  Otherwise (else) line segment XY is not contained in grid box ABCD.  You can test whether a point lies within a axis aligned box fairly easily since you only need the min and max corners (similar to the code you have)...
+code:
+bool IsPointInGrid(Point X, Point Min, Point Max)
+{
+   if ((X.x >= Min.x) AND (X.x <= Max.x) AND
+       (X.y >= Min.y) AND (X.y <= Max.y))
+      return true;
+   else
+      return false;
+}
+
+Obviously if the grid boxes aren't aligned with the world, you can't do a simple Min/Max comparison to see if the point lies within the polygon.  You would need to get the slope of each line segment of the polygon and determine if the point lies "above" one and "below" the opposite one AND "to the right of" one and "to the left" of the opposite one.  There's other methods of finding out if a point lies within a convex polygon (like drawing a horizontal or vertical line and counting the number times the line intersects with the polygon, etc.), but from your example, it doesn't look like you need anything that complicated.
+
+botman
+
+--------------------------------------------------
+01/10/03 at 16:34:43  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+I see your point botman, but what about the case where BOTH segment points are OUTSIDE the square, and the segment still crosses completely the square ?
+like :
+code:
+
+              ...............
+°°°°----....__:_            :
+              : °°°°----....:____
+              :             :    °°°°----....
+              :             :
+              :             :
+              °°°°°°°°°°°°°°°
+
+
+
+
+--------------------------------------------------
+01/10/03 at 18:20:49  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+dunno if I understand what your trying to do fully, I guess your wanting to know if that box is inside the line.... well in that case check out
+homepage.ntlworld.com/pat.murphy/anglesegment.jpgmy idea.. courtesy of mspaint.... :D
+
+first you might want to check if the sqaure is the the vicinity of the line..
+
+i.e.
+
+homepage.ntlworld.com/pat.murphy/inssegment.jpgblahblahblah.... :D
+
+[modified on 01/10/03 at 18:20:49]
+--------------------------------------------------
+01/10/03 at 19:45:46  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+I understand your idea Cheesy, but it ain't helpful. I could check for the obtusity of certain angles, but it would be a hell of a complication to write it down correctly in an algorithm. How on earth would you make an algorithm like "if the segment is bent like this, take this corner of the box and this other one, else if it's rather bent like this, take this one, else take this other one...". You can't measure such angles on just any of the corners, and thus your rule is ungeneralizable.
+
+Anyhow, I still don't get why what I am doing is wrong. Botman defined the problem very well about the layout of the "sectors", I want to know, considering one of these "sectors" in the grid, if a segment is contained therein, either completely, or even partly.
+
+Let's call the {x,y} system of the map axises an orthonormal referential. Since I know the coordinates of both the boundaries of my segment, i.e, (x1, y1) and (x2, y2), I can dedude the equation of the line to which this segment belongs, right ?
+
+This equation has to be under the form: y = a.x + b
+Meaning, "for each point of such a line, the y coordinate of such a point is equal to a times the x coordinate of it plus a certain offset b."
+"a" being the SLOPE of this line, and
+"b" being necessarily the y coordinate of the point on the line whose x coordinate is 0 (in French maths we call this the "origin ordinate", dunno if it's the same by this side of the sea.)
+
+Now am I right to say that I can get the line equation this way, and that I am doing things right in my function ?
+
+Then, in order to determine the very case I explained in an earlier post with my ASCII drawing, I determine the coordinates of every intersection point of my segment with any of the boxe's side segment, extending them to infinity if needed. Actually I check for the intersection point of LINES to which these segments belong. When I get it, I check if that intersection point actually belongs to BOTH of the segments (the segment I'm checking this for and the segment that makes one of the sides of the box).
+
+If I can say that this intersection point exists and belong to both segments, I am right to say that this segment partly belongs to the sector ?
+
+That's what I do, and I do things right, don't I ?
+
+So...... where on Earth (or below) is the problem ?
+
+
+--------------------------------------------------
+01/11/03 at 04:31:24  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+I'd think you'd need to get the equation of the line by this equation
+
+y - b = m( x - a )
+
+gradient : m = max(x1,x2)/max(y1,y2) (tan i.e. opposite / adjacent )
+
+y =  m ( x - x1 ) + y1
+
+use this to find the equation of the segment and the DIAGONAL of the sector.
+
+you can then find out if these two lines touch each other by equating them together but I don't know if this will also be easy to code.
+
+--------------------------------------------------
+01/11/03 at 06:21:59  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Ah, okay, I understand what you want now.  You would need to check to see if the line segments that make up the grid box intersect with the line segment of your "bound" line segment.  Just run the test for all 4 sides of your grid box with the "bound" line segment.
+
+Here's a quick guide on finding the intersection of 2 line segments...
+
+http://www.gamedev.net/hosted/javaextreme/2d.htm
+
+botman
+
+--------------------------------------------------
+01/11/03 at 13:56:58  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Sorry, I'm a math dumbass.
+
+I don't have a clue what this guy is talking about, nor do I understand what you are saying Cheesy...
+
+The only way I learned to get the equation of a line is the way I did in my function, and the only form of line equation I've been taught is the y = a.x + b form.
+
+I don't understand what his m(A,B), r(A,B) and s(A,B) stand for, neither how to compute them, nor how to use them...
+
+/me is ashamed of my stupidity...
+
+The only method I know is the method I am using, hence I just want to know if my implementation is correct ! Obviously not, so could a generous soul point me out to my mistake ? If no one can, may I hope there is a step-by-step guide to dummies for this m(A,B)/r(A,B)/s(A/B) stuff somewhere, or ultimately, could someone write me down the implementation he would make of such a method ? I often understand way better C code than math algorithms.
+
+Sorry about my stupidity again but I really need help here.
+
+
+--------------------------------------------------
+01/11/03 at 15:19:18  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+homepage.ntlworld.com/pat.murphy/intersect.jpganother image showing what I mean
+
+I use the
+
+y - b = m (x - a)
+
+equation, I think thats the eqaution you should use. The y = mx + c equation, is more for lines that touch the y axis at point C, where you dont know where it hits.
+
+segment line equation should be
+
+y = ((y2 - y1)/(x2 - x1))*(x - x1) + y1
+
+sector diagonal line
+
+y = ((y4 - y3)/(x4 - x3))*(x - x3) + y3
+
+I think
+
+
+On a further note, while reading...http://mathforum.org/library/drmath/view/53254.html (Dr. Math owns!)
+
+you can maybe understand that to find intersect point (i;ll try reading it to work this out)
+
+EDIT: oop gradient was wrong it should be
+
+change in y / change in x (reading dr.math :D)
+
+[modified on 01/11/03 at 15:19:18]
+--------------------------------------------------
+01/12/03 at 05:23:20  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+et voila
+
+code:
+
+Vector2D IntersectionPoint ( Vector2D segment1, Vector2D segment2, 
+                             Vector2D sector1, Vector2D sector2 )
+{
+  float m1,b1;
+  float m2,b2;
+  float intersectx,intersecty;
+
+  m1 = (segment2.y - segment1.y) / (segment2.x - segment1.x);
+  b1 = segment1.y - m*segment1.x;
+  
+ // y1 = m1*x + b1;
+
+  m2 = (sector2.y - sector1.y) / (sector2.x - sector1.x);
+  b2 = sector1.y - m*sector1.x;
+  
+ // y2 = m2*x + b2;
+
+  intersectx = (b2 - b1) / (m1 - m2)
+
+  intersecty = (m1*intersectx) + b1
+
+  return Vector2D(intersectx,intersecty);
+}
+
+
+
+and call the little function liek this
+
+code:
+
+Vector2D v_intersect_point;
+
+v_intersect_point = IntersectionPoint(Vector2D(v_bound1.x,v_bound1.y),Vector2D(v_bound2.x,v_bound2.y),
+                                      Vector2D(sector_left,sector_bottom),Vector2D(sector_right,sector_top));
+
+bool inside_sector = (v_intersect_point.x >= sector_left) && (v_intersect_point.x <= sector_right) &&
+                     (v_intersect_point.y >= sector_bottom) && (v_intersect_point.y <= sector_top);
+
+
+
+EDIT: oops yeah I meant float, fixed :)
+
+[modified on 01/12/03 at 05:23:20]
+--------------------------------------------------
+01/11/03 at 16:15:51  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+I think by 'int' you meant 'float'.
+
+OK, thanx. I will try this.
+
+
+--------------------------------------------------
+01/12/03 at 13:35:55  Reply by: RedFox (redfox@nildram.co.uk)
+--------------------------------------------------
+I've had todo somthing like this before, but the geometry I've dealt with was alot simpler.
+Well, first test that each corners inside the sector (you've done this I think)...
+
+then I used line intersects to test that the cube is intersecting the polygon..
+...not sure if I can explain it, so heres somthing with a picture..
+
+http://www.jopte.com/bastillion/jjc/collision/3d_collide.html
+check FINITE SURFACE INTERSECTING A 3D CONVEX SOLID
+
+if thats not detailed enoughf, I'll keep digging :)
+
+--------------------------------------------------
+01/13/03 at 15:18:30  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Sorry guys, I can't get any of your hints to work. It doesn't seem to even catch one single segment. I'm having a break (because of brainache), but expect me to come over this again very soon.
+
+
+--------------------------------------------------
+01/13/03 at 16:36:26  Reply by: RedFox (redfox@nildram.co.uk)
+--------------------------------------------------
+I'll see what I can come up with PM, as if I try my traceline idea, I'll have todo this :)
+Working on somthing similar for vision aswell, so will pass on what I find/get to work.
+
+--------------------------------------------------
+01/16/03 at 12:24:18  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+I've tested this with two points outside of a box and that goes through the box, it returns TRUE fine w00t.. fixed the last things to it, should work now!
+AGAIN ANOTHER ...EDIT: This should work now, after looking again at a bit of theory, check it out
+
+I've altered the intersection check, a bit of it could still not go through one diagonal on the box, I had to check two to make sure (imagine drawing a cross inside the box, which are the lines we need to see if they intersect with the segments)
+
+code:
+
+Vector2D IntersectionPoint ( Vector2D segment1, Vector2D segment2, 
+                                          Vector2D sector1, Vector2D sector2 ) 
+{ 
+      // returns 2D point from a line defined by two points, segement1 and segment2
+      // which intersects the line through sector1 and sector2.
+      float m1,b1; 
+      float m2,b2; 
+      float intersectx,intersecty; 
+      
+      // find gradient 1
+      m1 = (segment2.y - segment1.y) / (segment2.x - segment1.x); 
+      b1 = segment1.y - m1*segment1.x; 
+      
+      // y1 = m1*x + b1; 
+      
+      m2 = (sector2.y - sector1.y) / (sector2.x - sector1.x); 
+
+      // Put this in if you want....
+      if ( m1 == m2 ) // are lines are parallel?
+             return Vector2D(9999,9999); //return unusable value (never intersect)
+
+      b2 = sector1.y - m2*sector1.x; 
+      
+      // (y2 = m2*x + b2);       
+      // find x intersection coord
+      intersectx = (b2 - b1) / (m1 - m2); 
+            
+      // find y intersection coord from x intersection coord
+      intersecty = (m1*intersectx) + b1;  
+            
+      return Vector2D(intersectx,intersecty); 
+} 
+
+bool VectorInsideBox( const Vector2D &v_vec, const Vector2D &v_box1, const Vector2D &v_box2 )
+{
+      Vector v_min,v_max;
+
+      v_min.x = min(v_box1.x,v_box2.x);
+      v_min.y = min(v_box1.x,v_box2.x);
+      v_max.x = max(v_box1.x,v_box2.x);
+      v_max.y = max(v_box1.x,v_box2.x);
+
+      // see if one point is inside a box area
+      return ( (v_vec.x >= v_min.x) && (v_vec.x <= v_max.x ) && 
+                 (v_vec.y >= v_min.y) && (v_vec.y <= v_max.y ) );
+}
+
+bool LineIntersectsBox ( const Vector2D &line_point1, const Vector2D &line_point2, 
+                                     const Vector2D &min_box, const Vector2D &max_box )
+{
+      Vector2D v_intersection;
+      Vector2D v_diagonal1,v_diagonal2;
+
+      // Get intersection point for ONE diagonal (need to check both diagonals)
+      v_intersection = IntersectionPoint(line_point1,line_point2,min_box,max_box);
+
+      // if this intersection point is found inside the sector...
+      if ( VectorInsideBox(v_intersection,min_box,max_box) && VectorInsideBox(v_intersection,line_point1,line_point2)) // return true
+            return TRUE;
+      
+      //else find the other diagonal...
+
+      v_diagonal1.x = min_box.x; // "flip" and "mirror" the diagonal
+      v_diagonal1.y = max_box.y;
+
+      v_diagonal2.x = max_box.x;
+      v_diagonal2.y = min_box.y;
+
+      v_intersection = IntersectionPoint(line_point1,line_point2,v_diagonal1,v_diagonal2);
+
+      // make sure the intersection point is inside the sector (inside box sector_min,sector_max)
+      return VectorInsideBox(v_intersection,min_box,max_box) && VectorInsideBox(v_intersection,line_point1,line_point2);
+}
+
+bool BoundsInsideBox ( const Vector2D &v_bound1,
+                                 const Vector2D &v_bound2,
+                                 const Vector2D &v_box1, 
+                                 const Vector2D &v_box2 )
+{
+      Vector v_min,v_max;
+
+      v_min.x = min(v_box1.x,v_box2.x);
+      v_min.y = min(v_box1.x,v_box2.x);
+      v_max.x = max(v_box1.x,v_box2.x);
+      v_max.y = max(v_box1.x,v_box2.x);
+
+      // returns TRUE if v_bound1 or v_bound2 is inside the box min/max vector
+      return ( (( v_bound1.x >= v_min.x ) && ( v_bound1.x <= v_max.x ) &&
+                    ( v_bound1.y >= v_min.y ) && ( v_bound1.y <= v_max.y )) 
+                   (( v_bound2.x >= v_min.x ) && ( v_bound2.x <= v_max.x ) &&
+                    ( v_bound2.y >= v_min.y ) && ( v_bound2.y <= v_max.y )) );
+}
+
+bool SegmentBelongsToSector (const Vector2D &v_bound1, const Vector2D &v_bound2, int sector_i, int sector_j) 
+{ 
+      // this function returns TRUE if the *flattened* segment bounded by the v_bound1 and v_bound2 
+      // vertices beclongs to the topological sector whose position in the global array is [sector_i] 
+      // [sector_j], FALSE otherwise. The local variables of this function are defined static in 
+      // order to speedup recursive calls of this function, which is extensively used in 
+      // LookDownOnTheWorld(). 
+      
+      float sector_left, sector_right, sector_top, sector_bottom;
+      
+      Vector2D sector_min, sector_max;
+
+      // first compute the left, right, top and bottom coordinates indices of the sector 
+      sector_left = map.v_worldmins.x + (map.v_worldmaxs.x - map.v_worldmins.x) 
+            / map.parallels_count * sector_i; 
+      sector_right = map.v_worldmins.x + (map.v_worldmaxs.x - map.v_worldmins.x) 
+            / map.parallels_count * (sector_i + 1); 
+      sector_top = map.v_worldmins.y + (map.v_worldmaxs.y - map.v_worldmins.y) 
+            / map.meridians_count * sector_j; 
+      sector_bottom = map.v_worldmins.y + (map.v_worldmaxs.y - map.v_worldmins.y) 
+            / map.meridians_count * (sector_j + 1); 
+      
+      // get minimum and maximum vectors and stored in 2d vector
+      sector_min = Vector2D(sector_left,sector_bottom);
+      sector_max = Vector2D(sector_right,sector_top);
+      
+      // its obvious if its in sector, if one or both points are inside the box
+      if ( BoundsInsideBox(v_bound1,v_bound2,sector_min,sector_max) )
+            return TRUE;
+
+      // otherwise see if the segment still goes through the sector
+      return LineIntersectsBox(v_bound1,v_bound2,sector_min,sector_max);
+}
+
+
+
+edit:
+
+if the line intersection still doesn't work, www.flipcode.com/cgi-bin/msg.cgi?showThread=00003736&forum=general&id=-1check this out for some idea, and try to make it like that instead ;)
+
+[modified on 01/16/03 at 12:24:18]
+--------------------------------------------------
+01/16/03 at 13:37:30  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Cheesy, what's the difference between what you are doing and what I do ?
+
+The only difference is that you check whether the segment intersects at least one out of two lines (the diagonals), whereas I check whether the segment intersects at least one out of four lines (the square boundaries).
+
+But since the square boundaries are always axial, the equation is much simpler and thus it is faster to check for 4 intersections with axial segments than to check for 2 intersections with non-axial segments.
+
+Not trying to diss your work at all, but instead of writing/trying/bugfixing/rewriting/retrying a new function from scratch, have you tried to have a look at mine in order to figure out where the problem is ? Because it almost works, and it is very fast, whereas your method is definitely slower.
+
+Sorry, not much time tonight, I will consider the question this weekend.
+
+
+--------------------------------------------------
+01/16/03 at 13:58:00  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+I never really took much time to check the stuff you did because it looked pretty hard to understand what it was doing from looking at it :)
+
+If you need to add maybe one or two things to it, homepage.ntlworld.com/pat.murphy/cases.jpgcheck this pic I made showing some cases of the intersection. if this helps you that is
+
+--------------------------------------------------
+01/17/03 at 11:42:50  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+Hey PM, try this.... ive tested it with many cases, vertical lines, horizontal lines, diagonal lines, etc... seems to work.. check it out
+
+code:
+
+bool SegmentBelongsToSector (const Vector2D &v_bound1, const Vector2D &v_bound2, int sector_i, int sector_j) 
+{ 
+      // this function returns TRUE if the *flattened* segment bounded by the v_bound1 and v_bound2 
+      // vertices beclongs to the topological sector whose position in the global array is [sector_i] 
+      // [sector_j], FALSE otherwise. The local variables of this function are defined static in 
+      // order to speedup recursive calls of this function, which is extensively used in 
+      // LookDownOnTheWorld(). 
+      
+      float sector_left, sector_right, sector_top, sector_bottom;
+      float x,y,m,b;
+      
+      Vector2D sector_min, sector_max;
+      Vector2D line_min,line_max;
+
+      // first compute the left, right, top and bottom coordinates indices of the sector 
+      sector_left = map.v_worldmins.x + (map.v_worldmaxs.x - map.v_worldmins.x) 
+            / map.parallels_count * sector_i; 
+      sector_right = map.v_worldmins.x + (map.v_worldmaxs.x - map.v_worldmins.x) 
+            / map.parallels_count * (sector_i + 1); 
+      sector_top = map.v_worldmins.y + (map.v_worldmaxs.y - map.v_worldmins.y) 
+            / map.meridians_count * sector_j; 
+      sector_bottom = map.v_worldmins.y + (map.v_worldmaxs.y - map.v_worldmins.y) 
+            / map.meridians_count * (sector_j + 1); 
+      
+      // get minimum and maximum vectors and stored in 2d vector
+      sector_min = Vector2D(sector_left,sector_bottom);
+      sector_max = Vector2D(sector_right,sector_top);
+      
+      // its obvious if its in sector, if one or both points are inside the box
+      if ( BoundsInsideBox(v_bound1,v_bound2,sector_min,sector_max) )
+            return TRUE;
+
+      // vertical line? (!!!undefined gradient!!!)
+      if ( v_bound1.x == v_bound2.x )
+      {
+            if ( (v_bound1.x >= sector_left) && (v_bound1.x <= sector_right) )
+            {
+                  if ( v_bound1.y > v_bound2.y )
+                        return ( (v_bound1.y >= sector_top) && (v_bound2.y <= sector_bottom) ); // both above or below (not both)
+                  else
+                        return ( (v_bound2.y >= sector_top) && (v_bound1.y <= sector_bottom) );
+            }
+
+            return FALSE; // only vertical line can hit top or bottom of sector
+      }
+      // horizontal line? (!!!zero gradient!!!)
+      else if ( v_bound1.y == v_bound2.y )
+      {
+            if ( (v_bound1.y >= sector_bottom) && (v_bound1.y <= sector_top) )
+            {
+                  if ( v_bound1.x > v_bound2.x )
+                  {
+                        return ( (v_bound1.x >= sector_right) && (v_bound2.x <= sector_left) ); // both left and right (not left and left/right and right of box etc)
+                  }
+                  else
+                  {
+                        return ( (v_bound2.x >= sector_right) && (v_bound1.x <= sector_left) );
+                  }
+            }
+
+            return FALSE; // only vertical line can hit top or bottom of sector
+      }
+      else if ( v_bound1.x < v_bound2.x )
+      {
+            line_min = v_bound1;
+            line_max = v_bound2;
+      }
+      else
+      {
+            line_min = v_bound2;
+            line_max = v_bound1;
+      }
+
+      m = (v_bound2.x - v_bound1.y) / (v_bound2.x - v_bound1.x);
+      b = v_bound1.y - m * v_bound1.x;
+
+      // y = mx + b
+      y = m*sector_left + b;
+
+      // point must lie inside box AND inside line region.
+      // check the left side of the sector....
+      if ((y >= sector_bottom) && (y <= sector_top) &&
+            (y >= line_min.y) && (y <= line_max.y))
+      {            
+            //intersects box, must also check if this point is INSIDE the lenght
+            //of the line (by checking a bounding box around the line)
+            // x = (y - b) / m
+            x = (y - b)/m;
+
+            if (( x >= line_min.x ) && ( x <= line_max.x ))
+                  return TRUE;
+      }
+
+      y = m*sector_right + b;
+
+      // check the right side
+      if ((y >= sector_bottom) && (y <= sector_top) &&
+            (y >= line_min.y) && (y <= line_max.y))
+      {
+            x = (y - b)/m;
+
+            if (( x >= line_min.x ) && ( x <= line_max.x ))
+                  return TRUE;
+      }
+      
+      // must now change subject to x (checking for y point now)
+      // plug y into the equation which is now sector_top/sector_bottom
+      x = (sector_top - b)/m;
+
+      // check to see where it intersects on x axis with top of the box
+      if ((x >= sector_left) && (x <= sector_right) &&
+            (x >= line_min.x) && (x <= line_max.x) )                         
+      {
+            // need to also find Y !!! Check if its also inside line region!
+
+            y = m*x + b;            
+
+            if ((y >= line_min.y) && (y <= line_max.y))
+                  return TRUE;
+      }
+
+      x = (sector_bottom - b)/m;
+
+      // check to see where it intersects on x axis with bottom of the box
+      if ((x >= sector_left) && (x <= sector_right) &&
+            (x >= line_min.x) && (x <= line_max.x))
+      {
+            y = m*x + b;            
+
+            if ((y >= line_min.y) && (y <= line_max.y))
+                  return TRUE;
+      }
+
+      return FALSE;
+}
+
+
+
+[modified on 01/17/03 at 11:40:15]
+
+[modified on 01/17/03 at 11:40:58]
+
+[modified on 01/17/03 at 11:42:50]
+--------------------------------------------------
+01/17/03 at 13:34:09  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Thanks cheesy, trying it N.O.W. !
+brb in a minute...
+
+
+--------------------------------------------------
+01/17/03 at 14:12:52  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+it works !!!!!!!!!
+w00t w00t thanks matey
+http://www.racc-ai.com/racc-bsptest.exe (place the racc folder in the base HL directory and make your CS liblist.gam point to "../racc/release/cstrike/release/racc.dll")
+
+you were right, my error was that I didn't arrange the bounds of the segment I wanted to check in the right order (v_bound2 possibly being superior to v_bound1) and it was f00kin up my test code :D thanks !
+
+code:
+
+          0000   0000         !!
+         00  00 00  00 tt     !!
+ww    ww 00  00 00  00 ttt    !!
+ww ww ww 00  00 00  00 tt     !!
+ww ww ww 00  00 00  00 tt
+ wwwwwww  0000   0000   ttt   !!
+
+
+
+[edited: darn, my w00t doesnt look right ;D]
+
+[modified on 01/17/03 at 14:12:52]
+--------------------------------------------------
+01/17/03 at 14:22:42  Reply by: Zipster (skyork99@juno.com)
+--------------------------------------------------
+Ouch, that code looks painful.  Why don't you try using a vector-based intersection test?  Turn the bounds into planes, and use the dot product to determine the side of the planes.  If all the dot products are positive, it's on the inside.  Otherwise, you perform the intersection test for each side using similar triangles.  You can find some sample code in winding.cpp with the ZHLT source code (line 843).  It's kinda messy, but you should get the general idea.  If not I'll explain it a bit more.  It really is a lot simpiler to use and understand, and a lot less code.
+
+--------------------------------------------------
+01/17/03 at 17:06:40  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Actually I dnt care anymore.
+The damn thing is working, and I know why, and thats all I want.
+And its used only once, when building the map fo the world whic his saved to disk.
+I'll post the updated bsp tsuff tomorrow, not tonigt, impssible, because I have been kindapped to a party and I'm drunk as funk;
+
+
+--------------------------------------------------
+01/17/03 at 18:35:40  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+;D Man I might have a look at that dot product thing sometime , but I don't want to mess with much math.. I think the code up theres probably quite understandable (just get eqaution of line and plug in corrdinates to see if they are suitable for crossing the sector.)
+
+I think the DotProduct thing is like my first idea? :D
+
+and goddamn im tired :)
+
+
+

@@ -1,0 +1,111 @@
+--------------------------------------------------
+Subject: Linux error again...!
+--------------------------------------------------
+06/14/02 at 14:55:29  Posted by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+When some people have tried my linux version of my bot they get this error when trying to run it..
+
+"Undefined symbol: FUNCTION_FROM_NAME_FPCc"
+
+...or something like that
+
+I've never encountered this erro before, i was wondering If anyone could give me a hint on what would cause it?
+
+--------------------------------------------------
+06/14/02 at 16:16:38  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+FUNCTION_FROM_NAME() is the engine function used to make the HPB bot work with the single player game.
+
+You will need to include namefunc.cpp in you Linux makefile (or remove the FUNCTION_FROM_NAME stuff from the enginecallback.h file.
+
+botman
+
+--------------------------------------------------
+06/14/02 at 16:38:46  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+ah.. must have forgot that, ill try it out thanks.
+
+--------------------------------------------------
+06/14/02 at 16:53:57  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+argh.. Do you have any idea what header file(s) that the type "WORD" , "BYTE", "LONG" and "DWORD" (etc.) are defined in?
+
+I'm getting several errors, probably becuase that type can't be found...
+
+code:
+
+
+many errors...
+
+namefunc.cpp: In function `void LoadSymbols(char *)':
+namefunc.cpp:192: `LONG' undeclared (first use this function)
+namefunc.cpp:192: parse error before `;'
+namefunc.cpp:197: parse error before `='
+namefunc.cpp:200: parse error before `;'
+namefunc.cpp:225: `struct DOS_HEADER' has no member named `e_magic'
+namefunc.cpp:231: `struct DOS_HEADER' has no member named `e_lfanew'  
+
+... 
+many more errors
+
+
+
+I take it is simply because that they types cant be found.. dohh!
+
+I know they are defined in windef.h in windows but what about linux??
+
+[modified on 06/14/02 at 16:53:57]
+--------------------------------------------------
+06/14/02 at 17:14:13  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+also H_INSTANCE can't seem to be recognised :(
+
+Should I just copy the definitions and put them in a compiler "if" statement if linux is defined...?
+
+edit: ah forget that, I noticecd you used void* hLibrary or whatever instead for linux in some other bot files. I'll try that heh.
+
+another edit: done.. compiles okay now
+
+[modified on 06/14/02 at 17:14:13]
+--------------------------------------------------
+06/15/02 at 06:07:39  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+Cheesy, I really think you should get rid of that stuff if you intend to compile under Linux. What this stuff does is that it opens the MOD DLL and look for exported MSVC function names. Then it fills in an array with them with their addresses, and it redirects the standard engine's FUNCTION_FROM_NAME and NAME_FOR_FUNCTION calls to the proper addresses by looking into this array, since the engine stuff does not seem to work because it looked for this exports in the bot DLL instead of the MOD DLL. That's a hack Botman did to make the bots DLL fully interface between the engine and the server DLL under Windows, this to allow the single player episodes to run (there were various bugs otherwise, entities that did not get triggered, and such).
+
+Since Linux servers don't play single player episodes, you can remove this stuff, no problem. Just like it was before. If you want to see another way of implementing that (but it is basically the same), you can have a look at my source code (it does not compile under Linux, though).
+
+
+--------------------------------------------------
+06/15/02 at 15:39:18  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+I'll just do that :)
+
+I've gotta get ppl to test it though.
+
+With the version I gave someone (It had the name for function stuff in it), he got an error after spawning.. he said..
+
+QUOTE:
+
+hmm another error I'm getting whenever I join my server and spawn (press the jump button when I'm in observer). I see that rcbot commands appear in the server's console but I'm unable to use them in spectator, like spawn a bot. Anyway the server crashes when I spawn from the observer mode and gives me this error. 
+
+segmentation fault (core dumped) 
+
+actually it looked more like ...
+
+./runRC: line 2: 5060 segmentation fault (core dumped) where runRC is my execution file. I tried reconfiguring it all morning but different numbers kept comming up. I beleive line: 5060 is the part of that file, though the segmentation fault always occurs. I've no idea wtf does that mean so I seek for help here 
+
+
+
+
+I think it might be something to do with the mod DLL rather than the bot (as it seems like laser, the mod author, has put in a comment here when this error happens), but what might help me/laser is what does a "segmentation fault" mean?
+
+[modified on 06/15/02 at 15:39:18]
+--------------------------------------------------
+06/16/02 at 05:39:46  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+A segmentation fault usually occurs when the application tries to access memory that it is not allowed to get at (reading or writing).  This usually happens when you have a bad pointer or are going outside the bounds of an array.
+
+Rebuild your .so file after adding "-g" to the compile and link commands in your Makefile.  This will include debugging information complete with lines numbers in the source code.  When it crashes and generates a core file, use "gdb hlds core" then "where" (in gdb) to print a stack backtrace which will contain the functions called in reverse order (the stack).  You will be able to tell which line number in your source code lead up to the crash.
+
+botman
+

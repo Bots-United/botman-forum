@@ -1,0 +1,315 @@
+--------------------------------------------------
+Subject: Float32 conversion
+--------------------------------------------------
+07/26/02 at 18:14:52  Posted by: Dead_One (d_h_johnson@hotmail.com)
+--------------------------------------------------
+i have a question that is probably REALLY STUPID, but i can't find the answer anywere i have looked so far.
+
+i have 4 bytes, XXX XXX XXX XXX
+i can split these into individual bits if need be.
+but anyways, i have the 4bytes, and no real conversion tool to convert it to a type float
+
+i could load a char* and point it to address of a float, then manuall load them for a quick conversion, but i am having problems with my type casting and the debugger not liking me
+
+#include <stdio.h>
+#include <stdlib.h>
+
+class Floater {
+public:
+      Floater();
+      ~Floater();
+      float Shit;
+      char *Crap;
+};
+
+Floater::Floater() {
+      float *(this.Crap) = &this.Shit;
+      if (this.Crap != &this.Shit) { printf("\ncrappida\n"); abort(); }
+}
+
+Floater::~Floater() {
+}
+
+void PrintCrap(char *Crap) {
+      printf("'%c' '%c' '%c' '%c'\n", Crap[0], Crap [1], Crap [2], Crap [3]);
+}
+
+void main(void) {
+      class Floater Stuff;
+      Stuff.Crap[0] = 0;
+      Stuff.Crap[1] = 0;
+      Stuff.Crap[2] = 0;
+      Stuff.Crap[3] = 0;
+      PrintCrap(Stuff.Crap);
+}
+
+
+if in the constructor i dont' use the this. or this-> it just pulls the info out of its ass and when i do it won't compile
+
+http://deadone.no-ip.org/multimedia/step1.jpg
+http://deadone.no-ip.org/multimedia/step2.jpg
+
+[modified on 07/26/02 at 18:14:52]
+--------------------------------------------------
+07/27/02 at 02:48:11  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+A float is already 4 bytes, what are you trying to convert to a float (numbers, hex, binary, characters!??)?
+
+[modified on 07/27/02 at 02:48:11]
+--------------------------------------------------
+07/27/02 at 03:53:54  Reply by: Dead_One (d_h_johnson@hotmail.com)
+--------------------------------------------------
+i get a 4 byte return, but it is reverse loaded (4 - 3 - 2 - 1)
+so i need to put the 4 bytes into a float the opposite direction.
+
+--------------------------------------------------
+07/28/02 at 01:38:33  Reply by: Zipster (skyork99@juno.com)
+--------------------------------------------------
+Create a byte[4]/float union and trick the computer into doing the conversion:
+
+union
+{
+   float f;
+   byte b[4];
+};
+
+Set the four bytes, and access f.  It's a float factory (with a union :P )!  Haha, get it?  Ok nevermind...
+
+You might have to experiment with the order you set the bytes.
+
+--------------------------------------------------
+07/28/02 at 03:16:41  Reply by: Dead_One (d_h_johnson@hotmail.com)
+--------------------------------------------------
+yes that is exactly what i was doing
+but i typeCast it wrong
+
+Floater::Floater() {
+      Crap = (char *)&Shit;
+}
+
+
+--------------------------------------------------
+07/28/02 at 04:27:45  Reply by: @$3.1415rin (joebot@botepidemic.com)
+--------------------------------------------------
+no, you are not. you are using a class, he is using a union, that means that all the variables inside the union are using the same memory, i.e. the union is 4 bytes big, a class would be 8 bytes, because it stores the float and the bytes seperately.
+
+--------------------------------------------------
+07/29/02 at 04:06:55  Reply by: Dead_One (d_h_johnson@hotmail.com)
+--------------------------------------------------
+dude, i was referring to our methods as being identicle, not that i was doing the exact same code as him, as you can plainly see.
+
+--------------------------------------------------
+07/29/02 at 04:13:58  Reply by: @$3.1415rin (joebot@botepidemic.com)
+--------------------------------------------------
+dunno what you wanna do with this code, but this should work :
+code:
+
+Floater::Floater() { 
+     Crap = (char*)&this.Shit; 
+     if (Crap != (char*)&Shit) { printf("\ncrappida\n"); abort(); } 
+} 
+
+
+
+[modified on 07/29/02 at 04:13:58]
+--------------------------------------------------
+07/29/02 at 04:53:08  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+I think "Crap" and "Shit" should have a name thats a little more obvious to what the variables hold ;D I'm confused with they names cos I've no idea whats supposed to be in them except for "CRap" n "Shit" ;D
+
+--------------------------------------------------
+07/29/02 at 22:58:25  Reply by: Dead_One (d_h_johnson@hotmail.com)
+--------------------------------------------------
+you really don't say...
+
+QUOTE:
+yes that is exactly what i was doing
+but i typeCast it wrong
+
+Floater::Floater() {
+     Crap = (char *)&Shit;
+}
+
+
+
+--------------------------------------------------
+07/30/02 at 09:13:08  Reply by: Zmeko (dosap29@msn.com)
+--------------------------------------------------
+isn't a byte same as unsigned char?
+
+
+--------------------------------------------------
+07/30/02 at 10:57:47  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+well a character is 1 byte, I don't know what you mean by an 'unsigned' char, I know an unsigned integer only allows the integer to be positive (?) but characters are basically one byte integers that are always positive 0 - 255 i think, which respresent the ascii number of the character.
+
+--------------------------------------------------
+07/30/02 at 11:37:00  Reply by: BrianL (halfkiller@hotmail.com)
+--------------------------------------------------
+[deleted]
+
+[modified on 07/30/02 at 11:37:00]
+--------------------------------------------------
+07/31/02 at 07:18:00  Reply by: Zmeko (dosap29@msn.com)
+--------------------------------------------------
+my compiler doesn't know what type is byte, so would the code about union work if i used an unsigned char instead of  a byte.
+
+also how would this work?
+code:
+
+union b
+{
+  float f;
+  byte a[4];
+};
+      b abc;
+      abc.a[0] = 0x1;
+      abc.a[1] = 0x0;
+      abc.a[2] = 0x1;
+      abc.a[3] = 0x1;
+      abc.a[4] = 0x1;
+      printf("\nabc = %f\n",abc.f);
+        // the out put should be something
+        // beside 0.000000, right?
+
+
+
+
+
+sorry, i had a typo.....
+
+[modified on 07/31/02 at 07:18:00]
+--------------------------------------------------
+07/30/02 at 16:43:55  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Yes, byte and unsigned char are the same thing.
+
+Ummm, that wouldn't work.
+
+You've got a structure called "abc" and you are trying to access a member named "a" (see the ".a" part).  There is no member named .a.
+
+Also you have the array dimensioned at 4 but you are accessing 5 elements.  Remember arrays in C and C++ go from 0 to N-1 so X[4] would only give you X[0], X[1], X[2], and X[3].
+
+Prehaps look in your C (or C++) book on unions to understand better how they work.
+
+botman
+
+--------------------------------------------------
+07/31/02 at 07:15:16  Reply by: BrianL (halfkiller@hotmail.com)
+--------------------------------------------------
+typedef unsigned char byte;
+
+--------------------------------------------------
+07/31/02 at 11:35:55  Reply by: Zmeko (dosap29@msn.com)
+--------------------------------------------------
+sorry, i had a lot of mistakes from that bit of code, which came from somewhere else; i dont know why i copied the code from the person who posted the union thing and put it with the code i used in my project.....
+
+uhm, what i found about unions from learn c now(pg 224 -229)
+is that an union is a structure that reserves sufficient memory for it's biggest member; a struct reserves sufficient memory for all it's members. am i understanding this right? if so, then the code below would only reserve memory for the float?
+code:
+
+union
+{
+  float f;
+  byte b[4];
+};
+
+
+--------------------------------------------------
+07/31/02 at 12:00:52  Reply by: @$3.1415rin (joebot@botepidemic.com)
+--------------------------------------------------
+and where is the difference to Skyler's example ? yes, that should work ...
+
+btw, what do you wanna do with this ?
+
+--------------------------------------------------
+08/01/02 at 12:18:00  Reply by: Zmeko (dosap29@msn.com)
+--------------------------------------------------
+Skyler York said 
+QUOTE:
+
+Set the four bytes, and access f
+
+
+
+
+now, i am REALLY stuck, i have an example in the book but it doesn't look like that...
+
+code:
+
+struct bytes {
+     unsigned char low;
+     unsigned char high;
+};
+union word{
+    unsigned short sword;
+    struct bytes byte;
+};
+
+int main(void){
+   union word data;
+   unsigned short temp;
+  data.sword = 1000;
+  temp = (data.byte.high << 8)  data.byte.low;
+  printf("%u - %04x", temp, temp);
+  return 0;
+}
+
+
+
+
+
+[modified on 08/01/02 at 12:18:00]
+--------------------------------------------------
+07/31/02 at 22:58:22  Reply by: Dead_One (d_h_johnson@hotmail.com)
+--------------------------------------------------
+what i was ORIGINALLY trying to do was see how hard it was to convert from 4 unsigned char bytes to a float, mIRC script doesn't allow you to manuall load byte values into a float variable
+so you have to convert it manually or have an externall .dll do it. which the external .dll is looking better since i can't seem to remember from my asm class how to manipulate a float...
+
+--------------------------------------------------
+08/15/02 at 01:09:08  Reply by: Zipster (skyork99@juno.com)
+--------------------------------------------------
+@Zmeko:  That snippet of code is trying to demonstrate how all the members of a union share the same memory.  Thus, the user can assign a value to "sword", and since "byte" uses the same memory, we can then access the high and low words manually through the 'bytes' structure.
+
+--------------------------------------------------
+08/21/02 at 18:58:45  Reply by: Dead_One (d_h_johnson@hotmail.com)
+--------------------------------------------------
+code:
+        set %Cs.Byte1 $bvar(&Cs.DataIn, 8-8)
+        set %Cs.Byte2 $bvar(&Cs.DataIn, 7-7)
+        set %Cs.Byte3 $bvar(&Cs.DataIn, 6-6)
+        set %Cs.Byte4 $bvar(&Cs.DataIn, 5-5)
+        set %Cs.4Bytes $base( $calc( %Cs.Byte1 * 256^3 + %Cs.Byte2 * 256^2 + %Cs.Byte3 * 256^1 + %Cs.Byte4 * 256^0),10,2,32) 
+        bset -t &Cs.BinFloat 1 %Cs.4Bytes
+        set %Cs.Sign $calc($bvar(&Cs.BinFloat,1) - 48)
+        set %Cs.Exp $base($bvar(&Cs.BinFloat,2-9).text,2,10)
+        set %Cs.BinFloatCounter 10
+        set %Cs.Mantissa 0
+        while (%Cs.BinFloatCounter <= 32) {
+          if ($bvar(&Cs.BinFloat, %Cs.BinFloatCounter ) == 49) {
+            set %Cs.Mantissa $calc( %Cs.Mantissa + 1/(2^ $calc( %Cs.BinFloatCounter - 9 ) ) )
+          }
+          inc %Cs.BinFloatCounter
+        }
+        set %Cs.PlayTime $duration( $calc( $calc( -1^ %Cs.Sign ) * $calc( 2^ $calc( %Cs.Exp - 127 ) ) * $calc( %Cs.Mantissa + 1 ) ) )
+
+
+
+--------------------------------------------------
+08/31/02 at 07:44:14  Reply by: Zmeko (dosap29@msn.com)
+--------------------------------------------------
+
+QUOTE:
+@Zmeko:  That snippet of code is trying to demonstrate how all the members of a union share the same memory.  Thus, the user can assign a value to "sword", and since "byte" uses the same memory, we can then access the high and low words manually through the 'bytes' structure.
+
+
+
+but your snippet doesn't look like it does the same job as the one i posted
+
+--------------------------------------------------
+09/02/02 at 21:10:50  Reply by: Zipster (skyork99@juno.com)
+--------------------------------------------------
+The effect is the same, but what you use a union for can differe.  My snippet tricked the computer into converting four bytes into a float by telling it to use the same memory for the bytes and the float.  I assigned data through the bytes, but accessed it through the float.
+
+Your snippet did the same thing, only backwords.  It assigned data into the short-sized variable (sword), but then accessed it through the byte variables.
+

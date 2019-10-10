@@ -1,0 +1,42 @@
+--------------------------------------------------
+Subject: More linux trouble
+--------------------------------------------------
+11/23/01 at 12:48:55  Posted by: jldailey (jldailey@uchicago.edu)
+--------------------------------------------------
+Man, this linux porting is being a pain.
+
+Btw, adding the -lstdc++ trick worked for the library loading error, but now its worse in a way, because it loads the library, and gets stuck in a loop somewhere, but not in my code.
+I put:
+code:
+
+assert( 1 == 0 );
+
+
+in DllMain() (should not be applicable on linux, but wth), GiveFnptrsToDll(), and GetEntityAPI(), and none of them ever trigger, so it has to be in valve's loading code, which means that  something i did that is not code is going wrong
+
+so when i start the linux server i get:
+Host_Init
+Added packfile /usr/hlds2/valve/pak0.pak (985 files)
+Protocol version 45
+Exe version 4.1.0.8
+Exe build: 15:09:28 Sep 17 2001 (1789)
+Auth Server
+couldn't exec language.cfg
+
+Then right here the CPU goes to 100% and will stay there as long i let it... 
+Any ideas?
+
+--------------------------------------------------
+11/23/01 at 15:04:59  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+The CPU is probably trying to dump memory to a core file.  If you have been halting or resetting the machine to "unlock" it, you should wait several minutes to see if the console prompt comes back.  Once the core dump file is complete, you can use the gdb debugger to determine where it crashed...
+
+$ gdb hlds_run core
+(gdb) where
+
+...this will show a stack dump with the function that caused the crash at the top and the function that called that one below it, and the function that called that one below the second one, etc.
+
+You will see one of the functions from your .so file and can find the line number in that .cpp file where the crash occurred (the number displayed after the function name is the line number).
+
+botman
+

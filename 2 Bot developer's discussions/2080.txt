@@ -1,0 +1,75 @@
+--------------------------------------------------
+Subject: Hitting a wall
+--------------------------------------------------
+08/01/01 at 02:57:14  Posted by: [LW]Rob (rob@tfcautoop.cjb.net)
+--------------------------------------------------
+Say I fired an object off with so much velocity, how would I go about detecting when it has hit a wall?
+
+- Rob.
+
+--------------------------------------------------
+08/01/01 at 04:22:59  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+I would think you could create a Touch() function for it, or alternately you could trace a line a short distance from the entity every frame to see if it collides with a wall.
+
+botman
+
+--------------------------------------------------
+08/01/01 at 04:40:24  Reply by: [LW]Rob (rob@tfcautoop.cjb.net)
+--------------------------------------------------
+So its possible to use SetTouch() on it with the HPB source? As all my attempts have failed with that method, the traceline method sounds ok, but wouldn't it be CPU intensive? I have never used tracelines before so I can't really judge.
+
+- Rob.
+
+[modified on 08/01/01 at 04:40:24]
+--------------------------------------------------
+08/01/01 at 05:21:33  Reply by: mattkimbo (mattkimbo@yahoo.co.uk)
+--------------------------------------------------
+You would see if it smashed to pieces, like smashed glass and stuff.
+Or you could do a trace line at work out the distace the object would travel before it is fired and it hits the wall, then once the object reaches that distace you know. 
+
+--------------------------------------------------
+08/01/01 at 05:45:26  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+"So its possible to use SetTouch() on it with the HPB source?"
+
+You should be able to intercept the DispatchTouch() function and look at the edict_t pointer passed into it.  If it matches the edict of your entity then something has touched your entity (based on the collision detection in the engine).  By default DispatchTouch() in the SDK just returns if the CBaseEntity object hasn't set up a touch function (m_pfnTouch).  All that the SetTouch function does is initialize this member variable to point to the touch function.
+
+botman
+
+--------------------------------------------------
+08/04/01 at 01:29:52  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+I guess you could change this code a bit. :) This is what I used
+
+code:
+
+void DispatchTouch( edict_t *pentTouched, edict_t *pentOther )
+{
+
+   int i;
+   char TouchedEnt[80];
+   
+   for (i=0; i < 32; i++)
+   {      
+     if (bots[i].is_used)
+     {
+       if( pentOther == bots[i].pEdict )
+       {        
+         strcpy(TouchedEnt, STRING(pentTouched->v.classname));
+         
+         // Do some string compare stuff here!!!!
+
+       }
+     }
+   }
+
+
+   (*other_gFunctionTable.pfnTouch)(pentTouched, pentOther);
+}
+
+
+
+hehe
+
+

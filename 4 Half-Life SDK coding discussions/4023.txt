@@ -1,0 +1,132 @@
+--------------------------------------------------
+Subject: Trigger and delay
+--------------------------------------------------
+01/11/03 at 05:36:08  Posted by: mefi_hl (ravaging@go2.pl)
+--------------------------------------------------
+This is mu code trigger_slowmotion :
+
+class CTriggerSlowmotion : public CBaseEntity
+{
+public:
+      void Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value );
+      void KeyValue( KeyValueData *pkvd );
+      virtual int      ObjectCaps( void ) { return CBaseEntity :: ObjectCaps() & ~FCAP_ACROSS_TRANSITION; }
+private:
+      BOOL slow;
+};
+LINK_ENTITY_TO_CLASS( trigger_slowmotion, CTriggerSlowmotion);
+
+
+void CTriggerSlowmotion::Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value )
+{
+   if (slow==TRUE) 
+   {
+       SERVER_COMMAND("host_framerate 0.005\n");
+   }
+   else
+   {
+      SERVER_COMMAND("host_framerate 0.0\n");
+   }
+}
+
+void CTriggerSlowmotion :: KeyValue( KeyValueData *pkvd )
+{
+      if (FStrEq(pkvd->szKeyName, "slowmotion"))
+      {
+      slow = atof(pkvd->szValue);
+            pkvd->fHandled = TRUE;
+      }
+      else
+            CBaseEntity::KeyValue( pkvd );
+}
+
+How made when "slow==TRUE", effect slowmotion work 6 seconds, after turn off ?
+
+
+--------------------------------------------------
+01/11/03 at 06:08:02  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Create a Think() function for your slowmotion entity, then set the amount of time you want to wait before the engine calls that function.  Your code would be changed to look like this...
+code:
+class CTriggerSlowmotion : public CBaseEntity
+{
+public:
+     void Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value );
+     void KeyValue( KeyValueData *pkvd );
+     virtual int      ObjectCaps( void ) { return CBaseEntity :: ObjectCaps() & ~FCAP_ACROSS_TRANSITION; }
+     void Timeout( void );
+private:
+     BOOL slow;
+};
+LINK_ENTITY_TO_CLASS( trigger_slowmotion, CTriggerSlowmotion);
+
+
+void CTriggerSlowmotion::Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value )
+{
+  if (slow==TRUE) 
+  {
+      SERVER_COMMAND("host_framerate 0.005\n");
+      SetThink(Timeout);  // function to call at timeout
+      pev->nextthink = gpGlobals->time + 6.0;  // timeout in 6.0 seconds
+  }
+  else
+  {
+     SERVER_COMMAND("host_framerate 0.0\n");
+  }
+}
+
+void CTriggerSlowmotion :: KeyValue( KeyValueData *pkvd )
+{
+     if (FStrEq(pkvd->szKeyName, "slowmotion"))
+     {
+     slow = atof(pkvd->szValue);
+           pkvd->fHandled = TRUE;
+     }
+     else
+           CBaseEntity::KeyValue( pkvd );
+}
+
+void CTriggerSlowmotion :: Timeout( void )
+{
+   SetThink(NULL);  // don't need timeout function anymore
+
+   // set framerate back to normal speed...
+   SERVER_COMMAND("host_framerate 0.0\n");
+}
+
+botman
+
+--------------------------------------------------
+01/11/03 at 13:07:20  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+My 3 cents and a half.
+
+Forcing a host's frame rate is not the best way to fake slowmotion. What you'll get is just an incredible lag ; frames will be spaced by seconds but anyhow your player will still move as fast on the server.
+
+You should rather check for the player's max speeds, things like RunPlayerMove() for bots, and their equivalents to players.
+
+
+--------------------------------------------------
+01/11/03 at 14:02:21  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Yes, but you have to slow down EVERYTHING in the world (rockets, grenades, snarks, grunts, elevators, etc.).
+
+I assume this is for a single player MOD since slowing down the world for multiplayer makes no sense because the world slows down for EVERYONE in the game even when I'm on the other side of the map from someone who activated an effect to slow down time.
+
+botman
+
+--------------------------------------------------
+01/11/03 at 14:45:25  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+The Specialists is a multiplayer Half-Life MOD which has a pretty good implementation of slow-motion effects.
+
+http://www.specialistsmod.net
+
+just to say it's possible...
+
+
+--------------------------------------------------
+01/18/03 at 12:55:21  Reply by: mefi_hl (ravaging@go2.pl)
+--------------------------------------------------
+How made that efect slowmotion work after load game ? (update efect) 
+

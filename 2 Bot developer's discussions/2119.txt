@@ -1,0 +1,127 @@
+--------------------------------------------------
+Subject: Bot Chat Messages Question
+--------------------------------------------------
+08/05/01 at 17:15:49  Posted by: ProgramMan (thevbfreak.pa@netzero.net)
+--------------------------------------------------
+Hey Botman, how are you able to support multiple %n/%r in your chat/whine/taunt messages?  I tried something similar to this:
+
+*In DLLGameInit(), where it loads the chat file, I replaced the "%" with "|" (vertical bars).
+
+*In BotThink(), I have a check for "|" and the next character; I replace the "|" and the next character with "%s" and then sprintf() the necessary data.  I keep doing this until there are no more "|" characters.
+
+I tried this, but the game hangs for a second and then boots me out to Windows (no MessageBox).
+
+BTW, if you are interested (and want to find out what is wrong), I can post the sample code here.
+
+--------------------------------------------------
+08/06/01 at 05:10:39  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+Here's the code I use to fill in %n or %r...
+code:
+void BotChatFillInName(char *bot_say_msg, char *chat_text,
+                       char *chat_name, const char *bot_name)
+{
+   int chat_index, say_index;
+   char *name_pos, *rand_pos;
+   char random_name[64];
+   int index, name_offset, rand_offset;
+   bool is_bad;
+
+   chat_index = 0;
+   say_index = 0;
+   bot_say_msg[0] = 0;
+
+   name_pos = strstr(&chat_text[chat_index], "%n");
+   rand_pos = strstr(&chat_text[chat_index], "%r");
+
+   while ((name_pos != NULL) || (rand_pos != NULL))
+   {
+      if (name_pos != NULL)
+         name_offset = name_pos - chat_text;
+      if (rand_pos != NULL)
+         rand_offset = rand_pos - chat_text;
+
+      if ((rand_pos == NULL) ||
+          ((name_offset < rand_offset) && (name_pos != NULL)))
+      {
+         while (&chat_text[chat_index] < name_pos)
+            bot_say_msg[say_index++] = chat_text[chat_index++];
+
+         bot_say_msg[say_index] = 0;  // add null terminator
+
+         chat_index += 2;  // skip the "%n"
+
+         strcat(bot_say_msg, chat_name);
+         say_index += strlen(chat_name);
+
+         bot_say_msg[say_index] = 0;
+      }
+      else  // use random player name...
+      {
+         int count = 0;
+
+         BotChatGetPlayers();
+
+         // pick a name at random from the list of players...
+
+         index = RANDOM_LONG(0, player_count-1);
+
+         is_bad = (strcmp(player_names[index], chat_name) == 0) ||
+                  (strcmp(player_names[index], bot_name) == 0);
+
+         while ((is_bad) && (count < 20))
+         {
+            index = RANDOM_LONG(0, player_count-1);
+
+            is_bad = (strcmp(player_names[index], chat_name) == 0) ||
+                     (strcmp(player_names[index], bot_name) == 0);
+
+            count++;
+         }
+
+         BotChatName(player_names[index], random_name);
+
+         while (&chat_text[chat_index] < rand_pos)
+            bot_say_msg[say_index++] = chat_text[chat_index++];
+
+         bot_say_msg[say_index] = 0;  // add null terminator
+
+         chat_index += 2;  // skip the "%r"
+
+         strcat(bot_say_msg, random_name);
+         say_index += strlen(random_name);
+
+         bot_say_msg[say_index] = 0;
+      }
+
+      name_pos = strstr(&chat_text[chat_index], "%n");
+      rand_pos = strstr(&chat_text[chat_index], "%r");
+   }
+
+   // copy the rest of the chat_text into the bot_say_msg...
+
+   while (chat_text[chat_index])
+      bot_say_msg[say_index++] = chat_text[chat_index++];
+
+   bot_say_msg[say_index] = 0;  // add null terminator
+}
+
+...the parameters are:
+
+bot_say_msg - the output say message
+chat_text - the input message with %n and %r
+chat_name - the name to fill in for %n (killer or victim of bot)
+bot_name - the name of the bot sending the message
+
+bot_name is used so that a bot name "Bob" won't send a message saying "Bob: Bob, come over here so I can kill you". ;D
+
+botman
+
+--------------------------------------------------
+08/06/01 at 06:28:23  Reply by: ProgramMan (thevbfreak.pa@netzero.net)
+--------------------------------------------------
+Thanks for the code.  I use UTIL_GetRandomPlayerName(edict_t *ed1,edict_t *ed2 = NULL), a function that I created for %r use, for random player names, so it shouldn't be hard to adapt this to the code.  BTW, if Bob said: "Bob: Bob, come over here so I can kill you.", at least Bob doesn't have to go far to kill himself ;).
+
+[modified on 08/06/01 at 06:27:33]
+
+[modified on 08/06/01 at 06:28:23]

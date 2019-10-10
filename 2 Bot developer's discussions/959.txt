@@ -1,0 +1,73 @@
+--------------------------------------------------
+Subject: Porting HPB Bot
+--------------------------------------------------
+12/30/00 at 03:58:16  Posted by: DarthBobo (DarthBobo@swarm.edgegaming.com)
+--------------------------------------------------
+Hi, I had a look around and had a guess that this was the right forum :}
+
+I am being harassed by all and sundry to add a bot to <A href=http://swarm.edgegaming.com>SWARM</A>, wonder if this thing understands html :}.
+
+I was wondering if there was any documentation on which parts of the HPB bot need to be modified to get it working with a team play mod. I suspect that weapons, class and team selection etc need to be modified. It would save me a lot of time if such a document did exist.
+
+HEY! If you where as busy I am, you would not be thinking that badly of me ;)
+
+--------------------------------------------------
+12/30/00 at 06:32:52  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+I would be far easier to take the Bot Number 10 source code and integrate that into your MOD since you already have the source code to your MOD.
+
+You can copy the waypoint.h and waypoint.cpp files from the HPB bot source code template if you want to use a similar waypoint method.
+
+By the way, use the [ url ] and [ /url ] tags (without the spaces) to create a hypertext link like this...
+
+swarm.edgegaming.comSWARM
+
+botman
+
+--------------------------------------------------
+12/30/00 at 09:56:26  Reply by: dannywent (dannywent@hotmail.com)
+--------------------------------------------------
+there have been several posts in this forum about porting a bot to another mod, just use the search function... or i could send them to you if you want, since i saved them on my computer
+It probably won't take you too long to port it over with the bot 10, code
+oh and the mod looks pretty cool but from reading about it, it looks like you'll have to add a lot of code to implement each different gameplay option.  looks like you've got a cool idea though, i like how you have some new ideas (like the survival thing)
+good luck (and yes this IS the right place to be for bot help :) )
+
+Dan
+
+--------------------------------------------------
+12/30/00 at 23:00:51  Reply by: DarthBobo (DarthBobo@swarm.edgegaming.com)
+--------------------------------------------------
+I have the bot 90% ported, just had a run around and shot me some bots. To easy with the maps we have and no way points for them to come find me ;)
+
+Still a small problem with team selection, they always join the first team, but I will work that out. Also the problem of handling multiple scenarios on the same map, but I think I have a solution for that as well.
+
+The reason I wanted to convert this bot is I figure it is the one most likely to be improved :) I have stuck to the style exactly and hope to be able to convince Botman to make it "offically" supported when I have finished porting it :) I have always wanted to do my own bot, but have not had the time, mainly due to my commitments with SWARM.
+
+--------------------------------------------------
+12/31/00 at 20:33:48  Reply by: DarthBobo (DarthBobo@swarm.edgegaming.com)
+--------------------------------------------------
+I am having some trouble with teams, I note you get the team for TFC from v.teams, when I try to set this in mp.dll, it keeps getting reset to 0. I can't find the code that does this, so I guess it is in the engine. Is there a flag that stops this?
+
+--------------------------------------------------
+01/01/01 at 05:41:45  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+Nope.  Some MODs use the edict "team" field and some don't.  Counter-Strike, for example, does not, that's why I check the player model to see what team they are on (this method is VERY inefficient by the way).
+
+You could create a global "clients" array that stores information about each client (bots and players).  Create a structure called "client_t" that stores the team value.  When a player connects to the server (in ClientConnect) set the "team" field to -1 until the player is fully in the game.  When the player has joined the game, set the team to the proper team value by using something like what's found in UTIL_GetTeam().  From then on you only have look up the team value in this array (you can use the client index as a index into the array).  Make sure to reset the team field back to -1 when clients disconnect from the game (via ClientDisconnect).
+
+botman
+
+--------------------------------------------------
+01/02/01 at 18:31:55  Reply by: DarthBobo (DarthBobo@swarm.edgegaming.com)
+--------------------------------------------------
+Yeah, I modified our mod to set this variable, still have not fixed it though :/
+
+While debugging this I found another problem, I get a lot of reports that entity X function Y is not declared as EXPORT when running the debug dll. These are not just custom entities, listed are weapons and triggers that are standard HL entities. None of these are reported when not running HPB. Any idea how i get around this?
+
+--------------------------------------------------
+01/02/01 at 20:06:14  Reply by: DarthBobo (DarthBobo@swarm.edgegaming.com)
+--------------------------------------------------
+w0000000t!
+
+I have fixed the team/class selection bug, and believe the warnings are bogus. I only get them when I do a debug compile on our dll, and then only if I run said debug dll with HPB. If I do release compiles I get no errors, and I just played a half hour game with four bots, two per team, no crashes :)
+

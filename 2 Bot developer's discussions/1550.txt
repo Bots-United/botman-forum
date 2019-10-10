@@ -1,0 +1,88 @@
+--------------------------------------------------
+Subject: Getting infos on the enemi
+--------------------------------------------------
+04/18/01 at 10:04:25  Posted by: billybot (Nulosoft@aol.com)
+--------------------------------------------------
+Is it possible to get informations on the ennemies like if they can't be killed for example... Coz' the mod i'm trying to adapt HPB Bot to allows people to enter zones where they can't shoot nor be killed... bots regroup themselves in those areas...I want them to stop considerating players in thos areas as ennemies...
+How can I do that?
+
+--------------------------------------------------
+04/18/01 at 11:29:36  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+Use "debug_engine" to turn on logging of message to a file in the Half-Life directory called "bot.txt".  When network messages are sent to the clients you can look through the bot.txt file to see what gets sent.  Try to determine what (if any) network messages get sent when a player enters or leaves this zone.
+
+botman
+
+--------------------------------------------------
+04/19/01 at 19:28:35  Reply by: billybot (Nulosoft@aol.com)
+--------------------------------------------------
+I have the source code now and found that the property IsEntered (bool) gives me the result, how can I add this property into the bot source code, like health or ammo...?
+Thanx for your template Botman
+
+--------------------------------------------------
+04/20/01 at 04:59:32  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+You can't access the MOD code (or functions) from the HPB bot code.  You will need to see what this MOD function "IsEntered()" does and do something similar in your code.
+
+botman
+
+--------------------------------------------------
+04/20/01 at 07:50:46  Reply by: billybot (Nulosoft@aol.com)
+--------------------------------------------------
+class CBasePlayer : public CBaseMonster
+{
+public:
+
+int      m_iPlayerSound;            
+int      m_iTargetVolume;
+int      m_iWeaponVolume;
+[...]
+
+bool      IsEntered; 
+that's what I want to access... it isn't a function
+
+
+--------------------------------------------------
+04/20/01 at 08:52:06  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+You can't get at variable within the scope of the MOD code (i.e. member variables of C++ classes are not accessible by outside DLLs).
+
+You will have to look at whatever code changes IsEntered (find where it gets set to TRUE or FALSE) and put something similar in your bot code.
+
+If you have the source code to the MOD why are you using the HPB bot source instead of the Bot Number 10 souce code?
+
+botman
+
+--------------------------------------------------
+04/20/01 at 09:37:37  Reply by: theimann (killaruna@botepidemic.com)
+--------------------------------------------------
+QUOTE:
+You can't get at variable within the scope of the MOD code (i.e. member variables of C++ classes are not accessible by outside DLLs).
+
+
+Actually you can - it's just a bit messy... Using the GET_PRIVATE function you can obtain a pointer to the class variables, be they in a MOD or not. If you know that the value you are looking for is stored as a class member variable you only have to find out at which offset it is stored. If the variable is e.g. a pointer to a known edict then you just look for that value in the memory following the offset and you've got it within minutes. Even if it's not a pointer to an edict you can normally figure out the offset by looking which values change in which situations. I have used that method for getting the variable in Holy Wars which tells you if a player is the saint, a heretic or a normal player and it's working fine.
+
+Tobias
+
+
+--------------------------------------------------
+04/20/01 at 09:55:45  Reply by: billybot (Nulosoft@aol.com)
+--------------------------------------------------
+QUOTE:
+If you have the source code to the MOD why are you using the HPB bot source instead of the Bot Number 10 souce code?
+
+
+
+
+Coz its a unfinished version and i won't have the changes made mailed very often... That sux coz this variable changes a lot of things in the mod...
+
+--------------------------------------------------
+04/20/01 at 10:05:37  Reply by: billybot (Nulosoft@aol.com)
+--------------------------------------------------
+How do u access health, ammo or all sort of things? IsEntered is in CBasePlayer or something... It's sent to the client, do I have to intercept it like the hud or can I have it with another method (like ammo, health...)?
+
+--------------------------------------------------
+04/21/01 at 15:46:17  Reply by: eLiTe (ali@elitegamer.fsnet.co.uk)
+--------------------------------------------------
+Look at bot_client.cpp that is where all the health, etc is updated
+

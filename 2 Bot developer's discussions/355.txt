@@ -1,0 +1,99 @@
+--------------------------------------------------
+Subject: Need help with the radio commands....
+--------------------------------------------------
+10/20/00 at 07:31:22  Posted by: Paulo-La-Frite (Paul.George@wanadoo.fr)
+--------------------------------------------------
+Like I said in other forums, I have some problems using the radio commands.
+When a bot uses a radio command, just in the beginning of the next round, it seems that he uses also a radio command.
+After a long search, I found that the bot calls the fonction radio and when he tries to buy weapons in the beginning of the round, he select the radio message using the type number of the weapon he wanna buy...
+
+I am actually using the command FakeClientCommand(pEdict, "radio3","2", NULL); to say "Enemy spoted" but maybe I don't use the right command...
+
+If someone can help me, it could be great. Thanks a lot...
+
+P.S.: I tried to let the bot use the radio every 5 secondes (like DarkYouth explained me) but that don't work !
+
+"Taking fire ! Need assistance !" :D 
+
+--------------------------------------------------
+10/20/00 at 08:24:38  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+It sounds like your interspersing radio command menus with weapon buying menus.  You probably need to have a variable that keeps the menu operations separate from each other.  You probably should have 1 routine that issue ALL menu commands.  Inside that routine have a menu_state or some other variable that gets set when the command to start a sequence of menus is used and gets cleared when the last menu in that sequence is responded to.  That should keep you from sending a response to 1 menu that belongs in the response to a different set of menus.
+
+Also, don't forget to reset this menu state variable at the start of each round.  You would probably also need to wait a few seconds after the round starts to make sure the CS server has had time to set everything up for client menus.
+
+botman
+
+--------------------------------------------------
+10/20/00 at 11:40:10  Reply by: Auxois (auxois@nuclearbox.com)
+--------------------------------------------------
+Paulo, I just posted this in the Dev forum at nuclearbox, and I saw your message here too, so I posting it here as well:
+
+This is an example of a radio command I use:
+
+FakeClientCommand(pEdict, "radio3", NULL, NULL);
+if (pBot->start_action == MSG_CS_RADIO3)
+   {
+   pBot->start_action = MSG_CS_IDLE;  // switch back to idle
+   FakeClientCommand(pEdict, "menuselect", "9", NULL);
+   }
+
+Here is the actual code that sends a bot to buy menu:
+   if (!(pBot->bought_gun)&& (pBot->bot_money > 750) )
+   {
+
+      if (pBot->start_action == MSG_CS_BUY) // bot is in buy menu
+         {
+         BotMenuBuy(pBot);
+         }
+      else // issue buy command
+         {
+           FakeClientCommand(pEdict, "buy", NULL, NULL);
+         }
+   }
+
+Once they buy a weapon, I set pBot->bought_gun = TRUE so they don't keep hitting the buy menu and trying to do menuselects. This fixed the repeat radio commands for me. I also have something that checks whether the round has just started and sets pBot->bought_gun back to FALSE so they can hit the buy menu again when a new round starts, so they can buy fresh ammo, etc. They wont buy a new primary weapon if they already possess one(this is determined in the actual buy menu).
+
+So, basically you need to make SURE they dont keep hitting that buy menu and doing menuselects, which is probably what is causing them to repeat radio commands. Try putting this in your buy code somewhere:
+
+UTIL_ClientPrintAll( HUD_PRINTNOTIFY, "BUY MENU\n");
+
+This way you can debug and see if they are continuously hitting the buy menu. Also, you need to define the HUD values for different menus, like Radio1, Radio2, BuyMenu, etc. so that they do the menuselects at the correct times, and only when that particular HUD menu is "on-screen" for the bot.
+
+
+--------------------------------------------------
+10/20/00 at 14:46:09  Reply by: DarkYouth (darkyouth@thegraze.freeserve.co.uk)
+--------------------------------------------------
+Or issue a 
+"slot0" command twice before each new command...
+
+This clears any menu.
+
+Its simple
+
+--------------------------------------------------
+10/21/00 at 12:42:08  Reply by: The (www.pq_mk@yahoo.com)
+--------------------------------------------------
+hey,I'm a newbie so help me out
+where and what should I add to make the bot's say
+"enemy spoted"-when enemy is in theire view field?
+
+
+--------------------------------------------------
+10/22/00 at 15:25:27  Reply by: Auxois (auxois@nuclearbox.com)
+--------------------------------------------------
+Have you read the code at all? Look in botcombat.cpp for something along the lines of "// new enemy found".
+
+--------------------------------------------------
+10/23/00 at 00:20:59  Reply by: The (www.pq_mk@yahoo.com)
+--------------------------------------------------
+Doh..
+OK found it. Thanks!
+
+--------------------------------------------------
+10/23/00 at 05:31:46  Reply by: Paulo-La-Frite (Paul.George@wanadoo.fr)
+--------------------------------------------------
+I found the problem : the problem was that the bots tried to buy weapons too quickly.
+
+To correct that bug, I have made a timer that make the bots buy 1 sec after the beginning of the round, so no problems with the radio and no problems with crashes...
+

@@ -1,0 +1,327 @@
+--------------------------------------------------
+Subject: list folders in a directory -> array of names
+--------------------------------------------------
+09/23/02 at 09:40:35  Posted by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Hello
+
+I would like to know, how can I fill an array of strings with the names of the subdirectories (and ONLY the subdirectories) that are in a certain directory, in C ?
+
+e.g in C:\SIERRA\Half-Life\RACC\profiles, I have :
+"James Bonk" (folder)
+"Don Vito Corleone" (folder)
+"Madam Peel" (folder)
+"dr Jekyll" (folder)
+"readme.txt" (file)
+and I want to fill an array like that:
+char folder_names[MAX_BOT_PERSONALITIES][256] = {
+"James Bonk",
+"Don Vito Corleone",
+"Madam Peel",
+"dr Jekyll"
+}
+
+Please give me a hand :)
+
+
+--------------------------------------------------
+09/23/02 at 10:16:43  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+When you say "in C", I assume you mean "using the Windows API" (since there is no C function to find files or directories).
+
+I would say something like this (untest/uncompiled code)...
+code:
+
+#include <windows.h>
+
+HANDLE FindDirectory(HANDLE hFile, char *dirname, char *dirspec)
+{
+   WIN32_FIND_DATA pFindFileData;
+
+   dirname[0] = 0;
+
+   if (hFile == NULL)
+   {
+      hFile = FindFirstFile(dirspec, &pFindFileData);
+
+      if (hFile == INVALID_HANDLE_VALUE)
+         hFile = NULL;
+
+      while (pFindFileData.dwFileAttributes != FILE_ATTRIBUTE_DIRECTORY)
+      {
+         if (FindNextFile(hFile, &pFindFileData) == 0)
+         {
+            FindClose(hFile);
+            hFile = NULL;
+            return hFile;
+         }
+      }
+
+      strcpy(dirname, pFindFileData.cFileName);
+
+      return hFile;
+   }
+   else
+   {
+      if (FindNextFile(hFile, &pFindFileData) == 0)
+      {
+         FindClose(hFile);
+         hFile = NULL;
+         return hFile;
+      }
+
+      while (pFindFileData.dwFileAttributes != FILE_ATTRIBUTE_DIRECTORY)
+      {
+         if (FindNextFile(hFile, &pFindFileData) == 0)
+         {
+            FindClose(hFile);
+            hFile = NULL;
+            return hFile;
+         }
+      }
+
+      strcpy(dirname, pFindFileData.cFileName);
+
+      return hFile;
+   }
+}
+
+main(void)
+{
+   char dirs[200][MAX_PATH];  // a bunch of directories
+   int dir_count;
+   char dirname[MAX_PATH];  // one directory name
+   HANDLE directory = NULL;
+
+   dir_count = 0;
+
+   while ((directory = FindDirectory(directory, dirname, "C:\\place\\to\\search\\for\\directories")) != NULL)
+   {
+      if (strcmp(dirname, ".") == 0)
+         continue;
+      if (strcmp(dirname, "..") == 0)
+         continue;
+
+      strcpy(dirs[dir_count], dirname);
+      dir_count++;
+   }
+}
+
+botman
+
+--------------------------------------------------
+09/23/02 at 11:47:08  Reply by: @$3.1415rin (joebot@botepidemic.com)
+--------------------------------------------------
+here is my code ( I think it's also based on some code snippet from botman ) to count lines in source code files.
+( sorry for the lack of comments, the bad programming style and the missing GUI ;) it's just a writteninsomeminutes program and since it's working, it's ok :D )
+
+code:
+#include <windows.h>
+#include <iostream.h>
+#include <string.h>
+#include <stdio.h>
+
+#include "CParser.h"
+
+long count = 0;
+
+FILE *fhdlog;
+
+long countindir (char *szStartDirO, int rek){
+      char szStartDir[80],szFileName[200];
+      strcpy(szStartDir,szStartDirO);
+      strcat(szStartDir,"*");
+      
+      HANDLE hFile;
+      WIN32_FIND_DATA pFindFileData;
+      HRESULT hr = true;
+      long lSize,lschl;
+      char *szFile;
+      long dcount = 0;
+      
+      hFile = FindFirstFile(szStartDir, &pFindFileData);
+      if (hFile == INVALID_HANDLE_VALUE){
+            cerr  << "probs" << endl;
+            return 0;
+      }
+      while (hr) 
+      {      
+            if(pFindFileData.dwFileAttributes != FILE_ATTRIBUTE_DIRECTORY){
+                  /* count lines */
+                  FILE *fhd;
+                  char *szTest;
+                  //cout << pFindFileData.cFileName << endl;
+                  long thiscount;
+                  szTest = strstr(pFindFileData.cFileName,".");
+                  if(szTest){
+                        if((strstr(szTest,".cpp") && strlen(szTest) == 4)
+                              (strstr(szTest,".h") && strlen(szTest) == 2)
+                              (strstr(szTest,".c") && strlen(szTest) == 2)
+                              (strstr(szTest,".hpp") && strlen(szTest) == 4)
+                              (strstr(szTest,".CPP") && strlen(szTest) == 4)
+                              (strstr(szTest,".H") && strlen(szTest) == 2)
+                              (strstr(szTest,".C") && strlen(szTest) == 2)
+                              (strstr(szTest,".HPP") && strlen(szTest) == 4))
+                        {
+                              thiscount = 0;
+                              strcpy(szFileName,szStartDirO);
+                              strcat(szFileName,pFindFileData.cFileName);
+                              lSize = CParser::GetFileSize(szFileName);
+                              szFile = new char [lSize];
+                              if(fhd = fopen(szFileName,"r")){
+                                    fread(szFile,sizeof(char),lSize,fhd);
+                                    fclose(fhd);
+                              }
+                              for(lschl = 0;lschl < lSize;lschl++){
+                                    if(szFile[lschl] == '\n')
+                                          thiscount ++;
+                              }
+                              delete [] szFile;
+                              cout << pFindFileData.cFileName << "\t: " << thiscount << endl;
+                              if(fhdlog)fprintf(fhdlog,"<tr><td>%s</td><td>%s</td><td>%li</td><td>%i</td></tr>",szStartDirO,pFindFileData.cFileName,thiscount,rek);
+                              dcount += thiscount;
+                              /* end count*/
+                        }
+                  }
+            }
+            else{
+                  if(!strstr(pFindFileData.cFileName,"..")&&!strstr(pFindFileData.cFileName,".")){
+                        char szNextSearch[80];
+                        strcpy(szNextSearch,szStartDirO);
+                        strcat(szNextSearch,pFindFileData.cFileName);
+                        strcat(szNextSearch,"\\");
+                        dcount += countindir(szNextSearch,rek+1);
+                  }
+            }
+            hr = FindNextFile(hFile, &pFindFileData);
+      }
+      if(fhdlog)fprintf(fhdlog,"<tr><td><b>total of code lines in %s</b></td><td></td><td><b>%li</b></td><td>%i</td></tr>",szStartDirO,dcount,rek);
+      //count += dcount;
+      return dcount;
+}
+
+void main(void){
+      char szSearch[80] = "I:\\PROGR\\_joebot xp\\jbxp044\\";
+      //char szSearch[80] = "H:\\PROGR\\csbot\\HPB_bot - template\\HPB_bot#1\\";
+      fhdlog = fopen("log.html","w");
+      if(fhdlog)fprintf(fhdlog,"<html><body><table>");
+      count = countindir(szSearch,0);
+      cout << count << endl;
+      /*if(fhdlog)fprintf(fhdlog,"<tr><td colspan=3><hr></td></tr>");
+      if(fhdlog)fprintf(fhdlog,"<tr><td><b>total of code lines in %s</b></td><td></td><td><b>%li</b></td></tr>",szSearch,count);*/
+      if(fhdlog)fprintf(fhdlog,"</table></body></html>");
+      if(fhdlog)fclose(fhdlog);
+}
+
+
+€: botman's faster as always :) and this is of course only windows api compatible ... but I think botman posted some linux compatible code for this problem somewhere in his forums too ...
+
+€2: looks like I had this window opened for quite some time : next time I'm gonna press f5 first :)
+
+[modified on 09/23/02 at 11:47:08]
+--------------------------------------------------
+09/23/02 at 12:04:39  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Thanks both of you ! I didn't know such a feature didn't exist natively in C, and I used to spend hours on the net looking for a thing that didn't exist, actually ;D
+
+I would have preferred something portable, but apparently it's not possible... doh, I'll look in the Midnight Commander source code one day somehow if ever I intend to port it to Unix.
+
+/me will try botman's stuff right now.
+
+
+--------------------------------------------------
+09/23/02 at 13:21:10  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Here's the Linux version of FindDirectory...
+code:
+
+#include <sys/stat.h>
+#include <dirent.h>
+
+DIR *FindDirectory(DIR *directory, char *dirname, char *dirspec)
+{
+   char pathname[256];
+   struct dirent *dirent;
+   struct stat stat_str;
+
+   if (directory == NULL)
+   {
+      if ((directory = opendir(dirspec)) == NULL)
+         return NULL;
+   }
+
+   while (1)
+   {
+      dirent = readdir(directory);
+
+      if (dirent == NULL)  /* at end of directory? */
+      {
+         closedir(directory);
+         return NULL;
+      }
+
+      strcpy(pathname, dirspec);
+      strcat(pathname, "/");
+      strcat(pathname, dirent->d_name);
+
+      if (stat(pathname, &stat_str) == 0)
+      {
+         if (stat_str.st_mode & S_IFDIR)
+         {
+            strcpy(dirname, dirent->d_name);
+            return directory;
+         }
+      }
+   }
+}
+
+Just change "HANDLE directory=NULL;" to "DIR *directory = NULL;" and you're done.
+
+P.S. All of this code is in the bot_models.cpp file of my HPB bot source code.
+
+botman
+
+--------------------------------------------------
+09/23/02 at 13:35:36  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+hmmm. Botman's doesn't work, 2 problems :
+1 - the first directory found is the root directory (I mean the directory where you start the search from) and not one of its subdirectories.
+2 - it goes only through 1 iteration ; looks like there is a problem around FindNextFile(). I'm not sure where the bug is, it looks good, whatsoever.
+
+I noticed you designed it the same way as UTIL_FindEntityInSphere() and such are designed, is it on purpose ? or is it an example from Microsoft, and if so, where did you took it from ?
+
+/me will go Joe's way in the meantime...
+
+[edited] oops, we collided once again
+OK, I'll have a look in your HPB bot code (yeah I remember now, you wrote a feature that enabled the bots to use whatever model was in the models/player directory, right ?)
+
+[modified on 09/23/02 at 13:35:36]
+--------------------------------------------------
+09/23/02 at 13:34:53  Reply by: @$3.1415rin (johannes@_-removeifnotavirus-_lampel.net)
+--------------------------------------------------
+oh, it was dirent.h - havnt found this out when I tried it last time :D thx
+
+--------------------------------------------------
+09/23/02 at 13:37:13  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+yeah I thought it was about including the big unistd.h too... much simpler this way ;D thx
+
+
+--------------------------------------------------
+09/23/02 at 16:13:28  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+QUOTE:
+
+   while ((directory = FindDirectory(directory, dirname, "C:\\place\\to\\search\\for\\directories")) != NULL)
+
+
+
+
+Okay, I found it, botman. Better
+   while ((directory = FindDirectory(directory, dirname, "C:\\place\\to\\search\\for\\directories\\*")) != NULL)
+instead.
+
+My problem is solved. Thanks for all !
+
+
+

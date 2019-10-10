@@ -1,0 +1,135 @@
+--------------------------------------------------
+Subject: A few Questions (physics  stuff)
+--------------------------------------------------
+01/04/03 at 18:21:13  Posted by: trendkiller (corbin_mike@hotmail.com)
+--------------------------------------------------
+Im making server side mod MIDAIR for DMC like is played in Quakeworld...RobGP has given me a tremendous amount of help and I have learned so much about the SDK by trying new stuff here and there..And most of the stuff has ended up working (guess im lucky)
+
+1) OK In the mod when players health > 299 that player attains bonus power (deathmatch == 4)
+
+I would like to implement haste with the rockets and make them travel at twice the velocity when the player attains the bonus powers. Im not sure where the rocket travel velocity code is ? maybe
+here : quake_rocket.cpp line #48 ?
+
+// Velocity
+      pRocket->pev->velocity = vecAngles * 1000;
+      pRocket->pev->angles = UTIL_VecToAngles( vecAngles );
+
+ Would I need to add the change to velocity in quake_items.cpp (where the bonus power code is)
+or make an if statemment in the the code above regarding player with bonus ?
+
+Thank you
+
+[modified on 01/04/03 at 18:21:13]
+--------------------------------------------------
+01/05/03 at 06:05:16  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+This line...
+code:
+pRocket->pev->velocity = vecAngles * 1000;
+
+...sets the velocity of the rocket to 1000 units per second in the 'vecAngles' direction.  If you want them to go faster, just change 1000 to 2000.  If you want to change the speed based on something else (like the player's health), you could do something like this...
+code:
+if (pPlayer->pev->health >= 300)
+   pRocket->pev->velocity = vecAngles * 2000;
+else
+   pRocket->pev->velocity = vecAngles * 1000;
+
+botman
+
+--------------------------------------------------
+01/05/03 at 09:51:56  Reply by: trendkiller (corbin_mike@hotmail.com)
+--------------------------------------------------
+Thanks very much 
+
+--------------------------------------------------
+01/05/03 at 12:20:20  Reply by: trendkiller (corbin_mike@hotmail.com)
+--------------------------------------------------
+Sorry gor asking this, I have searched the forums and cant find an answer.
+
+After using the above code I get this error :
+
+'pPlayer' : undeclared identifier
+
+I know its simple C++..But unfortunatly for me I dont know C++..
+
+Just a gimme a Quick lesson please..How do I make lines like 'pPlayer' or 'pRocket' acceptible in other files throughout the SDK...Or make something recognized that an error says 'unrecognized'
+
+Sorry for the trouble..
+Thanks
+
+--------------------------------------------------
+01/05/03 at 12:49:29  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+pPlayer is a pointer to a CBasePlayer class.
+
+You'll have to find a way to access the player that's carrying that weapon.  Usually weapons will use the "m_pPlayer" member variable to point to the player that's carrying that weapon.
+
+Try replacing "pPlayer" in the above code with "m_pPlayer" and see if that works okay.
+
+botman
+
+--------------------------------------------------
+01/05/03 at 13:22:39  Reply by: trendkiller (corbin_mike@hotmail.com)
+--------------------------------------------------
+No, does not work either. I cant find anything where pPlayer or m_pPlayer can be associated with pRocket..
+
+--------------------------------------------------
+01/05/03 at 13:44:27  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+It won't be associated with the rocket, it will associtated with the rocket launcher.  Usually the rocket launcher will create a rocket entity, then you should be able to set the rocket's velocity inside the rocket launcher code that created that rocket.
+
+botman
+
+--------------------------------------------------
+01/05/03 at 21:08:12  Reply by: trendkiller (corbin_mike@hotmail.com)
+--------------------------------------------------
+I figured it out :
+
+if 
+            (pOwner->pev->health >= 200)
+            pRocket->pev->velocity = vecAngles * 2000;
+
+      else    
+            
+            pRocket->pev->velocity = vecAngles * 1000;
+            pRocket->pev->angles = UTIL_VecToAngles( vecAngles );
+
+
+Thanks Botman
+
+--------------------------------------------------
+01/06/03 at 01:42:42  Reply by: trendkiller (corbin_mike@hotmail.com)
+--------------------------------------------------
+I have 1 more question :
+
+How do I make the health display higher than 250?
+
+When it goes over 250 it resets back to 0 ...
+
+--------------------------------------------------
+01/06/03 at 03:18:51  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+The health could be limited to size byte or something, you might need to change the cast, or possibly its a hud thing which I've no idea what it is in that case ???
+
+--------------------------------------------------
+01/06/03 at 05:47:56  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+You have to change several things.
+
+The first will be the in the 'delta.lst' file which will contain the number of bits that you want to send between the server and the client (I think the default is 10 bits = max of 1023).
+
+You will also need to modify the client DLL code that displays numbers since the most it supports is 3 digits (max of 999).
+
+You will also need to change all the places that increments the health since many of these check for a maximum health value and will truncate it to a max value.
+
+There have been many discussion on increasing the health or increasing the amount of ammo on the Wavelength forums.  You might get much more information by reading through some of the thread there.
+
+botman
+
+--------------------------------------------------
+01/07/03 at 14:49:22  Reply by: trendkiller (corbin_mike@hotmail.com)
+--------------------------------------------------
+I tried everything..I want player health to go to at least 350..Wavelength didnt have amything, there forums seem kinda screwed up..
+
+Anyone have any ideas ? 
+

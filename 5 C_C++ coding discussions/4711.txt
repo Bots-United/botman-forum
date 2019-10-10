@@ -1,0 +1,289 @@
+--------------------------------------------------
+Subject: sorting algorithm
+--------------------------------------------------
+08/07/03 at 16:04:08  Posted by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Here's one that puzzles me off...
+
+I have an array of strings, each one is a word (not the data type eh, a word in the common sense of the term).
+
+And since that array is getting fairly large the more my bot learns, I want to perform a binary search on that array instead of running along blindly when I want to find one entry.
+
+For that, my array of strings must be sorted alphabetically beforehand.
+
+And this is what I need an algorithm for.
+
+I tried to work out one myself, but it just puzzles me. I tried to look on the net, but they are talking about scary trees and QuickSorts. I need the simplest algorithm one can imagine, provided it works.
+
+Ideas ?
+
+
+--------------------------------------------------
+08/07/03 at 16:16:27  Reply by: Cheesemonster!!! (cheeseh@houstondod.com)
+--------------------------------------------------
+Binary Search Trees are excellent for sorting strings. I can make a generic (template) class for you if you wish :) although if you dont like template classes, I've got an old program I did that might help you out. TBH I prefer the template classes as they are easier to implement, but you'd probably require operators which tell the compiler how to compare the values/strings added to the tree so it can sort them.
+
+I can email it to you or you might like to see the main structure of a simple kind of BST.. 
+
+I'll reply again in a minute with anything I can find which should explain how to do a tree, so you can sit there for a mo and wait :p
+
+--------------------------------------------------
+08/07/03 at 16:20:13  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+/me pops a beer and lights a garette 8)
+
+
+--------------------------------------------------
+08/07/03 at 17:58:15  Reply by: Cheesemonster!!! (cheeseh@houstondod.com)
+--------------------------------------------------
+wahey here we go...
+
+made this up from scratch, hope it suits your needs, its a little test program that should be easy to implement into whatever program you want.
+
+There should be enough functions for you to need with sorting strings in an array. But there are more tree functions if you must know you can ask..
+I hope you're happy with the way it sorts into a new array with pointers to those strings in the original array. I did it this way because it is faster and uses less memory.
+
+code:
+
+#include <stdio.h>
+#include <malloc.h>
+#include <string.h>
+
+typedef struct treenode_s
+{
+      struct treenode_s *left;
+      struct treenode_s *right;
+
+      char *szValue; // using strings
+}treenode_t;
+
+typedef struct
+{
+      treenode_t *root;
+}tree_t;
+
+treenode_t *CreateNode ( char *szValue )
+// Create a node with the value
+// this should work, hopefully the newnode shouldnt
+// be freed after the function is finished if we use
+// malloc...
+{
+      treenode_t *newnode = (treenode_t*)malloc(sizeof(treenode_t));
+
+      if ( newnode == NULL )
+      {
+            // couldn't allocate any memory...
+            return NULL;
+      }
+
+      newnode->left = NULL;
+      newnode->right = NULL;
+      newnode->szValue = szValue;
+
+      return newnode;
+}
+
+treenode_t *Add ( treenode_t *root, treenode_t *newnode )
+{
+      if ( newnode == NULL )
+      {
+            // ahhh... problem...
+            return root;
+      }
+
+      // the strings should be still held in memory
+      // from your string array, hopefully.
+
+      // Find the right place to add the newnode to
+      if ( root == NULL ) // no root
+            return newnode; // new node is now root if root = Add(...)
+      else
+      {
+            if ( strcmp(newnode->szValue,root->szValue) <= 0 ) 
+            {
+                  // add to left if less or equal
+                if ( root->left == NULL ) // no left node so add here
+                        root->left = newnode;
+                  else
+                        Add(root->left,newnode); // need to keep searching left side
+            }
+            else
+            {
+                  // bigger, so add to right
+                if ( root->right == NULL ) // no right node so add here
+                        root->right = newnode;
+                  else
+                        Add(root->right,newnode); // need to keep searching right side
+            }
+      }
+
+      return root;
+}
+
+int TreeToArray ( treenode_t *root, char **szYourArray, int iArrayNum )
+// in-order traversal...
+// convert the tree data into a single array (szYourArray)
+// and iArrayNum will hold how many you have added to keep track.
+{
+      if ( root )
+      {
+            iArrayNum = TreeToArray(root->left,szYourArray,iArrayNum);
+            // do stuff in here to add stuff to the array
+            // stuff should happend in sorted order...
+            //{
+
+            szYourArray[iArrayNum] = root->szValue;
+            iArrayNum++;
+
+            //}
+            iArrayNum = TreeToArray(root->right,szYourArray,iArrayNum);
+      }
+
+      return iArrayNum;
+}
+
+treenode_t *DestroyTree ( treenode_t *root )
+// Free memory used by nodes, dont free the values
+{
+  if ( root )
+  {
+      DestroyTree ( root->left );
+      DestroyTree ( root->right );
+      free(root);
+  }
+
+  return root;
+}
+
+#define STRING_ARRAY_SIZE 4
+
+void main ( void )
+{
+      
+      // How to use...
+      
+      char MyArray[STRING_ARRAY_SIZE][8]; // EDIT: was wrong... 8 length strings, and array size of 4.
+      char *SortedArray[STRING_ARRAY_SIZE];
+      // sorted array stores pointers to those in the first array
+      int iStringsUsed = 0; // how many strings are being used.
+      
+      // fill up your strings...
+      
+      // just a test, make strings all jumbled up
+      strcpy(MyArray[0],"zzz");
+      strcpy(MyArray[1],"ddd");
+      strcpy(MyArray[2],"yyy");
+      strcpy(MyArray[3],"aaa");
+      
+      iStringsUsed = 4;
+      
+      int i = 0;
+      
+      tree_t Tree;
+      treenode_t *newnode;
+      
+      Tree.root = NULL; // initialise it
+      
+      while ( i < iStringsUsed )
+      {
+            newnode = CreateNode(MyArray[i]);
+            
+            Tree.root = Add(Tree.root,newnode);
+            
+            i++;
+      }
+      
+      TreeToArray(Tree.root,SortedArray,0);
+      // should all be added to tree now
+      DestroyTree(Tree.root);
+      // free mem
+      
+}
+
+
+
+[modified on 08/07/03 at 17:11:51]
+
+[modified on 08/07/03 at 17:58:15]
+--------------------------------------------------
+08/07/03 at 17:21:44  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Thanks matey, gotta investigate your stuff right ahead :)
+
+
+--------------------------------------------------
+08/07/03 at 17:26:26  Reply by: Cheesemonster!!! (cheeseh@houstondod.com)
+--------------------------------------------------
+:D no prob mate, glad to help. Any help with it, just ask again. :-p
+
+--------------------------------------------------
+08/07/03 at 17:47:00  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+omg cheesy you rock
+
+--------------------------------------------------
+08/07/03 at 18:54:39  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Works like a charm. Seriously Cheesy if you've made it all yourself you're a god. Even the DestroyTree() function is one I could fall on my knees in admiration before its beauty !
+
+... but nevertheless, I think I might like a little bit more explanations on the TreeToArray() function...
+
+[ EDIT ] nah, no problem, I worked it out... I had just not understood the purpose of the two lines in the middle of the function.
+
+Now with a lil bit more comments it gives:
+code:
+
+int TreeToArray (treenode_t *root, char **szYourArray, int iArrayNum)
+{
+   // in-order traversal...
+   // convert the tree data into a single array (szYourArray)
+   // and iArrayNum will hold how many you have added to keep track.
+
+   if (root == NULL)
+      return (iArrayNum);
+
+   // recursively dump the left branches and their descendants
+   iArrayNum = TreeToArray (root->left, szYourArray, iArrayNum);
+
+   // now dump the top of the tree (root)
+   szYourArray[iArrayNum] = root->szValue;
+   iArrayNum++;
+
+   // and then recursively dump the right branches and their descendants
+   iArrayNum = TreeToArray (root->right, szYourArray, iArrayNum);
+
+   return (iArrayNum);
+}
+
+
+w00t
+
+[modified on 08/07/03 at 18:54:39]
+--------------------------------------------------
+08/08/03 at 05:49:55  Reply by: Cheesemonster!!! (cheeseh@houstondod.com)
+--------------------------------------------------
+:)
+
+I tried having the string to array use pointers instead of using the array number to update the array, but I ran into problems, I think I forgot to update it when the function falls back going up a level, but I guess it should work, that way you can eliminate the iArrayNum variable needed for the function and just pass&change myArray instead by incrementing the point by sizeof(char*) when you add a value.
+
+--------------------------------------------------
+09/24/03 at 21:37:07  Reply by: OffTopic (khomsan.ph@student.chula.ac.th)
+--------------------------------------------------
+the easyest way i can think of is to use the C quicksort algorithm like this
+
+code:
+
+#include <stdlib.h> // or <search.h>
+typedef int (*PCOMPARE)( const void *arg1, const void *arg2 );
+int main()
+{
+   char myarray[blah1][blah2];
+   ...
+   qsort(myarray, blah1, blah2, (PCOMPARE)strcmp);
+   ...
+}
+
+
+
+hope its help
+

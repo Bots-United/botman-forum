@@ -1,0 +1,171 @@
+--------------------------------------------------
+Subject: Borland C++ generates fastest code?
+--------------------------------------------------
+12/27/01 at 08:00:00  Posted by: jms (jmsalli@hotmail.com)
+--------------------------------------------------
+I have been developing a Counter-Strike bot with Borland C++ for more than a year now, and have always thought that because 90% of programs on my computer seem to be compiled with Microsoft Visual C++, that compiler must be able to generate the fastest code.
+
+Recently I had a chance to test Visual C++ - I made a Win32 console test program that uses FindNearestWaypoint code from my bot project (without TraceLine, of course), and built it with three compilers: Borland C++ 5.5, Mingw32, and Microsoft Visual C++ 6.0 Standard Edition.
+
+I set optimization for Maximize Speed, Pentium Pro, cdecl, and 4 byte alignment, wherever possible (and yes, for Visual C++, I set the active configuration to Win32 - Release).
+
+I used two FindNearestWaypoint functions, one slower (similar to one found in HPB_Bot sources) and another faster (based on hierarchial rectangles), and ran both 5490 times and measured the period using Win32 multimedia timers. This was repeated 60 times and average was taken. At worst, result could still deviate about 4%. Processor in my computer is Celeron 366@412, so the results reflect that.
+
+Borland C++ 5.5:
+Slow Method: ~300 milliseconds at average.
+Fast Method: ~33 milliseconds at average.
+
+Mingw32:
+Slow Method: ~308 milliseconds at average.
+Fast Method: ~37 milliseconds at average.
+
+Visual C++ 6.0:
+Slow Method: ~425 milliseconds at average.
+Fast Method: ~49 milliseconds at average.
+
+I was quite surprised by these results as they were practically the opposite of what I was expecting. I tweaked the performance settings of Visual C++: changed target processor to Pentium and data alignment to 8 bytes (defaults in hpb_bot project), but that didn't really affect the results (as it shouln't). Then I double-checked everything that could relate to this: correct executable (no, I didn't mix up the results), VC active configuration, command-line options shown, etc. I found nothing suspicious.
+
+For comparison purposes, I built debug-versions (no optimizations) with Borland's and Microsoft's compilers. These were results for them:
+
+Borland C++ 5.5:
+Slow Method: ~430 milliseconds at average.
+Fast Method: ~47 milliseconds at average.
+
+Visual C++ 6.0:
+Slow Method: ~1150 milliseconds at average.
+Fast Method: ~110 milliseconds at average.
+
+Borland C++ seems to generate as fast unoptimized code than Visual C++'s best effort - I can hardly believe these results. I don't think the code itself is specialized enough to grant a disadvantage for Microsoft's compiler. Infact, these routines (and similar ones) are used a lot in the bot.
+
+Question is: I am really missing something here, or does Borland C++ and GNU C++ really generate faster code than Visual C++ 6.0 (and in this case, *much* faster code) ?
+
+
+
+
+
+--------------------------------------------------
+12/28/01 at 05:59:45  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+I've always like the speed of the Borland compiler (compiling code) and the speed of the execution.  I just wish that Borland had spent as much time as Microsoft did getting a Windows debugger (not the MS-DOS based one they currently provide).
+
+I am surprised that the GCC compiler is roughly on the same level as the Borland compiler, but there are hundreds of developers contributing to the GCC code to make it as efficient as possible.  How many developers do you think work on making the Microsoft compiler efficient (10 or 20)?
+
+It might be a good idea to use the Microsoft compiler to debug your code, then use the Borland compiler to generate the release version (which you distribute after a little more through testing to make sure they aren't any compiler introduced bugs).
+
+botman
+
+--------------------------------------------------
+12/30/01 at 08:19:58  Reply by: William (william@cgf-ai.com)
+--------------------------------------------------
+jms,
+
+which service pack for MSVC did you use?
+
+does the test happen to be dominated by memory access (and therefor) memory lay out?
+
+William
+
+p.s. the compiler probably able to beat all of them is Intel's VTune/C++ compiler
+
+
+--------------------------------------------------
+12/31/01 at 09:05:03  Reply by: jms (jmsalli@hotmail.com)
+--------------------------------------------------
+
+Good point, William
+
+I have not installed any service pack (they're quite big downloads and I don't happen to have very fast or cheap internet connection).
+
+Installing the newest service pack would probably solve the problem. Simply comparing the assembler outputs of Visual C++ (no SP) and Borland C++ 5.5 shows that the Microsoft's product doesn't use cpu registers very efficiently or expand inline functions correctly (regardless what options are set for inlines). I can't believe this is the product they have shipped!
+
+Botman, Borland C++ Builder has an integrated debugger, if that's what you mean by non-dos debugger.
+
+
+--------------------------------------------------
+01/07/02 at 04:13:22  Reply by: hullu (hullu@jussikivilinna.cjb.net)
+--------------------------------------------------
+Do you have BCC 5.5 SP1? .. I have and with -6 (Pentium Pro) option it generates same code as -4 .. (-5 works right way)
+
+If I remember right there were bug in original BCC 5.5 when using -6 optimizations.
+
+--------------------------------------------------
+01/07/02 at 07:59:03  Reply by: jms (jmsalli@hotmail.com)
+--------------------------------------------------
+
+I don't have any service pack for BCC, and the processor setting (P5 vs P6) seems to have very little (if any) effect on performance.
+
+What kind of bug are you talking about?
+
+
+--------------------------------------------------
+01/07/02 at 12:32:59  Reply by: hullu (hullu@jussikivilinna.cjb.net)
+--------------------------------------------------
+I read about it on borland's news server ages ago .. if you calculated something with pointers in some cases when -6 was used it went wrong .. it was something like:
+
+int a=1;int b=2;
+int *c=&a;int *d=&b;
+*d=b+*c;
+if (b!=3) printf("This program was compiled with -6 setting ;)");
+
+
+
+
+--------------------------------------------------
+03/11/02 at 07:29:09  Reply by: jms (jmsalli@hotmail.com)
+--------------------------------------------------
+
+Now I know why VC6 Standard performed so poorly in my tests; it seems to have *very* limited code optimization capabilities, so it is now quite clear why it generates as fast code as Borland C++ in non-optimizing mode.
+
+I think Microsoft should still call their low-end C++ programming solution a 'Learning Edition'; unoptimized code speed simply can't compete with the results from some freely available compilers such as BCC and GCC.
+
+
+--------------------------------------------------
+03/13/02 at 14:14:39  Reply by: Spikeles (spikeles_@hotmail.com)
+--------------------------------------------------
+If Vavle used Visual C++ to cpmile Half-Life does that mean we should contact em.. tell em to ship a Borland compiled version and then we all get faster, more effieicent gameplay? hmmm. perhaps... Though i believe they would use their own optimizations... inlined asm, manually unrolling loops etc....
+
+And since we are on the subject of optimizations and speed..
+
+http://www.nullstone.com/htmls/results/gcc272.htm
+
+That page shows you test results of the GCC 2.7.2 compiler and how well it optimized.. it got a ratio of 56% to their particular standards.
+
+--------------------------------------------------
+03/18/02 at 07:10:29  Reply by: jms (jmsalli@hotmail.com)
+--------------------------------------------------
+
+Valve, as well as almost every other professional game programming company, uses Visual C++ *Professional* edition, i.e. the one that has code optimization plus some other goodies. Because 99% of the commercial Win32 games are programmed with VC Pro, it has to be pretty darn good in generating high-performance code.
+
+My guess is that VC Pro indeed generates faster code than GCC or BCC, altough I would like to see exactly how much faster (in typical scenarios).
+
+
+--------------------------------------------------
+03/19/02 at 03:24:55  Reply by: Spikeles (spikeles_@hotmail.com)
+--------------------------------------------------
+QUOTE:
+Visual C++ *Professional* edition
+
+
+That's tru isn't it. :) 
+he tested the "standard" not the "Professional"...
+
+--------------------------------------------------
+03/19/02 at 14:24:25  Reply by: CountFloyd (countfloyd@botepidemic.com)
+--------------------------------------------------
+Is VC++ Enterprise Edition (that's what I'm using) the same as the Pro Version ?
+
+--------------------------------------------------
+03/19/02 at 14:52:27  Reply by: bacho1111 (bacho1111@hotmail.com)
+--------------------------------------------------
+VC++ Enterprise and Professional editions are different.  They are not the same.
+
+
+--------------------------------------------------
+03/19/02 at 14:56:51  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+The Enterprise edition and the Professional edition are the same for many of the components (the compilers and utilities).  They are different in that the Enterprise edition includes a whole bunch of crap that the Professional edition does not include (like Visual SourceSafe for example)...
+
+http://msdn.microsoft.com/vstudio/productinfo/previous/vs6/features/features.asp
+
+botman
+

@@ -1,0 +1,381 @@
+--------------------------------------------------
+Subject: I will write a .bsp converter
+--------------------------------------------------
+03/22/01 at 08:44:56  Posted by: ExecutionStyle (c_brennan@hotmail.com)
+--------------------------------------------------
+Hi all.  
+
+I'm going to be writing a .bsp converter soon.  For phase 1 of my bot, I'll be taking simple levels I've made and making 2D models out of their BSPs.  My reason for doing this is to focus on writing the code that will analyze the layout of the level for my bots to know where to stand / move to / cover, etc in a humanish fashion without having to worry about the 3rd dimension or complicated spatial analysis.  Basically, I'll take the vertices of the BSP tree and ignore the Z dimension, making a 2D map that can be used to create simple navigation and map analysis algorithms.  
+
+Since I'll be doing this work anyway, I'm  willing to write an (open source) application to take a .bsp and write it into another format.  What I need from you people is a description of what the new file format should have in it.
+
+If you read this: http://www.flipcode.com/tutorials/tut_q2levels.shtml, you'll see that the BSPs in Half-Life are essentially used to store precalculatecd visibility information to make rendering the level faster.  What I'm proposing we do is create our own file format that stores precalculated potential destination information to make deciding where our bots go faster.  
+
+Anyway, this is going to be a big job so let's all start pitching in ideas.  Oh and as for an estimated time for me doing this, I'm looking at a month to be able to write this simple app.  Most of my time is being spent writing a patent application and a prototype of my company's video player... too bad but it's my job ;o)
+
+ -Carl
+
+--------------------------------------------------
+03/22/01 at 10:48:49  Reply by: Ariejan (ariejan@gmx.net)
+--------------------------------------------------
+Great idea!! 
+
+I don't know if you already have some idea, but making some hotspots might be useable. Don't confuste them with waypoints. Hotspots are area's with a certain 'characteristic'. Eg. dangerzone (where getting killed is more probably), safetyzone, dying there is very unlikely. 
+
+Also we could make clear where the hostages are located (because all of us know that on forehand too, the bot may know also.) this is the same for any escapezones, hostage rescuezones, bombplaces etc. 
+
+Maybe we should also include the zones where T's and CT's start. If somebody wants to make a bot that responds to commands, a command like: regroup at our base. This way the bots know where to go. 
+
+Can you explain how you want to 'learn' a bot to navigate on our 'maps'? 
+
+--------------------------------------------------
+03/22/01 at 11:10:24  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+"Maybe we should also include the zones where T's and CT's start."
+
+I didn't see anything in Carl's post that said anything about this being a "Counter-Strike only" tool.  Why do you want to want to include information about Terrorists and Counter-Terrorists in a utility that is simply meant to convert BSP map file structure to some simpler node based format?
+
+botman
+
+--------------------------------------------------
+03/22/01 at 14:20:48  Reply by: ExecutionStyle (c_brennan@hotmail.com)
+--------------------------------------------------
+Good point botman, there should be a standard tool that just extracts world information so that any mod can make use of it. 
+
+I do also want to be able to store things like T / CT spawn locations, bomb targets and other key points like that that would affect algorithmic analysis of the map.  Maybe there should be an option to specify the mod the map is made for so relevant info can be extracted in addition to the standard world info?
+
+ -Carl
+
+--------------------------------------------------
+03/22/01 at 14:25:11  Reply by: Ariejan (ariejan@gmx.net)
+--------------------------------------------------
+Did you ever play TFC on a CS Map?? I didn't. So if you only use halflife (and mod) maps, you don't have to specify a MOD. 
+
+The T's an CT's spawnpoints are entities, so if these entities are found, include them in the new mapfile. 
+
+If you find e.g. a TFC spawnpoint, just include that entity. 
+
+I think there is no need to make a difference in maps for differend mods.
+
+--------------------------------------------------
+03/22/01 at 15:51:07  Reply by: CountFloyd (countfloyd_1999@yahoo.com)
+--------------------------------------------------
+This tutorial goes step-by-step through creating a Quake BSP Viewer:
+http://shockonline.homestead.com/BSPSeries.html
+
+I don't know if this is of great help for you, but it could make a good start I hope...
+
+Information I would like to have especially extracted from a map, is the different Sections/Areas of it. Shouldn't be too difficult I think since (AFAIK at least Q1) does specify the different 'portals'.  
+
+--------------------------------------------------
+03/22/01 at 16:35:30  Reply by: eLiTe (ali@elitegamer.fsnet.co.uk)
+--------------------------------------------------
+Uh I'm no mapper but I read somewhere CT and T spawn points are simply single player spawn points for one team, and deathmatch spawn points for the other, so I think this would also be used in HL. I think that it would be better to specifiy which mod you want to make the file for, so that you can get all the mod specific stuff (some items may use the same identifier but be used for different things in different mods, and this should be taken into account). Not to over-complicate things tho, sorry.
+
+At least Execution is making his bots for CS so it should have CS specific stuff anyway, so I'm not complaining!
+
+--------------------------------------------------
+03/23/01 at 01:05:06  Reply by: Ariejan (ariejan@gmx.net)
+--------------------------------------------------
+True. CT's and T's are actually player/deathmatchplayer spawnpoints.
+
+So Alistair is right in that way. Maybe you can use the formatting of the map names? I don't know how maps are named in other mods than CS, but all maps starting with de_, es_, as_, or cs_ are pretty much CS maps. 
+
+Maybe this is just a way to 'autoselect' which mod we are converting a map for.
+
+--------------------------------------------------
+03/23/01 at 01:48:36  Reply by: GambiT (arrago_a@epita.fr)
+--------------------------------------------------
+QUOTE:
+Great idea!! 
+Hotspots are area's with a certain 'characteristic'. Eg. dangerzone (where getting killed is more probably), safetyzone, dying there is very unlikely. 
+
+
+
+I don't think this would be good, because that is actually the type of thing you want to check out dynamically...
+
+I think good stuff would be the most generic, in order to let everyone use this tool in his/her own manner. For example, Z coordinates are not specified, then put at least an arbitrary level of height for a specific *zone*. Knowing how many corridors or rooms are connected to a specific one would be cool too...
+Maybe we should start a specific thread for this, or email Execution Style...
+
+--------------------------------------------------
+03/23/01 at 06:29:08  Reply by: theimann (tobias.heimann@cl.cam.ac.uk)
+--------------------------------------------------
+Don't make that fuzz about which entities (CS or not) should get included. Extracting BSPs doesn't have to do much with entities really (you can get these by easier means), but with geometry...
+ES, what kind of geometric information do you plan to use for your navigation? Classification of an area as room, hallway, oudoor etc could be interesting, but it's the extra structures like "this is the only hallway connecting area3 and 4" that form the base for a higher level of AI. Personally I doubt that there are any HL-Bots that could use this information right now, but things will evolve with time...
+Which data structures do you have in mind for the representation of areas? For a fast check if a bot is within a special area or outside of it, they'll have to be convex. You could allow arbitrary polygons or just stick to simple rectangles and put these into some form of portal hierarchy. So what did you think of?
+
+Tobias
+
+
+--------------------------------------------------
+03/23/01 at 08:48:34  Reply by: bigjesus (holybigjesus@hotmail.com)
+--------------------------------------------------
+what about calculating where the bot can get to throughout the level starting from playerstart etnities used by the bot not the spectator mode or observer mode :P
+
+
+--------------------------------------------------
+03/23/01 at 11:17:41  Reply by: ExecutionStyle (c_brennan@hotmail.com)
+--------------------------------------------------
+Great posts, people!  To respond to a few questions and comments:
+
+QUOTE:
+The T's an CT's spawnpoints are entities, so if these entities are found, include them in the new mapfile.
+
+
+
+Since the entities are stored as text as far as I could tell, I'll just dump any entities found in the bsp into the new format and let the programmer do what (s)he will with them when reading the file.
+
+QUOTE:
+For example, Z coordinates are not specified, then put at least an arbitrary level of height for a specific *zone*.
+
+
+
+Just to be clear, I'm only discarding the Z coordinate for my own purposes.  I'm making trivial maps that are designed to be analyzed as 2D so I can make life easier on myself while learning how to analyze maps.  
+
+
+QUOTE:
+ES, what kind of geometric information do you plan to use for your navigation? Classification of an area as room, hallway, oudoor etc could be interesting, but it's the extra structures like "this is the only hallway connecting area3 and 4" that form the base for a higher level of AI.
+
+
+
+Tobias, I'm planning on breaking up a map roughly into "rooms" and their connectors.  By room I mean a region of space that is large relative to the average of the level.  This is clearly the hardest part of designing a generic algorithm, so I'll try to take as many tips as I can from the way humans interpret levels into "rooms" and "hallways" and such.
+
+I'll be coming up with rigorous definitions of the different types of regions so they can be positively identified and dealt with during map analysis, as well as used by bot AI later on in gameplay.  This is going to be the single biggest task... it should help that due to limitations of the quake engine, map designers are forced to keep individual "rooms" small so as to limit the number of polygons in view at a time...
+
+As a minor update, I started the reader program last night and have all the classes in place to store the BSP structure.  I expect to have time this weekend to write the code that loads a BSP into memory.  (fingers crossed :o)
+
+ -Carl
+
+--------------------------------------------------
+03/25/01 at 13:49:43  Reply by: CountFloyd (countfloyd_1999@yahoo.com)
+--------------------------------------------------
+Good news here !
+
+I just found this link and hope it might be helpful:
+http://www.cfxweb.net/files/Detailed/858.shtml
+
+Actually this renders a CounterStrike BSP Map and comes with the full sources !
+
+--------------------------------------------------
+03/25/01 at 17:42:58  Reply by: ExecutionStyle (c_brennan@hotmail.com)
+--------------------------------------------------
+I ran into a major snag here.. Half-life uses a different BSP version that Quake 2 and all the links I've seen for BSP tutorials all deal with the Q2 BSP format.  
+
+Quake 2 uses BSP version 38, Half-Life uses BSP version 30.  I found a lot of references to BSP 30 and a lot of people talking about it in reference to engines they're working on, but I wasn't able to find ANY resources talking about the format!  I did find some code for an engine that supports the half-life BSP format so I'll be looking into that to see if I can figure out the format that way.  If anyone knows of a faq or file format listing for BSP version 30, please post info.  I searched the net for at least an hour and couldn't find a thing...
+
+ -Carl
+
+--------------------------------------------------
+03/25/01 at 18:41:22  Reply by: BrianL (halfkiller@hotmail.com)
+--------------------------------------------------
+Why don't you get the source to the BSP map compilers, that should have some information about the format in the code itself.  I do remember seeing it somewhere in there.
+
+If I find something I'll post it here ok.
+
+--------------------------------------------------
+03/25/01 at 22:47:49  Reply by: CountFloyd (countfloyd_1999@yahoo.com)
+--------------------------------------------------
+Carl, in case you've overseen it the link I've posted above is especially about the HL BSP 30 Format, the Author just chose to render CS Maps because he was afraid to include copyrighted Valve Stuff.
+
+--------------------------------------------------
+03/26/01 at 06:39:30  Reply by: ExecutionStyle (c_brennan@hotmail.com)
+--------------------------------------------------
+CF, I had a look at the link and unless I'm mistaken it doesn't deal with the BSP 30 format.  The description reads
+
+QUOTE:
+It renders Half-Life maps (actually, it's a Quake 2 bsp format).
+
+
+
+The quake 2 bsp format is BSP 38 as described in the flipcode BSP tutorial that has been linked to on this forum before.  I still tried to download the thing but the download timed out.  I'll try again and see if it helps.
+
+Thanks for the help everyone!  Any links to resources are welcome in this effort
+
+ -Carl
+
+--------------------------------------------------
+03/26/01 at 10:03:49  Reply by: ExecutionStyle (c_brennan@hotmail.com)
+--------------------------------------------------
+Ok, never mind, I'm a complete moron.  Of COURSE the Half-Life SDK has code for loading Half-Life .BSP files.... 
+
+on the count of 3, 1.... 2.... 3... DUH!!!!!!
+
+Ok, now that that's over, I can get yoink Valve's code and have a loader done in the next few days, then either a convert to dump out the info into a new format or an on-screen viewer by the end of the week.
+
+ -Carl
+
+--------------------------------------------------
+03/26/01 at 17:19:55  Reply by: eLiTe (ali@elitegamer.fsnet.co.uk)
+--------------------------------------------------
+lol :)
+
+Well I think we're all getting a little too deep - looking for the most complicated answers when it's right under our nose :)
+
+Well hopefully the BSP reader will introduce nw things into the HL bot scene. One thing that DarkYouth mentioned that I think is a great idea is reading in the brightness levels from the BSP, so that the bots cannot 'see' players as well in the dark, or can actually decide to hide in a dark area for example. Then we would basically have bots which simulate all areas of CS (even if they do not simulate them completely), and bots could buy NVGs to counter the effects of darkness, etc.
+
+Well good luck with your coding!
+
+--------------------------------------------------
+03/27/01 at 09:02:49  Reply by: ExecutionStyle (c_brennan@hotmail.com)
+--------------------------------------------------
+That's a great idea!  It's so good because it could be used with any bot as an addition to the waypoints... I'll make it my first task for a public release: a bsp reader that creates a light level output file that bots can read and use with their waypoints to know how much light is at a given point.
+
+ -Carl
+
+--------------------------------------------------
+03/27/01 at 14:19:32  Reply by: eLiTe (ali@elitegamer.fsnet.co.uk)
+--------------------------------------------------
+That would be seriously cool! Thanks man :)
+
+--------------------------------------------------
+11/09/01 at 06:29:52  Reply by: spatel (averburg@liacs.nl)
+--------------------------------------------------
+Hi,
+
+I did manage to steal a lot of code --
+just enough to get the (cs) bsp-file decompiled.
+
+A dude called 'Bart Sekura' made a hl:cs map renderer and released it's sources. In that source he decompiles a .bsp file. 
+
+What I did was saving all usefull data from the .bsp file in an own file format and processing that data to create my own data-structure, which is loaded when a map starts in counter-strike. This way I have a lot of extra information available at run time.
+
+If someone is interested I can show you the source ... but remember the credits go to
+Bart Sekura for he did right 99.9999% of the
+code. 
+
+hehehehe
+
+Regardz,
+
+De SpaTeL Man.
+
+--------------------------------------------------
+11/09/01 at 06:34:08  Reply by: spatel (averburg@liacs.nl)
+--------------------------------------------------
+oopz
+
+correct ..
+
+Bart Sekura did write 99.99999999% of the code
+and the code was 100% right -- oopz
+
+damn -- I wish my english was better ...
+
+Regardz,
+
+De SpaTeL Man
+
+--------------------------------------------------
+11/09/01 at 09:10:55  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Yes, I too saw Bart's BSP viewer and used much of his source code to create my BSP viewer (which should be released sometime late this weekend).
+
+botman
+
+--------------------------------------------------
+11/13/01 at 11:52:29  Reply by: BrianL (halfkiller@hotmail.com)
+--------------------------------------------------
+Is it merely possible to create a .map file from .bsp files using yer source?
+
+Here's a map file from Worldcraft to show you the format:
+code:
+
+{
+"classname" "worldspawn"
+"sounds" "1"
+"MaxRange" "4096"
+"mapversion" "220"
+"wad" "\sierra\half-life\tfc\tfc2.wad;\sierra\half-life\tfc\tfc.wad;\sierra\half-life\valve\liquids.wad;\sierra\half-life\valve\halflife.wad"
+{
+( -1800 -1400 1296 ) ( -1800 1336 1296 ) ( 1736 1336 1296 ) C1A3FLOOR02 [ 1 0 0 0 ] [ 0 -1 0 0 ] 0 1 1 
+( -1800 1336 1264 ) ( -1800 1336 1296 ) ( -1800 -1400 1296 ) C1A3FLOOR02 [ 0 1 0 0 ] [ 0 0 -1 0 ] 0 1 1 
+( 1736 -1400 1264 ) ( 1736 -1400 1296 ) ( 1736 1336 1296 ) C1A3FLOOR02 [ 0 1 0 0 ] [ 0 0 -1 0 ] 0 1 1 
+( 1736 1336 1264 ) ( 1736 1336 1296 ) ( -1800 1336 1296 ) C1A3FLOOR02 [ 1 0 0 0 ] [ 0 0 -1 0 ] 0 1 1 
+( -1800 -1400 1264 ) ( -1800 -1400 1296 ) ( 1736 -1400 1296 ) C1A3FLOOR02 [ 1 0 0 0 ] [ 0 0 -1 0 ] 0 1 1 
+( -1800 1336 1264 ) ( -1800 -1400 1264 ) ( 1736 -1400 1264 ) C1A3FLOOR02 [ 1 0 0 0 ] [ 0 -1 0 0 ] 0 1 1 
+}
+{
+( -1800 1336 -1344 ) ( -1800 -1400 -1344 ) ( 1736 -1400 -1344 ) C1A3FLOOR02 [ 1 0 0 0 ] [ 0 -1 0 0 ] 0 1 1 
+( -1800 -1400 -1312 ) ( -1800 -1400 -1344 ) ( -1800 1336 -1344 ) C1A3FLOOR02 [ 0 1 0 0 ] [ 0 0 -1 0 ] 0 1 1 
+( 1736 1336 -1312 ) ( 1736 1336 -1344 ) ( 1736 -1400 -1344 ) C1A3FLOOR02 [ 0 1 0 0 ] [ 0 0 -1 0 ] 0 1 1 
+( -1800 1336 -1312 ) ( -1800 1336 -1344 ) ( 1736 1336 -1344 ) C1A3FLOOR02 [ 1 0 0 0 ] [ 0 0 -1 0 ] 0 1 1 
+( 1736 -1400 -1312 ) ( 1736 -1400 -1344 ) ( -1800 -1400 -1344 ) C1A3FLOOR02 [ 1 0 0 0 ] [ 0 0 -1 0 ] 0 1 1 
+( -1800 -1400 -1312 ) ( -1800 1336 -1312 ) ( 1736 1336 -1312 ) C1A3FLOOR02 [ 1 0 0 0 ] [ 0 -1 0 0 ] 0 1 1 
+}
+{
+( -1800 -1400 1264 ) ( -1800 -1400 -1312 ) ( -1800 1336 -1312 ) C1A3FLOOR02 [ 0 1 0 0 ] [ 0 0 -1 0 ] 0 1 1 
+( -1800 1336 1264 ) ( -1800 1336 -1312 ) ( -1768 1336 -1312 ) C1A3FLOOR02 [ 1 0 0 0 ] [ 0 0 -1 0 ] 0 1 1 
+( -1768 -1400 -1312 ) ( -1800 -1400 -1312 ) ( -1800 -1400 1264 ) C1A3FLOOR02 [ 1 0 0 0 ] [ 0 0 -1 0 ] 0 1 1 
+( -1800 -1400 1264 ) ( -1800 1336 1264 ) ( -1768 1336 1264 ) C1A3FLOOR02 [ 1 0 0 0 ] [ 0 -1 0 0 ] 0 1 1 
+( -1800 1336 -1312 ) ( -1800 -1400 -1312 ) ( -1768 -1400 -1312 ) C1A3FLOOR02 [ 1 0 0 0 ] [ 0 -1 0 0 ] 0 1 1 
+( -1768 1336 1264 ) ( -1768 1336 -1312 ) ( -1768 -1400 -1312 ) C1A3FLOOR02 [ 0 1 0 0 ] [ 0 0 -1 0 ] 0 1 1 
+}
+{
+( 1736 1336 1264 ) ( 1736 1336 -1312 ) ( 1736 -1400 -1312 ) C1A3FLOOR02 [ 0 1 0 0 ] [ 0 0 -1 0 ] 0 1 1 
+( 1704 1336 -1312 ) ( 1736 1336 -1312 ) ( 1736 1336 1264 ) C1A3FLOOR02 [ 1 0 0 0 ] [ 0 0 -1 0 ] 0 1 1 
+( 1736 -1400 1264 ) ( 1736 -1400 -1312 ) ( 1704 -1400 -1312 ) C1A3FLOOR02 [ 1 0 0 0 ] [ 0 0 -1 0 ] 0 1 1 
+( 1704 1336 1264 ) ( 1736 1336 1264 ) ( 1736 -1400 1264 ) C1A3FLOOR02 [ 1 0 0 0 ] [ 0 -1 0 0 ] 0 1 1 
+( 1704 -1400 -1312 ) ( 1736 -1400 -1312 ) ( 1736 1336 -1312 ) C1A3FLOOR02 [ 1 0 0 0 ] [ 0 -1 0 0 ] 0 1 1 
+( 1704 -1400 1264 ) ( 1704 -1400 -1312 ) ( 1704 1336 -1312 ) C1A3FLOOR02 [ 0 1 0 0 ] [ 0 0 -1 0 ] 0 1 1 
+}
+{
+( -1768 1336 -1312 ) ( 1704 1336 -1312 ) ( 1704 1336 1264 ) C1A3FLOOR02 [ 1 0 0 0 ] [ 0 0 -1 0 ] 0 1 1 
+( -1768 1304 1264 ) ( -1768 1336 1264 ) ( 1704 1336 1264 ) C1A3FLOOR02 [ 1 0 0 0 ] [ 0 -1 0 0 ] 0 1 1 
+( 1704 1336 -1312 ) ( -1768 1336 -1312 ) ( -1768 1304 -1312 ) C1A3FLOOR02 [ 1 0 0 0 ] [ 0 -1 0 0 ] 0 1 1 
+( -1768 1304 -1312 ) ( -1768 1336 -1312 ) ( -1768 1336 1264 ) C1A3FLOOR02 [ 0 1 0 0 ] [ 0 0 -1 0 ] 0 1 1 
+( 1704 1336 1264 ) ( 1704 1336 -1312 ) ( 1704 1304 -1312 ) C1A3FLOOR02 [ 0 1 0 0 ] [ 0 0 -1 0 ] 0 1 1 
+( 1704 1304 -1312 ) ( -1768 1304 -1312 ) ( -1768 1304 1264 ) C1A3FLOOR02 [ 1 0 0 0 ] [ 0 0 -1 0 ] 0 1 1 
+}
+{
+( 1704 -1400 -1312 ) ( -1768 -1400 -1312 ) ( -1768 -1400 1264 ) C1A3FLOOR02 [ 1 0 0 0 ] [ 0 0 -1 0 ] 0 1 1 
+( 1704 -1400 1264 ) ( -1768 -1400 1264 ) ( -1768 -1368 1264 ) C1A3FLOOR02 [ 1 0 0 0 ] [ 0 -1 0 0 ] 0 1 1 
+( -1768 -1368 -1312 ) ( -1768 -1400 -1312 ) ( 1704 -1400 -1312 ) C1A3FLOOR02 [ 1 0 0 0 ] [ 0 -1 0 0 ] 0 1 1 
+( -1768 -1400 1264 ) ( -1768 -1400 -1312 ) ( -1768 -1368 -1312 ) C1A3FLOOR02 [ 0 1 0 0 ] [ 0 0 -1 0 ] 0 1 1 
+( 1704 -1368 -1312 ) ( 1704 -1400 -1312 ) ( 1704 -1400 1264 ) C1A3FLOOR02 [ 0 1 0 0 ] [ 0 0 -1 0 ] 0 1 1 
+( -1768 -1368 -1312 ) ( 1704 -1368 -1312 ) ( 1704 -1368 1264 ) C1A3FLOOR02 [ 1 0 0 0 ] [ 0 0 -1 0 ] 0 1 1 
+}
+}
+{
+"classname" "info_tfdetect"
+"origin" "1192 648 1088"
+}
+{
+"classname" "info_player_teamspawn"
+"goal_activation" "3"
+"origin" "-1616 -1184 -1232"
+}
+{
+"classname" "info_player_teamspawn"
+"goal_activation" "3"
+"origin" "-1512 -1208 -1232"
+}
+
+
+
+Any info will be help-full...
+
+--------------------------------------------------
+11/13/01 at 12:03:24  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+"winbspc" does that :)
+
+--------------------------------------------------
+11/14/01 at 03:58:18  Reply by: spatel (averburg@liacs.nl)
+--------------------------------------------------
+I tried WinBsp on counter-strike maps and a lot of maps had unfortunately flaws in it. That's the reason why I didn't use WinBsp.
+
+Regardz,
+
+De SpaTeL Man
+
+--------------------------------------------------
+11/14/01 at 04:40:03  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+The documentation for WinBSPC says that you will need to hand edit the maps that are converted.  My tool doesn't provide anything that WinBSPC doesn't already have access to.
+
+I believe you should be able to loop through all of the faces in the BSP file and output those in the form of planes in a .map file.  I beleive that WinBSPC tries to combine faces that have been split by the map compile tools back into the original surface (so that recompiling it won't split it into even MORE faces the next time causing a big loss in frame rate).
+
+Let me know if you are able to modify the BSP tools to output a .map file from the .bsp file.
+
+botman
+

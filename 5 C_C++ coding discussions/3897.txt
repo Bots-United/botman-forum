@@ -1,0 +1,254 @@
+--------------------------------------------------
+Subject: Subscript operator for waypoints (mainly C++ prob)
+--------------------------------------------------
+12/04/02 at 13:50:59  Posted by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+Hi, I'm trying to make a new class for the bot waypoints to retrieve each a waypoint safely without going out of the array bounds. 
+
+You might think it would be easy to make a whole new structure for the waypoints but that would mean changing every occurence of the old waypoint structure I have in the code, there are hundreds of them!
+
+The easiest way I found was to make a class with the subscript operator like this below...
+
+code:
+
+class WAYPOINTS
+{
+public:
+   int    flags;    // button, lift, flag, health, ammo, etc.
+   Vector origin;   // location
+
+   WAYPOINTS (int f, Vector vec) { flags = f; origin = vec; };
+   WAYPOINTS () { flags = 0; Vector(0,0,0); };
+};
+
+class WAYPOINT
+{
+public:
+      WAYPOINTS operator [] (int index);
+
+      WAYPOINTS mWaypoints[MAX_WAYPOINTS];
+};
+
+WAYPOINTS WAYPOINT :: operator [] (int index) 
+{       
+      if ( (index >= 0) && (index < MAX_WAYPOINTS) ) 
+            return mWaypoints[index]; 
+      else 
+            return WAYPOINTS(0,Vector(0,0,0));
+}
+
+
+
+Neat huh?
+
+The only problem I have is I get errors at points in the code where I set the flags to something such as using bitwise operators (e.g. = and &= and = etc).
+
+But the any occurence of the origin seems to work fine and getting the flags is okay, it only seems to happen when setting the flags for some reason.
+
+For example:
+
+code:
+
+float dist = waypoints[curr_waypoint_index].origin - pEdict->v.origin).Length();
+
+
+
+...Is okay.
+
+code:
+
+if (waypoints[curr_waypoint_index].flags & W_FL_DOOR)
+
+
+
+...Is okay
+
+However...
+
+code:
+
+waypoints[g_menu_waypoint].flags = W_FL_LIFT;
+
+
+
+Doesn't work (I get the error : 
+
+<b>
+error C2106: '=' : left operand must be l-value
+</b> 
+
+(To be honest I used to get l-value erros all the time ages ago when I used to program and forgot what it meant, but I don't think it has to be an l-value here anyway)
+
+Remember I can't add these operators in the class since I'm dealing with an array inside the class, so I don't know how to say for example ("int operator .") and get/set the flags automatically.
+
+Also there is a problem retrieveing the reference of the waypoint index, for example:
+
+code:
+
+...&waypoints[index] ...
+
+
+
+Gives the error...
+
+<b>
+warning C4238: nonstandard extension used : class rvalue used as lvalue
+</b>
+
+Any help would be appreciated in getting this to work!
+
+[modified on 12/04/02 at 13:50:59]
+--------------------------------------------------
+12/04/02 at 14:04:39  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+I assume you meant:
+if (waypoints[curr_waypoint_index].flags <b>&&</b> W_FL_DOOR) 
+
+...because else it should not work either. Am I right ?
+
+I understand you can sorta read from your class, but you can't write in its objects. Sorry, no clue.
+
+
+--------------------------------------------------
+12/04/02 at 14:11:24  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+Yea it wont work with 
+
+flags |= something
+flags &= something
+flags = flags | something
+flags = something
+Etc..
+
+but
+
+origin = something
+origin = origin + Vector(...)
+
+works
+
+--------------------------------------------------
+12/04/02 at 14:22:16  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+since Vector is itself a class, maybe you could get some clues if you looked at how the operators &, |, + and - are handled in the Vector class and do the same for your int.
+
+My 2 cents worth :)
+
+
+--------------------------------------------------
+12/04/02 at 14:31:11  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+Hmm I don't know how I can do that without changing every occurence of flags in my code to flags.flags or whatever because It would mean saying waypoint[blahblah].flags.flags if I decalre another class called WAYPOINT_FLAGS as "flags" in WAYPOINTS.. But "Vector" doent seem to have any problems, right now I;m checking out msdn.microsoft.com/library/en-us/vclang/html/_pluslang_overloaded_operators.asp?frame=true[/url to get an Idea, I want an operator to return the value of the flags in WAYPOINT_FLAGS when I refer to WAYPOINTS.flags
+
+--------------------------------------------------
+12/04/02 at 14:46:30  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Not a struct, a class...
+When you go for origin, waypoint[n].origin returns the origin. You don't do waypoint[n].origin.origin, so why would you need waypoint[n].flags.flags ? if you turn flags into some sort of class too...
+
+My one and a half cents worth - I'm lowering costs :)
+
+edited again: certainly I'm not the best person to give you a hand on it - ok, I shut up now.
+[modified on 12/04/02 at 14:45:06]
+
+[modified on 12/04/02 at 14:46:30]
+--------------------------------------------------
+12/04/02 at 14:47:48  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+Yeah but what if its
+
+code:
+
+class WAYPOINT_FLAGS
+{
+public:
+      int flags;
+
+      WAYPOINT_FLAGS(int flag) { flags = flag; };
+      WAYPOINT_FLAGS() { };      
+
+      operator = (int inp) { flags = inp; };
+      operator &= (int inp) { flags &= inp; };
+      operator =  (int inp)  { flags = inp; };
+      int operator & (int inp) { return (flags & inp); };
+
+};
+
+class WAYPOINTS
+{
+public:
+   WAYPOINT_FLAGS/*int*/    flags;    // button, lift, flag, health, ammo, etc.
+   Vector origin;   // location
+
+   WAYPOINTS (int f, Vector vec) { flags = f; origin = vec; };
+   WAYPOINTS () { flags = 0; Vector(0,0,0); };
+};
+
+
+
+Then you would need to obtain the flags by 
+code:
+
+ WAYPOINT   OPERATOR   WAYPFLAGS  WAYPFLAGS.flags
+[        ]  [      ]   [       ]  [             ]
+waypoints    [blah]     .flags        .flags
+
+
+How can I just get WAYPFLAGS.flags from waypoints[blah].flags ? Because waypoints[blah].flags is a class and not an integer that I want :(.
+
+[modified on 12/04/02 at 14:47:48]
+--------------------------------------------------
+12/05/02 at 07:20:21  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+wo0ohoo Its working now all I had to do was add the reference operator to the subscript (after looking at MSDN for ages) and everything works okay now!
+
+code:
+
+WAYPOINTS EMPTY_WAYPOINT = WAYPOINTS(W_FL_DELETED,Vector(0,0,0));
+
+WAYPOINTS &WAYPOINT :: operator [] (int index) 
+{       
+      if ( (index >= 0) && (index < MAX_WAYPOINTS) ) 
+            return mWaypoints[index]; 
+      else 
+            return EMPTY_WAYPOINT;
+}
+
+class WAYPOINTS
+{
+public:
+   int  flags;                        // button, lift, flag, health, ammo, etc.
+   Vector origin;                     // location  
+
+   WAYPOINTS (int f, Vector vec)      { flags = f; origin = vec;      };
+   WAYPOINTS ()                        { flags = 0; Vector(0,0,0); };
+};
+
+class WAYPOINT
+{
+public:
+      WAYPOINTS &operator [] (int index);  // Subscript Type Operator
+      WAYPOINTS mWaypoints[MAX_WAYPOINTS]; // Array of Waypoints
+};
+
+
+
+
+[modified on 12/04/02 at 15:55:04]
+
+[modified on 12/05/02 at 07:20:21]
+--------------------------------------------------
+12/05/02 at 06:49:17  Reply by: @$3.1415rin (johannes@_-removeifnotavirus-_lampel.net)
+--------------------------------------------------
+ok, you already posted the reference stuff. And to explain it : when you are not returning a reference, you return a copy of the data. and if you change the copy, no wonder that the original data remains like it is :)
+
+--------------------------------------------------
+12/06/02 at 00:48:42  Reply by: Zipster (skyork99@juno.com)
+--------------------------------------------------
+Your subscript function should at least be throwing some sort of exception or printing a message if a passed subscript is out of bounds, as that would indicated a logic error in your code that might need to be located.
+
+--------------------------------------------------
+12/06/02 at 05:39:52  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+It doesnt require any messages, it would be while its playing HL :p just in-case I made it return an empty waypoint that has a deleted flag.
+

@@ -1,0 +1,161 @@
+--------------------------------------------------
+Subject: Heeelp ! Someone , enyone
+--------------------------------------------------
+10/31/00 at 09:30:12  Posted by: The (www.pq_mk@yahoo.com)
+--------------------------------------------------
+I've started making bot buy(simple one fore start)
+ 
+void BotBuy( )
+
+{
+   bot_t *pBot;
+   edict_t *pEdict = pBot->pEdict;
+
+if ((bot_have_weapon == TRUE)&& (pBot->bot_money > 1700) )
+  {
+     FakeClientCommand(pEdict, "buy", 2, 1);  //the error line 2182
+  }
+else // issue buy command
+  {
+     FakeClientCommand(pEdict, "buy", NULL, NULL);
+  }
+}
+
+
+and I get this error :
+
+
+C:\Viktor\Make Bots\TheBot\TheBot\dlls\bot.cpp(2182) : error C2664: 'FakeClientCommand' : cannot convert parameter 3 from 'const int' to 'char *'
+        Conversion from integral type to pointer type requires reinterpret_cast, C-style cast or function-style cast
+
+
+What does it means and how to fix it ?
+
+--------------------------------------------------
+10/31/00 at 09:39:53  Reply by: SUCKLEAD (sucklead@btinternet.com)
+--------------------------------------------------
+stick quotes round the 1 and 2
+
+--------------------------------------------------
+10/31/00 at 09:47:11  Reply by: The (www.pq_mk@yahoo.com)
+--------------------------------------------------
+Dooh..
+How stupid of me to ask :o(.
+Thanks anyway
+
+--------------------------------------------------
+10/31/00 at 12:01:04  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+From your code....
+
+FakeClientCommand(pEdict, "buy", 2, 1);
+
+...it appears that you think that this function will issue the "buy" command, then select menu item 2, then select menu item 1.  It won't.
+
+What it will do is send the following command...
+
+"buy 2 1"
+
+...which will probably only be interpreted by CS as the "buy" command.  You will still have to intercept the buy menu and send "menuselect 2", then intercept the next buy menu and send "menuselect 1" (if that was what you were attempting to do).
+
+botman
+
+--------------------------------------------------
+11/01/00 at 08:24:49  Reply by: The (www.pq_mk@yahoo.com)
+--------------------------------------------------
+yes I was thinking that that comand will work.
+Thanks botman (once again).
+Is it the same thing with radio comand ?
+
+--------------------------------------------------
+11/01/00 at 11:17:36  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+It's the same with any commands using the old text style menus or the new VGUI menus.  What the MOD sends back to the server may not be the same.  Use the "debug_engine" flag and look in the bot.txt file found in the Half-Life directory after you have selected the items you want to see what the client sends to the server.
+
+botman
+
+--------------------------------------------------
+11/01/00 at 13:41:00  Reply by: The (www.pq_mk@yahoo.com)
+--------------------------------------------------
+Hi botman
+I't looks like I cant understand the FakeClientCommand.
+I've tried to lurn from the source when bot's r selecting team but ... :(
+Can you post me an exsample.
+egz. Bot select buy meny, then select slot2, an then slot1.
+
+
+pls...
+
+--------------------------------------------------
+11/01/00 at 14:29:41  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+Here is a response I sent to someone who asked a similar question about implementing a buy menu.  There's more than 1 way to do it (the easier ways aren't always failsafe).  This is the harder way (but the only way that I consider correct)...
+
+You are probably doing something like this...
+
+FakeClientCommand(pEdict, "buy", NULL, NULL);
+FakeClientCommand(pEdict, "menuselect", "1", NULL);
+FakeClientCommand(pEdict, "menuselect", "3", NULL);
+
+...without any delay between them.  This won't work reliably and will fail more often on machines with 3D cards capable of high frame rates.  You are sending things faster than the MOD DLL can handle them.
+
+What you REALLY should do is modify the code in the bot_client.cpp file that catches the ShowMenu messages sent to the clients when a menu is being displayed.  Set a flag to indicate that the menu is being displayed, then respond to that menu by using FakeClientCommand() to generate a response. Something like this...
+
+#define MENU_BUY_1    1
+#define MENU_BUY_1_1  2
+#define MENU_BUY_1_2  3
+#define MENU_BUY_2    4
+
+int menu_state;
+bool is_menu_displayed = 0;
+
+BotUseMenu()
+{
+   if (is_menu_displayed)
+   {
+      if (menu_state == MENU_BUY_1)  // are we waiting for main buy menu?
+      {
+         is_menu_displayed = 0;
+         FakeClientCommand(pEdict, "menuselect", "1", NULL);  // go to submenu 1
+         menu_state = MENU_BUY_1_1;  // next menu should be submenu 1.1
+         return;
+      }
+      if (menu_state == MENU_BUY_1_1)  // are we waiting for menu 1.1?
+      {
+         FakeClientCommand(pEdict, "menuselect", "3", NULL);  // buy item 3 at menu 1.1
+         menu_state = 0;  // reset back to no menu
+         return;
+      }
+   }
+}
+
+...then in the bot_client.cpp file modify BotClient_CS_ShowMenu() to set the "is_menu_displayed" flag when the menu is being "displayed".  Add the following when you want to use the "buy" menu...
+
+   is_menu_displayed = 0;
+   FakeClientCommand(pEdict, "buy", NULL, NULL);
+   menu_state = MENU_BUY_1;  // next menu should be main buy menu
+
+...then add this to BotThink()...
+
+   if (menu_state != 0)  // are we waiting for a menu to be "displayed"?
+   {
+      BotUseMenu();
+   }
+
+...this should give you the general idea of how to sequence the buy menus properly so that you don't send a command before the DLL is ready to receive it.
+
+botman
+
+
+--------------------------------------------------
+11/03/00 at 16:54:01  Reply by: The (www.pq_mk@yahoo.com)
+--------------------------------------------------
+Will it work if I simply add 0.2 sec. delay ?
+
+--------------------------------------------------
+11/04/00 at 04:45:51  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+That's one of the easier ways of doing it, however it's not 100% reliable.  If you don't care about the bots sometimes not getting what they are trying to buy (because you sent something before the server DLL was ready for it), then delaying between the FakeClientCommands() will work fairly well.
+
+botman
+

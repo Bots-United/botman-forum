@@ -1,0 +1,303 @@
+--------------------------------------------------
+Subject: Firearms Bot Authors look here
+--------------------------------------------------
+06/18/01 at 19:26:03  Posted by: Noodles (lancecoleborne@mad.scientist.com)
+--------------------------------------------------
+-------------
+bot_start.cpp
+-------------
+   if (mod_id == FIREARMS_DLL)
+   {
+      if ((pBot->start_action == MSG_FIREARMS_IDLE) &&
+          (pBot->create_time + 3.0 <= gpGlobals->time))
+      {
+         pBot->start_action = MSG_FIREARMS_TEAM_SELECT;  // force team selection
+      }
+
+      if (pBot->start_action == MSG_FIREARMS_TEAM_SELECT)
+      {
+         pBot->start_action = MSG_FIREARMS_IDLE;  // switch back to idle
+         pBot->create_time = gpGlobals->time;  // reset
+
+         if ((pBot->bot_team != 2) && (pBot->bot_team != 3) &&
+             (pBot->bot_team != 1))
+            pBot->bot_team = -1;
+
+         if (pBot->bot_team == -1)
+            pBot->bot_team = RANDOM_LONG(1, 2);
+
+         // select the team the bot wishes to join...
+         if (pBot->bot_team == 1)
+          strcpy(c_team, "2"); // join Red Force
+         else if (pBot->bot_team == 2)
+          strcpy(c_team, "3"); // join Blue Force
+         else
+          strcpy(c_team, "1");
+
+         FakeClientCommand(pEdict, "vguimenuoption", c_team, NULL);
+
+         return;
+      }
+   
+      if (pBot->start_action == MSG_FIREARMS_CLASS_SELECT)
+      {
+         pBot->start_action = MSG_FIREARMS_IDLE;  // switch back to idle
+
+         if ((pBot->bot_team != 1) && (pBot->bot_team != 2) &&
+             (pBot->bot_team != 3) && (pBot->bot_team != 4) && 
+             (pBot->bot_team != 5) && (pBot->bot_team != 6) && 
+             (pBot->bot_team != 7))
+            pBot->bot_team = -1;
+
+         if (pBot->bot_team == -1)
+            pBot->bot_team = RANDOM_LONG(1, 7);
+
+        // select the class the bot wishes to use...
+         if (pBot->bot_class == 1)
+            strcpy(c_class, "2");
+         else if (pBot->bot_class == 2)
+            strcpy(c_class, "3");
+         else if (pBot->bot_class == 3)
+            strcpy(c_class, "4");
+         else if (pBot->bot_class == 4)
+            strcpy(c_class, "5");
+         else if (pBot->bot_class == 5)
+            strcpy(c_class, "6");
+         else if (pBot->bot_class == 6)
+            strcpy(c_class, "7");
+         else if (pBot->bot_class == 7)
+            strcpy(c_class, "8");
+         else
+            strcpy(c_class, "9");
+
+         FakeClientCommand(pEdict, "vguimenuoption", c_team, NULL);
+
+         // bot has now joined the game (doesn't need to be started)
+         pBot->not_started = 0;
+
+         return;
+      }
+
+      if (pBot->start_action == MSG_FIREARMS_SKILL_SELECT)
+      {
+          pBot->start_action = MSG_FIREARMS_IDLE;  // switch back to idle
+
+          FakeClientCommand(pEdict, "vguimenuoption 1", NULL, NULL);
+          
+          // bot has now joined the game (doesn't need to be started)
+          pBot->not_started = 0;
+          
+          return;
+      }
+
+      if (pBot->start_action == MSG_FIREARMS_JOIN_SELECT)
+      {
+          pBot->start_action = MSG_FIREARMS_IDLE;  // switch back to idle
+
+          FakeClientCommand(pEdict, "vguimenuoption 1", NULL, NULL);
+          
+          // bot has now joined the game (doesn't need to be started)
+          pBot->not_started = 0;
+          
+          return;
+      }
+   }
+--------------
+bot_client.cpp
+--------------
+// This message is sent when the FireArms VGUI menu is displayed.
+void BotClient_FIREARMS_VGUI(void *p, int bot_index)
+{
+   if ((*(int *)p) == 13) // is it Team Selection menu?
+      bots[bot_index].start_action = MSG_FIREARMS_TEAM_SELECT;
+   else if ((*(int *)p) == 14) // is it a Class Selection menu?
+      bots[bot_index].start_action = MSG_FIREARMS_CLASS_SELECT;
+   else if ((*(int *)p) == 2) // is it Armour Selection menu?
+      bots[bot_index].start_action = MSG_FIREARMS_ARMOUR_SELECT;
+   else if ((*(int *)p) == 3) // is it Item Selection menu?
+      bots[bot_index].start_action = MSG_FIREARMS_ITEM_SELECT;
+   else if ((*(int *)p) == 4) // is it Pistol Selection menu?
+      bots[bot_index].start_action = MSG_FIREARMS_PISTOL_SELECT;
+   else if ((*(int *)p) == 5) // is it Shotgun Selection menu?
+      bots[bot_index].start_action = MSG_FIREARMS_SHOTGUN_SELECT;
+   else if ((*(int *)p) == 6) // is it Submachine Gun Selection menu?
+      bots[bot_index].start_action = MSG_FIREARMS_SUBMACHINE_SELECT;
+   else if ((*(int *)p) == 7) // is it Assault Rifle Selection menu?
+      bots[bot_index].start_action = MSG_FIREARMS_ASSAULT_SELECT;
+   else if ((*(int *)p) == 8) // is it Sniper Rifle Selection menu?     
+      bots[bot_index].start_action = MSG_FIREARMS_SNIPER_SELECT;
+   else if ((*(int *)p) == 9) // is it Machine Gun Selection menu?
+      bots[bot_index].start_action = MSG_FIREARMS_MACHINEGUN_SELECT;
+   else if ((*(int *)p) == 10) // is it Launcher Selection menu?
+      bots[bot_index].start_action = MSG_FIREARMS_LAUNCHER_SELECT;
+   else if ((*(int *)p) == 20) // is it Skills Selection menu?
+      bots[bot_index].start_action = MSG_FIREARMS_SKILL_SELECT;
+   else if ((*(int *)p) == 12) // is it Join Battle menu?
+      bots[bot_index].start_action = MSG_FIREARMS_JOIN_SELECT;
+}
+--------------------------------------------
+if anyone can spot any errors like vgui menu id's or something can u correct the lines what are wrong, the bot only seems to join a team then does nothing at class select.
+
+--------------------------------------------------
+06/19/01 at 00:57:33  Reply by: mark (mark.pfrengle@gmx.de)
+--------------------------------------------------
+hi noodles,
+
+i dont have any experience with firearms-bot-programming but had an similiar, very irritating problem with a cstrike-bot:
+they also only joined the team, and neved choosed a class.
+my bot never received a message about the class-(model-selection)menu, everything was allright, but the %§(&/-message wasnt send!
+after trying and trying a lot, i discovered, that i have to send g_engfuncs.pfnRunPlayerMove (to say explicitly that i'm *not* moving!?) to receive the message!?!? after that, everything went fine, that was all - but without this null-playermove, the message never came....
+
+so - after checking if the msg-id for team-join-menu itself is correct (by debug-output-txt) i would perhaps try to include g_engfuncs.pfnRunPlayerMove in the bots-think function so that it is called every frame during the phase between joining a team and selecting a class (if it isnt allready - then the whole long long post is useless... sniff.. ;-) 
+
+
+bye, mark
+
+--------------------------------------------------
+06/19/01 at 01:47:57  Reply by: Noodles (lancecoleborne@mad.scientist.com)
+--------------------------------------------------
+yes your post was totally useless
+
+--------------------------------------------------
+06/19/01 at 02:26:48  Reply by: mark (mark.pfrengle@gmx.de)
+--------------------------------------------------
+grrrr..
+did you try it?
+
+--------------------------------------------------
+06/19/01 at 03:15:41  Reply by: Noodles (lancecoleborne@mad.scientist.com)
+--------------------------------------------------
+I don't need to try it, because it has no fucking relevence to me. As i said before "yes your post was totally useless", don't make me say it again.
+-------------------------------------------------
+Can a person who has a idea what they are talking about help me.
+
+
+--------------------------------------------------
+06/19/01 at 04:54:24  Reply by: mark (mark.pfrengle@gmx.de)
+--------------------------------------------------
+peace, peace! sorry for asking...
+i only wanted to know if that problem only occurs with cstrike. excuse me for any anger produced by my post..
+
+good luck finding the bug..
+
+--------------------------------------------------
+06/19/01 at 05:30:03  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+[sarcasm]Noodles, I can tell already that you're going to get LOTS of help.[/sarcasm]
+
+botman
+
+--------------------------------------------------
+06/19/01 at 16:02:19  Reply by: murph (Dmurphy58@prodigy.net)
+--------------------------------------------------
+Hey, noodles, why are you such a llama? Here's some code for you!
+
+BOOL you_are_asshole
+
+int main()
+{
+ you_are_asshole = TRUE;
+ if (you_are_asshole == TRUE)
+  {
+   stop_being_such_a_dick(please, thank_you)
+  }
+ return 0;
+}
+
+--------------------------------------------------
+06/19/01 at 23:15:27  Reply by: Noodles (lancecoleborne@mad.scientist.com)
+--------------------------------------------------
+I post this to 3 forums, i get 3 different dumb shits responding to my posts, i sortta get pissed off. 
+
+1st response on a diff forum: try typing addbot you dumb fuck
+2nd response on a diff forum to that one: sif u made that code, u rippped it from botman's hpb code 100% stolen
+3rd response on this forum: some dumb bitch who says something about getting the bot to move when bot ain't even in the game yet, then being pedantic and saying "grrr did u try it"
+
+--------------------------------------------------
+06/19/01 at 23:16:56  Reply by: Noodles (lancecoleborne@mad.scientist.com)
+--------------------------------------------------
+I mean like if you don't know what you're on about. One simple method: don't post and piss someone off
+
+--------------------------------------------------
+06/20/01 at 03:56:05  Reply by: theimann (killaruna@botepidemic.com)
+--------------------------------------------------
+Just a question, Botman: Is it possible to ban users from this forum?
+
+Tobias
+
+--------------------------------------------------
+06/20/01 at 04:17:03  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+It's possible to ban someone by IP domain, but I haven't had to do that in a LONG time.
+
+botman
+
+--------------------------------------------------
+06/20/01 at 12:11:44  Reply by: [LW]Rob (rob@tfcautoop.cjb.net)
+--------------------------------------------------
+hehe Noodle's attitude isnt unique around the Half-Life "Player"s comminuty, I'm sure clan (1) would be interested in him.
+
+I do have a question that he may be able to answer tho (if typing with those hooves is easy enough)
+
+Is a players team in firearms recorded in the pev->team or would I have to check the model fo the player like botman does for CS?
+
+- Rob
+
+--------------------------------------------------
+06/20/01 at 23:15:20  Reply by: Noodles (lancecoleborne@mad.scientist.com)
+--------------------------------------------------
+now i see why you see don't my reason of getting pissed off, mark what's his name, modified his post to something totally different that he first said after i had posted he doesn't know what he's on about
+
+--------------------------------------------------
+06/21/01 at 04:24:16  Reply by: mark (mark.pfrengle@gmx.de)
+--------------------------------------------------
+ok noodles-boy, i think, i need to write some words to you to make some things clear. 
+
+- first of all i want to thank you for your really amusing show here in the forum! how old are you? i guess at around ... uhm.. (i'm allways been bad i guessing someones age..) 
+..dont know exactly, but my little brother (12) is in the same period as you are: complaining a lot, sreaming and shouting around. (that makes you feel to be a REAL man, ha?)
+take comfort - in some years it will be over...
+
+- then i only want to say, i never modified my post "to something totally different" - it's still the same post as on the very first day, i didnt modify one word...
+
+- .. but perhaps you see now, that it is not soooo without relevance: this described "bug" (or whatever it is) exists in CS. even when i'm not in a team, only connected, when i remove the g_engfuncs.pfnRunPlayerMove(0,0...) function, i never get the message. thats a fact (sorry). 
+and it was worth for my to give it a try and type some sentences for you. after your short answer, i then only wanted to know, if you tried it - thats a problem for you? i mean, you send a bunch of source we have to read for your problem - thats ok - but then, don't begin to cry when someone wants to have an answer from YOU.. i hope this small "grrrr.." (really bad, bad word, i know!) didnt make you explode so...
+
+- ..so: enjoy your day (and your surely growing gastric ulcer), join a fitting clan as proposed (is there a [WeAreBest-RestRFu**ingPissOffPpl]-Clan? i think, that would be the right for you, sweetie! >:->) and perhaps write down some whine.txt or shout.txt for bot-chat-messages - you seem to have a talent for it...
+
+bye
+
+--------------------------------------------------
+06/21/01 at 04:24:20  Reply by: kevone (kevone@gmx.net)
+--------------------------------------------------
+i think your problem is in the skill selection
+
+use "setskill" and NOT vguimenuoption for
+skill selection...
+
+k3v
+
+--------------------------------------------------
+06/22/01 at 01:36:45  Reply by: Noodles (lancecoleborne@mad.scientist.com)
+--------------------------------------------------
+thank god, the first relevent post in this thread. At least my skill select is now fixed, now i just need class select help
+
+--------------------------------------------------
+10/19/02 at 18:39:55  Reply by: haz3l (haz3l@floppyg.com)
+--------------------------------------------------
+Aye-
+
+I used this code (I was actually pretty damn close to having the same code) my bot doesnt join a team. Im using the preconfigs instead of this and this bot is for 2.5... outdated
+
+[modified on 10/19/02 at 18:39:55]
+--------------------------------------------------
+11/26/02 at 07:57:23  Reply by: RedLink (redlink_star@hotmail.com)
+--------------------------------------------------
+"yes your post was totally useless" Wasen't Very Nice WrItten.. if someone try to help you dont be a dick...
+
+I haft to say that u other aren't very much beTter.... PlZ Stop fighting
+
+--------------------------------------------------
+11/26/02 at 09:44:40  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+c'mon don't start the whole charade again a year later! 8)
+

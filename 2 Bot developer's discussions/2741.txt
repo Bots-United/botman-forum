@@ -1,0 +1,170 @@
+--------------------------------------------------
+Subject: Odd thing with checking team
+--------------------------------------------------
+02/15/02 at 10:33:46  Posted by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+I have the following problem: I have a routine, checking for enemies, this works fine. It checks the enemy team with UTIL_GetTeam(edict_t *pEdict) and that works ok! I added debug messages and it gave me the model names. Leet, arctic etc show up nicely. Now, once a bot has a new enemy, it will also send me a debug message. This also works fine.
+
+Now the question.. i have a routine checking for the Line of Fire. The basic rules are, shoot only an edict which is NOT a hostage AND is NOT on your team. 
+
+Basicly this should work. Now, the odd thing is, i get a message that the enemy has an unkown model! I also recieve debug messages like model_name is "". Meaning its empty! This happened on both sides of CS. 
+
+The misterious thing is, both pieces of code use the same detection system for models, and it still goes wrong! I might pass the wrong edict to it? Or is there something else going on? I am quite puzzled, working on this issue for some hours now and still no result!
+
+--------------------------------------------------
+02/15/02 at 10:43:20  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+Update:
+I figured out that the bot enemy pointer is ok. This means the pointer of the edict that is hit by a traceline is not valid. Still odd, but anywayz, here is my garbage.. 
+
+code:
+
+char entity_blocker[128];
+         edict_t *pent = tr.pHit;                                            // Ok now retrieve the entity
+         if (pent != NULL)
+         {
+          strcpy(entity_blocker, STRING(pent->v.classname)); // the classname
+
+            if (strcmp(entity_blocker, "hostage_entity") == 0) // Do not shoot hostages
+                  pull_trigger = false; // do not fire
+          
+
+            char msg[80];
+            sprintf(msg, "Team me = %d, team he = %d", UTIL_GetTeam(pBot->pEdict), UTIL_GetTeam(pent));
+            BotDebug(msg);
+            
+            BotDebug("CHECKING ENEMY POINTER NOW - ");
+            int a = UTIL_GetTeam(pBot->pBotEnemy);
+
+            // when entity is same team as us
+            if(UTIL_GetTeam(pBot->pEdict) != UTIL_GetTeam(pent))
+            {
+                  pull_trigger = false; // do not fire teammates
+            }
+         }
+   }
+
+
+
+I know its not written nicely, and its not optimized at all. Something goes wrong at the tr.pHit i think!
+
+Oh also, the last check for 'teammates' is ok, i wanted to disable bots shooting at me cause i want to figure this out without getting shot by accident or something.
+
+[modified on 02/15/02 at 10:43:20]
+--------------------------------------------------
+02/15/02 at 11:07:52  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+The pHit is usally always NOT NULL. It usually will have worldspawn stuff in it if it hit a wall, and it will have some stuff even if it hits thin air.
+
+What you need to do is to check that the traceline actually DID hit something and did NOT hit thin air.
+
+To do this just check that the length of the traceline is less than the length you told it to be (i.e. let's say you told it to be 4000 units long, quite large i know, but if the traceline is then less than that then it definetly hit something) Sometimes the length of the traceline is 0.1 out, so even if it still hit nothing it could be +/- 0.1 units than original length because of calculation errors.
+
+The length of the traceline is simply...
+
+code:
+
+float actual_length = (tr.vecEndPos - vecStart).Length()
+
+
+vecStart is the Bot's view position.
+
+To give a traceline a "length", you simply change the Destination Vector were you want the traceline to hit.
+
+e.g. 
+
+code:
+
+float traceline_length = 400; // 400 units
+
+VecEnd = vecStart + gpGlobals->forward * traceline_length;
+
+
+
+I don't know if this helps but it may be the fact the the traceline you are using isn't hitting anything
+
+Remember if a traceline hits a wall or "worldbrush" the classname would always be "worldspawn" and pHit would definetly have some worthless stuff in it.
+
+
+
+--------------------------------------------------
+02/15/02 at 11:13:03  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+i will try out this worldspawn thingy, it could be it!
+
+Anyhow, here is my code how i trace that line. I wonder if its ok, because i use the bot vector calculated for shooting, but i think it does not work with tracing forward then... it has nothing to do with the actual enemy vector i think.. (hmm, i begin to understand what i do wrong)
+
+code:
+
+   // Add here a traceline in order to check if anything is blocking our Line Of Fire
+   // Just trace 2000 units forward
+   Vector v_source = pBot->pEdict->v.origin + pBot->pEdict->v.view_ofs;
+   UTIL_MakeVectors( v_source );
+
+
+   TraceResult tr;
+   Vector v_dest = v_source + gpGlobals->v_forward * 2000;
+
+
+   // trace a line from bot's eyes to destination...
+   UTIL_TraceLine( v_source,
+                   v_dest, ignore_monsters,
+                   pBot->pEdict->v.pContainingEntity, &tr );
+
+
+--------------------------------------------------
+02/15/02 at 11:20:19  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+lol, well, i changed the line of v_dest into this:
+
+code:
+
+   TraceResult tr;
+   Vector v_dest = /*v_source + gpGlobals->v_forward * 2000;*/ pBot->pBotEnemy->v.origin;
+
+
+
+and now it works. Now i know that my forward check is wrong, but what would be the right one then?
+
+--------------------------------------------------
+02/15/02 at 11:27:00  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+I've had some weird behaviour with the tracelines before.
+
+For some reason if I was more than 1 unit away from looking at an object, my traceline would say it didn't hit that object, but If I used a chase cam and used my traceline, it worked.
+
+I think the fact that you're using the v_forward vector to find the destination, its basically finding a co-ordinate 2000 units in front of the bot.
+
+The bot may be looking slightly away from the enemy, and if we want to make bots more human then they probably are.
+
+So if you use the correct origin of the enemy into the traceline then it would work.
+
+What I mean is that I think the traceline needs to hit really close to the actual origin of the target entity. I don't know how to sort it though.
+Perhaps try using "dont_ignore_monsters" instead.
+
+Although If you've already got the enemy in the the pBotEnemy you wont need a traceline :) Although I guess you're trying to get rid of using the pBotEnemy pointer ? :)
+
+--------------------------------------------------
+02/15/02 at 12:38:17  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+UTIL_MakeVectors() takes an array of angles and converts them to vectors.  You're passing in an 3D coordinate into UTIL_MakeVectors(), it will probably return some REALLY weird results in the gpGlobals->v_forward, v_up, and v_right vectors when you do this.
+
+The UTIL_TraceLine() just needs 2 world coordinates (the bot's origin and the enemy's origin).  You shouldn't be using UTIL_MakeVectors() at all.
+
+botman
+
+--------------------------------------------------
+02/15/02 at 12:47:23  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+Oh darn, i see now. The makevectors line should actually be:
+
+UTIL_MakeVectors( pBot->pEdict->v.v_angle );
+
+w00ps!
+
+thanks for all the help guys!
+
+@At cheesemonster:
+i simply want to trace forward, thats all. Using the enemy pointer is not correct, a bot could be aiming a bit different and not hit the enemy at all but hitting a friendly bot and shoot him now. Therefor i need to know how he looks and get my decisions based uppon that, not on a traceline to the enemy.
+
+[modified on 02/15/02 at 12:47:23]

@@ -1,0 +1,325 @@
+--------------------------------------------------
+Subject: bug found in HPB_bot, CS bot coders should check
+--------------------------------------------------
+04/21/03 at 15:24:51  Posted by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Hi
+
+Just to say that I've been hunting for a bug for one whole month in my bot code and also in the metamod plugins I've been writing for Counter-Strike. I've found it, and this one comes straight from the venerable HPB_bot. It's present both in the template and in the 2.1 source code, and also in the metamod port I've made of it.
+
+Every CS bot coder who based his work on botman's template should check this in his own code.
+
+In botman's UTIL_GetTeam() function in util.cpp:
+code:
+
+      if ((strcmp(model_name, "terror") == 0) ||  // Phoenix Connektion
+          (strcmp(model_name, "arab") == 0) ||    // old L337 Krew
+          (strcmp(model_name, "leet") == 0) ||    // L337 Krew
+          (strcmp(model_name, "artic") == 0) ||   // Artic Avenger
+          (strcmp(model_name, "guerilla") == 0))  // Gorilla Warfare
+      {
+         return 0;
+      }
+      else if ((strcmp(model_name, "urban") == 0) ||  // Seal Team 6
+               (strcmp(model_name, "gsg9") == 0) ||   // German GSG-9
+               (strcmp(model_name, "sas") == 0) ||    // UK SAS
+               (strcmp(model_name, "gign") == 0) ||   // French GIGN
+               (strcmp(model_name, "vip") == 0))      // VIP
+      {
+         return 1;
+      }
+
+
+
+Replace
+code:
+
+          (strcmp(model_name, "artic") == 0) ||   // Artic Avenger
+
+
+with
+code:
+
+          (strcmp(model_name, "arctic") == 0) ||   // Arctic Avenger (it spells AR-*C*-TIC)
+
+
+The symptoms for this bug is that sometimes bots don't identify correctly players member of the Terrorist team. They never attack them, and those that are in this team wearing the "arctic" skin don't play correctly as a team. Also server commands that are supposed to affect all players based on their team don't work correctly for some players are missed.
+
+Voilà...
+
+
+--------------------------------------------------
+04/22/03 at 12:56:26  Reply by: @$3.1415rin (johannes@_-removeifnotavirus-_lampel.net)
+--------------------------------------------------
+normally that shouldnt make any problems, cause the default return value is 0 :P
+
+--------------------------------------------------
+04/22/03 at 13:17:13  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Yes probably, but 0 was not *MY* default return value, hence...
+Oh well, I guess it's not that important then... :)
+
+
+
+--------------------------------------------------
+04/22/03 at 13:52:23  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+You COULD always edit it a bit to save some performance :)
+If your a mad freak like me, and want to save precious cpu time etc..etc... and of course there are no more teams except T and CT ...
+
+code:
+
+if ((model_name[0] == 'u') <OR> // Seal Team 6  "urban"
+      ((model_name[0] == 'g') && ((model_name[1] == 's') <OR> (model_name[1] == 'i'))) <OR> // German GSG-9  "gsg9" OR French GIGN "gign"
+      (model_name[0] == 's') <OR> // UK SAS  "sas"
+      (model_name[0] == 'v')) // VIP "vip"
+{ 
+      return 1; 
+}
+// not a CT must be a T ;)
+return 0;
+
+
+
+/edit- actually determining if its a CT or not is much simpler. :p
+
+[modified on 04/22/03 at 13:52:23]
+--------------------------------------------------
+04/22/03 at 13:51:57  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Or, the l33t hax0r way...
+[code]if ( (*(int *)model_name == ('r'<<24+'r'<<16+'e'<<8+'t')) ||
+     (*(int *)model_name == ('b'<<24+'a'<<16+'r'<<8+'a')) ||
+     (*(int *)model_name == ('t'<<24+'e'<<16+'e'<<8+'l')) ||
+     (*(int *)model_name == ('t'<<24+'c'<<16+'r'<<8+'a')))
+
+
+--------------------------------------------------
+04/22/03 at 13:52:45  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+8) indeed
+
+--------------------------------------------------
+04/22/03 at 13:56:17  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Or, the l33t hax0r way...
+code:
+if ( (*(int *)model_name == ('r'<<24+'r'<<16+'e'<<8+'t')) ||
+     (*(int *)model_name == ('b'<<24+'a'<<16+'r'<<8+'a')) ||
+     (*(int *)model_name == ('t'<<24+'e'<<16+'e'<<8+'l')) ||
+     (*(int *)model_name == ('t'<<24+'c'<<16+'r'<<8+'a')) )
+   return 0;
+else if ( (*(int *)model_name == ('a'<<24+'b'<<16+'r'<<8+'u')) ||
+     (*(int *)model_name == ('9'<<24+'g'<<16+'s'<<8+'g')) ||
+     (*(int *)model_name == (0<<24+'s'<<16+'a'<<8+'s')) ||
+     (*(int *)model_name == ('n'<<24+'g'<<16+'i'<<8+'g')) ||
+     (*(int *)model_name == (0<<24+'p'<<16+'i'<<8+'v')) )
+
+   return 1;
+
+:)
+botman
+
+--------------------------------------------------
+04/22/03 at 14:29:24  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+I wonder if you could make a function to compare strings that way ;) looks tricky :)
+
+oh well hope this works hehe.. dont know if this is better than string compare function though!
+
+code:
+
+bool StringEqual ( const char *str1, const char *str2 )
+{      
+      int i = 0;
+      int bits = 0;
+
+      while ( str2[i] != 0 )
+            bits += str2[i] << ((++i)*8);
+
+      return (*(int *)str1 == bits);
+}
+
+
+
+wonder if it'll work :P ;)
+
+[modified on 04/22/03 at 14:29:24]
+--------------------------------------------------
+04/22/03 at 17:43:53  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Your strings better all be 4 characters or less!  ;D
+
+(an 'int' will only hold 32 bits on Intel processors.)
+
+botman
+
+[modified on 04/22/03 at 17:43:53]
+--------------------------------------------------
+04/23/03 at 03:40:17  Reply by: BrianL (halfkiller@hotmail.com)
+--------------------------------------------------
+Made this for one of my old progs awhile back, :-P works just like strcmp.
+
+code:
+int mstrcmp (const char *src1, const char *src2)
+{
+ int chk = 0;
+ for (int i = 0; i < (int)strlen(src1); i++)
+ { 
+   if (src1[i] == src2[i]) { chk++; }
+   else { chk--; }
+ }
+ return (chk != (int)strlen(src2));
+}
+
+
+[modified on 04/23/03 at 03:40:17]
+--------------------------------------------------
+04/23/03 at 12:57:42  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+what in the holy f*** are they talkin about... oh yes, but I guess it could be more effective with some assembly.
+Regrouping teams by alphabetic order, using one fitting function I let you figure out, I have only to make two byte comparisons plus at max three sums/multiplications to determine a team.
+But I think it could be even faster... ;D
+
+
+--------------------------------------------------
+04/23/03 at 13:15:56  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+brian your mstrcmp will be slow as it calls strlen each loop. You don't need to call it at all, just do a while loop and keep running it until the character of any of the strings is 0 (terminated) ;)
+
+anyway, heres another one lol ;D
+
+code:
+
+int mystrcmp ( const char *str1, const char *str2 )
+{
+      int i = 0;
+      int returnval;
+      char temp,temp2;
+
+      while ((temp = str[i]) && (temp2 = str2[i]) && (temp == temp2[i]))      
+            i++;
+      
+      if ( !temp )
+            return 0;
+      
+      if ( temp < str2[i] )
+            return -1;
+
+      return 1;
+}
+
+
+
+[modified on 04/23/03 at 13:15:56]
+--------------------------------------------------
+04/24/03 at 13:40:43  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+I beg you to allow me to make some corrections...
+QUOTE:
+
+anyway, heres another one lol ;D
+
+int mystrcmp ( const char *str1, const char *str2 )
+{
+      static int i = 0;
+      static int returnval;
+      static char temp,temp2;
+
+      while ((temp = str1[i]) && temp && (temp2 = str2[i]) && temp2 && (temp == temp2))      
+            i++;
+
+      if (!temp && !temp2)
+            return 1;
+
+      return -1;
+}
+
+
+
+"str" does not exist, you meant "str1" I think... Also declaring the variables static prevent the function to reallocate them all each time it is called, it is done only once. And also you have to check for the validity of your pointer each iteration of the while loop, else in case you're comparing 2 identical strings "i" would get beyond their bounds ;D
+
+[ edited ] looking to the function itself I'm not certain to find it even useful, I believe that's just what strcmp() does actually, isn't it ?
+
+[ edited again ] one more thing, you can't rely on comparing whether the pointers are different because they could still be different and the 2 strings could still be identical (but stored at 2 different places in memory). Don't write that fast, eh ! ;D
+
+[modified on 04/24/03 at 13:39:25]
+
+[modified on 04/24/03 at 13:40:43]
+--------------------------------------------------
+04/25/03 at 07:34:22  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+Yeah the lesson is, just use strcmp if you want to compare full strings ;D
+
+--------------------------------------------------
+05/05/03 at 04:09:00  Reply by: BaYoBot (bayobot@hotmail.com)
+--------------------------------------------------
+YOU are very crassy :)
+
+char mystrcmp ( char *str1, char *str2 ) 
+{
+   while(*str1&&*str2&&*str1++ == *str2++);
+   return *str1==*str2;
+}
+
+but strcmp is allready optimiser.
+0=0 is equal a head of Toto (frensh funny)
+***SORRY***
+
+[modified on 05/05/03 at 04:05:05]
+BE SERIOUS IT'S YOUR DESTINY :)
+
+[modified on 05/05/03 at 04:09:00]
+--------------------------------------------------
+05/30/03 at 01:17:39  Reply by: xepec (xepec@hotmail.com)
+--------------------------------------------------
+that should be
+
+return (*str1 - *str2);
+
+instead!
+
+--------------------------------------------------
+05/30/03 at 01:33:00  Reply by: xepec (xepec@hotmail.com)
+--------------------------------------------------
+And that's for complete nutcases :)
+
+
+;; C-convention, args pushed right to left, caller cleans up stack
+
+        .386
+        .model flat     ; sensible 32-bit code
+        .code
+
+public  strcmp          ; make a global symbol
+
+strcmp:                 ; (char* str1, char* str2)
+        push    ebp     ;save frame pointer
+        mov     ebp, esp
+        mov     esi, 8[ebp]     ; esi = str1 (pointer)
+        mov     edi, 12[ebp]    ; edi = str2 (pointer)
+;; WHILE characters equal and not end of string,
+scloop:
+        mov     al, [esi]       ; *str1 (char of first string)
+        mov     bl, [edi]       ; *str2
+        sub     al, bl          ; difference, al - bl
+        jne     scdone          ; if different, return difference
+        cmp     bl,0            ; if at end of (both) strings
+        jz      scdone          ; al will be 0, return as meaning equal
+        inc     esi             ; ELSE
+        inc     edi             ;       increment both pointers
+        jmp    scloop
+scdone:
+        cbw
+        cwd                     ; sign extend result to 32 bits (eax)
+        mov     esp, ebp
+        pop     ebp             ; restore frame pointer
+        ret                     ; return
+
+        ; eax < 0 means str1 < str2
+        ; eax = 0 means str1 = str2
+        ; eax > 0 means str1 > str2
+
+end             ;of assembling this file.
+
+

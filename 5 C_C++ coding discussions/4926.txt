@@ -1,0 +1,262 @@
+--------------------------------------------------
+Subject: allocating memory to a matrix?
+--------------------------------------------------
+10/25/03 at 05:02:40  Posted by: Cheesemonster!!! (cheeseh(at)rcbot(dot)net)
+--------------------------------------------------
+I've tried this many times, I want to try it with the 'new' statement, and not the 'malloc' function, I can compile it okay with malloc, but it doesn't allocate the memory properly? And with 'new' I get weird compile errors...
+
+Right so I know you can do stuff like..
+
+this will work..
+
+code:
+
+void testfunction ( int iSize )
+{
+   int *blah = new int[iSize];
+}
+
+
+
+so I thought doing a matrix might be similar..
+but this wont work..
+
+code:
+
+void testfunction ( int iSize )
+{
+   int **blah = new int[iSize][iSize];
+}
+
+
+
+I get weird errors like:
+
+
+code:
+
+error C2540: non-constant expression as array bound
+error C2440: 'initializing' : cannot convert from 'int (*)[1]' to 'int ** '
+        Types pointed to are unrelated; conversion requires reinterpret_cast, C-style cast or function-style cast
+
+
+
+wtf? What am I doing wrong?!
+
+--------------------------------------------------
+10/25/03 at 05:56:12  Reply by: LazyOne (the_lazy_one_09@hotmail.com)
+--------------------------------------------------
+I did a search on google and found a link to msdn about how to do this. Here's my example...
+
+code:
+
+#include <cstdio>
+#include <cstring>
+#include <cstdlib>
+#include <iostream>
+#include <fstream>
+using namespace std;
+
+void main( void )
+{
+      int ( *ptr )[ 5 ] = new int[ 5 ] [ 5 ];
+
+      ptr[ 4 ] [ 4 ] = 4;
+      printf( "%d\n", ptr[ 4 ] [ 4 ] );
+
+      delete[ ] ptr;
+}
+
+
+
+I hope thats what you're looking for.
+
+
+--------------------------------------------------
+10/25/03 at 07:51:42  Reply by: Cheesemonster!!! (cheeseh(at)rcbot(dot)net)
+--------------------------------------------------
+Yes that will work BUT it's not EXACTLY what I'm looking for...
+
+sure... this will work
+code:
+
+int (*blah)[5] = new int[5][5];
+
+
+
+But this wont...
+
+code:
+
+int (*blah)[] = new int [5][5];
+
+
+
+this is what im trying to do, I don't want the compiler to know how big it will be untill I allocate it.
+(since i am going to place [5][5] with something like [x][y])
+
+
+[modified on 10/25/03 at 07:51:42]
+--------------------------------------------------
+10/25/03 at 07:52:13  Reply by: @$3.1415rin (johannes@_-removeifnotavirus-_lampel.net)
+--------------------------------------------------
+interesting that that also works that way ...
+
+another possibility is to think about a matrix as a onedimensional field, accessing it by [x*ysize+y] or to use some **pointer, allocate a field for *pointers and then for each pointer a field for the real data ...
+
+--------------------------------------------------
+10/25/03 at 08:00:47  Reply by: Cheesemonster!!! (cheeseh(at)rcbot(dot)net)
+--------------------------------------------------
+Hmm... I was thinking about a one diemensional array, although it would be nice to access it through the subscripts [x][y].. Maybe a class with a 1d array with those operators if that's possible.....
+
+In Java you can do this easily by using
+
+int matrix[][] = new int [x][y];
+
+And you can use the nice subscripts :p
+I dont know why you can do this the same way in C++.
+
+Btw the error I get with 
+code:
+
+int (*blah)[] = new int [iX][iY];
+
+
+
+is yet another weird error...
+
+code:
+
+error C2540: non-constant expression as array bound
+error C2440: 'initializing' : cannot convert from 'int (*)[1]' to 'int (*)[]'
+        Types pointed to are unrelated; conversion requires reinterpret_cast, C-style cast or function-style cast
+
+
+
+[modified on 10/25/03 at 08:00:47]
+--------------------------------------------------
+10/25/03 at 08:06:09  Reply by: LazyOne (the_lazy_one_09@hotmail.com)
+--------------------------------------------------
+It compiles and works but on the fly I'm not sure how well this is written...
+
+code:
+
+int** dyn_alloc( int x, int y )
+{
+      int** ptr = ( int** ) malloc( sizeof( int** ) * x );
+
+      for ( register int i = 0; i < y; i++ )
+      {
+            ptr[ i ] = ( int* ) malloc( sizeof( int ) );
+      }
+
+      return ptr;
+}
+
+void main( void ) 
+{      
+      int** ptr = dyn_alloc( 100, 100 );
+
+      if ( ! ptr )
+      {
+            return;
+      }
+
+      ptr[ 50 ] [ 75 ] = 103;
+      printf( "%d\n", ptr[ 50 ] [ 75 ] );
+
+      free( ptr );
+} 
+
+
+
+
+--------------------------------------------------
+10/25/03 at 08:32:03  Reply by: Cheesemonster!!! (cheeseh(at)rcbot(dot)net)
+--------------------------------------------------
+Thanks I think that will work!
+
+I will need to see how to make a class operator for two subscripts though :( My test so far doesn't seem to be working, more errors in that department...
+
+Im making my own matrix class now to test it..
+
+code:
+
+
+template <class T>
+class CMatrix
+{
+public:
+      CMatrix( int iX, int iY ) 
+      { 
+            register int i;
+
+            m_iSizeX = iX;
+            m_iSizeY = iY;
+
+            m_theMatrix = ( T** ) malloc( sizeof( T** ) * m_iSizeX ); 
+            
+            for ( i = 0; i < m_iSizeY; i++ ) 
+            { 
+                  m_theMatrix[ i ] = ( T* ) malloc( sizeof( T ) ); 
+            } 
+            
+            return;
+      } 
+// dont think this is allowed?
+      T &operator [][] ( int iX, int iY )
+      {
+            assert(iX >= 0);
+            assert(iY >= 0);
+            assert(iX < m_iSizeX);
+            assert(iY < m_iSizeY);
+
+            return m_theMatrix[iX][iY];
+      }
+private:
+      T **m_theMatrix;
+
+      int m_iSizeX;
+      int m_iSizeY;
+
+};
+
+//
+(error C2092: array element type cannot be function)
+
+
+
+
+edit:
+
+Im using :
+      inline T &operator () ( int iX, int iY )
+      {
+            assert(iX >= 0);
+            assert(iY >= 0);
+            assert(iX < m_iSizeX);
+            assert(iY < m_iSizeY);
+
+            return m_theMatrix[iX][iY];
+      }
+
+now instead, but when ever I use it its always saying 'term does not evaluate to a function' but I made the operator for it.. so wth..?
+code:
+
+      CMatrix<int> *matrix = new CMatrix<int>(5,7);
+
+      int test = matrix(1,2);
+
+
+
+[modified on 10/25/03 at 08:32:03]
+--------------------------------------------------
+10/25/03 at 09:12:39  Reply by: LazyOne (the_lazy_one_09@hotmail.com)
+--------------------------------------------------
+There is a tutorial on the code project that does what your looking for. Well, it has the same name so I'll assume so.
+
+http://www.codeproject.com/cpp/matrixcontainer.asp
+
+That should be correct, I also failed to overload the () operator.
+
+

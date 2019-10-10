@@ -1,0 +1,43 @@
+--------------------------------------------------
+Subject: "temporary" client cvars
+--------------------------------------------------
+05/25/03 at 01:50:47  Posted by: JustinHoMi (stripper.20.skel@spamgourmet.org)
+--------------------------------------------------
+Hey. I was just thinking about writing a plugin that would need to change a client's cvars while they're on the server, but only while they're on. I was thinking about doing something like:
+
+ClientConnect:
+retrieve and save the client cvar
+
+ClientDisconnect:
+restore the original cvar
+
+So, I guess I have two questions.
+
+#1 Is it possible to get a client cvar?
+#2 Is there any way to catch when a client disconnects and send a msg beforehand? I've never messed w/ performing actions on players on ClientDisconnect, so I'm not sure if this message means they're already gone or not.
+
+Anyways, these are pretty easy questions for the gurus. I figured it's worth asking before spending gobs of time remembering how metamod works :)
+
+Thanks!
+Justin
+
+
+--------------------------------------------------
+05/25/03 at 06:52:14  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+AFAIK, and since there is *one* server, there can be only *one* location for CVARs, on it. I don't think it is possible to commit a change on a CVAR to be reflected on a client which change would not be reflected on the server.
+
+You would have to do client-side programming for that, and I'm not sure how to do this exactly. Perhaps using a third-party program that would hold a backup of your game.cfg file (I think that's the file where CVARs are stored between each session).
+
+
+--------------------------------------------------
+05/25/03 at 07:01:13  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+I think it will depend on which CVARs you are trying to access.  All of the "cl_" stuff is local to the client only.  You can't send those to the server without writing your own MOD (with a client.dll file) that allows the server to request a network packet with all of the client CVAR.
+
+You can set a client CVAR to whatever value you want by executing the CLIENT_COMMAND() function with the edict_t pointer of that player and the command sting you want to execute (with a '\n' appended to the end).  Commands would be executed just as if the player typed them into their local console.
+
+Some CVAR values are stored in the player's infobuffer string.  See the ClientUserInfoChanged() function in the client.cpp file for an example of extracting CVARs from the client's user info buffer (for example "name", "model", "cl_lw" are a few of them).
+
+botman
+

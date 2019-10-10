@@ -1,0 +1,53 @@
+--------------------------------------------------
+Subject: Upload from server to client, shortcut?
+--------------------------------------------------
+11/27/02 at 21:13:16  Posted by: RX (robotix2000@hotmail.com)
+--------------------------------------------------
+Hi all. Anyone figure out a way to upload to the client from the server without having to precache first to force downloading by the client?  Reason is, I'd like clients to be in the game playing, while recieving sounds, models etc.  Instead of having to sit there outside the map and download everything.  Any way to stream it similar to the way spray decals are uploaded and downloaded?  Tx.
+
+
+--------------------------------------------------
+11/28/02 at 05:57:39  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Simple answer, No.  You don't have access to the engine source code that handles downloading these entities to the client.
+
+Complicated answer, Yes, if you are the one creating the MOD.  If there are entities that are precached in the current map when the client connects, you can't wait until later to download those, they HAVE to be done before the player joins the server so that their list of entities matches everyone else's.  If you have a bunch of entities that won't be used until future maps, you can create a separate network socket between the client and the server and gradually transfer those files that will be needed later.  At the time that map is switched to, those files will already be on the client and it won't have to download them.
+
+botman
+
+--------------------------------------------------
+11/29/02 at 02:14:02  Reply by: RX (robotix2000@hotmail.com)
+--------------------------------------------------
+Ok, so in response to your complicated answer, they would have to have my client code on their side with code that I've written to create the stream between client/server?  Or is this funcionality already provided with the current engine and I just don't have access to the calls?
+I wanted to avoid having to distribute a client and stick to server side mods which are obviously much easier to distribute with the exception of the download issues stated previously.  Tx.
+
+
+--------------------------------------------------
+11/29/02 at 06:17:09  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+You will have to create your own MOD with your own client (i.e. you can't simply modify the client.dll of an existing MOD because you don't have the source code to that MOD).
+
+You can't do this server side because there's no hooks in the Half-Life engine to allow you to modify the network stream.
+
+The only option if you don't want to create your own MOD is to precache the entities when the map is started and the client will be forced to download those entities when they connect (before they join the server).
+
+botman
+
+--------------------------------------------------
+11/29/02 at 14:15:05  Reply by: RX (robotix2000@hotmail.com)
+--------------------------------------------------
+Yea unfortunately that's the way I'm doing it now, but the obvious drawback is that people drop because the dl time is too great.  Also, it's a catch 22, since I have to precache to use it on any map (sounds/models etc) it forces the DL regardless of what map it's on.  So, for instance, I can't space out the DLs among many maps because I need to precache the entire lot to use it on that particular map.
+
+On another note, I've noticed some servers present a message when people first connect to notify them of certain server informations, where to download stuff, rules etc...  I figured out the rejection message for clients contained in the ClientConnect()                   strcpy(szRejectReason, "your message.");
+when you return false.  However, sending text to the console never worked for me when people connect.  Is there a specific function I should use?  Tx.
+
+
+--------------------------------------------------
+11/29/02 at 15:36:40  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+If you are using ClientConnect() in a metamod plugin, are you OVERRIDING the MOD dll ClientConnect() function?  If not, metamod will call your ClientConnect(), you will return an error message, but metamod will then call the MOD's ClientConnect() function which will NOT return an error message and allow the client to connect.
+
+Use "RETURN_META(MRES_SUPERCEDE);" to indicate to metamod that you wish to override the MOD DLL's version of this function.
+
+botman
+

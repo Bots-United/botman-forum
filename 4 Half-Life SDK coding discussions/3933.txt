@@ -1,0 +1,63 @@
+--------------------------------------------------
+Subject: anyone familiar with BSP files ?
+--------------------------------------------------
+12/17/02 at 14:34:06  Posted by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Hey
+
+This simple question is directed to anyone who is familiar with the BSP files (don't hide overthere, I saw you!)
+
+Let's do short.
+What is the maximum number of edges a face can have ?
+
+
+I need to know this in order to know how much paths my "waypoints" (grr, do-not-laugh) will be allowed to have at max with each other. I've looked through Zoner's source code but I only found reference to the max number of edges a whole BSP file can contain, not a single face.
+
+
+--------------------------------------------------
+12/17/02 at 14:45:17  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Maximum number of edges a face can have?  Probably something like 65536.  I think this would only be limited by the rendering API.  You'd probably have to research DirectX and OpenGL to see what limitations they would have on the number of edges per polygon, but it's probably something pretty darn huge.
+
+The Half-Life engine has a limitation on the total number of faces, total number of edges, total number of planes, etc. because they have a fixed array size that will be used to store all of these items.  For example, look at the utils\common\bsp.h file...
+code:
+#define MAX_MAP_HULLS 4
+
+#define MAX_MAP_MODELS     400
+#define MAX_MAP_BRUSHES    4096
+#define MAX_MAP_ENTITIES   1024
+#define MAX_MAP_ENTSTRING  (128*1024)
+
+#define MAX_MAP_PLANES     32767
+#define MAX_MAP_NODES      32767 // because negative shorts are contents
+#define MAX_MAP_CLIPNODES  32767 //
+#define MAX_MAP_LEAFS       8192
+#define MAX_MAP_VERTS      65535
+#define MAX_MAP_FACES      65535
+#define MAX_MAP_MARKSURFACES 65535
+#define MAX_MAP_TEXINFO     8192
+#define MAX_MAP_EDGES     256000
+#define MAX_MAP_SURFEDGES 512000
+#define MAX_MAP_TEXTURES     512
+
+Some of these limitations are mainly due to the WAY that items are stored.  For example, plane numbers are stored as 'short int' which limits them to -32768 < x < 32767.  Negative plane numbers mean something special, so you can only have positive plane numbers and thus planes must be 1 < x < 32767 (which limits you to 32767 planes).
+
+botman
+
+[modified on 12/17/02 at 14:45:17]
+--------------------------------------------------
+12/17/02 at 15:18:41  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+uhhh.... too bad.... I don't see myself coding a 16384 wayzones * (12-byte vector + (2-byte short * 65535)) -sized array.
+
+Guess I will have to limit that somehow. Is there a simple way to figure out a reasonable average ?
+/me checks your bsp_tools...
+
+
+--------------------------------------------------
+12/17/02 at 17:15:15  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+It sounds like you are trying to put a waypoint at each vertex of a face.  Why do you want to put the waypoints so close together?
+
+botman
+

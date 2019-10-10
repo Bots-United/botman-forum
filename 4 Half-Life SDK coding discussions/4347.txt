@@ -1,0 +1,144 @@
+--------------------------------------------------
+Subject: Spectator compile problem
+--------------------------------------------------
+04/25/03 at 16:25:00  Posted by: corbin_mike (corbin_mike@hotmail.com)
+--------------------------------------------------
+Hi, Im implementing Spectate code into Halflife DMC.
+ 
+I used Robin Walkers code and then I added the tut on this page -- http://www.tourofdutymod.com/tutorials.php?sec=spectator.
+
+I added vgui_SpectatorPanel.cpp and .h to the project as instructed. 
+ 
+Everything compiled with no errors until here :
+ 
+Compiling...
+vgui_SpectatorPanel.cpp
+D:\DMC_MIDAIR FINAL\Multiplayer Source\dmc\cl_dll\vgui_viewport.h(11) : fatal error C1083: Cannot open include file: 'VGUI_Panel.h': No such file or directory
+Error executing cl.exe.
+Creating browse info file...
+BSCMAKE: error BK1506 : cannot open file '.\Releasedmc\vgui_SpectatorPanel.sbr': No such file or directory
+Error executing bscmake.exe.
+ 
+dmc.dll - 2 error(s), 0 warning(s)
+ 
+What am I doing wrong ? Im guessing that I didnt add vgui_SpectatorPanel.cpp and .h correctly??...I just clicked project-->add files and selected those 2 files from the cl_dll folder..
+
+The 2.2 code worked after compile but after I implemented the TUT for 2.3 is when the problem started..
+
+Thanks
+ 
+
+[modified on 04/25/03 at 16:25:00]
+--------------------------------------------------
+04/25/03 at 16:32:33  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+It looks like you don't have the Include paths set up properly for this project to find the VGUI\Include directory.
+
+Check the compiler options in the Project settings and make sure you C++ include path includes the proper directory (I think it's utils\vgui\include).
+
+botman
+
+--------------------------------------------------
+04/25/03 at 17:25:42  Reply by: corbin_mike (corbin_mike@hotmail.com)
+--------------------------------------------------
+Wow, that was fast..
+
+That sounds like the fix..Ill check when I get home, but I did not set up the compiler to do that. So that must be the problem.
+
+Thanks a lot Botman
+
+--------------------------------------------------
+04/26/03 at 21:26:32  Reply by: corbin_mike (corbin_mike@hotmail.com)
+--------------------------------------------------
+ok, i've got a bigger problem now --
+
+vgui_SpectatorPanel.obj : error LNK2001: unresolved external symbol "private: virtual void __thiscall vgui::Font::init(char const *,void *,int,int,int,float,int,bool,bool,bool,bool)" (?init@Font@vgui@@EAEXPBDPAXHHHMH_N222@Z)
+
+.\Releasedmc/dmc.dll : fatal error LNK1120: 384 unresolved externals
+
+That is just the end of the compile, too many errors to post.. 385 in all..
+
+Here is what i've done --
+
+project-->project settings-->C/C++ tab
+
+In project options box this is what I HAD (DEFAULT) :
+
+/nologo /G5 /MT /W3 /Zi /O2 /I "..\..\engine" /I "..\..\common" /I "." /I "..\..\game_shared" /I "..\dlls" /I "..\pm_shared" /I "..\\" /D "NDEBUG" /D "WIN32" /D "_WINDOWS" /D "QUIVER" /D "VOXEL" /D "QUAKE2" /D "VALVE_DLL" /Fr".\Releasedmc/" /Fp".\Releasedmc/dmc.pch" /YX /Fo".\Releasedmc/" /Fd".\Releasedmc/" /FD /c
+
+This is what I changed it to :
+
+ /nologo /G5 /MT /W3 /Zi /O2 /I "..\..\engine" /I "..\common" /I "..\utils\vgui\include" /I "..\..\common" /I "." /I "..\..\game_shared" /I "..\dlls" /I "..\pm_shared" /I "..\..\utils\vgui\include" /I "..\\" /D "NDEBUG" /D "WIN32" /D "_WINDOWS" /D "QUIVER" /D "VOXEL" /D "QUAKE2" /D "VALVE_DLL" /Fr".\Releasedmc/" /Fp".\Releasedmc/dmc.pch" /YX /Fo".\Releasedmc/" /Fd".\Releasedmc/" /FD /c
+
+Im guessing I need to add another file to my project because of all the unresolved symbol errors..
+
+Surly im not the only one who has added this spectator code to a mod...
+
+Any Ideas ??
+
+Thanks 
+
+--------------------------------------------------
+04/27/03 at 07:32:59  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+vgui::Font::init() will be in the vgui.lib library.
+
+You will need to add utils\vgui\lib\win32_lib to the library path and add vgui.lib to the list of libraries in your project.
+
+botman
+
+--------------------------------------------------
+04/27/03 at 10:28:42  Reply by: corbin_mike (corbin_mike@hotmail.com)
+--------------------------------------------------
+Ok, That helped alot but I got 16 linking errors..
+
+Linking...
+   Creating library .\Releasedmc/dmc.lib and object .\Releasedmc/dmc.exp
+vgui_SpectatorPanel.obj : error LNK2001: unresolved external symbol "struct cl_enginefuncs_s gEngfuncs" (?gEngfuncs@@3Ucl_enginefuncs_s@@A)
+vgui_SpectatorPanel.obj : error LNK2001: unresolved external symbol "public: void __thiscall CHudSpectator::SetModes(int,int)" (?SetModes@CHudSpectator@@QAEXHH@Z)
+vgui_SpectatorPanel.obj : error LNK2001: unresolved external symbol "public: int __thiscall CHudSpectator::ToggleInset(bool)" (?ToggleInset@CHudSpectator@@QAEH_N@Z)
+vgui_SpectatorPanel.obj : error LNK2001: unresolved external symbol "public: void __thiscall CHudSpectator::FindNextPlayer(bool)" (?FindNextPlayer@CHudSpectator@@QAEX_N@Z)
+vgui_SpectatorPanel.obj : error LNK2001: unresolved external symbol "class CHud gHUD" (?gHUD@@3VCHud@@A)
+vgui_SpectatorPanel.obj : error LNK2001: unresolved external symbol "public: void __thiscall TeamFortressViewport::ShowCommandMenu(int)" (?ShowCommandMenu@TeamFortressViewport@@QAEXH@Z)
+vgui_SpectatorPanel.obj : error LNK2001: unresolved external symbol "class TeamFortressViewport * gViewPort" (?gViewPort@@3PAVTeamFortressViewport@@A)
+vgui_SpectatorPanel.obj : error LNK2001: unresolved external symbol "public: void __thiscall CommandButton::setBoundKey(char)" (?setBoundKey@CommandButton@@QAEXD@Z)
+vgui_SpectatorPanel.obj : error LNK2001: unresolved external symbol "public: __thiscall CommandButton::CommandButton(char const *,int,int,int,int,bool)" (??0CommandButton@@QAE@PBDHHHH_N@Z)
+vgui_SpectatorPanel.obj : error LNK2001: unresolved external symbol "public: class vgui::Font * __thiscall CSchemeManager::getFont(int)" (?getFont@CSchemeManager@@QAEPAVFont@vgui@@H@Z)
+vgui_SpectatorPanel.obj : error LNK2001: unresolved external symbol "public: int __thiscall CSchemeManager::getSchemeHandle(char const *)" (?getSchemeHandle@CSchemeManager@@QAEHPBD@Z)
+vgui_SpectatorPanel.obj : error LNK2001: unresolved external symbol "public: void __thiscall TeamFortressViewport::UpdateCursorState(void)" (?UpdateCursorState@TeamFortressViewport@@QAEXXZ)
+vgui_SpectatorPanel.obj : error LNK2001: unresolved external symbol "public: int __thiscall CHudTextMessage::MsgFunc_TextMsg(char const *,int,void *)" (?MsgFunc_TextMsg@CHudTextMessage@@QAEHPBDHPAX@Z)
+vgui_SpectatorPanel.obj : error LNK2001: unresolved external symbol "public: static char * __cdecl CHudTextMessage::BufferedLocaliseTextString(char const *)" (?BufferedLocaliseTextString@CHudTextMessage@@SAPADPBD@Z)
+vgui_SpectatorPanel.obj : error LNK2001: unresolved external symbol "public: void __thiscall TeamFortressViewport::HideCommandMenu(void)" (?HideCommandMenu@TeamFortressViewport@@QAEXXZ)
+.\Releasedmc/dmc.dll : fatal error LNK1120: 15 unresolved externals
+Error executing link.exe.
+
+dmc.dll - 16 error(s), 0 warning(s)
+
+
+Sorry for the repetitive problem that I cant solve, but, linking errors have always put me to a standstill. Can you "explain" the error to me and the solution so that I can learn to fix these problems on my own ? I know these errors will come up again..
+
+In the other small mods that I have done I have not had to work with client.dll. The one i'm working on now is cl_dll and dll..
+
+Thank You
+
+--------------------------------------------------
+04/27/03 at 15:33:21  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+The stuff with "CHudSpectator" looks like it might be from Robin Walker's spectator code.  You'll have to determine why those functions are missing (perhaps you have them and they have a different number of arguments or the arguments types don't match?).
+
+For the other stuff you should search through the Half-Life SDK source code to see if those functions are defined and copy them to your project.  The "TeamFortressViewport" stuff definitely comes from the SDK source code (in the cl_dll folder I think).
+
+botman
+
+--------------------------------------------------
+04/28/03 at 00:03:00  Reply by: corbin_mike (corbin_mike@hotmail.com)
+--------------------------------------------------
+well, It compiled and works, dont know how though..
+
+I removed vgui_SpectatorPanel.cpp and .h and didn't get any errors..I added these files to the project as per the tut so I WOULDN'T get errors..
+
+weird
+
+Thanks Botman
+
+

@@ -1,0 +1,77 @@
+--------------------------------------------------
+Subject: Custom HUD Icons
+--------------------------------------------------
+07/03/01 at 10:40:32  Posted by: Spectual (spectual@hotmail.com)
+--------------------------------------------------
+Is it possible to create your own HUD (head up display) icons like the "basket" icon in counter strike?
+
+--------------------------------------------------
+07/03/01 at 10:50:48  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+yes, these are stored as sprite files (.spr) and are located in the sprites folder of the mod (or pak file)
+
+--------------------------------------------------
+07/03/01 at 12:05:52  Reply by: Spectual (spectual@hotmail.com)
+--------------------------------------------------
+can you give me hint on which functions I need to run?
+
+--------------------------------------------------
+07/03/01 at 12:23:59  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+To create sprites or to display them?
+
+In the SDK utils directory is a utility to create sprites (sprgen.exe I believe).
+
+To use a sprite in the client code, you'll need to load it, LoadSprite("whatever.spr"), then you can use SPR_Set() to set the color of the sprite and SPR_Draw() or SPR_DrawAdditive() to draw the sprite.  Search the client .cpp files for "SPR_" and you'll find the sprite functions.
+
+botman
+
+--------------------------------------------------
+07/03/01 at 18:26:52  Reply by: Spectual (spectual@hotmail.com)
+--------------------------------------------------
+I've implemented (correctly?) the SPR_Load, SPR_Set, SPR_DrawAdditive, SPR_Draw from the SDK into the (HPB) template. However, halflife crashes when executing following code:
+
+              wrect_t rect;
+
+              HSPRITE spritehandle = SPR_Load ( "sprites/waypoint_bot/jump_icon.spr" );
+            
+              if (spritehandle == NULL) {
+              
+                    char besked [50];
+                    strcpy (besked, "Load failure\n");
+                  ClientPrint( VARS(pEntity), HUD_PRINTNOTIFY, besked);
+
+                    return;
+              }
+
+              SPR_Set ( spritehandle, 0, 255, 0 );
+
+              rect.bottom = 80;
+              rect.top = 0;
+              rect.left = 0;
+              rect.right = 80;
+
+              SPR_DrawAdditive ( 0, 100, 100, &rect);
+
+              return;
+
+- - - -
+
+I know by testing it that it crashes when executing SPR_Set (.....) 
+
+Any idea which causes this?
+Does sprites have to be precached also ? (I do it currently)
+Is it the correct way to test whether a load has failed?
+Is there limitations for when the code may be executed or refrased: when would be the most right time to execute it?
+
+
+
+--------------------------------------------------
+07/04/01 at 08:03:56  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+The sprite functions all have to be done in the client DLL code (SourceCode\cl_dll in the Standard SDK).  Sprite functions can't be used on the server (which is where the HPB bot code runs).
+
+You can't change the client.dll used by a MOD (other than replacing one sprite with another).  You can't add brand new sprites to the HUD without replacing or bypassing the client DLL file.  See other threads talking about client side bots for information on bypassing the client DLL.
+
+botman
+

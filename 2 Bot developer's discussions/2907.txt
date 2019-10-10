@@ -1,0 +1,141 @@
+--------------------------------------------------
+Subject: BSP_tool question
+--------------------------------------------------
+03/27/02 at 12:54:11  Posted by: jm3 (matt@modelsoftware.com)
+--------------------------------------------------
+I'm looking at getting BSP_tool to support cstrike.  I'm looking at doing some post-processing of waypoints, possibly doing visibility mapping, possibly some other higher order ideas, but the first step is understanding a bit more about how BSP_tool works.
+
+Remedial question here:
+
+WaypointAddEntities("item_battery", W_FL_ARMOR);
+
+I could replace "item_battery" with any entity name (like whatever the entity name for a hostage point is, or the CT/T spawn points), and i could replace W_FL_ARMOR with another bitmask defined elsewhere -- right?  I am reading that this function searches the bsp for entities with said name, and adds waypoints with their locations / flags to the file.
+
+Also: is there a reason why HPB_bot only supports 1000 waypoints?  Just a good number, or is there a hard limit somewhere?
+
+B
+TW, On William's site, I found "Qualitative Spatial Reasoning Improves Strategy Game AI" kinda interesting.
+
+They talked about using a Hybrid of "cell decomposition" (think hexes) with "skeletonization" (navigate locally to part of a skeleton, follow skeleton, then leave the skeleton.
+
+So that was kinda neat.  Anyway, back to some real work.
+
+-Matt
+
+--------------------------------------------------
+03/27/02 at 14:37:33  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+"I am reading that this function searches the bsp for entities with said name, and adds waypoints with their locations / flags to the file."
+
+Correct.  The function searches the BSP file for the entities matching that name and creates a waypoint for those entities setting the W_FL_XXX bitmask in the process.
+
+"Also: is there a reason why HPB_bot only supports 1000 waypoints?"
+
+Yes, I am using a Floyd matrix for the path finding code.  The Floyd algorithm creates an array that is NxN in size (in this case 1024x1024 = 1 Meg).  So the Floyd routing table for 1024 waypoints will take up one megabyte of memory.  You can see why I don't want to allow 10,000 waypoints! ;D
+
+botman
+
+[modified on 03/27/02 at 14:37:33]
+--------------------------------------------------
+03/28/02 at 05:52:15  Reply by: William (william@cgf-ai.com)
+--------------------------------------------------
+QUOTE:
+
+B 
+TW, On William's site, I found "Qualitative Spatial Reasoning Improves Strategy Game AI" kinda interesting. 
+
+They talked about using a Hybrid of "cell decomposition" (think hexes) with "skeletonization" (navigate locally to part of a skeleton, follow skeleton, then leave the skeleton. 
+
+So that was kinda neat.  Anyway, back to some real work. 
+
+-Matt 
+
+
+
+
+I actually contacted Ken Forbus about that paper. Sadly, they had not done very much work on that topic and weren't going to do much more on it.
+I guess they completed that research project for the military.
+
+William
+
+--------------------------------------------------
+03/28/02 at 09:35:56  Reply by: jm3 (matt@modelsoftware.com)
+--------------------------------------------------
+Actually, I'm considering this:
+
+a hybrid cell/skeleton model would be very similar to doing a hierarchical waypoint model.
+
+I actually like a hierarchical model better, it seems like it would be more flexible, as one could do something on a higher order.
+
+Precompute paths on a smaller set of waypoints that are higher in level, use this for planning.  Then, only compute SOME paths for the lower level waypoints.
+
+Meaning: say you use "rooms" for superpoints, and points within rooms as subpoints.  you only need to compute paths from room to room, not from all waypoints to all other waypoints.
+
+Even better, if you designate waypoints as "links" between rooms, you can calculate paths from all points in a room to the various "links" -- so you end up with many smaller paths, as opposed to one large 1024x1024 grid.
+
+thoughts?
+
+--------------------------------------------------
+03/28/02 at 09:42:09  Reply by: jm3 (matt@modelsoftware.com)
+--------------------------------------------------
+i also like the "visibility graph" in "formation based pathfinding with real world vehicles" by Jim Van Verth et al.
+
+i think it could be powerful for navigation within rooms, but i'm not sure how well it applies to a 3d space (Read cstrike) -- i get the feeling that it would work much better for a RTS game with troop movement, which i assume it was used for.
+
+so maybe use waypoitns sparingly, and have areas where visibility graphs reign.  it's an idea, but i think a heirarchical waypoint system would work better.
+
+Now, the problem is how to automate waypoint placement with a hierarchical model, or at least how to make it simple.
+
+--------------------------------------------------
+03/28/02 at 12:59:31  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+I REALLY like the way Jan Paul van Waveren handles areas using his AAS (area awareness system).
+
+Dividing the map areas up into reachable space and the way the areas are subdivided around gaps that the bots would fall through seems to very closely resemble the way the BSP tree is generated by the map compile tools.
+
+This method is somewhat difficult to understand and use effectively until you REALLY understand how the BSP tree stores it's data.  Once you've got a good grasp on how the BSP tree works (and is built), you gain a better understanding of how the Quake III bots are able to do what they can do.
+
+botman
+
+--------------------------------------------------
+03/28/02 at 13:45:46  Reply by: jm3 (matt@modelsoftware.com)
+--------------------------------------------------
+yes, i've read that one.
+
+What do you think AAS gets you that a hierarchical waypoint system wouldnt?
+
+I really like the idea of having bots think at different levels (strategy, path, navigation, etc).  What you use to reason on the world could change, and you'd just have to change the code at one level.
+
+Ie, you could do gross strategy on a high level representation, and navigation on low level, and you could change the low level representation between something like AAS and a simple waypoint grid.
+
+I suppose AAS would guarantee you dont run into obstacles, but good waypointing would do this, also.  Good waypointing may be overly memory consuming, though.
+
+-Matt
+
+
+--------------------------------------------------
+03/28/02 at 15:51:30  Reply by: William (william@cgf-ai.com)
+--------------------------------------------------
+QUOTE:
+This method is somewhat difficult to understand and use effectively until you REALLY understand how the BSP tree stores it's data.  
+
+botman
+
+
+
+
+And until you figure out how to deal with floating point math inaccuracies and epsilons. That's where Jan Paul spend the other half of hit time :(
+
+William
+
+--------------------------------------------------
+03/28/02 at 18:33:54  Reply by: theimann (killaruna@botepidemic.com)
+--------------------------------------------------
+QUOTE:
+the problem is how to automate waypoint placement with a hierarchical model, or at least how to make it simple.
+
+
+I have done that for Parabot with a two level hierarchy. All entities in a map are navpoints which are connected by different paths. The paths consist of several waypoints describing the exact route. To navigate somewhere the bots check which entities they have to pass and then get the waypoints as they are advancing on their route. The automated placement is done by an observer module tracking all player movements.
+
+Tobias
+

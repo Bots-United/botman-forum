@@ -1,0 +1,80 @@
+--------------------------------------------------
+Subject: Mingw32 vgui
+--------------------------------------------------
+09/25/00 at 13:05:24  Posted by: pikachu (emperorstuart@hotmail.com)
+--------------------------------------------------
+For those of you who want to see how far botman got with mingw32 cgui implementation, here it is.
+
+note : all other vgui stuff is commented out in the other files. No vgui stuff is used except vgui_int.h
+This code is Copyright (c)2000 botman.
+
+
+#include <windows.h>
+
+#include "hud.h"
+#include "cl_util.h"
+#include "vgui_int.h"
+//#include "vgui_panel.h"
+
+HINSTANCE h_Library = NULL;
+
+
+typedef int (FAR *VGUI_PANEL)(void);
+VGUI_PANEL vgui_Panel;
+typedef int (FAR *VGUI_SETBGCOLOR)(int r,int g,int b,int a);
+VGUI_SETBGCOLOR vgui_setBgColor;
+
+
+void* VGui_GetPanel()
+{
+      return (void*)gEngfuncs.VGui_GetPanel();
+}
+
+
+void Load_VGUI_DLL(void)
+{
+   h_Library = LoadLibrary("vgui.dll");
+
+   vgui_Panel = (VGUI_PANEL)GetProcAddress(h_Library, "??0Panel@vgui@@QAE@XZ");
+
+   vgui_setBgColor = (VGUI_SETBGCOLOR)GetProcAddress(h_Library, "?setBgColor@Panel@vgui@@UAEXHHHH@Z");
+
+   FILE *fp=fopen("cl.txt", "a");
+   fprintf(fp, "h_Library=%x\n", (void *)h_Library);
+   fprintf(fp, "vgui_Panel=%x\n", (void *)vgui_Panel);
+   fprintf(fp, "vgui_setBgColor=%x\n", (void *)vgui_setBgColor);
+   fclose(fp);
+}
+
+
+// ?setBgColor@Panel@vgui@@UAEXHHHH@Z
+
+
+void VGui_Startup()
+{
+//
+void *root = VGui_GetPanel();
+
+   Load_VGUI_DLL();
+
+   (*vgui_Panel)();
+
+      root->setBgColor(128,128,0,0);
+   (*vgui_setBgColor)(128,128,0,0);
+
+      root->setLayout(new BorderLayout(0));
+
+      if (gViewPort != NULL)
+         {
+            gViewPort->Initialize();
+      }
+      else
+      {
+            gViewPort = new TeamFortressViewport(0,0,root->getWide(),root->getTall());
+            gViewPort->setParent(root);
+      }
+
+}
+
+
+

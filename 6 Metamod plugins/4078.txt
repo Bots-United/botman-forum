@@ -1,0 +1,97 @@
+--------------------------------------------------
+Subject: Monster Plugin Error
+--------------------------------------------------
+01/25/03 at 17:03:39  Posted by: Cookster (rgcook@comcast.net)
+--------------------------------------------------
+Alright, I searched forums, didn't find much:
+
+The mod I'm trying to spawn monsters in is Earth Special Forces:
+
+I can spawn creatures just fine, but I noticed as soon as they attack me the game crashes. Well when I had units shooting bullets at me anyways, I had sound and activity and everything until there was contact with my unit that i control.
+
+The error it gave was:
+
+PF-MessageEnd_1: Unknown User Msg 128
+(this error came when a zombie hit me, server didn't crash until it hit me a second time.)
+
+The second error when the crash occured was:
+
+Host_Error: Dispatch UserMsg: Illegal User Msg 128
+
+Any ideas?
+
+--------------------------------------------------
+01/26/03 at 05:41:54  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+I don't remember specifically, but perhaps 128 is the damage message (that shows the red triangular areas on the HUD in Half-Life to indicate where damage is coming from).
+
+Does ESF have this kind of damage indicator on the HUD?  If not, that's probably what's causing the crash.
+
+There's not much you can do about it unless you want to download the Monster plugin souce code, comment the part out where damage is sent, then recompile the plugin.
+
+botman
+
+--------------------------------------------------
+01/26/03 at 10:24:00  Reply by: Cookster (rgcook@comcast.net)
+--------------------------------------------------
+I'll try and comment out that damage part, downloaded source code, but where is this damage part?
+
+Thanks for quick reply too botman. Thought I'd have to wait a week or so he'h.
+
+--------------------------------------------------
+01/26/03 at 11:42:25  Reply by: Cookster (rgcook@comcast.net)
+--------------------------------------------------
+So I talked to director of the mod, he said that ESF doesn't use damage flashes (assuming thats what your implying the monsters DO use. Which would explain the crashing.)
+
+So if I did comment this out (once I find it - is it based per monster?) would that mean that they just don't do damage? :( ???
+
+--------------------------------------------------
+01/26/03 at 12:34:45  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+In the util.cpp there's a UTIL_TakeDamage() function.  Look in there for the following...
+code:
+if (gmsgDamage == 0)
+      gmsgDamage = REG_USER_MSG( "Damage", -1 );
+
+MESSAGE_BEGIN( MSG_ONE, gmsgDamage, NULL, VARS(pEdict) );
+      WRITE_BYTE( 0 );
+      WRITE_BYTE( fTookDamage );
+      WRITE_LONG( visibleDamageBits );
+      WRITE_COORD( pevInflictor->origin.x );
+      WRITE_COORD( pevInflictor->origin.y );
+      WRITE_COORD( pevInflictor->origin.z );
+MESSAGE_END();
+
+Just comment that whole section out and rebuild the DLL.  That should prevent the damage message from being sent to players.
+
+botman
+
+--------------------------------------------------
+01/26/03 at 15:22:16  Reply by: Cookster (rgcook@comcast.net)
+--------------------------------------------------
+Well I did that, but I'm brand new to coding. I just took my first java class. The only compiler I have that I know how to use is made for compiling java.... so how do I go about compiling a DLL Module? 
+
+Btw I'm on windows XP? I was looking at boorlands free C++ Compiler, I'm cluess.... Can you direct me towards some clues as to how to do this?
+
+--------------------------------------------------
+01/27/03 at 05:48:34  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+You need Microsoft Visual C++ (or Visual Studio or Studio .NET).  All of which are fairly expensive.
+
+Someone at one point was trying to get the Monster plugin to compile using either Borland or MinGW free C++ compiler, but I don't know if they ever got it working (I don't think so).
+
+If you know anything about Makefile's you can try to download either MinGW (from www.mingw.org) or Borland's free command line compiler (version 5.5) from Borland's website, create a Makefile for the Monster plugin and try to compile it.
+
+I know much of the code will give you errors right off the bat since the Monster plugin source code can pretty much straight out of the SDK and you have to run patches on the SDK to get it to compile with Borland or MinGW.  See my "Building the SDK" page on my website for details.
+
+Good luck!  ;D
+
+botman
+
+--------------------------------------------------
+01/27/03 at 15:52:37  Reply by: Cookster (rgcook@comcast.net)
+--------------------------------------------------
+me'h, to much work for now. Maybe I'll pick this project up again later. he'h
+
+Thanks
+

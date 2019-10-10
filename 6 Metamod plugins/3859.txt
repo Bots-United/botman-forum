@@ -1,0 +1,492 @@
+--------------------------------------------------
+Subject: Adding frag count to monster plugin
+--------------------------------------------------
+11/24/02 at 14:10:03  Posted by: buzzkill (buzzkill@digitalwidget.net)
+--------------------------------------------------
+The subject is hopefully fairly self-explanatory. I have looked at blatt's plugin which supposedly does this (an enhancement of yours), but it seems to be very unstable, and I don't like the fluff it adds.
+
+I've coded in C++ off and on for the last 10 years, so while I might be clueless about the libraries needed/used for the HL SDK, I have a handle on the basic premise.
+
+So, that being said..  I need to reference the attacking player via pevAttacker in CMBaseMonster::Killed. For example...
+
+CMBaseEntity *ep = CMBaseEntity::Instance( pevAttacker );
+      if ( ep && ep->Classify() == CLASS_PLAYER )
+      {
+            CBasePlayer *PK = (CBasePlayer*)ep;
+
+
+ I can then call PK->AddPoints() and increment as desired. My problem is, how/what the heck do I link to gain access to CBasePlayer? Pulling player.cpp and player.h in from the SDK begins a long, dark journey that ultimately ends in cbase.h and cmbase.h getting into fights with each other during compile. Do I need to do (what I think) you did, and copy each class I need over (CBasePlayer, CBasePlayerItem, etc) and create new CMBaseXXXXX classes? Or am I WAY off base here?
+
+Sorry if I missed something basic and ancient in terms of plugin creation and leveraging existing classes.
+
+Thanks,
+Mike
+
+--------------------------------------------------
+11/24/02 at 15:09:40  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+"how/what the heck do I link to gain access to CBasePlayer?"
+
+You don't.  You don't have the C++ source code for the MOD so you can't tell what their version of player.h (with the CBasePlayer class) looks like.  You don't know what changes they've made and therefore you can't assume anything about what the CBasePlayer class looks like for any MOD except Half-Life deathmatch (which you already have the source code for).
+
+Likewise, you also don't know anything about what a MOD's CBaseEntity class looks like either, so you can't use that as well.
+
+The only thing you KNOW that the MOD hasn't changed is the edict_t structure.  The edict_t structure is used internally by the Half-Life engine and MOD's can not change it.  Everything that you need to do with metamod plugins will need to only mess with the edict_t structure, not CBaseEntity or CBasePlayer.
+
+botman
+
+--------------------------------------------------
+11/25/02 at 04:31:12  Reply by: buzzkill (buzzkill@digitalwidget.net)
+--------------------------------------------------
+Cool.. thanks. I knew I was overthinking things. That's the direction I needed.
+
+Regards,
+Mike
+
+--------------------------------------------------
+11/25/02 at 11:34:08  Reply by: buzzkill (buzzkill@digitalwidget.net)
+--------------------------------------------------
+Ok.. I know I'm setting myself up for a RTFM flame (for good reason), but I'll stick my head out and ask anyway...
+
+If you're saying I can't rely on knowing the construction of mod-specific CBasePlayer, CBaseEntity, etc, are you saying I can't force a cast to a CBasexxx type or inherit from them? How am I supposed to call class-specific functions (i.e., AddPoints) if I can't cast a class pointer?
+
+I *COULD* duplicate the functionality of AddPoints within the ::Killed function (increment frags, post a TeamScore message, etc), but the purist in me doesn't like that idea.
+
+There must be an ability to assume some baseline characteristics, otherwise how could anyone write anything? Where did your CMxxx classes come from? 
+
+Now having said all that, let me sound REALLY stupid and state what I think is going on:  You pulled the classes you needed from the SDK and retooled them to your purposes (including the C"M"xxx rename). So in theory if I wanted a C"M"BasePlayer, I'd copy it from the SDK and retool it to my own purposes. (which I tried as an approach, but got frightened off when i started encountering major luggage problems with CBasePlayerItem). As long as I only pass a properly formed/managed edict_t around, in truth who cares what classes I make in the plugin, right? (C++ 101 question, I know)
+
+
+(note, my argumentative tone isn't in any way surliness on my part -- I'm just usually clearer in explaining my position/quesiton/confusion when I take a devil's advocate position).
+
+Regards,
+Mike (who is feeling dumber and dumber each day)
+
+--------------------------------------------------
+11/25/02 at 11:36:31  Reply by: buzzkill (buzzkill@digitalwidget.net)
+--------------------------------------------------
+follow-up:  You can probably sense my hangup about this whole thing. Subconciously I think pointers to CBasePlayer/etc, will be passed by the plugin in/out of the mod. But this, of course, isn't true, so the idea of inheriting from CBasePlayer (or linking a .lib, etc) loses it's value.
+
+--------------------------------------------------
+11/25/02 at 12:45:41  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+"How am I supposed to call class-specific functions (i.e., AddPoints) if I can't cast a class pointer?"
+
+Like you stated in your follow up, the MOD doesn't export the class methods (functions) for you to access as a hook between the engine and the MOD DLL code, so you can't call these functions anyway even if you knew what they were.
+
+"Where did your CMxxx classes come from?"
+
+I created my own unique classes based on code from the SDK, but SEPARATE from the MOD DLL code.  My classes don't rely on anyway to whatever classes may or may not exist in the MOD DLL code (since I don't have access to the internals of it, I can't make any assumptions about what's in it).
+
+"So in theory if I wanted a C"M"BasePlayer, I'd copy it from the SDK and retool it to my own purposes."
+
+Correct.  As long as YOUR DLL is the only one using this C++ class, you can do whatever you want with it (and code it however you see fit).  The only thing you can't do is expect to pass your C++ class into the MOD DLL or attempt to extract the MOD DLL class out and somehow use that as your C++ class).
+
+It's pretty difficult starting with the Half-Life SDK source code and trying to use that in a metamod plugin.  It was MUCH easier for me to start EVERYTHING from scratch.  My original CMBaseEntity class had one variable in it "pev" and I gradually added more and more variables and functions from the original SDK CBaseEntity until it contained everything I needed.
+
+If you do a "diff" of the original Half-Life SDK CBaseEntity and my CMBaseEntity, you'll noticed that there are some differences besides just the name being different.
+
+The name change helped to insure that I was catching all the places where the SDK source code made assumptions about how the class heirachy was structured (i.e. the compiler would spit out lots of errors about undefined class names).
+
+The Monster plugin wasn't created in just a few days.  I spent months gradually adding in stuff and had MANY, MANY problems just trying to get the simplest monster to spawn into a MOD.  The big advantage that I had was that I had been using the Half-Life SDK for 2+ years before starting the Monster plugin and I knew the SDK source code backwards and forwards.  If you are just starting to learn the Half-Life SDK, you have a lot of things to get accustomed to and it will take some time to get up to speed.
+
+botman
+
+[modified on 11/25/02 at 12:45:41]
+--------------------------------------------------
+11/25/02 at 13:04:30  Reply by: buzzkill (buzzkill@digitalwidget.net)
+--------------------------------------------------
+<CLICK>...  lightbulb goes on.
+
+Thanks again,
+Mike
+
+--------------------------------------------------
+12/03/02 at 08:58:09  Reply by: buzzkill (buzzkill@digitalwidget.net)
+--------------------------------------------------
+Ok.. I've tried, and tried, and tried some more. Now I'm bowing my head and asking for help....
+
+I've found (and modified) what I believe to be relevant code re: adding frag counts to monster kills made by players. In your combat.cpp, I've added the following to CMBaseMonster :: Killed. It compiles fine, seems stable, but I get no expected HUD message, nor does the kill register. Additionally, I have no idea how to handle m_iDeaths (a required message member), since I don't have access to the player object. I've hardcoded a zero for now.
+
+I have StatsMe set to show any ScoreInfo messages, but none come over, which makes my think the message is not being generated at all.
+
+Any thoughts would be greatly appreciated.
+Regards,
+Mike
+
+//existing code...
+Remember( bits_MEMORY_KILLED );
+
+
+
+      // Now add this NEW CODE ---------------------------------- 
+      CMBaseEntity *ep = CMBaseEntity::Instance( pevAttacker );
+      
+      if ( ep && ep->Classify() == CLASS_PLAYER )
+      {
+            //CMBasePlayer *PK = (CMBasePlayer*)ep;  //don't need to cast to player, right? 
+            if (FClassnameIs(pev, "monster_hornet")) {}
+            else             {
+                    UTIL_ClientPrintAll( HUD_PRINTNOTIFY, UTIL_VarArgs( "%s got the drop on %s ... \n", 
+                  ( pevAttacker->netname && STRING(pevAttacker->netname)[0] != 0 ) ? STRING(pevAttacker->netname) : "unconnected" ), STRING(pev->classname));
+
+                  UTIL_ClientPrintAll( HUD_PRINTNOTIFY, UTIL_VarArgs( "BoomP\n"));
+
+                  //PK->AddPoints(5, true); //duplicate AddPoints functionality inline below...
+                  
+                  pevAttacker->frags += 1;
+
+                  int m_iDeaths = 0; //temporary for compile
+
+                  if (gmsgScoreInfo == 0) // place initialization here just for convenience now...
+                        gmsgScoreInfo = REG_USER_MSG( "ScoreInfo", 9 );
+
+                  MESSAGE_BEGIN( MSG_ALL, gmsgScoreInfo );
+                        WRITE_BYTE( ENTINDEX(ep->edict()) ); // or should it be WRITE_BYTE( ENTINDEX(ENT(pevAttacker)) );
+                        WRITE_SHORT( pevAttacker->frags );
+                        WRITE_SHORT( m_iDeaths ); //WRITE_SHORT( m_iDeaths ); ?????
+                        WRITE_SHORT( 0 );
+                        WRITE_SHORT( pevAttacker->team );//WRITE_SHORT( g_pGameRules->GetTeamIndex( m_szTeamName ) + 1 );
+                  MESSAGE_END();
+            }
+      }
+
+--------------------------------------------------
+12/03/02 at 09:47:32  Reply by: buzzkill (buzzkill@digitalwidget.net)
+--------------------------------------------------
+Ok.. I decided to go a move ahead and assume it was getting hung up on == CLASS_PLAYER (since we're calling Classify() from a CMBaseEntity, this is always going to fail.. oops!) I changed it to...
+
+     if (pevAttacker->playerclass > 0)
+
+yes.. I'm just guessing here. Same results though... no message, no frag count increase.
+
+--------------------------------------------------
+12/03/02 at 10:03:17  Reply by: buzzkill (buzzkill@digitalwidget.net)
+--------------------------------------------------
+Sorry for the spam... I'm going down different paths here and I don't want to derail my train of thought..
+
+
+is ...
+    edict_t *player_t = ENT(pevAttacker);
+    player_t->v.[whatever]
+
+redundant given that I have an entvars_t pevAttacker available already? Seems like edict_t has an entvars_t (by way of edict_s), and entvars_t has an edict_t (pContainingEntity), which seemed strange and made me wonder if pevAttacker wasn't necessarily what I should be playing with...
+
+--------------------------------------------------
+12/03/02 at 10:16:45  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+I don't think you should be using ANYTHING about the CBasePlayer class in the monster plugin (since, as you said, you have no knowledge about what this class looks like).
+
+I would put the frag increase inside the check_monster_hurt() function, since that's what's used to check if a player caused damage to a monster.  After ApplyMultiDamage(), if the health is zero or less, add a frag to that player.
+
+I also wouldn't assume that pev->frag is used to store kills in all MODs, some MODs may use it, others may not (they may have a member variable in the CBasePlayer class that keeps track of the number of kills, see "m_iDeaths" as a similar example).
+
+After updating the frag count, you will need to send a network message to the client(s) to update the score for that player.  You can intercept all previous MOD generated ScoreInfo messages being sent to clients to retreive what the current frag and deaths values are (intercept them in a method similar to how the HPB bot intercepts network messages sent to clients).
+
+botman
+
+--------------------------------------------------
+12/03/02 at 15:18:02  Reply by: buzzkill (buzzkill@digitalwidget.net)
+--------------------------------------------------
+Ok.. thanks for the leads. I'm getting there, slowly but surely.
+
+Interesting to note: check_monster_hurt() doesn't seem to get the final shot that kills a monster. I covered it with LOG calls and only see the function being called for the first 3 of 4 (or n-1 of n) shots to kill a monster... it never gets called on the death shot.
+
+check_monster_dead, on the other hand, gets called on death, but doesn't carry the attacker's edict_t as a parm (not that I can't overload the function). Right now I'm tracing ALL the calls to check_monster_dead in dllapi to see if I can identify the key call that traps players killing monsters. Hopefully there aren't multiple possibilities...
+
+
+
+--------------------------------------------------
+12/03/02 at 16:03:25  Reply by: buzzkill (buzzkill@digitalwidget.net)
+--------------------------------------------------
+Don't you love my every-5-min posts?
+
+Ok.. good news..  I've overloaded check_monster_death with the attackers edict_t, and I can ID who killed a monster (I'm writing their netname to the log). I'm only a few steps away from bumping the score up.
+
+Interesting though.. the following (inside check_monster_death) crashes HLDS. Any thoughts? I know.. I know.. sick of me yet?
+
+UTIL_ClientPrintAll( HUD_PRINTNOTIFY, "%s killed a monster \n",STRING(pAttacker->v.netname));
+
+Even just writing fixed text without the netname crashes it.... ?
+
+--------------------------------------------------
+12/04/02 at 05:44:51  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+MAke SURE you're only sending this string once.
+
+check_monster_death() will get called so frequently that if you are continuously printing the text out, it will crash the engine (due to network messages flooding the network queue to that client).  Try something like this...
+code:
+bool bHasPrintedYet = FALSE;
+
+check_monster_death()
+{
+   if (monster->v.health <= 0)
+   {
+      if (!bHasPrintedYet)
+      {
+         UTIL_ClientPrintAll(blah, blah, blah);
+         bHasPrintedYet = TRUE;
+      }
+   }
+}
+
+botman
+
+[modified on 12/04/02 at 05:44:51]
+--------------------------------------------------
+12/04/02 at 06:24:20  Reply by: buzzkill (buzzkill@digitalwidget.net)
+--------------------------------------------------
+<sigh>
+
+TFC apparently maintains the frag tally internally. I can now get points for monster kills (only when the monster doesn't "explode" on death, which I'm investigating as well), but if the player dies during the round his/her frag count resets to where it was before the monster-points. This to me says that TFC is using its own internal tally when creating ScoreInfo messages. Unfortunately it's not v.frag.  
+
+This whole thing may have been a moot venture.  :-(
+
+But before you say it....  I'll go look at how you managed messages in HPB.. I promise!
+
+Update - on explosive weapons, mmDispatchTouch is triggered. The second edict_t contains the entity that killed the monster. I'll assume (for my own sanity), that I can trace back through that edict_t and find the "owner" of the entity that did the killing. 
+
+[modified on 12/04/02 at 06:24:20]
+--------------------------------------------------
+12/04/02 at 09:15:40  Reply by: buzzkill (buzzkill@digitalwidget.net)
+--------------------------------------------------
+I'm hitting new levels of frustration...
+
+Neither of the two edict_t's I can play with in DispatchTouch(edict_t *pentTouched, edict_t *pentOther), which is where check_monster_death gets called from when explosive weps are used, seem fruitfull. The first is a class wall_func, the second is the weapon class used to kill the monster. I've looked at every available v.<edict_t> for both pentTouched and pentOther, and neither trace back to the player who "spawned" the weapon. Therefore I can't properly assign points when a player uses an explosive weapon.
+
+I'm starting to get dizzy from the circles I'm going in.
+
+Q: I traced through the SDK to see how IT resolves explosive weapons to players, but apparently it handles most of this through the use of CBasePlayer, which of course I can't use. I went back to combat.cpp in the plugin source and tried playing with CBaseMonster::TakeDamage, but oddly enough even when I nullify the function by changing
+
+if (!pev->takedamage)
+            return 0;
+
+to
+
+if (pev->takedamage)
+            return 0;
+
+I am still able to kill monsters. Are the functions in combat.cpp even being called? Or is to referring back to the ones built into tfc.dll?
+
+--------------------------------------------------
+12/04/02 at 12:42:30  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+There is a "pev->owner" field of the entvars_t structure that will point to the edict_t of the owner of that weapon.
+
+So, for example, if you throw a grenade or launch a rocket at a monster and it hits something (anything including the monster), DispatchTouch will have the entity that blew up (the grenade or rocket).  If you look at the 'owner' field of that entity, it will give you the edict_t pointer to the owner of that weapon.  You can then add frags to the owner->v.frag field.
+
+botman
+
+--------------------------------------------------
+12/04/02 at 22:03:06  Reply by: buzzkill (buzzkill@digitalwidget.net)
+--------------------------------------------------
+Just so you don't think I'm a total idiot, that was one of the first member edicts I looked at, and it appeared NULL upon examination.
+
+Of course, if I managed to screw that up I AM a total idiot....  :)
+
+- Mike
+
+Update:  I'm still not quite a total idiot. pentOther contains the "weapon entity" that kills the monster, but pentOther->v.owner is NULL. I still don't see a way to trace the owner of the weapon ent back to the player ent.
+
+[modified on 12/04/02 at 22:03:06]
+--------------------------------------------------
+12/05/02 at 06:15:13  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Yeah, I had forgot about the owner being set to NULL for some weapons.  The owner field is used by the engine to determine whether this entity will collide with other entities (an entity won't collide with it's owner).
+
+I'm not sure if there is a simple way to determine who the owner of a projectile type weapon would be.  The SDK has a separate member variable in the weapon class that keeps track of the original owner and I thought that it sets the pev->owner field back to the original owner when the entity explodes (so the owner of the weapon gets credit for the kill).
+
+Perhaps you are checking things too soon.  Instead of checking things at DispatchTouch(), perhaps you should check them at PostDispathTouch() which is AFTER the MOD code has processed the DispathTouch() function (and hopefully the owner will be set back to what it should be at that point).
+
+botman
+
+--------------------------------------------------
+12/05/02 at 13:40:06  Reply by: buzzkill (buzzkill@digitalwidget.net)
+--------------------------------------------------
+Doesn't look like it...  I added a touch function to the post table, and checked the same ents inside it. pentOther->v.owner is still null.
+
+I even went further and checked pentOther->v.pContainingEntity->v.owner (hell, why not, ya know?). Nothing. My guess is that I entered into a circular reference there anyway.
+
+
+
+--------------------------------------------------
+12/10/02 at 06:11:00  Reply by: buzzkill (buzzkill@digitalwidget.net)
+--------------------------------------------------
+So after getting ahold of BlatterBug's source code and reviewing how he got scoring to work, I've come to a horrible, gutwrenching realization...
+
+His mods suffer from the same problem: No points for indirect/explosive kills, and no memory of the points after a player's death.
+
+I learned a lot, but ultimately I think this was an exercise in futility. Scoring for monsters simply can't be done fully through MM. 
+
+Thanks for all your insight though. Much appreciated.
+
+- Mike
+
+--------------------------------------------------
+12/10/02 at 14:08:09  Reply by: RobGP (rob@planetfortress.com)
+--------------------------------------------------
+It is possible to set frags in TFC properly, this is how I did it in Shodan:
+
+*((int *)pEntity->pvPrivateData + 288) = iamount;
+
+"pEntity" = a pointer to the player edict
+"iamount" = the amount of frags
+
+You will need to send the scoreboard update message to the client to see the effect immediately I think, or just set pev->frags as this will make TFC send the message anyway.
+
+Creating a way for getting kills for projectiles is not impossible either, just more involved.
+
+hope this helps.
+
+- Rob.
+
+[modified on 12/10/02 at 14:08:09]
+--------------------------------------------------
+12/10/02 at 13:57:30  Reply by: RobGP (rob@planetfortress.com)
+--------------------------------------------------
+btw my above post is __TFC ONLY__ It will not function with any other mods and most likely crash.
+
+--------------------------------------------------
+12/11/02 at 10:07:56  Reply by: buzzkill (buzzkill@digitalwidget.net)
+--------------------------------------------------
+Ok .. you're my new best friend.
+
+Can you throw me a bone regarding projectile points? Is DispatchTouch the wrong place to be looking? Can a projectile's player-owner edict be tracked back through the projectile itself?
+
+Thanks,
+Mike
+
+Also -- is there an offset location for deaths? (since I need that to generate my scoreinfo message). Though you said just tickling prev->frags should do this automatically... I'll have to check that out.
+
+[modified on 12/11/02 at 10:07:56]
+--------------------------------------------------
+12/11/02 at 11:09:00  Reply by: buzzkill (buzzkill@digitalwidget.net)
+--------------------------------------------------
+No go. Same results. It registers the points I assign, but as soon as I die I get a -1 score, indicative of the server not being truly aware that my score was actually higher than 0. The source is below. Any thoughts?
+
+The good news is that tickling pev->frags does generate the ScoreInfo message (I'd wondered how BlatterBug did it without the message... now I know).
+
+void check_monster_dead(edict_t *pAttacker)
+{
+   for (int index = 0; index < monster_ents_used; index++)
+   {
+      if (monsters[index].monster_index)
+      {
+         edict_t *pent = (*g_engfuncs.pfnPEntityOfEntIndex)(monsters[index].monster_index);
+
+         if (pent)
+         {
+            if (pent->v.flags & FL_KILLME)  // func_wall was "killed"
+            {
+               if (pent->v.flags & FL_MONSTER)  // is this a monster?
+               {
+                  if (monsters[index].killed == FALSE)
+                  {
+                     pent->v.flags &= ~FL_KILLME;  // clear FL_KILLME bit
+
+                     pent->v.deadflag = DEAD_NO;   // bring back to life
+
+
+
+                     //monsters[index].pMonster->Killed(VARS(pent), 0);
+                               monsters[index].pMonster->Killed(VARS(pAttacker), 0);
+                     monsters[index].killed = TRUE;
+
+                              LOG_MESSAGE(PLID, "DEBUG: DEAD-OWNED");
+                              if (UTIL_IsPlayer(pAttacker)) // this was done by human hands...
+                              {
+                                    int m_iDeaths = 0; //temporary for compile
+                                    int m_iScore = 2;
+      
+                                    *((int *)pAttacker->pvPrivateData + 288) = m_iScore;
+                                    pAttacker->v.frags = m_iScore;
+
+                                    
+
+
+
+
+                              }
+
+                  }
+               }
+               else  // normal entity
+               {
+                  FreeMonsterIndex(index);
+               }
+            }
+         }
+         else
+         {
+            FreeMonsterIndex(index);
+         }
+      }
+   }
+}
+
+--------------------------------------------------
+12/11/02 at 15:50:43  Reply by: RobGP (rob@planetfortress.com)
+--------------------------------------------------
+Have you tried returning the value from the player edict somthing like
+
+ALERT(at_console,"Player has %d frags\n",*((int *)pAttacker->pvPrivateData + 288))
+
+If it doesnt return the frags then something in TFC has been changed since I wrote that code, forcing it to cease functioning. I know it worked for me some time ago, but i havent used it in quite a while, so its possible some internal structure has changed in the TFC DLL that makes my offset invalid.
+
+--------------------------------------------------
+12/11/02 at 15:51:57  Reply by: RobGP (rob@planetfortress.com)
+--------------------------------------------------
+"Also -- is there an offset location for deaths?"
+
+Yes there is, Ill have to look at the comments in my old code to find it though.
+
+--------------------------------------------------
+12/11/02 at 19:22:55  Reply by: buzzkill (buzzkill@digitalwidget.net)
+--------------------------------------------------
+Well, it looks like its working to a degree, in that incrementing the offset location gets reflected in the scoreboard. However, once the player dies the manually generated frags disappear. Would/could there be any reason why TFC would maintain a separate frag count somewhere else in memory and then overwrite the offset location you gave me when a player dies?
+
+I'm not sure I need the death count offset, since just tickling pev->frags generates the ScoreInfo method. Of course, if you have a map or something of the privateinfo section lying around.....  :)
+
+Thanks again,
+Mike
+
+--------------------------------------------------
+12/11/02 at 20:41:30  Reply by: buzzkill (buzzkill@digitalwidget.net)
+--------------------------------------------------
+Ok.. I've been testing this thing for a while, and it looks like +288 is a red herring. It's acting just fine in terms of storage, but it doesn't seem to have any link to the scoreboard other than as a temp. storage area for my personal frag counter. I based that on this..
+
+1) Enter game, kill an hgrunt, score is 1.
+2) Kill another hgrunt, score is 2.
+3) Kill myself, score is -1.
+4) Kill another hgrunt, score is 3.
+
+Tell me my hopes aren't ready to be dashed yet again.... ?
+
+--------------------------------------------------
+12/11/02 at 21:38:50  Reply by: RobGP (rob@planetfortress.com)
+--------------------------------------------------
+try GETTING the value from it without changing it to make sure its still what it was when I wrote the code, remember certain internal changes in TFC may knock it off.
+
+--------------------------------------------------
+12/12/02 at 07:05:12  Reply by: buzzkill (buzzkill@digitalwidget.net)
+--------------------------------------------------
+I will..
+
+Question: Would it be worth it for me to hunt around that offset? If so, roughly what's the malloc'd (or whatever equiv. reservation system you used) size of that area? Is the area segmented into types?
+
+Or would the whole thing be a needle-in-a-haystack venture?
+
+Thank you. Thank you. Thank you!
+
+--------------------------------------------------
+01/18/03 at 07:21:11  Reply by: RavenousBugblatterBeast (RavenousBugblatterBeast@hotmail.com)
+--------------------------------------------------
+I didn't have my version updating the scoreboard immediately.  Modifying v.frags does not cause a scoreboard update in CS. I just rely on it updating when the mod next updates it.  I couldn't figure out how to get the index of the ScoreInfo message when I didn't register it.  You guys seem to registering it a 2nd time which I have now tried. This causes an immediate update but I have no idea how to get a value for deaths.
+
+As for the explosive kills I have no idea how to fix it.  
+
+The loosing your score on player deaths is a new one on me - I test on Natural Selection  / Counter-Strike, not TFC and these mods don't have any problems with it.
+
+
+
+[modified on 01/18/03 at 07:21:11]

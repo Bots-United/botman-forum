@@ -1,0 +1,233 @@
+--------------------------------------------------
+Subject: pEdict->free crash :S
+--------------------------------------------------
+12/09/03 at 05:10:39  Posted by: rick (rick_helmus8@hotmail.com)
+--------------------------------------------------
+I have a weird problem:
+
+code:
+
+bool IsNull (edict_t *pEdict)
+{
+   // thanx to PMB for this one
+
+   if (pEdict == NULL)
+         return true;
+
+   if (FNullEnt(pEdict))
+         return true;
+
+   if (pfnEntOffsetOfPEntity (pEdict) == 0)
+         return true;
+
+   if (pEdict->free)
+         return true;
+
+   return false;
+}
+
+
+
+sometimes when i test an entity(not a player) with this function it crashes with a acces violation on the line
+
+code:
+
+   if (pEdict->free)
+         return true;
+
+
+
+does anyone know why this is possible ?
+
+--------------------------------------------------
+12/09/03 at 18:18:11  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+I don't know about this problem, I never experienced that. I just wanted to say that I think you can get rid of the FNullEnt() call, because FNullEnt() does the 3 other checks already (and that would do them twice).
+
+Yeah, I know, it was like that in my bot template too. Well... don't you ever do things by mistake ? :)
+
+
+--------------------------------------------------
+12/10/03 at 08:00:48  Reply by: rick (rick_helmus8@hotmail.com)
+--------------------------------------------------
+ok, i will remove it then :) btw sometimes it did crash on FNullEnt to....
+anyway i think i might 'fixed' it; i just added a try block:
+code:
+
+bool IsNull (edict_t *pEdict)
+{
+    // thanx to PMB for this fucntion
+      try
+      {
+            if (pEdict == NULL)
+                  return true;
+
+            if (pfnEntOffsetOfPEntity (pEdict) == 0)
+                  return true;
+
+               if (pEdict->free)
+                return true;
+   }
+   catch (...)
+   {
+         return true; // failed so assuming entity isnt valid...
+   }
+
+   return false;
+}
+
+
+
+but im still curious why its even possible to crash :\
+
+--------------------------------------------------
+12/11/03 at 08:09:52  Reply by: botmeister (meister@telus.net)
+--------------------------------------------------
+My guess is that the passed pointer pEdict is not null, but the memory contents it refers to has been deallocated by the engine. 
+
+If my guess is correct, then I would suggest that you take a close look at all locations that call your IsNull function, and make sure that you can guarantee that the engine has no opportunity to deallocate the entity you are refering to.
+
+note: It seems that the player entities are never deallocated. I think this has been confirmed long ago by someone else in here.
+
+What I suggest you do, is make sure that you never store entity pointers past 1 frame, and even that is no gurantee - you have to be very carefull, and the safest method is to always get entity pointers by their index rather than store pointers. The pointer returned should be assumed invalid as soon as your mod code passes control back to the engine (or whatever may deallocate the memory).
+
+
+--------------------------------------------------
+12/11/03 at 08:36:35  Reply by: rick (rick_helmus8@hotmail.com)
+--------------------------------------------------
+
+QUOTE:
+My guess is that the passed pointer pEdict is not null, but the memory contents it refers to has been deallocated by the engine. 
+
+If my guess is correct, then I would suggest that you take a close look at all locations that call your IsNull function, and make sure that you can guarantee that the engine has no opportunity to deallocate the entity you are refering to.
+
+note: It seems that the player entities are never deallocated. I think this has been confirmed long ago by someone else in here.
+
+What I suggest you do, is make sure that you never store entity pointers past 1 frame, and even that is no gurantee - you have to be very carefull, and the safest method is to always get entity pointers by their index rather than store pointers. The pointer returned should be assumed invalid as soon as your mod code passes control back to the engine (or whatever may deallocate the memory).
+
+
+
+
+
+hmm I manage a specific type of entities in a linked list, and indeed i store the pointer address. To clear invalid entities i use this function. Well im gonna store the entindex then and see if that works better. Thanx for replying :)
+
+
+--------------------------------------------------
+12/11/03 at 11:15:05  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+QUOTE:
+My guess is that the passed pointer pEdict is not null, but the memory contents it refers to has been deallocated by the engine.
+
+
+Well that was precisely the purpose of this function, to prevent the coder from using an edict_t pointer that seems valid, but that the engine already deallocated. And I've never had problems with it, since pfnEntOffsetOfPEntity () does just that and does test whether the entity is still allocated or not before returning its offset. However to be honest I'll say that I slightly altered the order inside the function, for speedup purposes.
+
+Try replacing every occurence of IsNull() with FNullEnt(). It is a SDK macro that does the same thing, but just a little less checks.
+
+
+--------------------------------------------------
+12/11/03 at 12:20:55  Reply by: rick (rick_helmus8@hotmail.com)
+--------------------------------------------------
+
+QUOTE:
+My guess is that the passed pointer pEdict is not null, but the memory contents it refers to has been deallocated by the engine.
+Well that was precisely the purpose of this function, to prevent the coder from using an edict_t pointer that seems valid, but that the engine already deallocated. And I've never had problems with it, since pfnEntOffsetOfPEntity () does just that and does test whether the entity is still allocated or not before returning its offset. However to be honest I'll say that I slightly altered the order inside the function, for speedup purposes.
+
+Try replacing every occurence of IsNull() with FNullEnt(). It is a SDK macro that does the same thing, but just a little less checks.
+
+
+
+
+
+The only difference between your IsNull function and FNullEnt is that IsNull will test pEdict->free. When I found out where it crashed, I already changed every IsNull line to FNullEnt, then it crashed on a function like this:
+
+code:
+
+bool IsOtherAttack(edict_t *pent)
+{
+   if ((pent == NULL) || (FNullEnt(pent)))
+      return false;
+
+   char name[80]="";
+   sprintf(name,STRING(pent->v.classname)); // <-- CRASH
+
+   return ((FStrEq(name,"Destructo Disc")) || 
+           (FStrEq(name,"Frieza Disc")) || 
+           (FStrEq(name,"rock")));
+}
+
+
+
+When i added a line to test the string on NULL the game would crash on that line.
+So i guess for a weird reason the engine thinks the entity is fine, but when I try to acces a member variabele I get a access violation :\
+
+--------------------------------------------------
+12/11/03 at 15:12:23  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Then I suppose it's an entity that has just spawned and whose classname has not been set yet. I don't think it's an invalid entity, really. Have you tried to check out other fields in the entvars ? When you bind pent->v.classname (but *NOT* STRING(pent->v.classname)), do you get a memory offset or a NULL offset (and not an access violation) ?
+
+My idea is that the STRING() call fails, not the IsNull() one. The entity is still valid, except that its classname has not been set yet.
+
+[edited]
+to prevent that, consider wrapping the STRING() macro in another macro, where you will test for the validity of the offset passed forth (it must be non-NULL, and greater than gpGlobals->pStringBase, which is where the engine string table starts).
+
+[modified on 12/11/03 at 15:12:23]
+--------------------------------------------------
+12/11/03 at 16:47:13  Reply by: Cheesemonster!!! (cheeseh(at)rcbot(dot)net)
+--------------------------------------------------
+You did not use sprintf correctly in your code rick, that's why its crashing there
+
+it should be 
+
+sprintf(name,"%s",STRING(pev->v.classname));
+
+or simply strcpy it
+
+
+
+--------------------------------------------------
+12/11/03 at 18:55:01  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+om*g yes!
+
+/me bows to Cheesy :)
+
+
+--------------------------------------------------
+12/12/03 at 00:45:58  Reply by: botmeister (meister@telus.net)
+--------------------------------------------------
+We still have no idea why the check on pEdict->free caused the crash. 
+
+free is a qboolean, so accessing it should always be safe provided the pointer is valid.
+
+If pfnEntOffsetOfPEntity is doing its job as expected then there should be no problem using a bad pointer.
+
+Since FNullEnt appears to do the same pfnEntOffsetOfPEntity (pEdict) == 0 test, you should be able to remove the test from IsNull.
+
+Since FNullEnt is being called from IsNull, replacing IsNull with FNullEnt does nothing more than remove the free test.
+
+[modified on 12/12/03 at 00:45:58]
+--------------------------------------------------
+12/12/03 at 08:30:12  Reply by: Cheesemonster!!! (cheeseh(at)rcbot(dot)net)
+--------------------------------------------------
+yeah. the pEdict->free check should never crash, only if pEdict is NULL it should but that is already checked. Unless at some occasion the pEdict magically turns NULL before checking pEdict->free, like a memory overwrite on the function stack somewhere somehow.
+
+--------------------------------------------------
+12/14/03 at 13:22:04  Reply by: rick (rick_helmus8@hotmail.com)
+--------------------------------------------------
+
+QUOTE:
+You did not use sprintf correctly in your code rick, that's why its crashing there
+
+it should be 
+
+sprintf(name,"%s",STRING(pev->v.classname));
+
+or simply strcpy it
+
+
+
+
+
+
+heh, it only crashes there if i remove the pEdict->free checking, but it might be better to change it anyway, thanx
+

@@ -1,0 +1,226 @@
+--------------------------------------------------
+Subject: Overview Math
+--------------------------------------------------
+12/17/03 at 21:44:56  Posted by: LazyOne (the_lazy_one_09@hotmail.com)
+--------------------------------------------------
+I'm not sure if this is the right place to ask but here goes...
+
+I am absolutely terrible at math and I was wondering how the Half-Life engine does overviews.
+
+I'm hoping to build an application with C# and the .NET framework to display a custom overview without me having to join the server.
+
+Well, not fully C# since I'd use C++ with managed extensions to call the C# code from a metamod dll.
+Anyways...
+
+How would I go about converting half-life coordinates to 2d and plot them on an overview image?
+
+I checked the sdk and all of the WorldToScreen functions are built into the engine ( not that that would help ).
+
+Example:
+Say the metamod dll gives my class the coordinates 50, -64, 102.
+What would convert that into the same location on the overview which is 1024x768 ( ns_bast ).
+
+Any help is appreciated.
+
+
+--------------------------------------------------
+12/17/03 at 23:19:29  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Use only the x and y part of the 3D vector location, drop the Z component (height).
+
+Then, you need to figure out the map's boundaries, or the map's "bounding box" ; that is, where the map starts on the X axis and where it ends, and where it starts on the Y axis and where it ends. There is no way to retrieve this in game but to read it directly from the BSP file.
+
+Once you get this a simple proportionnality rule will tell you the coefficient to apply to your X,Y coordinates to make them fit in the range [0, 1024] and [0, 768].
+
+I have got working code that does this in my bot code. It is able to dump different parts of the navmesh, including the whole floor polygons, into either a BMP file, or a 3D AutoCAD file (.DXF). Grab the RACC template #2 at my site (www.racc-ai.com). You're welcome to have a look at the source code.
+
+
+--------------------------------------------------
+12/18/03 at 00:32:33  Reply by: LazyOne (the_lazy_one_09@hotmail.com)
+--------------------------------------------------
+Thank you for the info, it looks like it'll be harder than I thought. I'll have to write a bsp class first along with a special math class to handle the coordinates.
+
+
+--------------------------------------------------
+12/18/03 at 01:05:05  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+No, not really. It can seem a bit complicated to read a BSP file, but you only need the size of the world. Look at the LookDownOnTheWorld() function in my bot code how I do that. Rip out all the stuff you don't need. It's very simple.
+
+(edit) I feel in a good mood today, doing the work for you ;D
+code:
+
+#define LUMP_MODELS 14
+#define HEADER_LUMPS 15
+#define MAX_MAP_HULLS 4
+
+
+typedef struct
+{
+   int fileofs;
+   int filelen;
+} lump_t;
+
+
+typedef struct
+{
+   int version;
+   lump_t lumps[HEADER_LUMPS];
+} dheader_t;
+
+
+typedef struct
+{
+   Vector mins;
+   Vector maxs;
+   Vector origin;
+   int headnode[MAX_MAP_HULLS];
+   int visleafs;
+   int firstface;
+   int numfaces;
+} dmodel_t;
+
+
+void LookDownOnTheWorld (void)
+{
+   char bsp_file_path[256], *mfile;
+   int bsp_file_size;
+   dmodel_t dmodels;
+
+   // load the bsp file (can't fail to do this, the map already booted)
+   sprintf (bsp_file_path, "maps/%s.bsp", STRING (gpGlobals->mapname)); // build BSP file path
+   mfile = (char *) LOAD_FILE_FOR_ME (bsp_file_path, &bsp_file_size); // load bsp file
+
+   // read the MODELS lump of the BSP file
+   memcpy (&dmodels, mfile + ((dheader_t *) mfile)->lumps[LUMP_MODELS].fileofs, ((dheader_t *) mfile)->lumps[LUMP_MODELS].filelen);
+
+   FREE_FILE (mfile); // everything is loaded, free the BSP file
+
+   // get a quick access to the world's bounding box
+   v_worldmins = bsp_file.dmodels[0].mins;
+   v_worldmaxs = bsp_file.dmodels[0].maxs;
+}
+
+
+
+[modified on 12/18/03 at 01:02:42]
+added one or two missing #define's :)
+
+[modified on 12/18/03 at 01:05:05]
+--------------------------------------------------
+12/18/03 at 01:01:21  Reply by: LazyOne (the_lazy_one_09@hotmail.com)
+--------------------------------------------------
+What a relief!
+I'm always up for the easy way out, thx again.
+
+[ Added ]
+
+Thanks for the code, it'll be a little work to port it but its basically the same - just without allocating memory.
+
+[modified on 12/18/03 at 01:01:21]
+--------------------------------------------------
+12/18/03 at 02:47:35  Reply by: LazyOne (the_lazy_one_09@hotmail.com)
+--------------------------------------------------
+Got the map boundaries ok but I fail to find the specific math to convert the coordinates.
+
+I get the coordinates -48x 1490y z201 from a vent on the map ns_bast. In the overview thats about 320x 360y.
+
+I tried what I thought might be and that gave the wrong ( although valid ) coordinates.
+
+This won't help much but *shrugs* ( note: just a small hack application )
+
+code:
+
+using System;
+using System.Windows.Forms;
+using System.Runtime.InteropServices;
+
+class ThisApplication
+{
+   [DllImport( "oversharp_bsp.dll" )]
+   public static extern int MAP_GetHullBounds( string MapFilePath, float[ ] mins, float[ ] maxs );
+   
+   public static void Main( )
+   {
+      OpenFileDialog ofd = new OpenFileDialog( );
+      float[ ] flMins = new float[ 3 ];
+      float[ ] flMaxs = new float[ 3 ];
+      ofd.ShowDialog( );
+      
+      Console.WriteLine( "Valid BSP? : {0}", MAP_GetHullBounds( ofd.FileName, flMins, flMaxs ) == 0 ? "Yes" : "No" );
+      Console.WriteLine( "World Mins: {0} {1} {2}", flMins[ 0 ], flMins[ 1 ], flMins[ 2 ] );
+      Console.WriteLine( "World Maxs: {0} {1} {2}", flMaxs[ 0 ], flMaxs[ 1 ], flMaxs[ 2 ] );
+   }
+}
+
+
+
+And the C code I used to get the world's bounding box ( I had to use C here since .NET structs are different than native ones ).
+
+code:
+
+#include <windows.h>
+#include <stdio.h>
+
+#define C_EXPORT extern __declspec( dllexport )
+
+#define      LUMP_MODELS            14
+#define      HEADER_LUMPS      15
+#define      MAX_MAP_HULLS      4
+#define BSPVERSION            30
+
+typedef struct
+{
+      int      fileofs, filelen;
+} lump_t;
+
+typedef struct
+{
+      float            mins[3], maxs[3];
+      float            origin[3];
+      int                  headnode[MAX_MAP_HULLS];
+      int                  visleafs;            // not including the solid leaf 0
+      int                  firstface, numfaces;
+} dmodel_t;
+
+typedef struct
+{
+      int                  version;      
+      lump_t            lumps[HEADER_LUMPS];
+} dheader_t;
+
+C_EXPORT int MAP_GetHullBounds( const char* pszMapFileName, float mins[ 3 ], float maxs[ 3 ] )
+{
+      dheader_t Header;
+      dmodel_t Model;
+      FILE* fp = fopen( pszMapFileName, "rb" );
+
+      if ( fp )
+      {
+            fread( &Header, sizeof( dheader_t ), 1, fp );
+            fseek( fp, Header.lumps[ LUMP_MODELS ].fileofs, SEEK_SET );
+
+            fread( &Model, sizeof( dmodel_t ), 1, fp );
+            fclose( fp );
+
+            if ( Header.version == BSPVERSION )
+            {
+                  mins[ 0 ] = Model.mins[ 0 ];
+                  mins[ 1 ] = Model.mins[ 1 ];
+                  mins[ 2 ] = Model.mins[ 2 ];
+
+                  maxs[ 0 ] = Model.maxs[ 0 ];
+                  maxs[ 1 ] = Model.maxs[ 1 ];
+                  maxs[ 2 ] = Model.maxs[ 2 ];
+
+                  return 0;
+            }
+      }
+
+      return 1;
+}
+
+
+
+Theres still credits to add into those but its late and I just want to get a basic thing going before I go any further.
+
+

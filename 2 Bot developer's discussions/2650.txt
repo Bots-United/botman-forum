@@ -1,0 +1,94 @@
+--------------------------------------------------
+Subject: breakable windows
+--------------------------------------------------
+01/14/02 at 17:44:31  Posted by: ocb (ocb1@earthlink.net)
+--------------------------------------------------
+How can a bot figure out if it has encountered a breakable window?  And how does the bot know if the window has been shot out?
+
+I noticed that there is an entity item "func_breakable".  Which data members are relevant (maybe v.origin, v.health)?
+
+Oscar
+
+
+--------------------------------------------------
+01/14/02 at 23:50:32  Reply by: jerry_stoel (jerry_stoel@hotmail.com)
+--------------------------------------------------
+You can check 2 things if a window is shot out:
+
+code:
+
+- pBreakable->v.health == 0
+- if(pent->v.effects & EF_NODRAW) //if the window isn't there.
+
+
+
+Try those things and you can also combine them.
+
+Good luck,
+
+[modified on 01/14/02 at 23:50:32]
+--------------------------------------------------
+01/14/02 at 23:55:08  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+btw, do we have to deal with v.origin or VecBModelOrigin() for func_breakables ?
+
+--------------------------------------------------
+01/15/02 at 01:08:28  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+VecBModelOrigin
+
+You can use a find by classname search for pushables and breakables that can be damaged. i.e. they DON'T have a flag of DAMAGE_NO
+
+I used my bot to hit breakables when they touch them, using dispatchtouch()
+
+--------------------------------------------------
+01/16/02 at 10:53:04  Reply by: ocb (ocb1@earthlink.net)
+--------------------------------------------------
+Thanks for the help with breakables.
+
+The health of the breakable, by the way, doesn't go down at all until it's completely shot out (v.health went to -16 at one window I tried in cs_backalley).  Sometimes the bot just needs to fire at the origin (using VecBModelOrigin(), thanks again!) to get through.  It would be nice if the health went down a little so a bot would know it can get through.
+
+Oscar
+
+
+--------------------------------------------------
+01/17/02 at 08:10:46  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+a bot will know if it can get through by..
+
+something like
+
+code:
+
+bool is_breakable = pBreakable->v.takedamage != DAMAGE_NO;
+
+if( is_breakable )
+{
+  if(( pBreakable != NULL ) && ( pBreakable->v.health > 0 ))
+  {
+    // Bot can break this object
+  }
+}
+
+
+
+[modified on 01/17/02 at 08:10:46]
+--------------------------------------------------
+01/21/02 at 07:11:08  Reply by: hullu (hullu@jussikivilinna.cjb.net)
+--------------------------------------------------
+How I could detect if func_breakable has material type 'Unbreakable glass'?
+
+--------------------------------------------------
+01/21/02 at 10:51:51  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+This is out of the func_break.cpp file...
+code:
+// Flag unbreakable glass as "worldbrush" so it will block ALL tracelines
+if ( !IsBreakable() && pev->rendermode != kRenderNormal )
+   pev->flags |= FL_WORLDBRUSH;
+
+...so you should be able to check if pEdict->v.rendermod != kRenderNormal, or check if pEdict->v.flags & FL_WORLDBRUSH is set.
+
+botman
+
+

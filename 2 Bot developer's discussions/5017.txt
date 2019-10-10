@@ -1,0 +1,338 @@
+--------------------------------------------------
+Subject: A* problem
+--------------------------------------------------
+12/20/03 at 00:26:38  Posted by: Whistler (whistler_wmz@163.com)
+--------------------------------------------------
+This function is taken from podbot. Is there any bugs in this function? I just crash when using it with this gfunc.
+// Least Kills and Number of Nodes to Goal for a Team
+int gfunctionKillsDistT(PATHNODE* p)
+{
+      if(p == NULL)
+            return(65355);
+      int iThisIndex = p->iIndex;
+      int iCost = (pBotExperienceData+(iThisIndex*g_iNumWaypoints)+iThisIndex)->uTeam0Damage + g_cKillHistory;
+      int iNeighbour;
+      for(int i=0;i<MAX_PATH_INDEX;i++)
+      {
+            iNeighbour = paths[iThisIndex]->index[i];
+            if(iNeighbour != -1)
+                  iCost += (pBotExperienceData+(iNeighbour*g_iNumWaypoints)+iNeighbour)->uTeam0Damage;
+      }
+      for(int i=0;i<MAX_PATH_INDEX;i++)
+      {
+            if (paths[p->parent->iIndex]->index[i] == iThisIndex)
+                  iCost += paths[p->parent->iIndex]->distance[i];
+      }
+      return iCost;
+}
+
+Here is the a* function taken from podbot:
+
+/* 
+
+ * This is a general A* function, so the user defines all of the
+ * necessary function calls for calculating path costs and generating
+ * the children of a particular node.  
+
+ * root: Node*, root node from which to begin the search.
+
+ * gcalc: Takes a Node* as argument and returns a double indicating
+ * the g value (cost from initial state).
+
+ * hcalc: Takes a Node* as argument and returns a double indicating
+ * the h value (estimated cost to the goal).
+
+ * goalNode: Takes a Node* as argument and returns 1 if the node is
+ * the goal node, 0 otherwise.
+
+ * children: Takes a Node* as argument and returns a linked list of
+ * the children of that node, or NULL if there are none.
+
+ * freeNode: Takes a Node* as argument and frees the memory associated
+ * with the node.
+
+ * nodeEqual: Takes two Node* as arguments and returns a 1 if the
+ * nodes are equivalent states, 0 otherwise.
+
+
+ * The function returns a Node*, which is the root node of a linked
+ * list (follow the "next" fields) that specifies the path from the
+ * root node to the goal node.*/
+
+PATHNODE *AStarSearch(PATHNODE * root, 
+               int (*gcalc) (PATHNODE *), 
+               int (*hcalc) (PATHNODE *), 
+               int (*goalNode) (PATHNODE *), 
+               PATHNODE * (*children) (PATHNODE *), 
+               void (*freeNode) (PATHNODE *), 
+               int (*nodeEqual) (PATHNODE *, PATHNODE *)) 
+{      
+      PATHNODE*      openList;
+      PATHNODE*      closedList;
+      PATHNODE*      current;
+      PATHNODE*      childList;
+      PATHNODE*      curChild;
+      PATHNODE      *p, *q;
+      PATHNODE*      path;
+      static int      gblID = 1;
+      static int      gblExpand = 0;
+      
+      
+      // generate the open list
+      openList = NULL;
+      
+      // generate the closed list
+      closedList = NULL;
+      
+      // put the root node on the open list
+      root->NextNode = NULL;
+      root->prev = NULL;
+      openList = root;
+      
+      while (openList != NULL)
+      {
+            // remove the first node from the open list, as it will always be sorted
+            
+            current = openList;
+            openList = (PATHNODE *) openList->NextNode;
+            if(openList != NULL)
+                  openList->prev = NULL;
+            gblExpand++;
+            
+            // is the current node the goal node?
+            if (goalNode(current))
+            {
+                  
+                  // build the complete path to return
+                  current->NextNode = NULL;
+                  path = current;
+                  p = (PATHNODE *) current->parent;
+                  
+                  //     printf("Goal state reached with %d nodes created and %d nodes expanded\n", gblID, gblExpand);
+                  
+                  while (p != NULL)
+                  {
+                        
+                        // remove the parent node from the closed list (where it has to be)
+                        if (p->prev != NULL)
+                              ((PATHNODE *) p->prev)->NextNode = p->NextNode;
+                        if (p->NextNode != NULL)
+                              ((PATHNODE *) p->NextNode)->prev = p->prev;
+                        
+                        // check if we're romoving the top of the list
+                        if (p == closedList)
+                              closedList = (PATHNODE*)p->NextNode;
+                        
+                        // set it up in the path
+                        p->NextNode = path;
+                        path = p;
+                        
+                        p = (PATHNODE *) p->parent;
+                  }
+                  
+                  // now delete all nodes on OPEN
+                  while (openList != NULL)
+                  {
+                        p = (PATHNODE*) openList->NextNode;
+                        freeNode(openList);
+                        openList = p;
+                  }
+                  
+                  // now delete all nodes on CLOSED
+                  while (closedList != NULL)
+                  {
+                        p = (PATHNODE*) closedList->NextNode;
+                        freeNode(closedList);
+                        closedList = p;
+                  }
+                  
+                  // now return the path
+                  return (path);
+            }
+            
+            // now expand the current node
+            childList = children(current);
+            
+            // insert the children into the OPEN list according to their f values
+            while (childList != NULL)
+            {
+                  curChild = childList;
+                  childList = (PATHNODE*) childList->NextNode;
+                  
+                  // set up the rest of the child node
+                  curChild->parent = current;
+                  curChild->state = OPEN;
+                  curChild->depth = current->depth + 1;
+                  curChild->id = gblID++;
+                  curChild->NextNode = NULL;
+                  curChild->prev = NULL;
+                  
+                  // calculate the f value as f = g + h
+                  curChild->g = gcalc(curChild);
+                  curChild->h = hcalc(curChild);
+                  curChild->f = curChild->g + curChild->h;
+                  
+                  // test whether the child is in the closed list (already been there)
+                  if (closedList != NULL)
+                  {
+                        p = closedList;
+                        while (p != NULL)
+                        {
+                              if (nodeEqual(p, curChild))
+                              {             // if so, check if the f value is lower
+                                    
+                                    if (p->f <= curChild->f)
+                                    {             // if the f value of the older node is lower, delete the new
+                                          // child
+                                          
+                                          freeNode(curChild);
+                                          curChild = NULL;
+                                          break;
+                                    }
+                                    else
+                                    {                         // the child is a shorter path to this point, delete p from
+                                          // the closed list
+                                          
+                                          if (p->prev != NULL)             // This works so long as the new child is put in the OPEN
+                                                // list.
+                                                
+                                                ((PATHNODE*) p->prev)->NextNode = p->NextNode;      // Another solution is to just update all of the
+                                          
+                                          if (p->NextNode != NULL)             // descendents of this node with the new f values.
+                                                
+                                                ((PATHNODE*) p->NextNode)->prev = p->prev;
+                                          if (p == closedList)
+                                                closedList = (PATHNODE*)p->NextNode;
+                                          freeNode(p);
+                                          break;
+                                    }
+                              }
+                              p = (PATHNODE*)p->NextNode;
+                        }
+                  }
+                  
+                  if (curChild != NULL)
+                  {
+                        // check if the child is already on the open list
+                        p = openList;
+                        while (p != NULL) {
+                              if (nodeEqual(p, curChild))
+                              {             // child is on the OPEN list
+                                    
+                                    if (p->f <= curChild->f)
+                                    {             // child is a longer path to the same place so delete it
+                                          
+                                          freeNode(curChild);
+                                          curChild = NULL;
+                                          break;
+                                    }
+                                    else
+                                    {                         // child is a shorter path to the same place
+                                          // remove the duplicate node
+                                          
+                                          if (p->prev != NULL)
+                                                ((PATHNODE*) p->prev)->NextNode = p->NextNode;
+                                          if (p->NextNode != NULL)
+                                                ((PATHNODE*) p->NextNode)->prev = p->prev;
+                                          if (p == openList)
+                                                openList = (PATHNODE*)p->NextNode;
+                                          break;
+                                    }
+                              }
+                              p = (PATHNODE*)p->NextNode;
+                        }
+                        
+                        if (curChild != NULL)
+                        {
+                              // now insert the child into the list according to the f values
+                              p = openList;
+                              q = p;
+                              while (p != NULL) {
+                                    if (p->f >= curChild->f)
+                                    {             // insert before p
+                                          // test head case
+                                          
+                                          if (p == openList)
+                                                openList = curChild;
+                                          
+                                          // insert the node
+                                          curChild->NextNode = p;
+                                          curChild->prev = p->prev;
+                                          p->prev = curChild;
+                                          if (curChild->prev != NULL)
+                                                ((PATHNODE*) curChild->prev)->NextNode = curChild;
+                                          break;
+                                    }
+                                    q = p;
+                                    p = (PATHNODE*)p->NextNode;
+                              }
+                              if (p == NULL)
+                              {                   // insert at the end
+                                    
+                                    if (q != NULL)
+                                    {
+                                          q->NextNode = curChild;
+                                          curChild->prev = q;
+                                    }
+                                    else                         // insert at the beginning
+                                          openList = curChild;
+                              }
+                        }                               // end if child is not NULL (better duplicate on OPEN list)
+                        
+                  }                                     // end if child is not NULL (better duplicate on CLOSED list)
+                  
+    }                                     // end of child list loop
+      
+    // put the current node onto the closed list
+    current->NextNode = closedList;
+    if (closedList != NULL)
+            closedList->prev = current;
+    closedList = current;
+      
+    current->prev = NULL;
+    current->state = CLOSED;
+      
+    // Test to see if we have expanded too many nodes without a solution
+/*      if (current->id > MAXNODES)
+      {
+               //     printf("Expanded more than the maximum allowable nodes. Terminating\n");
+               
+               // delete all nodes on OPEN
+               while (openList != NULL)
+               {
+                     p = (PATHNODE*) openList->NextNode;
+                     freeNode(openList);
+                     openList = p;
+               }
+               
+               // delete all nodes on CLOSED
+               while (closedList != NULL)
+               {
+                     p = (PATHNODE*) closedList->NextNode;
+                     freeNode(closedList);
+                     closedList = p;
+               }
+               
+               return (NULL);
+       }*/
+  }                                     // end of OPEN loop
+  
+  // if we got here, then there is no path to the goal
+  
+  // delete all nodes on CLOSED since OPEN is now empty
+  while (closedList != NULL)
+  {
+        p = (PATHNODE*) closedList->NextNode;
+        freeNode(closedList);
+        closedList = p;
+  }
+  
+  return (NULL);
+}
+
+--------------------------------------------------
+12/20/03 at 09:31:07  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Unfortunately A* has the well-known tendancy to work best, if not to work at all, <i>only</i> in the hands of the writer of the algorithm... because that's prolly the only way to understand it ;)
+
+

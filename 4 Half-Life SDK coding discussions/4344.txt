@@ -1,0 +1,93 @@
+--------------------------------------------------
+Subject: Multiple models in Ricochet
+--------------------------------------------------
+04/24/03 at 12:43:42  Posted by: desNotes (desTubes@tampabay.rr.com)
+--------------------------------------------------
+Please excuse of this has been covered before. I did a search and could not find anything similar.
+
+I would like to implement multiple models in the mod Ricochet. Currently it is hardcoded to display only the male.mdl model so to just use the female model, the file must be renamed and moved to the male folder. I have been looking to see where the config.cfg file is read to determine what model is used in DM but can't seem to find it. I would like for the players to be able to switch models using the console just like in DM.
+
+Just point me in the right direction...
+
+Thanks in Advance,
+
+desNotes
+
+--------------------------------------------------
+04/27/03 at 13:04:45  Reply by: LeonThePro (sirgalahad@ozgn.com)
+--------------------------------------------------
+You may want to look around the mod's source code.
+
+--------------------------------------------------
+05/04/03 at 03:11:35  Reply by: Phreak (dead_sexy_simon@hotmail.com)
+--------------------------------------------------
+Why not make a new ClientCommand()??
+
+Maybe something like:
+
+code:
+
+else if (FStrEq(pcmd, "changemodel"))
+{
+    char mdl_name[256];
+
+    sprintf(mdl_name, "../%s.mdl", arg1);
+
+
+    (*g_engfuncs.pfnSetClientKeyValue)(ENTINDEX(pEntity)), (*g_engfuncs.pfnGetInfoKeyBuffer)(pEntity),
+                        "model", mdl_name );
+}
+
+
+
+[edited]
+I had pPlayer->edict(). changed it to pEntity :)
+[/edited]
+
+
+Phreak
+
+[modified on 05/04/03 at 03:11:35]
+--------------------------------------------------
+05/04/03 at 06:05:05  Reply by: desNotes (desTubes@tampabay.rr.com)
+--------------------------------------------------
+I got it to work without creating a new client command. All the code was there but was just overrode by a couple lines of code forcing one model.
+
+But now that it work, it works too well. In addition to the Ricochet models that can be accessed, all of the DM models can be accessed also. I want to able to limit the model selection to only the Ricochet mod folders.
+
+Any idea on how I would do that?
+
+Thanks,
+
+desNotes
+
+--------------------------------------------------
+05/07/03 at 23:37:38  Reply by: voogru (voogru@hotmail.com)
+--------------------------------------------------
+try something like...
+
+code:
+
+else if (FStrEq(pcmd, "changemodel"))
+{
+      char mdl_name[256];
+      
+      if (FStrEq( g_engfuncs.pfnInfoKeyValue( g_engfuncs.pfnGetInfoKeyBuffer( pEntity ), "model" ), "male"))//You got male
+      {
+            sprintf(mdl_name, "../female.mdl");//I dont want male! change it to female.
+      }
+      else //Its female!
+      {
+            sprintf(mdl_name, "../male.mdl");//so change it to male.
+      }
+      (*g_engfuncs.pfnSetClientKeyValue)(ENTINDEX(pEntity)), (*g_engfuncs.pfnGetInfoKeyBuffer)(pEntity),"model", mdl_name );
+}
+
+
+
+[modified on 05/07/03 at 23:37:38]
+--------------------------------------------------
+05/15/03 at 17:52:24  Reply by: RobGP (rob@planetfortress.com)
+--------------------------------------------------
+where you took the model locking code out, add your own in that checks that its a valid model you wish the player to choose from, if its not just default to a known good model.
+

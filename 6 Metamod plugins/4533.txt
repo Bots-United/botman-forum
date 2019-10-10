@@ -1,0 +1,106 @@
+--------------------------------------------------
+Subject: Code to remove items once they have been added 
+--------------------------------------------------
+06/14/03 at 11:20:12  Posted by: AustinBotServer (AustinBotServer@MindSpring)
+--------------------------------------------------
+I am using some code I stripped out of Stripper2 to add items on the fly like guns and grenades. It works great (Thanks botman!).
+Now I would like to remove items on the fly. Anyone have some example code or the basic idea on how to do this? 
+
+Thanks.
+
+
+[modified on 06/14/03 at 11:19:56]
+
+[modified on 06/14/03 at 11:20:12]
+--------------------------------------------------
+06/14/03 at 11:53:28  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Just set the FL_KILLME bit in the entity pev->flags field and the engine will delete that entity.
+
+botman
+
+--------------------------------------------------
+06/14/03 at 17:09:12  Reply by: AustinBotServer (AustinBotServer@MindSpring)
+--------------------------------------------------
+I am using an  
+edict_t which is typedefed to an
+edict_s which has a 
+entvars_t      v; member that has a 
+flags member
+
+I know I am correctly finding the entity, because I print out a message.  
+  
+   edict_t *pEntity = NULL;
+   edict_t *pEntityToDelete = NULL;
+
+   // look for the nearest editable entity and remember it (to be deleted later if they choose to)
+   while ((pEntity = FIND_ENTITY_IN_SPHERE (pEntity, serverEntity->v.origin, 999)) != NULL)
+   {
+      if (FNullEnt (pEntity))
+         break; // break when the engine reports no more entities
+
+      // check if this is an editable entity AND it is the closest we know
+         if ( (IsConfigurableEntity(pEntity->v.classname) && pEntityToDelete == NULL) || 
+                                          ((IsConfigurableEntity(pEntity->v.classname) && (pEntity->v.origin - serverEntity->v.origin).Length() < (pEntityToDelete->v.origin - serverEntity->v.origin).Length()))  )
+            pEntityToDelete = pEntity; // remember the nearest entity
+   }
+
+   // found something ?
+   if (!FNullEnt(pEntityToDelete))
+       {
+                  UTIL_printf("Entity found %s\n", STRING(pEntityToDelete->v.classname)); 
+            }
+            
+            
+I then set the v.flags FL_KILLME bit.
+      
+            pEntityToDelete->v.flags |= FL_KILLME;
+            
+            
+            (why did you say the pev.flags and not v.flags ???)
+            
+            
+            The item does not get removed from the map.
+            Does setting the FL_KILLME bit remove the item right away? 
+            
+            Thanks.
+
+--------------------------------------------------
+06/15/03 at 06:40:46  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+"(why did you say the pev.flags and not v.flags ???)"
+
+pev->flags (in the SDK source code) and pEdict->v.flags (in plugins or SDK source code) is the same thing.
+
+"Does setting the FL_KILLME bit remove the item right away?"
+
+The items will be deleted by the engine the next time scans the list of entities to be removed (usually happens at the end of each frame).
+
+What item are you trying to remove from the map.  Items that aren't dynamically added, can't be dynamically removed.  Also, if you are creating a metamod plugin to remove items, you should make sure that you DON'T allow the MOD DLL code to get called after removing an item or the MOD code could change the flags variable on you without you knowing it.
+
+botman
+
+--------------------------------------------------
+06/15/03 at 13:16:38  Reply by: AustinBotServer (AustinBotServer@MindSpring)
+--------------------------------------------------
+The items I am trying to delete have been dynamically added using the same method you use in Stripper. I was testing on CS with HE grenades and an M4 rifle.
+
+I don’t know what you mean here. Which MOD function call are you talking about?
+
+“DON'T allow the MOD DLL code to get called after removing an item or the MOD code could change the flags variable on you without you knowing it.”
+
+At some point I simply set the FL_KILLME bit on the item when the user selects a menu choice to delete the item. I don’t call any engine or MOD function. All I do is set the flag ??\
+
+Thanks again and again.
+
+
+
+--------------------------------------------------
+06/15/03 at 13:27:36  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+What I meant was that you can set the FL_KILLME bit on an entity and then before the engine gets a chance to delete it, the MOD code can go and remove the FL_KILLME bit in the flags (thus by the time the engine scans for entities to remove, it will no longer have the FL_KILLME bit set).  This case is NOT likely to happen, but there is a tiny slim chance that some MOD code could be constantly resetting the flags field in some entities.
+
+You might also try calling pfnRemoveEntity() to remove the entity instead of setting the FL_KILLME flags.  pfnRemoveEntity() should delete the entity right away, but could cause the MOD to crash if there are pointers referencing this entity after it gets removed (not much you can do about that though other than not remove the entity).
+
+botman
+

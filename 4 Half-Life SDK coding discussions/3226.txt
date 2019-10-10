@@ -1,0 +1,128 @@
+--------------------------------------------------
+Subject: call bash script?
+--------------------------------------------------
+06/07/02 at 08:24:38  Posted by: Arcosh (agent_smith@onlinehome.de)
+--------------------------------------------------
+Hi!
+
+I'm not sure if this is the right spot to ask, if not please forgive me. :-)
+
+Is it possible to call a bash script from within the (linux) hlds?
+
+I remember, I read something that the hlsdk forbids such an action. But maybe I'm wrong and you know a way...
+
+--------------------------------------------------
+06/07/02 at 08:49:08  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Sure, use...
+
+system("/usr/your/pathname/here/script");
+
+...to execute the script file from within the Linux code.
+
+botman
+
+--------------------------------------------------
+06/08/02 at 06:04:21  Reply by: Arcosh (agent_smith@onlinehome.de)
+--------------------------------------------------
+Thanks.
+I was hoping, that there already existed something like a plugin for metamod that could do this, so I would just type something like "exec_script xxx" while playing.
+I am willing to try it for myself. Could u please give me some hints how to do it? Can I solve this with a metamod-plugin?
+
+--------------------------------------------------
+06/08/02 at 10:55:31  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Do you know much C/C++ programming?  If so, download the metamod source code.  It comes with some simple examples.  Take the "stub" plugin and add a pfnAddServerCommand() to when the server starts up.
+
+See the Half-Life SDK engine\eiface.h file for the parameters to the pfnAddServerCommand() function.  You call it with the command name you want to add and the function you want the engine to execute when that server command is issued.  Inside your function execute the "system" command to run your script.
+
+botman
+
+--------------------------------------------------
+06/09/02 at 02:27:52  Reply by: kippie (da_matt@hotmail.com)
+--------------------------------------------------
+Botman, is it possible the pfnAddServerCommand isn't in the SDK? cuz I have been looking for it for a long time and the only thing I found was pfnServerCommand
+
+--------------------------------------------------
+06/09/02 at 05:18:01  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+It depends on which SDK you have.  If you haven't downloaded SDK 2.2, you should do that first.
+
+All the engine functions are defined in the engine\eiface.h file.  Here's the bottom of the enginefuncs_t structure...
+code:
+   // Forces the client and server to be running with the same version of the specified file
+   //  ( e.g., a player model ).
+   // Calling this has no effect in single player
+   void      (*pfnForceUnmodified) ( FORCE_TYPE type, float *mins, float *maxs, const char *filename );
+
+   void      (*pfnGetPlayerStats) ( const edict_t *pClient, int *ping, int *packet_loss );
+
+   void      (*pfnAddServerCommand) ( char *cmd_name, void (*function) (void) );
+
+   // For voice communications, set which clients hear eachother.
+   // NOTE: these functions take player entity indices (starting at 1).
+   qboolean (*pfnVoice_GetClientListening)(int iReceiver, int iSender);
+   qboolean (*pfnVoice_SetClientListening)(int iReceiver, int iSender, qboolean bListen);
+} enginefuncs_t;
+
+botman
+
+--------------------------------------------------
+06/09/02 at 08:58:09  Reply by: kippie (da_matt@hotmail.com)
+--------------------------------------------------
+And are there actually some tutorials somewhere for adding commands? cuz I haven't found any yet :|
+
+--------------------------------------------------
+06/09/02 at 13:34:39  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+No.  Here's a short one.  Put this somewhere in your code (GameDLLInit would be a good place)...
+code:
+   (*g_engfuncs.pfnAddServerCommand("new_command", NewCommand);
+
+
+Then create the function you want to call when "new_command" is entered on the console...
+code:
+void NewCommand(void)
+{
+   // you do stuff here
+}
+
+That's all there is to it.  You might want to put the function prototype "void NewCommand(void);" in just above the GameDLLInit() function (or wherever you call pfnAddServerCommand) so that the compiler knows what "NewCommand" is.
+
+botman
+
+--------------------------------------------------
+06/09/02 at 13:35:10  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+P.S. You can find other examples by searching this forum for "pfnAddServerCommand".
+
+botman
+
+--------------------------------------------------
+06/13/02 at 08:48:47  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+QUOTE:
+
+   (*g_engfuncs.pfnAddServerCommand("new_command", NewCommand);
+
+
+
+
+don't you forget a ) ? ;)
+
+
+--------------------------------------------------
+07/20/02 at 00:44:31  Reply by: Arcosh (agent_smith@onlinehome.de)
+--------------------------------------------------
+With this great help I finally made it. My main problem was, that I knew a little c++, but had no experience in api coding or coding for the sdk.
+I didn't know where to put my callscript-function and where to start it.
+
+To close this thread, I will post the complete (changed) dllapi.cpp from the metamod stub plugin. Maybe it will help other people start coding, just like me.
+
+134.102.55.6/iwt/download/misc/dllapi.cppclick 
+
+Now I can use the plugin to e.g. start hltv from within the game with a simple rcon command, starting a bash script start_hltv.sh on the server. The script must be in your half-life dir.
+
+To stop hltv, I use a script stop_hltv.sh which is using kkrcon to connect to the hltv and make it "quit".
+
+[modified on 07/20/02 at 00:44:31]

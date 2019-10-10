@@ -1,0 +1,101 @@
+--------------------------------------------------
+Subject: Do bots receive money?
+--------------------------------------------------
+10/03/00 at 09:27:11  Posted by: pekkaka (icecoldgames@hotmail.com)
+--------------------------------------------------
+Hi,
+
+Okay 1 slightly novice question, sorry but i just wonder.
+
+1. In CS does the Bots receive money from kills,
+   and after rounds even they would lose?.
+
+Well i got them buy stuff now, but only in first round. So i think they dont have any money after
+the first round, maybe?
+
+With best,
+Sakari
+
+
+--------------------------------------------------
+10/03/00 at 13:14:55  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+To the server MOD DLL code the bots look just like regular players.  Yes, they do receive the same money that normal players get.  They use weapons the same way as normal players.  They are damaged in the same way as normal players.  Physics in the game will effect bots the same way that it effects human players.
+
+botman
+
+--------------------------------------------------
+10/04/00 at 00:56:14  Reply by: pekkaka (icecoldgames@hotmail.com)
+--------------------------------------------------
+Thanks for reply!! 
+
+I think i have small problem with the BotBuy function, its totally based on FakeClientCommands()
+
+First the function checks that bot has enough money to buy, like 800. And then it sends the FakeClientCommand(pEdict, "buy", NULL, NULL); and then the menuselect and etc.
+
+This function is called on BotThink(). But when bots die and/or respawn on next round, they dont buy. I have looked the bot.txt and this function dont get called anymore after the very first round. Where should i place this function?
+
+The buy function is stupid because it dont check the bots location, and i dont know how to do it. :) Any hints?
+
+Thanks to everyone!
+Sakari
+
+
+
+--------------------------------------------------
+10/04/00 at 04:56:41  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+You can check if they are in a buyzone by looking for this HUD message to be sent to the client.  Set up a function to intercept this message (like the way the money is intercepted).  Whenever you enter a buyzone, the MOD DLL will send the HUD update message to display the little shopping cart.  Just turn on the "debug_engine" flag, move into a buyzone (where you see the shopping cart), exit the game and go look at the bot.txt file to see what message gets sent for that particular situation.
+
+Use the exact same techinque to indentify other types of messages.  Remember that ANYTHING that gets displayed on the HUD will have a message that can be intercepted (like money, damage, buyzone, weapon pickups, ammo pickups, radio messages, etc.)
+
+botman
+
+
+--------------------------------------------------
+10/04/00 at 06:12:00  Reply by: pekkaka (icecoldgames@hotmail.com)
+--------------------------------------------------
+Hi,
+
+Yeah thats a neat way. I´ll think it trough, for now i managed to improve the buy system slightly.
+
+I placed a new func_buyzone to the BotFindItem() 
+and it does work, also i increased the search
+radious. I read the FGD file for this func.
+
+Maybe ill try this for func_bomb_target too.
+
+Thanks!
+
+--------------------------------------------------
+10/04/00 at 11:26:30  Reply by: pekkaka (icecoldgames@hotmail.com)
+--------------------------------------------------
+Yes, 
+
+The message ID way is perfect!. i got it working, 
+as i planned, now i just need to write loooong buy system because my plan is to give every weapon for use, except for sniping guns yet, i want to change their combat behaviour based on what weapon are they currently using. 
+
+What kinds of Navigation systems is it possible to make?. without waypoints. I had one idea, but im not sure would it work. When the map is loaded and game starts the bots place their own routes while they walk around the map. 
+
+A) they would place a waypoint were they saw their first enemy
+B) where is buyzone & route to there
+C) where is rescue zone & route
+D) where is bombzone & route
+
+How should i measure height?. I mean when bots
+use ladders to roof, they jump down from there and.. you know. So, i would like to get them back to the ladder and come down that way.
+
+Thanks to everyone!
+Sakari
+--------
+Just making bots smarter then they appear to be.
+
+--------------------------------------------------
+10/05/00 at 05:47:18  Reply by: theimann (theimann@stud.fh-heilbronn.de)
+--------------------------------------------------
+It wouldn't help much to save only the positions where enemies have been seen: you always need a route to get there (if it is't just for a kind of statistics). Moreover you will need nodes in the mapgraph where the bot can chose the route he would like to take if you don't want him to go the same route all the time.
+Have a look at the thread "Floyd/Warshall anyone" where some pathfinding problems were discussed. You will also find that botman had the same ladder problem as you have and as well a solution for it.
+
+Happy coding,
+Tobias
+

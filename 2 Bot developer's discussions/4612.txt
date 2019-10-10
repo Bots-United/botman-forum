@@ -1,0 +1,134 @@
+--------------------------------------------------
+Subject: Finally it works :)
+--------------------------------------------------
+07/06/03 at 11:25:05  Posted by: rick (rick_helmus8@hotmail.com)
+--------------------------------------------------
+My bots just keep attacking players which where kicked i've got this function that should c if a player is valid :
+
+code:
+
+bool UTIL_IsValidPlayer(edict_t *pEdict)
+{
+     if ((pEdict) && (!pEdict->free))
+     {
+          if (!IsAlive(pEdict))
+               return false;
+
+          if (IsNull (pEdict))
+              return false; 
+
+          int BotIndex = UTIL_GetBotIndex(pEdict);
+
+          if ((bots[BotIndex].is_used == false) && (BotIndex != -1))  
+             return false;
+
+          if ((b_observer_mode) && !(pEdict->v.flags & FL_FAKECLIENT))
+              return false;
+
+          return true;
+      }
+      return false;   
+}
+
+
+
+even this didn't work on kicked players until I added this line:
+
+code:
+
+if (FStrEq(STRING(pEdict->v.netname),""))
+    return false;
+
+
+
+Real players have always a name, if you don't specify one you get the name empty. Well hope this migh help someone :-)
+
+[modified on 07/06/03 at 11:25:05]
+--------------------------------------------------
+07/06/03 at 12:31:36  Reply by: Cheesemonster!!! (cheeseh@houstondod.com)
+--------------------------------------------------
+the same can be achieved by:
+
+code:
+
+if ( !*((char*)STRING(pEdict->v.netname)) )
+return false; 
+
+
+
+might be quicker than callin FStrEq, which calls strcmp.. etc :p
+
+--------------------------------------------------
+07/06/03 at 12:57:46  Reply by: rick (rick_helmus8@hotmail.com)
+--------------------------------------------------
+ah sure :) btw isn't hat the same as
+
+code:
+
+if ( !STRING(pEdict->v.netname))
+return false; 
+
+
+
+do you need to cast ??
+
+anyway I change it, why not a bit better performence :P, 
+Thanx 
+
+--------------------------------------------------
+07/06/03 at 13:00:11  Reply by: Cheesemonster!!! (cheeseh@houstondod.com)
+--------------------------------------------------
+I've had trouble before with not casting them, cant remember why :/ you could try what you said above, but you missed out the '*' :p
+
+i.e. you could try 
+
+if ( !*STRING(pEdict->v.netname))
+return false; 
+
+--------------------------------------------------
+07/06/03 at 13:42:12  Reply by: rick (rick_helmus8@hotmail.com)
+--------------------------------------------------
+heh lol otherwise it might not work :) thanx again ;)
+
+--------------------------------------------------
+07/06/03 at 15:05:41  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+Is that with an other mod then Counter-Strike? As i find it strange you have to code another check to make it work. Any idea why?
+
+--------------------------------------------------
+07/06/03 at 15:28:05  Reply by: rick (rick_helmus8@hotmail.com)
+--------------------------------------------------
+yes its weird I thought it works before but it didn't and this is for the mod esf(www.esforces.com) and its way different then cs...
+
+[modified on 07/06/03 at 15:28:05]
+--------------------------------------------------
+07/07/03 at 05:32:45  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+You should only have to add the "netname" check if you aren't catching bots being kicked from the server properly in the ClientDisconnect() function.
+
+As long as you are keeping track of which bots are added (in ClientPutInServer) and which bots are removed (in ClientDisconnect), in theory, you should never have to check the netname field.  I guess it's possible that the engine could have a bug where it wouldn't call ClientDisconnect() when a player is disconnected from the server, but I've never seen this happen.
+
+It doesn't hurt to put that check in, it just might be unnecessary.
+
+botman
+
+--------------------------------------------------
+07/07/03 at 05:39:25  Reply by: rick (rick_helmus8@hotmail.com)
+--------------------------------------------------
+yes i know thats why the field is_used for isn't it ??
+Well for some reason that didn't work either
+and I/you need this check for real players too.
+O well im just glad it works now :)
+
+--------------------------------------------------
+07/07/03 at 10:24:40  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+There ARE some cases where players are disconnected and ClientDisconnect() is not called.
+
+I think at least during a mapchange.
+
+The workaround I have is that I check every so often for the bot's pEdict pointer validity. If FNullEnt() on it returns TRUE, it means my bot is dead and I have to manually disable it.
+
+[€dited: s/dead/disconnected]
+
+[modified on 07/07/03 at 10:24:40]

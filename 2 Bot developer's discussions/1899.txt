@@ -1,0 +1,153 @@
+--------------------------------------------------
+Subject: Finding a classname of a bot
+--------------------------------------------------
+07/02/01 at 10:21:45  Posted by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+IS there any way to get the classname of a bot (if it changes, cos in the mod im using it does!) I tried STRING(pBot->pEdict->v.classname) but for some reason I got const char errors or something. Anyone got something that works?!!!
+
+--------------------------------------------------
+07/02/01 at 11:25:33  Reply by: BrianL (halfkiller@hotmail.com)
+--------------------------------------------------
+The classname doesn't return a string it returns a number.
+
+Try using debug_engine and switch between classes and check the numbers on the classes and define them.
+
+Then use a check:
+code:
+
+#define THIS_CLASS 1
+
+edict_t *pEdict = pBot->pEdict;
+int botClass = 0;
+
+ botClass = (pEdict->v.classname);
+
+ if (botClass == THIS_CLASS)
+ {
+  // Do stuff
+ }
+
+
+--------------------------------------------------
+07/02/01 at 13:54:59  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+I need to know the actual entity classname such as "monster_scientist" for example, I want the bots to keep checking their transformation status in botthink and updating it if it changes.
+
+--------------------------------------------------
+07/02/01 at 13:57:45  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+STRING(pBot->pEdict->v.classname) should return you a string pointer to the current classname.  You can use something like this to compare against things you are looking for...
+code:
+if (strcmp("monster_scientist", STRING(pbot->pEdict->v.classname)) == 0)
+{
+   // classname is "monster_scientist" now...
+}
+
+botman
+
+--------------------------------------------------
+07/02/01 at 14:31:44  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+Hmm well I tried that but I dont know if the actual transform names are the classnames ie. The name for the transformation is "drive_ ...." and I dont know if the classname will return a "monster_ ...." or not.
+
+I put in this code in BotThink()...
+
+code:
+
+char TransName[50];
+   strcpy(TransName, STRING(pBot->pEdict->v.classname));
+
+   if( strcmp("drive_apache", TransName)==0 )                   // Apache
+    pBot->transformation = BOT_TRANS_APACHE;
+   else if( strcmp("drive_assassin", TransName)==0 )             // Assassin
+    pBot->transformation = BOT_TRANS_ASSASSIN;
+   else if( strcmp("drive_garg", TransName)==0 )             // Gargantua
+    pBot->transformation = BOT_TRANS_GARG;
+   else if( strcmp("drive_houndeye", TransName)==0 )             // Houndeye
+    pBot->transformation = BOT_TRANS_HOUNDEYE;
+   else if( strcmp("drive_icky", TransName)==0 )             // Icky (fish thing)
+    pBot->transformation = BOT_TRANS_ICKY;
+   else if( strcmp("drive_panth", TransName)==0 )             // Panther thingy!
+    pBot->transformation = BOT_TRANS_PANTH;
+   else if( strcmp("drive_asl", TransName)==0 )              // Alien Slave
+    pBot->transformation = BOT_TRANS_SLAVE;
+   else if( strcmp("drive_turret", TransName)==0 )             // Turret or Sentry
+    pBot->transformation = BOT_TRANS_TURRET;
+   else
+    pBot->transformation = 0;                   // If none the bot is not in a transformation
+
+
+
+
+
+and I had this to print out onto a file whenever a bot attempted to use a transformation. At this moment the bot used a gragantua monster transformation succesfully but this is what it said in the file that i told it to output...
+
+code:
+
+My transform index is : 0 (0: none)
+My health is : 100
+My armor is : 0
+Transformation Failed
+
+
+
+argh, maybe I should try monster_ instead????!! 
+
+--------------------------------------------------
+07/02/01 at 15:09:39  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+is the syntax...
+
+code:
+
+
+if (pent == pBot->pEdict) //If the found entity is has the same edict properties as the bot
+{
+ //Do stuff here
+}
+
+
+
+
+...valid???
+
+
+--------------------------------------------------
+07/03/01 at 04:33:56  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+That depends on what "pent" points to.  If it points to some other entity in the map, then no, it will never equal the bots pEntity value (because they are 2 separate entities).
+
+botman
+
+--------------------------------------------------
+07/03/01 at 09:19:16  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+I'm trying to check to see if the bot knows what entity it is (This may change throughout the game) becuase it can turn into monsters and stuff!
+I want to create a function and call it on each frame which allows the bot to check itself to see if it is a player, or a monster.
+
+I've put code such as a check that I keep changing to see if it works (at the moment it has never worked, the bot keeps thinking it is still a normal player or "human model", i.e. not a monster.
+
+When a transformation is used, you are a chase cam, watching your self move about as a monster.
+
+Possibly if Rich could tell me how he gots his bots to know that they are scientists in the live in fear mod of his "scientist hunt", that could maybe do the trick for me.
+
+To be quite honest I don't know what variable could link a bot to a monster if it is using it. I've even tried to check iuf the names were the same, that didnt seem to work either... unless Im using it incorrectly.
+
+
+
+--------------------------------------------------
+07/03/01 at 12:19:25  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+I think the scientists in Scientist Hunt are just special versions of the bots that know that they don't have any weapons.  Rich wrote the MOD code so he has access to everything he needs to know what anything is.
+
+Perhaps you could intercept the Touch function (DispatchTouch) and check if a bot entity is touching a transform entity.  I assume you use one of these things by running into it (i.e. "Touch"ing it).  The transform entities should set up a Touch() function that lets them know when something has touched them to make that thing become the transform thing.
+
+Look into the DispatchTouch() code and see if the entities being passed into it match the bot pEdict entity values.  Then you'll know that a bot has touched a transform thing.
+
+botman
+
+--------------------------------------------------
+07/03/01 at 16:32:49  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+are there any examples of DispatchTouch() ?? I had a look in the SDK and I didn't find much, also The function doesn't return anything so how would I do a check of somesort in the main bot program..?
+

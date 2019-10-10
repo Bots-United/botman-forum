@@ -1,0 +1,127 @@
+--------------------------------------------------
+Subject: Does anyone know?
+--------------------------------------------------
+08/06/02 at 06:51:55  Posted by: BrianL (halfkiller@hotmail.com)
+--------------------------------------------------
+Does anyone know how the half-life engine calculates the ->velocity of a player?  I am really in need of some help..
+
+--------------------------------------------------
+08/06/02 at 08:54:54  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+I think, but I may be mistaken, that the pev->velocity is just the vector distance the entity is moving during the current frame. Kinda like velocity = vecPreviousPosition - vecCurrentPosition, vecPreviousPosition being updated each frame, except that this computation describes the last movement, whereas the velocity describes the current movement
+
+
+
+--------------------------------------------------
+08/06/02 at 09:52:19  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Velocity is a vector indicating how quickly something is changing it's position.
+
+See this for a good explanation...
+
+http://www.glenbrook.k12.il.us/gbssci/phys/Class/1DKin/U1L1d.html
+
+botman
+
+--------------------------------------------------
+08/06/02 at 09:57:21  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+The velocity is the X, Y and Z measurements of speed in units per second.
+
+The velocity is a vector which tells you that the edict is moving at an amount of +/- X units, +/- Y units and +/- Z units.
+
+I.e.
+
+(This is in 2D dont mix it up with 3D :D )
+code:
+
+Y
+^
+|
+
+
+4
+|
+|
+|
+|___________8  -->X
+
+
+
+Lets say the edict is moving 4 units Y and 8 units to X, then the overall speed is the combined lengths.
+
+code:
+
+4
+|- -
+A   -C-
+|       - -
+|_____B_____8
+
+ (Just imagine the "- -"'s is just one straight line that connect the two points together, this is the overall speed.
+
+To get this overall speed im sure you'll agree it will be
+
+code:
+
+C² = A² + B²
+    = 4² + 8²
+
+    = 16 + 64
+
+C   = sqrt(80)
+    = 8.9 units per second.
+
+
+
+Dont worry you don't need to do all that :D To get the speed you would just use 
+
+float speed2d = pev->velocity.Length2D(); // 2 Dimensional Speed (Forward, Back, Left, Right)
+
+float speed3d = pev->velocity.Length3D(); // 3 Dimensional Speed (Upward, Downward, Forward, Back, Left, Right)
+
+--------------------------------------------------
+08/06/02 at 09:58:32  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+Damn now I'm too slow :)
+
+--------------------------------------------------
+08/06/02 at 11:27:34  Reply by: BrianL (halfkiller@hotmail.com)
+--------------------------------------------------
+Actually Cheesemonster yes I do since I'm working with my CLIENT HOOK the ent->velocity is always == 0,0,0 (velocity.x = 0, etc..) so I have to calculate it.
+
+But both great answer from the both of you..  I'll take alook at that link Botman
+
+[modified on 08/06/02 at 11:27:34]
+--------------------------------------------------
+08/06/02 at 12:01:04  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+What you will have to do then I guess is take the origin position of the edict every second and then find how far it has moved :) Basically that would be 
+
+Vector velocity = neworigin - oldorigin
+
+I think :) Every second of course though!
+
+
+--------------------------------------------------
+08/08/02 at 16:07:44  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+QUOTE:
+The velocity is the X, Y and Z measurements of speed in units ***PER SECOND***.
+
+
+
+
+Are you certain of that ??? I'd say, per frame.
+
+
+--------------------------------------------------
+08/08/02 at 17:19:03  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+I understand when you say per frame, because its updated per frame :p But if you mean that the entity has the velocity of say 320 X/Y/Z units per frame, then theyd be moving quite fast :) and their movement would be frame based, i.e. it would slow down or speed up depending on frame rate. I'm used to things moving in units per second, because doors move in units per second etc. I don't know "exactly" what you might mean by units per frame though :-P 
+
+Edit: oh yea and an example... sv_maxspeed is in units per second, so I'd think it may be per second :)
+
+And if you tried to calculate an entities velocity yourself each frame, the velocity would be tiny (especially with high frame rates) and if you set the velocity to XYZ units per frame, they'd be going really fast i'd think!
+
+[modified on 08/08/02 at 17:19:03]

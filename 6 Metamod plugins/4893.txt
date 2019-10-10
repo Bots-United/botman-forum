@@ -1,0 +1,386 @@
+--------------------------------------------------
+Subject: Adding rats to monstermod
+--------------------------------------------------
+10/10/03 at 12:30:16  Posted by: buzzkill (buzzkill@100acrebloodbath.com)
+--------------------------------------------------
+I'm sure I'm either doing something stupid or trying something not possible, but I'm attempting to at rats to monstermod.
+
+I pulled rats.cpp from the single-player SDK, moved the class declaration out and into cmbasemonster.h, and made all the adjustments to the various case statements and arrays.
+
+What I'm getting in-game (TFC) is manual spawns (for example, console:  monster rat 3) gives me the 4-pane TFC flag (the standard) instead of a rat. Spawns through monster_spawn 1 and .cfg file don't seem to give me anything, though I may not have set that part up to recognize rats yet.
+
+Any thoughts would be greatly appreciated. Here's my CMRat declaration..
+
+class CMRat : public CMBaseMonster
+{
+public:
+      void Spawn( void );
+      void Precache( void );
+      void SetYawSpeed( void );
+      int  Classify ( void );
+};
+
+
+.. and here's rat.cpp
+
+
+
+/***
+*
+*      Copyright (c) 1996-2002, Valve LLC. All rights reserved.
+*      
+*      This product contains software technology licensed from Id 
+*      Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc. 
+*      All Rights Reserved.
+*
+*   This source code contains proprietary and confidential information of
+*   Valve LLC and its suppliers.  Access to this code is restricted to
+*   persons who have executed a written SDK license with Valve.  Any access,
+*   use or distribution of this code by or to any unlicensed person is illegal.
+*
+****/
+//=========================================================
+// rat - environmental monster
+//=========================================================
+
+#include      "extdll.h"
+#include      "util.h"
+#include      "cmbase.h"
+#include "cmbasemonster.h"
+#include      "monsters.h"
+#include      "schedule.h"
+
+
+
+//=========================================================
+// Monster's Anim Events Go Here
+//=========================================================
+
+/*class CRat : public CBaseMonster
+{
+public:
+      void Spawn( void );
+      void Precache( void );
+      void SetYawSpeed( void );
+      int  Classify ( void );
+};
+LINK_ENTITY_TO_CLASS( monster_rat, CRat );*/
+
+//=========================================================
+// Classify - indicates this monster's place in the 
+// relationship table.
+//=========================================================
+int      CMRat :: Classify ( void )
+{
+      return      CLASS_INSECT;
+}
+
+//=========================================================
+// SetYawSpeed - allows each sequence to have a different
+// turn rate associated with it.
+//=========================================================
+void CMRat :: SetYawSpeed ( void )
+{
+      int ys;
+
+      switch ( m_Activity )
+      {
+      case ACT_IDLE:
+      default:
+            ys = 45;
+            break;
+      }
+
+      pev->yaw_speed = ys;
+}
+
+//=========================================================
+// Spawn
+//=========================================================
+void CMRat :: Spawn()
+{
+      Precache( );
+
+      SET_MODEL(ENT(pev), "models/bigrat.mdl");
+      UTIL_SetSize( pev, Vector( 0, 0, 0 ), Vector( 0, 0, 0 ) );
+
+      pev->solid                  = SOLID_SLIDEBOX;
+      pev->movetype            = MOVETYPE_STEP;
+      m_bloodColor            = BLOOD_COLOR_RED;
+      pev->health                  = 8;
+      pev->view_ofs            = Vector ( 0, 0, 6 );// position of the eyes relative to monster's origin.
+      m_flFieldOfView            = 0.5;// indicates the width of this monster's forward view cone ( as a dotproduct result )
+      m_MonsterState            = MONSTERSTATE_NONE;
+
+      MonsterInit();
+}
+
+//=========================================================
+// Precache - precaches all resources this monster needs
+//=========================================================
+void CMRat :: Precache()
+{
+      PRECACHE_MODEL("models/bigrat.mdl");
+}      
+
+//=========================================================
+// AI Schedules Specific to this monster
+//=========================================================
+
+
+--------------------------------------------------
+10/10/03 at 13:02:28  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Did you add "rat" to all the places in the dllapi.cpp file?  (search for "barney" in that file as an example).
+
+botman
+
+--------------------------------------------------
+10/10/03 at 13:20:27  Reply by: BAStumm (bs@bs-linux.com)
+--------------------------------------------------
+Perhaps I'm confused and I cant confirm this since I'm at work with no hl install... But in the tfc directory pak file isn't bigrat.mdl the generic tfc flag? Perhaps your code is fine and you just have the wrong model... 
+
+What do you see in hlmodelviewer for bigrat.mdl in the tfc pak?
+
+--------------------------------------------------
+10/10/03 at 13:46:00  Reply by: buzzkill (buzzkill@100acrebloodbath.com)
+--------------------------------------------------
+
+QUOTE:
+Perhaps I'm confused and I cant confirm this since I'm at work with no hl install... But in the tfc directory pak file isn't bigrat.mdl the generic tfc flag? Perhaps your code is fine and you just have the wrong model... 
+
+What do you see in hlmodelviewer for bigrat.mdl in the tfc pak?
+
+
+
+
+OMFG. You're right.
+
+All I can say is, that's ghey. Thanks Valve. Couldn't just add another model.  <sigh>
+
+--------------------------------------------------
+10/10/03 at 14:18:53  Reply by: buzzkill (buzzkill@100acrebloodbath.com)
+--------------------------------------------------
+Thanks again for the heads up. I split out the model, renamed it, and now have rats in my basement.  :)
+
+
+
+--------------------------------------------------
+10/11/03 at 20:15:34  Reply by: BAStumm (bs@bs-linux.com)
+--------------------------------------------------
+so your requiring people to download it? Or you figured out how to spawn it in TFC via the valve models folder? I'm guessing the first... 
+
+--------------------------------------------------
+10/11/03 at 20:16:28  Reply by: BAStumm (bs@bs-linux.com)
+--------------------------------------------------
+oh and how bout sharing up the src and the basement rat locations :) 
+
+--------------------------------------------------
+10/23/03 at 12:58:33  Reply by: buzzkill (buzzkill@100acrebloodbath.com)
+--------------------------------------------------
+I pulled out the existing bigrat.mdl from tfc.wad, renamed it and push it down to the players.
+
+Here are the relevant portions... (I don't want to post the entire source somewhere, both out of respect for Botman and because I've moded some other areas which might cause problems for other people)
+
+----- rat.cpp ------
+
+/***
+*
+*      Copyright (c) 1996-2002, Valve LLC. All rights reserved.
+*      
+*      This product contains software technology licensed from Id 
+*      Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc. 
+*      All Rights Reserved.
+*
+*   This source code contains proprietary and confidential information of
+*   Valve LLC and its suppliers.  Access to this code is restricted to
+*   persons who have executed a written SDK license with Valve.  Any access,
+*   use or distribution of this code by or to any unlicensed person is illegal.
+*
+****/
+//=========================================================
+// rat - environmental monster
+//=========================================================
+
+#include      "extdll.h"
+#include      "util.h"
+#include      "cmbase.h"
+#include "cmbasemonster.h"
+#include      "monsters.h"
+#include      "schedule.h"
+
+
+
+//=========================================================
+// Monster's Anim Events Go Here
+//=========================================================
+
+/*class CRat : public CBaseMonster
+{
+public:
+      void Spawn( void );
+      void Precache( void );
+      void SetYawSpeed( void );
+      int  Classify ( void );
+};
+LINK_ENTITY_TO_CLASS( monster_rat, CRat );*/
+
+//=========================================================
+// Classify - indicates this monster's place in the 
+// relationship table.
+//=========================================================
+int      CMRat :: Classify ( void )
+{
+      return      CLASS_ALIEN_PASSIVE;//CLASS_INSECT;
+}
+
+//=========================================================
+// SetYawSpeed - allows each sequence to have a different
+// turn rate associated with it.
+//=========================================================
+void CMRat :: SetYawSpeed ( void )
+{
+      int ys;
+
+      switch ( m_Activity )
+      {
+      case ACT_IDLE:
+      default:
+            ys = 160;
+            break;
+      }
+
+      pev->yaw_speed = ys;
+      
+}
+
+void CMRat :: IdleSound( void )
+{
+      
+      EMIT_SOUND_DYN(ENT(pev), CHAN_BODY, "roach/rch_die.wav", 1, ATTN_NORM, 0, 80 + RANDOM_LONG(0,39) );
+
+}
+
+//=========================================================
+// Spawn
+//=========================================================
+void CMRat :: Spawn()
+{
+      Precache( );
+
+      SET_MODEL(ENT(pev), "models/mybigrat.mdl");
+      UTIL_SetSize( pev, Vector( 0, 0, 0 ), Vector( 0, 0, 0 ) );
+
+      pev->solid                  = SOLID_SLIDEBOX;
+      pev->movetype            = MOVETYPE_STEP;
+      m_bloodColor            = BLOOD_COLOR_RED;
+      pev->health                  = 8;
+      pev->view_ofs            = Vector ( 0, 0, 6 );// position of the eyes relative to monster's origin.
+      m_flFieldOfView            = 0.5;// indicates the width of this monster's forward view cone ( as a dotproduct result )
+      m_MonsterState            = MONSTERSTATE_NONE;
+
+      MonsterInit();
+}
+
+//=========================================================
+// Precache - precaches all resources this monster needs
+//=========================================================
+void CMRat :: Precache()
+{
+      PRECACHE_MODEL("models/mybigrat.mdl");
+      PRECACHE_SOUND("roach/rch_die.wav");
+}      
+
+//=========================================================
+// AI Schedules Specific to this monster
+//=========================================================
+
+
+
+----- addition to cmbasemonster.h -----
+
+
+class CMRat : public CMBaseMonster
+{
+public:
+      void Spawn( void );
+      void Precache( void );
+      void SetYawSpeed( void );
+      int  Classify ( void );
+      void IdleSound (void);
+};
+
+
+------ additional steps ------
+
+1) add a case element to (dllapi.cpp) spawn_monster()
+2) add a declaration and case element to (dllapi.cpp) mmServerActivate()
+3) Add an element to (dllapi.cpp) monster_type_t monster_types[]
+
+
+--------- my 2fort monster cfg ------
+
+{
+origin/-400 -2050 -640
+delay/10
+monster/rat
+
+
+} 
+
+{
+origin/-470 -2450 -640
+delay/10
+monster/rat
+
+
+} 
+
+{
+origin/-900 -3260 -640
+delay/10
+monster/rat
+
+
+} 
+{
+origin/250 -3110 -640
+delay/10
+monster/rat
+
+
+} 
+
+{
+origin/400 2050 -640
+delay/10
+monster/rat
+
+
+} 
+
+{
+origin/470 2450 -640
+delay/10
+monster/rat
+
+
+} 
+
+{
+origin/900 3260 -640
+delay/10
+monster/rat
+
+
+} 
+{
+origin/-250 3110 -640
+delay/10
+monster/rat
+
+
+} 
+
+
+

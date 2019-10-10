@@ -1,0 +1,127 @@
+--------------------------------------------------
+Subject: My dod bot will not shoot
+--------------------------------------------------
+04/28/02 at 07:31:54  Posted by: Noplay (jame4-bond@laposte.net)
+--------------------------------------------------
+When i play, they follow me and a bot in my team, but they shoot not.... 
+The bot work god with TFC.
+Please help me.... 
+
+--------------------------------------------------
+04/28/02 at 09:37:32  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+probably they're stuck in some kind of VGUI menu and you can't know. this is what happens in most cases.
+
+--------------------------------------------------
+04/28/02 at 10:09:02  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+you'll need to add the appropraite weapons for the bot to shoot in bot_combat.cpp. You can download the blitzbot source code, I think that will have it in it.
+
+--------------------------------------------------
+04/28/02 at 12:48:50  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+Hmmm... I was assuming he already did that, because it should not be the problem anyway. Not having the weapons defined would only not allow the bot to switch weapons but would still allow him to fire the crowbar, knife, glock, or whatever default pistol.
+
+--------------------------------------------------
+04/28/02 at 14:00:17  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+The BotFireWeapon stuff checks the weapons for the mod and the sets use_primary/use_secondary to true/false for the best weapon. And if use_primary is true the attack button is pressed in BotFireWeapon etc. :)
+
+--------------------------------------------------
+04/28/02 at 15:51:47  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+yes, but you seem to forget that this whole stuff is done for SELECTING a weapon. Here the bot already has a weapon, the default one, and whatever the while loop will say, when it'll be time to press IN_ATTACK, he will. So a weapon will anyhow always be fired. Get it ? :)
+
+--------------------------------------------------
+04/29/02 at 08:35:29  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+nope! :P
+
+code:
+
+...
+            pDelay = &gearbox_fire_delay[0];
+      }
+      else if (mod_id == FRONTLINE_DLL)
+      {
+            pSelect = &frontline_weapon_select[0];
+            pDelay = &frontline_fire_delay[0];
+      }              
+
+      if (pSelect)
+        {
+        ...
+           pEdict->v.button = IN_ATTACK;
+        ...
+        }
+...
+
+
+
+Only if there is something in pSelect ;) So If weapons wern't put in then pSelect should be null. So... ;D
+
+[modified on 04/29/02 at 08:35:29]
+--------------------------------------------------
+04/29/02 at 08:59:09  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+aaargh sh*t sh*t sh*t goddamn sh*t lol he's right, he's *always* right ;-) I wouldn't have done the mistake if I weren't using strongly modified HPB sources :D
+
+Cheesy/PM, one/nil.
+
+--------------------------------------------------
+04/29/02 at 11:37:51  Reply by: @$3.1415rin (joebot@botepidemic.com)
+--------------------------------------------------
+well, he's always right when referring to template #3, but who said he's using it !?
+
+--------------------------------------------------
+04/29/02 at 12:25:28  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+I am anyway hehe ;D
+
+--------------------------------------------------
+05/03/02 at 04:14:54  Reply by: Noplay (jame4-bond@laposte.net)
+--------------------------------------------------
+thanks it's works, but i know not my error.
+
+--------------------------------------------------
+01/12/03 at 00:35:15  Reply by: ssimms (seth@uncomplicated.net)
+--------------------------------------------------
+I am bringing back this old thread because I just recently had the exact same problem with the NS bot I making.  The problem is not in any of the selecting a weapon, or VGUI menu, etc.  The problem is that in a team based mod (such as DOD and NS), the bot will try and detect the team of each player when it looks for an enemy.  However, if the team detection is not set up correctly for your mod, the bot will think all the players are on the same team and will not shoot at anyone.
+
+This is how I got it to work for NS:
+
+In util.cpp, add your mod to the UTIL_GetTeam function:
+
+int UTIL_GetTeam(edict_t *pEntity)
+{
+   if (mod_id == TFC_DLL)
+   {
+      return pEntity->v.team - 1;  // TFC teams are 1-4 based
+   }
+   else if (mod_id == NS_DLL)
+   {
+         return pEntity->v.team -1;      //NS teams are 1-2
+   }
+...
+
+And you have to add your mod to the BotCheckTeamplay function in bot_combat.cpp:
+
+void BotCheckTeamplay(void)
+{
+   // is this TFC or Counter-Strike or OpFor teamplay or FrontLineForce or NaturalSelection?
+   if ((mod_id == TFC_DLL) || (mod_id == CSTRIKE_DLL) ||
+       ((mod_id == GEARBOX_DLL) && (pent_info_ctfdetect != NULL)) ||
+       (mod_id == FRONTLINE_DLL) || (mod_id == NS_DLL))
+      is_team_play = 1.0;
+   else
+      is_team_play = CVAR_GET_FLOAT("mp_teamplay");  // teamplay enabled?
+
+   checked_teamplay = TRUE;
+}
+
+
+--------------------------------------------------
+01/12/03 at 05:29:55  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+you also have to adapt your mod for use with catching the WeaponList/CurrentWeapon/AmmoX network message, by simply checking the mod DLL in regusermsg() and messagebegin().
+

@@ -1,0 +1,150 @@
+--------------------------------------------------
+Subject: weird bug with 3d math
+--------------------------------------------------
+12/09/01 at 13:35:16  Posted by: Tub (tubpc@authmann.de)
+--------------------------------------------------
+Hi
+
+I'm trying to find the intersection between a line (edge of a polygon) and a plane.
+The plane is given by 3 vectors a1, a2, a3.
+
+First I'm testing if each corner is in front or behind the plane (using DotProduct(normal of the plane, a vector from the plane to the corner), so whenever I check for an intersection, there has to be one between the two corners with the vectors c1 and c2.
+
+I use the following approach:
+
+code:
+
+                        // calculate intersection between plane and edge
+                        // P: x = a1 - s*(a2-a1) - t*(a3-a1)
+                        // E: x = c1 + u*(c2-c1)
+                        // s*(a2-a1) + t*(a3-a1) + u*(c2-c1) = a1-c1
+                        //      v1          v2          v3       v4
+                        Vector v1 = a2-a1,
+                               v2 = a3-a1,
+                               v3 = c2-c1,
+                               v4 = a1-c1;
+
+                        // solve, step 1
+                        if (v1.x != 0)
+                        {
+                              float fac = v1.y / v1.x;
+                              v1.y -= v1.x * fac;
+                              v2.y -= v2.x * fac;
+                              v3.y -= v3.x * fac;
+                              v4.y -= v4.x * fac;
+                        }
+                        else // swap x and y
+                        {
+                              float swap;
+                              swap = v1.x;v1.x=v1.y;v1.y=swap;
+                              swap = v2.x;v2.x=v2.y;v2.y=swap;
+                              swap = v3.x;v3.x=v3.y;v3.y=swap;
+                              swap = v4.x;v4.x=v4.y;v4.y=swap;
+                        }
+                        // v1.y should be 0 now
+                        if (v1.x != 0)
+                        {
+                              float fac = v1.z / v1.x;
+                              v1.z -= v1.x * fac;
+                              v2.z -= v2.x * fac;
+                              v3.z -= v3.x * fac;
+                              v4.z -= v4.x * fac;
+                        }
+                        else // swap x and z
+                        {
+                              float swap;
+                              swap = v1.x;v1.x=v1.z;v1.z=swap;
+                              swap = v2.x;v2.x=v2.z;v2.z=swap;
+                              swap = v3.x;v3.x=v3.z;v3.z=swap;
+                              swap = v4.x;v4.x=v4.z;v4.z=swap;
+                        }
+                        // v1.z should be 0 now
+                        // solve, step 2
+                        if (v2.y != 0)
+                        {
+                              float fac = v2.z / v2.y;
+                              v2.z -= v2.y * fac;
+                              v3.z -= v3.y * fac;
+                              v4.z -= v4.y * fac;
+                        }
+                        else // swap y and z
+                        {
+                              float swap;
+                              swap = v2.y;v2.y=v2.z;v2.z=swap;
+                              swap = v3.y;v3.y=v3.z;v3.z=swap;
+                              swap = v4.y;v4.y=v4.z;v4.z=swap;
+                        }
+                        // v2.z should be 0 now
+                        // now we got u! Find intersection
+                        float u = (v4.z/v3.z);
+
+
+
+as the intersection has to be between c1 and c2, u should be between 0 and 1, right?
+
+the debugging output is like this (I have around 1.4 mb of this, anyone wants more? :o)
+
+Weird u = -0.823236 detected
+Polygon 2431 has 6 corners (floor)
+3521 : (  -384,   1840,    392)
+3543 : (  -384,   1808,    418)
+3544 : (  -408,   1792,    431)
+3545 : (  -416,   1786,    435)
+3546 : (  -496,   1733,    478)
+3522 : (  -496,   1840,    392)
+plane defined by: (-482, -144, 97), (-452, -192, 89), (-432, -224, 84)
+intersection between corners (#2, #1): (-408, 1792, 431), (-384, 1808, 418)
+before solving:
+   30,    50,    24 =   -74
+  -48,   -80,    16 = -1936
+   -8,   -13,   -13 =  -333
+after solving:
+   30,    50,    24 =   -74
+    0,     0,    53 = -2053
+    0,     0,   -16 =    13
+
+if you look at line 2 and 3 after solving, this cannot be true.
+
+
+I checked my code a couple of times, but couldn't find a bug.
+
+Hope anyone can help, tia.
+
+
+--------------------------------------------------
+12/10/01 at 04:25:33  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+See these...
+
+http://www.geocities.com/SiliconValley/2151/math3d.html
+
+http://www.flashkit.com/tutorials/3D/3D_Engin-KStor-189/more6.shtml
+
+Also, if you have the line represented as a normal and a distance from the origin (as the way Quake based BSP files store them), you can use code included with my BSP tools (in the mathlib.cpp file).  Look for the VectorIntersectPlane() function.
+
+botman
+
+--------------------------------------------------
+12/10/01 at 13:03:58  Reply by: Tub (tubpc@authmann.de)
+--------------------------------------------------
+yeah, thanks for the links.. but they don't explain why it doesn't work..
+Using your source is not an option too, as I don't want my code to be released under GPL (too untidy).
+
+
+if you look at the comments you'll see how I define the line and the plane, and how I set up the equation (P=Plane, E=Edge):
+
+code:
+
+// P: x = a1 - s*(a2-a1) - t*(a3-a1)
+// E: x = c1 + u*(c2-c1)
+// s*(a2-a1) + t*(a3-a1) + u*(c2-c1) = a1-c1
+
+                       
+
+Then I use gaussian to solve it. In theory, it should work, but somewhere something goes terribly wrong, and I have no idea where.
+
+
+
+edit: Oh dear.. I should have tried the normal representation of the plane first :) works now. sorry. Let me take this chance to say: botman, you're the best (always wanted to say that ;D)
+
+[modified on 12/10/01 at 13:03:58]

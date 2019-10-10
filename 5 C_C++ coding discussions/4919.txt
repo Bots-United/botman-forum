@@ -1,0 +1,396 @@
+--------------------------------------------------
+Subject: Help me with math plz
+--------------------------------------------------
+10/19/03 at 19:24:24  Posted by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Hi all
+
+Still trying to fix that bug in my navmesh code that makes it drop walkfaces from time to time, I've located the problem, HERE:
+code:
+
+float AngleOfVectors (Vector v1, Vector v2)
+{
+   // this function returns the angle in degrees between the v1 and v2 vectors, regardless of
+   // the axial planes (ie, considering the plane formed by the v1 and v2 vectors themselves)
+
+   static float ratio;
+
+   if ((v1 == g_vecZero) || (v2 == g_vecZero))
+      return (0); // reliability check (avoid zero divide)
+
+   ratio = DotProduct (v1, v2) / (v1.Length () * v2.Length ());
+
+   if (ratio >= 1)
+      return (0); // reliability check (avoid acos range error)
+
+   return (WrapAngle (acos (ratio) * 180 / M_PI));
+}
+
+
+This function is incorrectly written. But WHERE IS THE MISTAKE ???
+
+
+--------------------------------------------------
+10/20/03 at 05:30:19  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+I'm not sure if this is problem or not, but try changing this...
+code:
+ratio = DotProduct (v1, v2) / (v1.Length () * v2.Length ());
+
+
+...to this...
+code:
+Vector t1 = v1;
+Vector t2 = v2;
+t1.Normalize();
+t2.Normalize();
+ratio = DotProduct(t1, t2);
+
+...and see if that doesn't give you proper results.
+
+botman
+
+--------------------------------------------------
+10/20/03 at 08:08:57  Reply by: @$3.1415rin (johannes@_-removeifnotavirus-_lampel.net)
+--------------------------------------------------
+mh, that should be the same ... at least in theory
+
+any examples why this isnt working correctly ? any values for 'imaginable' vectors ?
+
+ratio is valid in [-1,1], so that check should be ratio>1, instead of ratio>=1
+and some compilers may do shit with this comparision as far as I know, so use "1.f" instead of "1". the same goes for 180 vs 180.f
+
+PS: don't do this reliability check with the zero vectors, instead calculate the length and then check the length ... that saves you 4 float comparisons I guess ....
+
+--------------------------------------------------
+10/20/03 at 09:10:14  Reply by: Cheesemonster!!! (cheeseh(at)rcbot(dot)net)
+--------------------------------------------------
+this is the same sort of func I've been using with my old bot, it works though im sure.
+code:
+
+float UTIL_AngleBetweenVectors(Vector vec1, Vector vec2)
+{
+      double vec1Dotvec2 = vec1.x*vec2.x + vec1.y*vec2.y + vec1.z*vec2.z;
+      double veclengths = vec1.Length() * vec2.Length();
+
+      return ( (acos( vec1Dotvec2/veclengths ) /pi)*180 );
+}
+
+
+hope it helps...
+
+[modified on 10/20/03 at 09:08:51]
+
+actually it looks a bit dodgy looking at it again! (doubles to floats etc !) maybe use a pointer instead :-p
+
+[modified on 10/20/03 at 09:10:14]
+--------------------------------------------------
+10/20/03 at 09:09:36  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+...True.  Inverse cosine of 1.0 (or -1.0) should be valid, although this would be 0 (or 180) degrees between 2 vectors.
+
+You also don't exclude any ratio less than -1.0, but I don't know if that would be a problem or not.
+
+botman
+
+--------------------------------------------------
+10/20/03 at 09:36:50  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Thanks for the big feedback guys, didn't expected so much :)
+
+I'm at work now but I'll get back home in a couple minutes, I'll test your ideas right away then.
+
+
+--------------------------------------------------
+10/20/03 at 10:31:32  Reply by: Cheesemonster!!! (cheeseh(at)rcbot(dot)net)
+--------------------------------------------------
+I think the main thing is, you've got the pi and 180 divisors/multipliers round the wrong way, mine is the opposite of yours, which will give a different result.
+
+Also do NOT (do not!) Wrap a non-degree angle using wrap angles, you are sending radians into your wrap angles, which i think is expecting degrees. Convert to degrees first and then pass it in. I would leave this out of the function though and you can add it where you use the code, you might want to use this function again for other purposes, and angles aren't always wrapped to -180, 180 in HL, just a caution!
+
+<b>
+--- Oh wait you were doing that lol :p Oh well the 180-pi thing should fix that
+</b>
+
+;D
+[modified on 10/20/03 at 10:14:28]
+
+[modified on 10/20/03 at 10:31:32]
+--------------------------------------------------
+10/20/03 at 10:34:51  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Aha, good one Cheesy!
+
+Okay, looks like we're crossposting here, but here's what I wanted to report:
+with the barebones unmodified code I posted, I got results like this:
+code:
+
+GAME SKILL LEVEL:1
+Executing dedicated server config file
+0 entities inhibited
+
+   RACC version 20031014 - http://www.racc-ai.com
+   This program comes with ABSOLUTELY NO WARRANTY; see license for details.
+   This is free software, you are welcome to redistribute it the way you want.
+
+RACC: Looking down on the world
+RANGE ERROR: v1 (3264.000000, -53.485718, 0.000000) - v2 (3216.000000, -53.485718, 0.000000)
+             DotProduct = 10499884.722006 - v1.Length()*v2.Length() = 10499885.159670
+
+
+RANGE ERROR: v1 (3072.000000, 2.285767, 0.000000) - v2 (3264.000000, 2.285767, 0.000000)
+             DotProduct = 10027013.224729 - v1.Length()*v2.Length() = 10027012.849321
+
+
+RANGE ERROR: v1 (2918.285645, -53.485718, 0.000000) - v2 (2870.285645, -53.485718, 0.000000)
+             DotProduct = 8379174.114145 - v1.Length()*v2.Length() = 8379174.203046
+
+
+Like one can see, it looks like the range error occurs for loooooooooooooong vectors which are ALMOST parallel (but are NOT in fact). Makes me think it might be a problem of rounded values, especially in float values where the integer part would become so huge that there is no space left for the fractional part.
+
+What does Normalize() do to vectors ? I've looked at the method but I don't see what sort of math is behind it...
+
+I will try botman's tip and then Cheesy's now.
+
+[modified on 10/20/03 at 10:34:51]
+--------------------------------------------------
+10/20/03 at 10:38:01  Reply by: Cheesemonster!!! (cheeseh(at)rcbot(dot)net)
+--------------------------------------------------
+Normalize returns the unit vector [of the vector you've normalized]
+
+Its the same as doing something like
+
+vec/vec.Length()
+
+It is very useful, as you can create the same vector but have it at different lengths basically.
+[By multiplying the unit vector by the length you want it to be]
+
+[modified on 10/20/03 at 10:38:01]
+--------------------------------------------------
+10/20/03 at 10:48:13  Reply by: Cheesemonster!!! (cheeseh(at)rcbot(dot)net)
+--------------------------------------------------
+Looking up some radians to degrees info,
+
+maybe im wrong too ;P
+
+I think it should be
+
+radians*(180/pi)
+
+which i think is meant to be right...
+
+Just try putting in the parenthesis it might be trying to divide the whole expression and not 180...
+
+[modified on 10/20/03 at 10:48:13]
+--------------------------------------------------
+10/20/03 at 10:58:13  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+No luck with normalized vectors... The first vector to be caught out of range is not the same as before, though, so there might still have been 2 unsafe points in the code and I would be left to find the second one...
+
+On a sidenote, how is it possible that
+code:
+
+(Vector.Length () == 0)
+
+
+could be faster than
+code:
+
+(Vector == g_vecZero)
+
+
+???
+Really I don't understand.
+Aren't there sqrt()'s in the computation of the length ?
+Well, not my main problem really, but just curious...
+
+[Edited: swapping "* 180 / M_PI" with "/ M_PI * 180" didn't help at all]
+
+[modified on 10/20/03 at 10:58:13]
+--------------------------------------------------
+10/20/03 at 11:01:07  Reply by: Cheesemonster!!! (cheeseh(at)rcbot(dot)net)
+--------------------------------------------------
+I think what aspirin means is that, you are already calculating the vectors lengths anyway... so
+
+Make two variables to hold each length,
+
+check them, if any are 0 then return 0 (reliable check)
+
+if not, continue the function, using these variables instead of v1.length & v2.length
+
+--------------------------------------------------
+10/20/03 at 11:09:08  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Okay, here's my function now
+code:
+
+float AngleOfVectors (Vector v1, Vector v2)
+{
+   // this function returns the angle in degrees between the v1 and v2 vectors, regardless of
+   // the axial planes (ie, considering the plane formed by the v1 and v2 vectors themselves)
+
+   static float ratio;
+
+   if ((v1.Length () == 0)  (v2.Length () == 0))
+      return (0); // reliability check (avoid zero divide)
+
+   // normalize v1 and v2 (tip from botman)
+   v1 = v1.Normalize ();
+   v2 = v2.Normalize ();
+
+   // reminder: dot product = 
+   // (v1.x * v2.x + v1.y * v2.y + v1.z * v2.z)
+   ratio = DotProduct (v1, v2);
+
+   if ((ratio < -1)  (ratio > 1))
+   {
+      printf ("\nRANGE ERROR: v1 (%f, %f, %f) - v2 (%f, %f, %f)\n",
+              v1.x, v1.y, v1.z, v2.x, v2.y, v2.z);
+      printf ("\n             DotProduct = %f - v1.Length()*v2.Length() = %f\n",
+              DotProduct (v1, v2), v1.Length() * v2.Length());
+      getchar ();
+      return (0); // reliability check (avoid acos range error)
+   }
+
+   return (WrapAngle (acos (ratio) * 180 / M_PI));
+}
+
+
+I want to fix the problems in the order they come by, and for that I want to fix the acos range error first. HOW COME DotProduct() returns me anything out of bounds at all ?
+
+Vectors that cause trouble are, for example:
+v1 (0.011171, 0.999938, 0)
+v2 (0.011001, 0.999940, 0)
+
+v1 (0.080628, 0.996744, 0)
+v2 (0.080361, 0.996766, 0)
+
+v1 (-0.003227, -0.999995, 0)
+v2 (-0.002960, -0.999996, 0)
+
+These are normalized vectors, I followed botman's advice.
+
+Wahey! If I'd known, I wouldn't have been sleeping during the math lessons at school! !!
+
+[modified on 10/20/03 at 11:09:08]
+--------------------------------------------------
+10/20/03 at 12:52:26  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Still no luck figuring it out...
+
+a genius somewhere ?
+
+Guys, the one who fixes this will have a full credit line in capital letters in the source code! ;D
+
+
+--------------------------------------------------
+10/20/03 at 12:54:42  Reply by: Cheesemonster!!! (cheeseh(at)rcbot(dot)net)
+--------------------------------------------------
+I'll give the actual code a test sometime... the honour is tempting ;)
+
+--------------------------------------------------
+10/20/03 at 13:06:23  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+I've come with a temporary fix... don't like it, but I need this function really bad anyway.
+code:
+
+float AngleOfVectors (Vector v1, Vector v2)
+{
+   // this function returns the angle in degrees between the v1 and v2 vectors, regardless of
+   // the axial planes (ie, considering the plane formed by the v1 and v2 vectors themselves)
+
+   static double v1norm_dotprod_v2norm;
+   static Vector normalized_v1, normalized_v2;
+
+   if ((v1 == g_vecZero) || (v2 == g_vecZero))
+      return (0); // reliability check (avoid zero divide)
+
+   // normalize v1 and v2 (tip from botman)
+   normalized_v1 = v1.Normalize ();
+   normalized_v2 = v2.Normalize ();
+
+   // reminder: dot product = (v1.x * v2.x + v1.y * v2.y + v1.z * v2.z)
+   v1norm_dotprod_v2norm = (double) normalized_v1.x * (double) normalized_v2.x
+                            + (double) normalized_v1.y * (double) normalized_v2.y
+                            + (double) normalized_v1.z * (double) normalized_v2.z;
+
+   // how on Earth come that a dotproduct of normalized vectors can outbound [-1, 1] ???
+   // A couple 'forestry worker' casts to double seem to make the problem occur less often, but
+   // still, we have to check the value to ensure it will be in range...
+
+   if (v1norm_dotprod_v2norm < -1)
+      return (180); // reliability check (avoid acos range error)
+   else if (v1norm_dotprod_v2norm > 1)
+      return (0); // reliability check (avoid acos range error)
+
+   return (WrapAngle (acos (v1norm_dotprod_v2norm) * 180 / M_PI));
+}
+
+
+If anyone has something better than this, please let me know. Thanks guys :)
+
+
+--------------------------------------------------
+10/20/03 at 13:16:12  Reply by: Cheesemonster!!! (cheeseh(at)rcbot(dot)net)
+--------------------------------------------------
+Why not just check if its more than 1 then set it to 1, and if its less than -1 set it to -1, and your in.
+
+I think it's only less than -1 or more than 1 because of floating point accuracy and because of recurring decimal numbers, so it will be very slightly over 1 or slightly less than -1 I believe.
+
+That's why it happens less often with doubles, but I'd stay with floats and stick to capping it at 1 or -1 if out of range.
+
+--------------------------------------------------
+10/20/03 at 14:15:55  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+I return directly 0 or 180 because that's what WrapAngle (acos (stuff) * 180 / M_PI) returns for such input values, so no need to call these functions if I already know the result, eh ?
+
+You are right indeed, the values that are causing problems are very slightly exceeding the range, thus it could be IEEE floating point accuracy.
+
+Bah, I'll stick with this for now. Thank you all, anyway :)
+
+
+--------------------------------------------------
+10/22/03 at 08:30:47  Reply by: @$3.1415rin (johannes@_-removeifnotavirus-_lampel.net)
+--------------------------------------------------
+so the error you get is a range error within the acos function ? you could have mentioned that in your first post here, too :D
+
+PS: anyway, about performance of that length crap ... I was suggesting to calculate the length first, and then check the length being smaller than some epsilon or even being null, cause normally you would also need that data for further calculations. and so you just have to check 2 floats, instead of 6.
+
+PPS: is wrap angle really needed ?! cause acos should only return values between -pi/2 and pi/2, right ?!
+
+höhö, no help for your real problem this time here :(
+
+--------------------------------------------------
+10/22/03 at 09:05:00  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Yeah, that was it, but it took me a hard time to figure it out, because acos() never bombs out on error, it just returns a NaN float.
+
+I was stupidly thinking that it would have crashed, instead, that's why I never suspected the range error.
+
+But I'm not done yet with my navmesh, you'll certainly hear from me again very soon! ;D
+
+
+--------------------------------------------------
+11/01/03 at 17:06:53  Reply by: Cheesemonster!!! (cheeseh(at)rcbot(dot)net)
+--------------------------------------------------
+omg...
+
+I never knew a memory comparison function existed, well it does! memcmp() !! works like memcpy a bit (same paramters) but tells you if the memory is the same for the size, this will be execllent for checking if vectors are the same and similar things that are quite big to check comparison with!
+
+/edit
+
+you can also use this like strcmp, i believe it does the same thing except for any size, (returns -1 if less, 0 if equal, 1 if more) excellent for checking large arrays are equal, none of this for loop stuff.
+
+[modified on 11/01/03 at 17:06:53]
+--------------------------------------------------
+11/01/03 at 15:19:29  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+strcmp() is almost the same as memcmp() except that strcmp() stops when it hits the first zero.  memcmp() doesn't care about zeroes because one of the required parameters is the number of bytes you want to compare.
+
+botman
+
+--------------------------------------------------
+11/01/03 at 17:07:05  Reply by: Cheesemonster!!! (cheeseh(at)rcbot(dot)net)
+--------------------------------------------------
+Yeah, just thought of that :-p
+

@@ -1,0 +1,339 @@
+--------------------------------------------------
+Subject: usermsg handler
+--------------------------------------------------
+01/18/03 at 17:51:25  Posted by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Yet another handy snippet, for those who are tired to mess with their various network messages. Now, ala metamod, you can keep track of ALL registered network messages, and access them by their name instead of just a blind index. You don't even have to catch the recording of a special message you want to hook, this code grants you access to the WHOLE user message database.
+
+You know the NAME of the message,
+you know its INDEX,
+you know its SIZE.
+
+...and additionally, a method for knowing in real time the right state of every message sent (get rid of your various state machine states in bot_client.cpp!!!)
+
+Cut & pasting authorized ;)
+
+code:
+
+// maximum number of user messages the engine can register (hardcoded in the engine)
+#define MAX_USERMSG_TYPES 256
+
+// user message record structure definition
+typedef struct
+{
+   const char *name; // name of user message as called by the MOD DLL
+   int id; // identification number the engine recorded this user message under
+   int size; // size of this message in packets
+} usermsg_t;
+
+
+usermsg_t usermsgs[MAX_USERMSG_TYPES];
+int usermsgs_count = 0;
+
+int messagestate = 0;
+
+
+int GetUserMsgId (const char *msg_name)
+{
+   // this function returns the user message id of the recorded message named msg_name. Local
+   // variables have been made static to speedup recurrent calls of this function.
+
+   static int i;
+
+   // is it a standard engine message (i.e, NOT a user message, already registered by engine) ?
+   if (strcmp ("TempEntity", msg_name) == 0)
+      return (SVC_TEMPENTITY); // return the correct message ID
+   else if (strcmp ("Intermission", msg_name) == 0)
+      return (SVC_INTERMISSION); // return the correct message ID
+   else if (strcmp ("CDTrack", msg_name) == 0)
+      return (SVC_CDTRACK); // return the correct message ID
+   else if (strcmp ("WeaponAnim", msg_name) == 0)
+      return (SVC_WEAPONANIM); // return the correct message ID
+   else if (strcmp ("RoomType", msg_name) == 0)
+      return (SVC_ROOMTYPE); // return the correct message ID
+   else if (strcmp ("Director", msg_name) == 0)
+      return (SVC_DIRECTOR); // return the correct message ID
+
+   // cycle through our known user message types array
+   for (i = 0; i < usermsgs_count; i++)
+      if (strcmp (usermsgs[i].name, msg_name) == 0)
+         return (usermsgs[i].id); // return the id of the user message named msg_name
+
+   // unregistered user message, have the engine register it
+   return (pfnRegUserMsg (msg_name, -1)); // ask the engine to register this new message
+}
+
+
+const char *GetUserMsgName (int msg_type)
+{
+   // this function returns the user message name of the recorded message index msg_type. Local
+   // variables have been made static to speedup recurrent calls of this function.
+
+   static int i;
+
+   // is it a standard engine message (i.e, NOT a user message, already registered by engine) ?
+   if (msg_type == SVC_TEMPENTITY)
+      return ("TempEntity"); // return the correct message name
+   else if (msg_type == SVC_INTERMISSION)
+      return ("Intermission"); // return the correct message name
+   else if (msg_type == SVC_CDTRACK)
+      return ("CDTrack"); // return the correct message name
+   else if (msg_type == SVC_WEAPONANIM)
+      return ("WeaponAnim"); // return the correct message name
+   else if (msg_type == SVC_ROOMTYPE)
+      return ("RoomType"); // return the correct message name
+   else if (msg_type == SVC_DIRECTOR)
+      return ("Director"); // return the correct message name
+
+   // cycle through our known user message types array
+   for (i = 0; i < usermsgs_count; i++)
+      if (usermsgs[i].id == msg_type)
+         return (usermsgs[i].name); // return the name of the user message having the msg_type id
+
+   return (NULL); // unregistered user message
+}
+
+
+int pfnRegUserMsg (const char *pszName, int iSize)
+{
+   // this function registers a "user message" by the engine side. User messages are network
+   // messages the game DLL asks the engine to send to clients. Since many MODs have completely
+   // different client features (Counter-Strike has a radar and a timer, for example), network
+   // messages just can't be the same for every MOD. Hence here the MOD DLL tells the engine,
+   // "Hey, you have to know that I use a network message whose name is pszName and it is iSize
+   // packets long". The engine books it, and returns the ID number under which he recorded that
+   // custom message. Thus every time the MOD DLL will be wanting to send a message named pszName
+   // using pfnMessageBegin(), it will know what message ID number to send, and the engine will
+   // know what to do.
+
+   // only process bots if we are in multiplayer mode
+   if (is_multiplayer_game)
+   {
+      int index = -1;
+      int msg = (*g_engfuncs.pfnRegUserMsg) (pszName, iSize); // register the message
+
+      // if developer mode is high, log message to debug file
+      if (DeveloperMode () == DEVELOPER_ON)
+         LogToFile ("Game registering user message \"%s\" to index %d\n", pszName, msg);
+
+      // is this message NOT already registered ?
+      for (index = 0; index < usermsgs_count; index++)
+         if (strcmp (usermsgs[index].name, pszName) == 0)
+            break; // cycle through usermsgs types array and break when a similar record is found
+
+      // now keep track (or update if necessary) this user message in our own array...
+      usermsgs[index].name = pszName; // record this message's name
+      usermsgs[index].id = msg; // record this message's index
+      usermsgs[index].size = iSize; // record this message's size
+
+      // are we certain this message has not been registered in the past ?
+      if (index == usermsgs_count)
+         usermsgs_count++; // we know now one user message more
+
+      return (msg); // ...and return the message ID number the engine gave us back
+   }
+
+   return ((*g_engfuncs.pfnRegUserMsg) (pszName, iSize));
+}
+
+
+void pfnMessageBegin (int msg_dest, int msg_type, const float *pOrigin, entity_t *ed)
+{
+   // only process bots if we are in multiplayer mode
+   if (is_multiplayer_game)
+   {
+      messagestate = 0; // clear message state (message is starting)
+
+      // if this message is directed to a player in particular AND this player is a bot...
+      if (!IsNull (ed) && IsABot (ed))
+      {
+         // if developer mode is high, notify that a bot is getting a message
+         if (DeveloperMode () == DEVELOPER_VERBOSE)
+            ServerConsole_printf ("Bot \"%s\" receives message: %s\n", NetnameOf (ed), GetUserMsgName (msg_type));
+
+         botMsgFunction = NULL; // no msg function until known otherwise
+         botMsgIndex = PlayerIndexOf (ed); // index of bot receiving message
+
+         // assign the right parsing function pointer given the type of message it is
+         if (msg_type == GetUserMsgId ("AmmoPickup"))
+            botMsgFunction = BotClient_CS_AmmoPickup;
+         else if (msg_type == GetUserMsgId ("WhateverMsg"))
+            ; // et caetera...
+
+         // has someone fired a bullet ?
+         if ((msg_type == GetUserMsgId ("CurWeapon"))  (msg_type == GetUserMsgId ("AmmoX")))
+            PlayBulletSoundsForBots (ed); // call this so bots hear bullet sounds
+      }
+
+      // else this message is not directed to a player, is it a broadcast message ?
+      else if (msg_dest == MSG_ALL)
+      {
+         // if developer mode is on, notify that a broadcast message is being sent
+         if (DeveloperMode () == DEVELOPER_ON)
+            ServerConsole_printf ("All clients receive message: %s\n", GetUserMsgName (msg_type));
+
+         botMsgFunction = NULL; // no msg function until known otherwise
+
+         if (msg_type == GetUserMsgId ("DeathMsg"))
+            botMsgFunction = BotClient_CS_DeathMsgAll;
+         else if (msg_type == GetUserMsgId ("WhateverMsg"))
+            ; // et caetera...
+      }
+   }
+
+   (*g_engfuncs.pfnMessageBegin) (msg_dest, msg_type, pOrigin, ed);
+}
+
+
+void pfnMessageEnd (void)
+{
+   // only process bots if we are in multiplayer mode
+   if (is_multiplayer_game)
+   {
+      // was this a message directed to a bot ?
+      if (botMsgFunction)
+         botMsgFunction = NULL; // clear out the bot message function pointers...
+
+      messagestate = 0; // clear message state (message has finished)
+   }
+
+   (*g_engfuncs.pfnMessageEnd) ();
+}
+
+
+void pfnWriteByte (int iValue)
+{
+   // only process bots if we are in multiplayer mode
+   if (is_multiplayer_game)
+   {
+      // if this message is for a bot, call the client message function...
+      if (botMsgFunction)
+         (*botMsgFunction) ((void *) &iValue, botMsgIndex);
+
+      messagestate++; // increment message state (one packet more has been sent)
+   }
+
+   (*g_engfuncs.pfnWriteByte) (iValue);
+}
+
+
+void pfnWriteChar (int iValue)
+{
+   // only process bots if we are in multiplayer mode
+   if (is_multiplayer_game)
+   {
+      // if this message is for a bot, call the client message function...
+      if (botMsgFunction)
+         (*botMsgFunction) ((void *) &iValue, botMsgIndex);
+
+      messagestate++; // increment message state (one packet more has been sent)
+   }
+
+   (*g_engfuncs.pfnWriteChar) (iValue);
+}
+
+
+void pfnWriteShort (int iValue)
+{
+   // only process bots if we are in multiplayer mode
+   if (is_multiplayer_game)
+   {
+      // if this message is for a bot, call the client message function...
+      if (botMsgFunction)
+         (*botMsgFunction) ((void *) &iValue, botMsgIndex);
+
+      messagestate++; // increment message state (one packet more has been sent)
+   }
+
+   (*g_engfuncs.pfnWriteShort) (iValue);
+}
+
+
+void pfnWriteLong (int iValue)
+{
+   // only process bots if we are in multiplayer mode
+   if (is_multiplayer_game)
+   {
+      // if this message is for a bot, call the client message function...
+      if (botMsgFunction)
+         (*botMsgFunction) ((void *) &iValue, botMsgIndex);
+
+      messagestate++; // increment message state (one packet more has been sent)
+   }
+
+   (*g_engfuncs.pfnWriteLong) (iValue);
+}
+
+
+void pfnWriteAngle (float flValue)
+{
+   // only process bots if we are in multiplayer mode
+   if (is_multiplayer_game)
+   {
+      // if this message is for a bot, call the client message function...
+      if (botMsgFunction)
+         (*botMsgFunction) ((void *) &flValue, botMsgIndex);
+
+      messagestate++; // increment message state (one packet more has been sent)
+   }
+
+   (*g_engfuncs.pfnWriteAngle) (flValue);
+}
+
+
+void pfnWriteCoord (float flValue)
+{
+   // only process bots if we are in multiplayer mode
+   if (is_multiplayer_game)
+   {
+      // if this message is for a bot, call the client message function...
+      if (botMsgFunction)
+         (*botMsgFunction) ((void *) &flValue, botMsgIndex);
+
+      messagestate++; // increment message state (one packet more has been sent)
+   }
+
+   (*g_engfuncs.pfnWriteCoord) (flValue);
+}
+
+
+void pfnWriteString (const char *sz)
+{
+   // only process bots if we are in multiplayer mode
+   if (is_multiplayer_game)
+   {
+      // if this message is for a bot, call the client message function...
+      if (botMsgFunction)
+         (*botMsgFunction) ((void *) sz, botMsgIndex);
+
+      messagestate++; // increment message state (one packet more has been sent)
+   }
+
+   (*g_engfuncs.pfnWriteString) (sz);
+}
+
+
+void pfnWriteEntity (int iValue)
+{
+   // only process bots if we are in multiplayer mode
+   if (is_multiplayer_game)
+   {
+      // if this message is for a bot, call the client message function...
+      if (botMsgFunction)
+         (*botMsgFunction) ((void *) &iValue, botMsgIndex);
+
+      messagestate++; // increment message state (one packet more has been sent)
+   }
+
+   (*g_engfuncs.pfnWriteEntity) (iValue);
+}
+
+// note that keeping the network messagestate here directly is much cleaner than keeping a
+// separate state machine state in each function of bot_client.cpp like botman was doing.
+// for each "static int state = 0;" in bot_client.cpp, just erase it and define an
+// "extern int messagestate;" at the top of the file. Cheers !
+
+
+
+
+[modified on 01/18/03 at 17:51:25]

@@ -1,0 +1,49 @@
+--------------------------------------------------
+Subject: problem: Trying to change pitch while shooting
+--------------------------------------------------
+07/19/01 at 15:40:32  Posted by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+I want bots to use the egon on an enemy and then lookup up so it will lift the enemy up (Since this mod im doing the bot for has an egon as a sortof tractor beam)
+
+I need the bots to shot the actiuall origin of the enmy first so it wil grab the enemy so the enemy can be lifted.
+
+I was hoping that the seen enemy time might help so that the bot will only look up afetr 0.5 seconds after seeing the enemy but I don't know if it works that way!!!
+
+this is in the BotShootAtEnemy function in bot_combat
+
+code:
+
+bot_shoot = BotFireWeapon(v_enemy, pBot, 0);
+       
+        if( (pBot->pBotEnemy != NULL) && (bot_shoot) && (((pBot->f_bot_see_enemy_time > 0) &&
+       ((pBot->f_bot_see_enemy_time + 0.5) <= gpGlobals->time))) )      // If the bot is shooting an enemy
+        {
+          if( (mod_id == RC_DLL) && (pBot->current_weapon.iId == VALVE_WEAPON_EGON) ) // If using the egon tractor beam
+          {           
+            pBot->pEdict->v.idealpitch = RANDOM_FLOAT(-60,-40);
+            BotFixIdealPitch(pBot->pEdict);
+            pEdict->v.v_angle.x = pBot->pEdict->v.idealpitch; // look upwards... about 40 to 60 degrees
+          }
+        }
+
+
+
+
+I thought this might have solved the prob but the bots aim is just all over the place! Also HL can crash...! Little help !!!
+
+[modified on 07/19/01 at 15:40:16]
+
+[modified on 07/19/01 at 15:40:32]
+--------------------------------------------------
+07/20/01 at 04:20:59  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+The f_bot_see_enemy_time is continuously reset every time the bot sees an enemy.  It is used to keep track of how long it has been since the bot last saw an enemy (so it can reload if it hasn't seen any enemies in a little while).
+
+In your case you will constantly be seeing the enemy so this variable will constantly be reset.
+
+You should probably create another variable that gets set as soon as the bot sees an enemy the first time (then don't keep setting it if the enemy is still visible).
+
+Then you can start changing the bot's view angle 0.5 seconds after this "first_seen_time".
+
+botman
+

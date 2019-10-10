@@ -1,0 +1,762 @@
+--------------------------------------------------
+Subject: Half-Life engine change (will break 3rd party stuf
+--------------------------------------------------
+11/10/03 at 15:34:49  Posted by: botman (botman@planethalflife.com)
+--------------------------------------------------
+This just announced on the Half-Life hlds_apps e-mail list...
+QUOTE:
+We will be releasing a new engine soon (within the next couple of days
+we expect), we have added some new functions to the engine function
+structure (from eiface.h). If you are responsible for a third party
+program such as MetaMod you will need to update this engine structure
+and recompile your program. Not updating will cause a crash when your
+users try to use the new engine with the old engine interface structure.
+
+- Alfred
+
+
+
+code:
+
+// Engine hands this to DLLs for functionality callbacks
+typedef struct enginefuncs_s
+{
+      int                  (*pfnPrecacheModel)
+(char* s);
+      int                  (*pfnPrecacheSound)
+(char* s);
+      void            (*pfnSetModel)                        (edict_t
+*e, const char *m);
+      int                  (*pfnModelIndex)
+(const char *m);
+      int                  (*pfnModelFrames)
+(int modelIndex);
+      void            (*pfnSetSize)                        (edict_t
+*e, const float *rgflMin, const float *rgflMax);
+      void            (*pfnChangeLevel)                  (char*
+s1, char* s2);
+      void            (*pfnGetSpawnParms)                  (edict_t
+*ent);
+      void            (*pfnSaveSpawnParms)            (edict_t *ent);
+      float            (*pfnVecToYaw)                        (const
+float *rgflVector);
+      void            (*pfnVecToAngles)                  (const
+float *rgflVectorIn, float *rgflVectorOut);
+      void            (*pfnMoveToOrigin)                  (edict_t
+*ent, const float *pflGoal, float dist, int iMoveType);
+      void            (*pfnChangeYaw)
+(edict_t* ent);
+      void            (*pfnChangePitch)
+(edict_t* ent);
+      edict_t*      (*pfnFindEntityByString)      (edict_t
+*pEdictStartSearchAfter, const char *pszField, const char *pszValue);
+      int                  (*pfnGetEntityIllum)
+(edict_t* pEnt);
+      edict_t*      (*pfnFindEntityInSphere)      (edict_t
+*pEdictStartSearchAfter, const float *org, float rad);
+      edict_t*      (*pfnFindClientInPVS)            (edict_t
+*pEdict);
+      edict_t* (*pfnEntitiesInPVS)                  (edict_t
+*pplayer);
+      void            (*pfnMakeVectors)                  (const
+float *rgflVector);
+      void            (*pfnAngleVectors)                  (const
+float *rgflVector, float *forward, float *right, float *up);
+      edict_t*      (*pfnCreateEntity)                  (void);
+      void            (*pfnRemoveEntity)
+(edict_t* e);
+      edict_t*      (*pfnCreateNamedEntity)            (int className);
+      void            (*pfnMakeStatic)                  (edict_t
+*ent);
+      int                  (*pfnEntIsOnFloor)
+(edict_t *e);
+      int                  (*pfnDropToFloor)
+(edict_t* e);
+      int                  (*pfnWalkMove)
+(edict_t *ent, float yaw, float dist, int iMode);
+      void            (*pfnSetOrigin)                        (edict_t
+*e, const float *rgflOrigin);
+      void            (*pfnEmitSound)                        (edict_t
+*entity, int channel, const char *sample, /*int*/float volume, float
+attenuation, int fFlags, int pitch);
+      void            (*pfnEmitAmbientSound)            (edict_t
+*entity, float *pos, const char *samp, float vol, float attenuation, int
+fFlags, int pitch);
+      void            (*pfnTraceLine)                        (const
+float *v1, const float *v2, int fNoMonsters, edict_t *pentToSkip,
+TraceResult *ptr);
+      void            (*pfnTraceToss)
+(edict_t* pent, edict_t* pentToIgnore, TraceResult *ptr);
+      int                  (*pfnTraceMonsterHull)            (edict_t
+*pEdict, const float *v1, const float *v2, int fNoMonsters, edict_t
+*pentToSkip, TraceResult *ptr);
+      void            (*pfnTraceHull)                        (const
+float *v1, const float *v2, int fNoMonsters, int hullNumber, edict_t
+*pentToSkip, TraceResult *ptr);
+      void            (*pfnTraceModel)                  (const
+float *v1, const float *v2, int hullNumber, edict_t *pent, TraceResult
+*ptr);
+      const char *(*pfnTraceTexture)                  (edict_t
+*pTextureEntity, const float *v1, const float *v2 );
+      void            (*pfnTraceSphere)                  (const
+float *v1, const float *v2, int fNoMonsters, float radius, edict_t
+*pentToSkip, TraceResult *ptr);
+      void            (*pfnGetAimVector)
+(edict_t* ent, float speed, float *rgflReturn);
+      void            (*pfnServerCommand)                  (char*
+str);
+      void            (*pfnServerExecute)                  (void);
+      void            (*pfnClientCommand)
+(edict_t* pEdict, char* szFmt, ...);
+      void            (*pfnParticleEffect)            (const float
+*org, const float *dir, float color, float count);
+      void            (*pfnLightStyle)                  (int
+style, char* val);
+      int                  (*pfnDecalIndex)
+(const char *name);
+      int                  (*pfnPointContents)
+(const float *rgflVector);
+      void            (*pfnMessageBegin)                  (int
+msg_dest, int msg_type, const float *pOrigin, edict_t *ed);
+      void            (*pfnMessageEnd)                  (void);
+      void            (*pfnWriteByte)                        (int
+iValue);
+      void            (*pfnWriteChar)                        (int
+iValue);
+      void            (*pfnWriteShort)                  (int
+iValue);
+      void            (*pfnWriteLong)                        (int
+iValue);
+      void            (*pfnWriteAngle)                  (float
+flValue);
+      void            (*pfnWriteCoord)                  (float
+flValue);
+      void            (*pfnWriteString)                  (const
+char *sz);
+      void            (*pfnWriteEntity)                  (int
+iValue);
+      void            (*pfnCVarRegister)                  (cvar_t
+*pCvar);
+      float            (*pfnCVarGetFloat)                  (const
+char *szVarName);
+      const char*      (*pfnCVarGetString)                  (const
+char *szVarName);
+      void            (*pfnCVarSetFloat)                  (const
+char *szVarName, float flValue);
+      void            (*pfnCVarSetString)                  (const
+char *szVarName, const char *szValue);
+      void            (*pfnAlertMessage)
+(ALERT_TYPE atype, char *szFmt, ...);
+      void            (*pfnEngineFprintf)                  (void
+*pfile, char *szFmt, ...);
+      void*            (*pfnPvAllocEntPrivateData)      (edict_t
+*pEdict, int32 cb);
+      void*            (*pfnPvEntPrivateData)            (edict_t
+*pEdict);
+      void            (*pfnFreeEntPrivateData)      (edict_t
+*pEdict);
+      const char*      (*pfnSzFromIndex)                  (int
+iString);
+      int                  (*pfnAllocString)
+(const char *szValue);
+      struct entvars_s*      (*pfnGetVarsOfEnt)
+(edict_t *pEdict);
+      edict_t*      (*pfnPEntityOfEntOffset)      (int
+iEntOffset);
+      int                  (*pfnEntOffsetOfPEntity)      (const
+edict_t *pEdict);
+      int                  (*pfnIndexOfEdict)
+(const edict_t *pEdict);
+      edict_t*      (*pfnPEntityOfEntIndex)            (int iEntIndex);
+      edict_t*      (*pfnFindEntityByVars)            (struct
+entvars_s* pvars);
+      void*            (*pfnGetModelPtr)
+(edict_t* pEdict);
+      int                  (*pfnRegUserMsg)
+(const char *pszName, int iSize);
+      void            (*pfnAnimationAutomove)            (const edict_t*
+pEdict, float flTime);
+      void            (*pfnGetBonePosition)            (const edict_t*
+pEdict, int iBone, float *rgflOrigin, float *rgflAngles );
+      uint32 (*pfnFunctionFromName)      ( const char *pName );
+      const char *(*pfnNameForFunction)            ( uint32
+function );
+      void            (*pfnClientPrintf)                  (
+edict_t* pEdict, PRINT_TYPE ptype, const char *szMsg ); // JOHN: engine
+callbacks so game DLL can print messages to individual clients
+      void            (*pfnServerPrint)                  ( const
+char *szMsg );
+      const char *(*pfnCmd_Args)                        ( void
+);            // these 3 added 
+      const char *(*pfnCmd_Argv)                        ( int
+argc );      // so game DLL can easily 
+      int                  (*pfnCmd_Argc)
+( void );            // access client 'cmd' strings
+      void            (*pfnGetAttachment)                  (const
+edict_t *pEdict, int iAttachment, float *rgflOrigin, float *rgflAngles
+);
+      void            (*pfnCRC32_Init)                  (CRC32_t
+*pulCRC);
+      void        (*pfnCRC32_ProcessBuffer)   (CRC32_t *pulCRC, void
+*p, int len);
+      void            (*pfnCRC32_ProcessByte)     (CRC32_t *pulCRC,
+unsigned char ch);
+      CRC32_t            (*pfnCRC32_Final)                  (CRC32_t
+pulCRC);
+      int32            (*pfnRandomLong)                  (int32
+lLow,  int32  lHigh);
+      float            (*pfnRandomFloat)                  (float
+flLow, float flHigh);
+      void            (*pfnSetView)                        (const
+edict_t *pClient, const edict_t *pViewent );
+      float            (*pfnTime)
+( void );
+      void            (*pfnCrosshairAngle)            (const edict_t
+*pClient, float pitch, float yaw);
+      byte *      (*pfnLoadFileForMe)         (char *filename, int
+*pLength);
+      void        (*pfnFreeFile)              (void *buffer);
+      void        (*pfnEndSection)            (const char
+*pszSectionName); // trigger_endsection
+      int             (*pfnCompareFileTime)       (char *filename1,
+char *filename2, int *iCompare);
+      void        (*pfnGetGameDir)            (char *szGetGameDir);
+      void            (*pfnCvar_RegisterVariable) (cvar_t *variable);
+      void        (*pfnFadeClientVolume)      (const edict_t *pEdict,
+int fadePercent, int fadeOutSeconds, int holdTime, int fadeInSeconds);
+      void        (*pfnSetClientMaxspeed)     (const edict_t *pEdict,
+float fNewMaxspeed);
+      edict_t *      (*pfnCreateFakeClient)            (const char
+*netname);      // returns NULL if fake client can't be created
+      void            (*pfnRunPlayerMove)                  (edict_t
+*fakeclient, const float *viewangles, float forwardmove, float sidemove,
+float upmove, unsigned short buttons, byte impulse, byte msec );
+      int                  (*pfnNumberOfEntities)            (void);
+      char*            (*pfnGetInfoKeyBuffer)            (edict_t *e);
+// passing in NULL gets the serverinfo
+      char*            (*pfnInfoKeyValue)                  (char
+*infobuffer, char *key);
+      void            (*pfnSetKeyValue)                  (char
+*infobuffer, char *key, char *value);
+      void            (*pfnSetClientKeyValue)            (int
+clientIndex, char *infobuffer, char *key, char *value);
+      int                  (*pfnIsMapValid)
+(char *filename);
+      void            (*pfnStaticDecal)                  ( const
+float *origin, int decalIndex, int entityIndex, int modelIndex );
+      int                  (*pfnPrecacheGeneric)            (char*
+s);
+      int                  (*pfnGetPlayerUserId)            (edict_t
+*e ); // returns the server assigned userid for this player.  useful for
+logging frags, etc.  returns -1 if the edict couldn't be found in the
+list of clients
+      void            (*pfnBuildSoundMsg)                  (edict_t
+*entity, int channel, const char *sample, /*int*/float volume, float
+attenuation, int fFlags, int pitch, int msg_dest, int msg_type, const
+float *pOrigin, edict_t *ed);
+      int                  (*pfnIsDedicatedServer)
+(void);// is this a dedicated server?
+      cvar_t            *(*pfnCVarGetPointer)            (const char
+*szVarName);
+      unsigned int (*pfnGetPlayerWONId)            (edict_t *e); //
+returns the server assigned WONid for this player.  useful for logging
+frags, etc.  returns -1 if the edict couldn't be found in the list of
+clients
+
+      // YWB 8/1/99 TFF Physics additions
+      void            (*pfnInfo_RemoveKey)            ( char *s, const
+char *key );
+      const char *(*pfnGetPhysicsKeyValue)      ( const edict_t
+*pClient, const char *key );
+      void            (*pfnSetPhysicsKeyValue)      ( const edict_t
+*pClient, const char *key, const char *value );
+      const char *(*pfnGetPhysicsInfoString)      ( const edict_t *pClient
+);
+      unsigned short (*pfnPrecacheEvent)            ( int type,
+const char*psz );
+      void            (*pfnPlaybackEvent)                  ( int
+flags, const edict_t *pInvoker, unsigned short eventindex, float delay,
+float *origin, float *angles, float fparam1, float fparam2, int iparam1,
+int iparam2, int bparam1, int bparam2 );
+
+      unsigned char *(*pfnSetFatPVS)                  ( float *org );
+      unsigned char *(*pfnSetFatPAS)                  ( float *org );
+
+      int                  (*pfnCheckVisibility )            ( const
+edict_t *entity, unsigned char *pset );
+
+      void            (*pfnDeltaSetField)                  ( struct
+delta_s *pFields, const char *fieldname );
+      void            (*pfnDeltaUnsetField)            ( struct delta_s
+*pFields, const char *fieldname );
+      void            (*pfnDeltaAddEncoder)            ( char *name,
+void (*conditionalencode)( struct delta_s *pFields, const unsigned char
+*from, const unsigned char *to ) );
+      int                  (*pfnGetCurrentPlayer)            ( void
+);
+      int                  (*pfnCanSkipPlayer)
+( const edict_t *player );
+      int                  (*pfnDeltaFindField)            ( struct
+delta_s *pFields, const char *fieldname );
+      void            (*pfnDeltaSetFieldByIndex)      ( struct delta_s
+*pFields, int fieldNumber );
+      void            (*pfnDeltaUnsetFieldByIndex)( struct delta_s
+*pFields, int fieldNumber );
+
+      void            (*pfnSetGroupMask)                  ( int
+mask, int op );
+
+      int                  (*pfnCreateInstancedBaseline) ( int
+classname, struct entity_state_s *baseline );
+      void            (*pfnCvar_DirectSet)            ( struct cvar_s
+*var, char *value );
+
+      // Forces the client and server to be running with the same
+version of the specified file
+      //  ( e.g., a player model ).
+      // Calling this has no effect in single player
+      void            (*pfnForceUnmodified)            ( FORCE_TYPE
+type, float *mins, float *maxs, const char *filename );
+
+      void            (*pfnGetPlayerStats)            ( const edict_t
+*pClient, int *ping, int *packet_loss );
+
+      void            (*pfnAddServerCommand)            ( char
+*cmd_name, void (*function) (void) );
+
+      // For voice communications, set which clients hear eachother.
+      // NOTE: these functions take player entity indices (starting at
+1).
+      qboolean      (*pfnVoice_GetClientListening)(int iReceiver,
+int iSender);
+      qboolean      (*pfnVoice_SetClientListening)(int iReceiver,
+int iSender, qboolean bListen);
+
+      const char *(*pfnGetPlayerAuthId)            ( edict_t *e );
+
+      //
+      //
+      //  **************** New functions ***************
+      //
+      //      
+
+
+      sequenceEntry_s*      (*pfnSequenceGet)
+( const char* fileName, const char* entryName );
+      sentenceEntry_s*      (*pfnSequencePickSentence)      ( const
+char* groupName, int pickMethod, int *picked );
+      int                  (*pfnGetFileSize)
+( char *filename );
+      unsigned int (*pfnGetApproxWavePlayLen) (const char *filepath);
+      int                  (*pfnIsCareerMatch)
+( void );
+      int                  (*pfnGetLocalizedStringLength)(const
+char *label);
+      void (*pfnRegisterTutorMessageShown)(int mid);
+      int (*pfnGetTimesTutorMessageShown)(int mid);
+      void (*ProcessTutorMessageDecayBuffer)(int *buffer, int
+bufferLength);
+      void (*ConstructTutorMessageDecayBuffer)(int *buffer, int
+bufferLength);
+      void (*ResetTutorMessageDecayData)( void );
+
+} enginefuncs_t;
+
+
+I don't know if this is a dedicated server only update or if all clients will be forced to update.  I imagine news will be available at www.planethalflife.com when the release is available.  Stay tuned to there for details.
+
+botman
+
+
+--------------------------------------------------
+11/10/03 at 15:57:00  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+pfffffff
+
+I defy one of those guys to prove me that adding such functions was mandatory for fixing a cheating issue or securing the game server.
+
+Bloatware. Just to trick us and get rid of the most of these old but still running 3rd party softwares they can.
+
+How many bots will this irremediably break again ? :(
+
+
+--------------------------------------------------
+11/10/03 at 17:09:58  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+"How many bots will this irremediably break again ?"
+
+All of them!  ;D
+
+botman
+
+--------------------------------------------------
+11/10/03 at 18:34:34  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+when I think I was about to release a plugin that would have made all the old bot DLLs work with Steam...
+
+Guess I can throw the thing to the bin now. grr.
+
+
+--------------------------------------------------
+11/11/03 at 10:25:40  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Note that from Alfred's comments on the hlcoders e-mail list, this appears to ONLY effect Steam versions of Half-Life.
+
+It does not appear that Valve will release a new standalone client update, so if you aren't doing a Steam compatible bot, you don't have to worry about this (if you are, you do).
+
+botman
+
+--------------------------------------------------
+11/11/03 at 11:53:52  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+i copied the part from 'new functions' into my eiface.h and i get these kind of compile errors:
+
+QUOTE:
+
+C:\Projecten\RealBot\Source\eiface.h(270) : error C2143: syntax error : missing ';' before '*'
+C:\Projecten\RealBot\Source\eiface.h(270) : error C2501: 'sequenceEntry_s' : missing storage-class or type specifiers
+C:\Projecten\RealBot\Source\eiface.h(270) : error C2501: 'pfnSequenceGet' : missing storage-class or type specifiers
+C:\Projecten\RealBot\Source\eiface.h(271) : error C2143: syntax error : missing ';' before '*'
+C:\Projecten\RealBot\Source\eiface.h(271) : error C2501: 'sentenceEntry_s' : missing storage-class or type specifiers
+C:\Projecten\RealBot\Source\eiface.h(271) : error C2501: 'pfnSequencePickSentence' : missing storage-class or type specifiers
+
+
+
+
+It seems the vars used are not defined at all? Are they somewhere else defined? Or is that still to be posted?
+
+--------------------------------------------------
+11/11/03 at 12:32:05  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Alfred just mentioned that, for now, just replace...
+code:
+sequenceEntry_s *
+
+with
+code:
+void *
+
+...and it should compile.
+
+However, probably this WON'T run properly with the current Half-Life Steam engine (since the engine doesn't support this engine callback structure yet).  You can compile it, but don't surprised if it crashes (until the new Steam engine gets released).
+
+botman
+
+--------------------------------------------------
+11/12/03 at 16:37:10  Reply by: BrianL (halfkiller@hotmail.com)
+--------------------------------------------------
+or you can replace:
+code:
+sequenceEntry_s *
+
+
+with:
+code:
+struct sequenceEntry_s *
+
+
+<&#1594;&#271;&#297;&#358;: yeah well it was just a suggestion since the struct is not in the code yet should still work, I know you can't test it yet.>
+
+[modified on 11/12/03 at 16:37:10]
+--------------------------------------------------
+11/12/03 at 10:03:27  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+lol, kinda contradiction:
+
+"post this to make it work with steam"
+"no wait, you have to change this..."
+"hmm, well, you changed it, but it won't work yet with Steam" 
+
+:)
+
+I will wait till i know more so it will work on steam, changing stuff now will not really help i suppose. I'll comment it out temporarily. Thx for the replies! :)
+
+--------------------------------------------------
+11/13/03 at 13:21:46  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+it seems STEAM got an update, and now the bots won't work. I don't know if this has to do with Alfred's code suggestions. I also heard that you cannot modify the liblist.gam file anymore because its write protected or somewhere in the cache? I did not have a chance to verify this, but man i hope this aint true!
+
+Anyway, if there is NOT an engine update, then why the heck do the bots not work anymore yet? (Even after unisntalling/reinstalling)...
+
+--------------------------------------------------
+11/13/03 at 14:43:23  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Looks like Valve wants ACTIVELY to kill ANY hook DLL look-alike out there. This is really starting to piss me off. And no credible FPS hit on the horizon !!
+
+
+--------------------------------------------------
+11/13/03 at 15:36:49  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+"I also heard that you cannot modify the liblist.gam file anymore because its write protected or somewhere in the cache?"
+
+After you modify liblist.gam, you have to change it's attributes to Read-Only so that Steam won't overwrite it.
+
+Right-click, Properties, check "Read-only", click "OK".
+
+botman
+
+--------------------------------------------------
+11/14/03 at 01:53:03  Reply by: bluesy (bluesy@bezeqint.net)
+--------------------------------------------------
+Good update...
+
+I`ve added the new funcs and compiled.
+Steam whines about p_model enforcements (I have no custom models btw).
+I`ve copied all the old models and the game loads... bot joins the game but I can`t, can`t play online also because of p_ model problems...
+
+bah....
+
+//edit
+disregard what I`ve said... loging out and in again should fix that
+
+[modified on 11/14/03 at 01:53:03]
+--------------------------------------------------
+11/14/03 at 12:43:39  Reply by: BAStumm (bs@bs-linux.com)
+--------------------------------------------------
+I've applied the latest patch did NOT make code changes mentioned here and bots still work for me. I don't think the engine update was released yet. 
+
+--------------------------------------------------
+11/15/03 at 08:31:36  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+i don't like this 'read-only' thing. Many users don't even know where their half-life directory is located.
+
+I also have heard that the bot still works, so i guess the engine is not updated either.
+
+--------------------------------------------------
+11/15/03 at 09:30:52  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+The good thing is that you can set the attribute to read-only yourself.  For example in a batch file...
+
+attrib +r "C:\Program FilesSteam\Steamapps\email@whatever.com\halflife\valve\liblist.gam"
+
+botman
+
+--------------------------------------------------
+11/15/03 at 09:46:24  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+more clever...
+
+set email=%1
+set steampath=%2
+set mod_name=%3
+attrib +r "%steampath%\SteamApps\%email%\halflife\%mod_name%\liblist.gam"
+
+and if you are stefan@hendriks.com, want to install your bot for Counter-Strike, and you've put Steam in D:\Games\Steam, you then call
+
+"batchfile.bat stefan@hendriks.com D:\Games\Steam cstrike"
+
+bat files are really useful when you're used to them. The top Makefile I use for my metamod plugins is in fact a batch file :)
+
+[modified on 11/15/03 at 09:42:06]
+<offtopic>
+...can't resist the pleasure to show it to you ;D
+
+QUOTE:
+
+@ECHO OFF
+SET RARPATH=C:\Program Files\WinRAR
+SET CCPATH=C:\Program Files\Microsoft Visual Studio\VC98\Bin
+SET RARPARMS=a -r -inul -m5 -s -sfx -x*.obj -x*.exp -x*.pch -x*.idb -x*.lib -x*.bsc -x*.plg -x*.dsw -x*.ncb -x*.opt -x*.pdb -y 
+IF "%1"=="" GOTO errnoarguments
+IF NOT EXIST %1_plugin GOTO errinvalidproject
+IF NOT "%2"=="" GOTO %2
+GOTO build
+
+:build
+CD %1_plugin
+MKDIR Release > NUL
+CD Release
+CALL "%CCPATH%\VCVARS32.BAT"
+CL.EXE /nologo /MT /W3 /GX /O2 /I "..\..\metamod" /I "..\..\..\devtools\sdk\Single-Player Source\dlls" /I "..\..\..\devtools\sdk\Single-Player Source\common" /I "..\..\..\devtools\sdk\Single-Player Source\engine" /D "WIN32" /D "NDEBUG" /D "_WINDOWS" /D "_MBCS" /D "_USRDLL" /D "%1_mm_EXPORTS" /YX /FD /c ..\%1_mm.cpp
+LINK.EXE kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /nologo /dll /machine:I386 /def:"..\%1_mm.def" %1_mm.obj
+ECHO.MAKE: build complete
+CD ..\..
+GOTO exit
+
+:clean
+DEL %1_plugin\*.plg > NUL
+DEL %1_plugin\Release\*.obj > NUL
+DEL %1_plugin\Release\*.exp > NUL
+DEL %1_plugin\Release\*.pch > NUL
+DEL %1_plugin\Release\*.idb > NUL
+DEL %1_plugin\Release\*.lib > NUL
+DEL %1_plugin\Release\*.bsc > NUL
+ECHO.MAKE: clean complete
+GOTO exit
+
+:distclean
+DEL %1_plugin\*.dsw > NUL
+DEL %1_plugin\*.ncb > NUL
+DEL %1_plugin\*.opt > NUL
+DEL %1_plugin\*.plg > NUL
+DEL %1_plugin\Release\*.obj > NUL
+DEL %1_plugin\Release\*.exp > NUL
+DEL %1_plugin\Release\*.pch > NUL
+DEL %1_plugin\Release\*.idb > NUL
+DEL %1_plugin\Release\*.lib > NUL
+DEL %1_plugin\Release\*.bsc > NUL
+ECHO.MAKE: distclean complete
+GOTO exit
+
+:release
+IF NOT EXIST %1_plugin\Release\%1_mm.dll GOTO buildandrelease
+"%RARPATH%\RAR.EXE" %RARPARMS% %1_plugin.exe %1_plugin\*
+ECHO.MAKE: release complete
+GOTO exit
+
+:buildrelease
+CD %1_plugin
+MKDIR Release > NUL
+CD Release
+CALL "%CCPATH%\VCVARS32.BAT"
+CL.EXE /nologo /MT /W3 /GX /O2 /I "..\..\metamod" /I "..\..\..\devtools\sdk\Single-Player Source\dlls" /I "..\..\..\devtools\sdk\Single-Player Source\common" /I "..\..\..\devtools\sdk\Single-Player Source\engine" /D "WIN32" /D "NDEBUG" /D "_WINDOWS" /D "_MBCS" /D "_USRDLL" /D "%1_mm_EXPORTS" /YX /FD /c ..\%1_mm.cpp
+LINK.EXE kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /nologo /dll /machine:I386 /def:"..\%1_mm.def" %1_mm.obj
+CD ..\..
+"%RARPATH%\RAR.EXE" %RARPARMS% %1_plugin.exe %1_plugin\*
+ECHO.MAKE: buildrelease complete
+GOTO exit
+
+:errinvalidproject
+ECHO.MAKE: invalid project
+GOTO exit
+
+:errnoarguments
+ECHO.MAKE: insufficient arguments
+ECHO.Usage:
+ECHO.  MAKE [project] [directive]
+ECHO.Directives: clean distclean release buildrelease
+GOTO exit
+
+:exit
+SET RARPATH=
+SET CCPATH=
+
+
+
+</offtopic> :)
+
+[modified on 11/15/03 at 09:46:24]
+--------------------------------------------------
+11/15/03 at 09:46:25  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+ow darn, i forgot 'good old dos' ;) attrib, yeah! :D
+
+--------------------------------------------------
+11/15/03 at 20:44:12  Reply by: botmeister (meister@telus.net)
+--------------------------------------------------
+QUOTE:
+when I think I was about to release a plugin that would have made all the old bot DLLs work with Steam... 
+
+
+
+
+Now that's a good idea! It would be a blast to see all the old bots working again.
+
+Please don't throw your plugin out just yet because perhaps we can still save it.
+
+The new mp.dll requires the new version of enginefuncs_t, but an old bot, such as POD, will only pass the old enginefuncs_t portion. That in itself should not cause mp.dll to crash. 
+
+Persumably mp.dll will load all the correct function addresses for the old portion of the structure, but it will load garbage for the new protion. When mp.dll tries to run any of the new functions things go "boom". 
+
+Suppose that you create a fake version of mp.dll. 
+
+Your plugin could call a special function from the fake mp.dll which accepts the new engine function pointers but does not pass them on to the real mp.dll just yet. 
+
+The next step is for your plugin to load the bot dll as normal but passing on only the old version of enginefuncs_t. The bot dll will load up the fake mp.dll and passes on the bots version of enginefuncs_t to the fake mp.dll. The fake mp.dll then passes on the bots function pointers plus the new function pointers using the correct version of enginefuncs_t. It can do this because it got the new function pointers from your plugin before your plugin loaded the bot dll.
+
+You'd have to do something to make sure that metamod works with the fake version of mp.dll, but this should not be much of a problem.
+
+That should do the trick, no?
+
+
+--------------------------------------------------
+11/16/03 at 07:14:46  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Yes, this is a good idea, although much more complicated than what I initially thought. I had thought of hijacking LoadLibrary() when the bot DLL is loaded, so as to have it load another DLL than the game DLL (which is barely the same principle but that the game DLL remains the true one), but although your idea sounds good I'm not sure Valve's Anti-Cheat technology will allow the game DLL to be renamed at all.
+
+
+--------------------------------------------------
+11/16/03 at 12:45:18  Reply by: botmeister (meister@telus.net)
+--------------------------------------------------
+Why not just hack the bot source binary to force it to load your own version of mp.dll but with a different name? For example, hexedit podbot 2.5 and change mp.dll to mx.dll, where mx.dll is your version of mp.dll which acts as the translator from cs 1.5 to cs 1.6. That may do the trick. What do you think?
+
+You can even create a patch.exe program that does the hacking for any bot.dll.
+
+
+
+[modified on 11/16/03 at 12:45:18]
+--------------------------------------------------
+11/16/03 at 13:10:22  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+bah, because I was not feeling that good patching the bot binary... but in the end I guess it would be the best thing to do, after all.
+
+Will think about all this later, anyway - that is, after BU is up.
+
+
+--------------------------------------------------
+11/17/03 at 07:39:03  Reply by: BrianL (halfkiller@hotmail.com)
+--------------------------------------------------
+QUOTE:
+Pierre-Marie Baty Post:  Yes, this is a good idea, although much more complicated than what I initially thought. I had thought of hijacking LoadLibrary() when the bot DLL is loaded, so as to have it load another DLL than the game DLL (which is barely the same principle but that the game DLL remains the true one), but although your idea sounds good I'm not sure Valve's Anti-Cheat technology will allow the game DLL to be renamed at all. 
+
+
+
+ 
+  I've already done this, but I haven't tried it with Steam yet.   But I do have a working version for HL1.1.1.0 :)  When I can get a copy of steam tfc/cs I'll have a go at it. (on 56k :-/)
+
+[modified on 11/17/03 at 07:39:03]
+--------------------------------------------------
+11/17/03 at 08:23:28  Reply by: botmeister (meister@telus.net)
+--------------------------------------------------
+"I had thought of hijacking LoadLibrary() when the bot DLL is loaded ..."
+
+Ineed to brush up on my hacking skills. How did you hijack LodLibrary()? That's an internal function call made by the bot dll. It is not something that is passed on to the bot dll.
+
+
+--------------------------------------------------
+11/17/03 at 09:56:02  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+It's a kernel32.dll hack. I haven't come up with this idea myself, it started when I remembered someone here had written his bot DLL without all the LINK_ENTITY_TO_FUNC()s. After nagging us for a short while, he finally told us how he did, and it was by hooking LoadLibrary() and GetProcAddress(). I've looked it up with Google and I've found many resources about it. It's not extremely complicated. And yes, I seem to remember Brian did something similar too.
+
+The only drawback is that it isn't portable. The more I consider this drawback the more I'd wish renaming mp.dll worked, that of which I am not sure at all.
+
+
+--------------------------------------------------
+11/17/03 at 20:15:04  Reply by: BrianL (halfkiller@hotmail.com)
+--------------------------------------------------
+ If you wanna test it on HL Dedicated server I got it up here: www.angelfire.com/games3/bjlbot/ServerMod.htmlServerMod
+
+  Tomorrow I'm gonna clean it up and put in the source.
+
+[modified on 11/17/03 at 20:15:04]
+--------------------------------------------------
+11/17/03 at 15:04:47  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+yes but with or without source code? :)
+
+
+--------------------------------------------------
+11/19/03 at 10:01:58  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Ah okay, I didn't see you edited your post. Well, if you already have something working I guess I don't need to post my unfinished own, then ;)
+
+
+--------------------------------------------------
+12/06/03 at 08:08:27  Reply by: Cheesemonster!!! (cheeseh(at)rcbot(dot)net)
+--------------------------------------------------
+Hey botman, I take it everyone who makes anything now to be compatible with steam will need to update this? For e.g. my bot too :(?
+
+Oh and will non-Steam engine HL still work  with the bot,say, with this update?
+
+[modified on 12/06/03 at 08:08:27]
+--------------------------------------------------
+12/06/03 at 08:35:20  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+I don't know.  I haven't tried doing anything with the Steam version of the engine.
+
+You'll have to try it yourself and see.
+
+I believe that Vavle does not plan to update the standalone hl.exe application.  They are encouraging everyone to migrate to steam.  You may have to provide two separate bot executables (one for Steam and one for legacy Half-Life without Steam).
+
+botman
+

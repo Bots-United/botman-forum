@@ -1,0 +1,191 @@
+--------------------------------------------------
+Subject: Make CS bot use Weapons + Sniper Waypoints
+--------------------------------------------------
+07/19/01 at 16:21:11  Posted by: redlink (redlink_star@hotmail.com)
+--------------------------------------------------
+1. i have some problems getttttiiinnggg the damn bot to use the Weapons i have added them in the combat stuff but no they wont use them dont understand the system...
+
+2. How do i add a sniper waypointm to the Waypoint system i have re designed about 90% of teh waypoint code but i can't understand how to add a sniper waypoint...
+
+--------------------------------------------------
+07/19/01 at 16:28:36  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+First you need the bots to buy the weapons, you can see the bobabot source for that thanks to bobafett.
+
+Secondly You'll need to add ALL the CS WEAPONS to the current_weapon_t structure and the fire_delay structure.
+
+That should be all that is needed. Make sure all the secondary fire distances in the current_weapon_t are ZERO.
+
+--------------------------------------------------
+07/19/01 at 16:42:26  Reply by: redlink (redlink_star@hotmail.com)
+--------------------------------------------------
+Thats the problem with the damn Fire Delay you know the top stuff at bot_combat.cpp.... 
+
+
+I dont understand what i am going to write at this codes:
+bot_weapon_select_t
+bot_fire_delay_t
+
+I have made a new combat system in this file sys_combat but thats only how good he fires expericance etc
+
+--------------------------------------------------
+07/19/01 at 17:15:43  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+Have a look in the bot_weapon_select_t structure and it will show all the values in it with botmans comments showing what each one means.
+
+At the moment the Template has...
+
+code:
+
+bot_weapon_select_t cs_weapon_select[] = {
+   {CS_WEAPON_KNIFE, "weapon_knife", 5, 0.0, 50.0, 0.0, 0.0,
+    100, TRUE, 100, 0, 0, FALSE, FALSE, FALSE, FALSE, 0.0, 0.0},
+   {CS_WEAPON_USP, "weapon_usp", 5, 0.0, 1200.0, 0.0, 1200.0,
+    100, TRUE, 100, 1, 0, FALSE, FALSE, FALSE, FALSE, 0.0, 0.0},
+   {CS_WEAPON_GLOCK18, "weapon_glock18", 5, 0.0, 1200.0, 0.0, 1200.0,
+    100, TRUE, 100, 1, 0, FALSE, FALSE, FALSE, FALSE, 0.0, 0.0},
+   /* terminator */
+   {0, "", 0, 0.0, 0.0, 0.0, 0.0, 0, TRUE, 0, 1, 1, FALSE, FALSE, FALSE, FALSE, 0.0, 0.0}
+};
+
+
+
+You will need to add more weapons i.e. mp5, aug etc. Botman has been kind enough to define all the weapons for you in bot_weapons.h so you'll get all the iId constant names in there for the weapons. Here is an example of what I'd do to add another weapon, lets say desert eagle... the constant name given to it is CS_WEAPON_DEAGLE
+
+so..
+
+(if you're not a newbie to this you can skip some of this ;) !!! )
+
+
+Ive also changed a few things to my own discretion..
+
+code:
+
+bot_weapon_select_t cs_weapon_select[] = {
+   {CS_WEAPON_KNIFE, "weapon_knife", 5, 0.0, 50.0, 0.0, 0.0,
+    100, TRUE, 100, 0, 0, FALSE, FALSE, FALSE, FALSE, 0.0, 0.0},
+   {CS_WEAPON_USP, "weapon_usp", 5, 0.0, 1200.0, 0.0, 0.0,
+    100, TRUE, 100, 1, 0, FALSE, FALSE, FALSE, FALSE, 0.0, 0.0},
+   {CS_WEAPON_GLOCK18, "weapon_glock18", 5, 0.0, 1200.0, 0.0, 1200.0,
+    100, TRUE, 100, 1, 0, FALSE, FALSE, FALSE, FALSE, 0.0, 0.0},
+{CS_WEAPON_DEAGLE, "weapon_deagle", 5, 0.0, 1200.0, 0.0, 0.0,
+    100, TRUE, 100, 1, 0, FALSE, FALSE, FALSE, FALSE, 0.0, 0.0},
+   /* terminator */
+   {0, "", 0, 0.0, 0.0, 0.0, 0.0, 0, TRUE, 0, 1, 1, FALSE, FALSE, FALSE, FALSE, 0.0, 0.0}
+};
+
+
+
+
+remember that all of these are listed in priority at the top. And the fire_delay table MUST be in the same order as these.
+
+code:
+
+
+bot_fire_delay_t cs_fire_delay[] = {
+   {CS_WEAPON_KNIFE,
+    0.3, {0.0, 0.2, 0.3, 0.4, 0.6}, {0.1, 0.3, 0.5, 0.7, 1.0},
+    0.0, {0.0, 0.0, 0.0, 0.0, 0.0}, {0.0, 0.0, 0.0, 0.0, 0.0}},
+   {CS_WEAPON_USP,
+    0.3, {0.0, 0.1, 0.2, 0.3, 0.4}, {0.1, 0.2, 0.3, 0.4, 0.5},
+    0.2, {0.0, 0.0, 0.1, 0.1, 0.2}, {0.1, 0.1, 0.2, 0.2, 0.4}},
+   {CS_WEAPON_GLOCK18,
+    0.3, {0.0, 0.1, 0.2, 0.3, 0.4}, {0.1, 0.2, 0.3, 0.4, 0.5},
+    0.2, {0.0, 0.0, 0.1, 0.1, 0.2}, {0.1, 0.1, 0.2, 0.2, 0.4}},
+CS_WEAPON_DEAGLE,
+    0.4, {0.0, 0.1, 0.2, 0.3, 0.4}, {0.1, 0.2, 0.3, 0.4, 0.5},
+    0.3, {0.0, 0.0, 0.1, 0.1, 0.2}, {0.1, 0.1, 0.2, 0.2, 0.4}},
+   /* terminator */
+   {0, 0.0, {0.0, 0.0, 0.0, 0.0, 0.0}, {0.0, 0.0, 0.0, 0.0, 0.0},
+       0.0, {0.0, 0.0, 0.0, 0.0, 0.0}, {0.0, 0.0, 0.0, 0.0, 0.0}}
+};
+
+
+
+
+all the fire delay arrays have integer slots for the delay the bot shoots depending on each bots skill level.
+
+whew.
+
+Hope this helps !! :D
+
+-----
+
+PS: To add sniper waypoints all you have gotta do is go into the BotThink (bot.cpp), check the flags of the current waypoint (if its flags has a bit of W_FL_SNIPER then its a sniper waypoint) and if the bot is within a reasonable distance between it and the bot, tell the bot to stop moving, and crouch or whatever :-)
+
+--------------------------------------------------
+07/20/01 at 04:26:06  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+But you also need to realize that the ORDER that the weapons appear in this array is IMPORTANT.  The weapons that appear first in the array are the ones that will be selected first (if the bot has that weapon and enough ammo to use it).
+
+For example if you had a weapon that does A LOT of damage and one that does a medium amount of damage and one that does very little damage, you would want to put the one that does A LOT of damage FIRST, then the one that does a medium amount of damage and finally the one that does very little damage.  Notice that the knife (or crowbar) is always first since they do more damage than any other weapon (the bot just usually isn't within a range where it can use it so it will get skipped and another weapon further down the list will get selected).
+
+botman
+
+--------------------------------------------------
+07/21/01 at 00:41:00  Reply by: impaqt (impaqt@online.no)
+--------------------------------------------------
+you can also just make a simple solution :
+
+heres the theory(its up to you to code it)
+code:
+
+If (the game is cstrike and the bot has a enemy in sight)
+{
+Press in_attack randomly; //like a newbie :P
+}
+
+
+
+simple as that, you dont need all the weapon delays/priority and stuff if its cstrike
+
+
+thats how I do it(until I make something better)
+
+--------------------------------------------------
+07/21/01 at 08:52:10  Reply by: jerry_stoel (jerry_stoel@hotmail.com)
+--------------------------------------------------
+Here is a piece of code how you can do the botfire function:
+
+code:
+
+if((pBot->current_weapon.iId == CS_WEAPON_USP) ||
+         (pBot->current_weapon.iId == CS_WEAPON_GLOCK18) ||
+         (pBot->current_weapon.iId == CS_WEAPON_DEAGLE) ||
+         (pBot->current_weapon.iId == CS_WEAPON_P228) ||
+         (pBot->current_weapon.iId == CS_WEAPON_ELITE) ||
+         (pBot->current_weapon.iId == CS_WEAPON_FIVESEVEN))
+      {
+            if(pBot->has_shot == 1)
+            {
+                  pEdict->v.button |= IN_ATTACK;
+
+                  pBot->has_shot = 0;
+
+                  return TRUE;
+            }
+            else
+            {
+                  pBot->has_shot = 1;
+
+                  return TRUE;
+            }
+      }
+      else
+        {
+                pEdict->v.button |= IN_ATTACK;
+        }
+
+
+
+Just put this code into the botfire function and delete or comment everything else in the function out and it will work fine :P.
+
+Seeya,
+
+--------------------------------------------------
+07/21/01 at 09:01:52  Reply by: jerry_stoel (jerry_stoel@hotmail.com)
+--------------------------------------------------
+Oh by the way don't forget too put has_shot in bot.h and define it :P.
+
+Seeya,
+

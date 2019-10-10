@@ -1,0 +1,174 @@
+--------------------------------------------------
+Subject: CS Money
+--------------------------------------------------
+01/04/03 at 11:02:41  Posted by: Fruchtzwerg (kifferstuebchen@hotmail.com)
+--------------------------------------------------
+Anyone know how to change players money in CS serverside?
+
+--------------------------------------------------
+01/04/03 at 14:52:06  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Someone else asked about this many months ago.  It has to do with accessing the players pvPrivate data pointer.
+
+Try searching this forum for "money pvPrivate" or "change money" or something similar to find the previous thread.
+
+botman
+
+--------------------------------------------------
+01/04/03 at 16:33:32  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Fruchtzwerg, be aware that such a manipulation is highly unreliable, because the private data field format of an entity is property of the MOD itself, and is subject to changes anytime a new version of the MOD is released. Unless you have the source code for the MOD you want to do this (and you haven't got the source code for Counter-Strike), it's blind memory patching on the fly, very dangerous (access violations and such).
+
+I am not trying to discourage you, but you should really know what you are doing.
+
+
+--------------------------------------------------
+01/04/03 at 21:29:32  Reply by: Fruchtzwerg (kifferstuebchen@hotmail.com)
+--------------------------------------------------
+Thanks for the hints, I got it working... If anyone is interested: the money value is stored at pvPrivateData+0x1E0 as word(?). The message to update the money in the HUD is 5 Bytes long and is named "Money". Maybe the size in the pvPrivateData is bigger...
+
+--------------------------------------------------
+01/05/03 at 06:07:18  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+"If anyone is interested: the money value is stored at pvPrivateData+0x1E0 as word(?)"
+
+Well, it is until CS 1.6 comes out, then it might move to some other offset, and when CS 1.7 comes out it might move again, etc.
+
+botman
+
+--------------------------------------------------
+01/05/03 at 07:52:00  Reply by: Fruchtzwerg (kifferstuebchen@hotmail.com)
+--------------------------------------------------
+Yeah, maybe, but its easy to detect, its a 5 minute hack... :-)
+
+--------------------------------------------------
+01/05/03 at 08:17:47  Reply by: @$3.1415rin (johannes@_-removeifnotavirus-_lampel.net)
+--------------------------------------------------
+
+QUOTE:
+Thanks for the hints, I got it working... If anyone is interested: the money value is stored at pvPrivateData+0x1E0 as word(?). The message to update the money in the HUD is 5 Bytes long and is named "Money". Maybe the size in the pvPrivateData is bigger...
+
+
+
+
+the network message size has not to be equal to the size of the data in the private data, although it is often. I doubt that the money in the prv data is more than 5 bytes, why should it ? why not a simple int ?!
+
+anyway, I never felt the need to modify the money value of players ...
+
+--------------------------------------------------
+01/08/03 at 19:47:21  Reply by: Phreak (dead_sexy_simon@hotmail.com)
+--------------------------------------------------
+The max money in CS is $16000
+
+Which is 5 digits, so 5 bytes long..
+
+
+Just a thought..
+
+
+Simon
+
+--------------------------------------------------
+01/08/03 at 20:17:25  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+This would be a good reason if the money was stored in the form of characters. But IMO, it's stored as an integer, in binary values. And in binary, you don't need more than 2 bytes to store numbers up to 65535 (unsigned) or from -32767 to 32767 (signed). Just use your Windows calculator to check it out...
+
+
+--------------------------------------------------
+01/09/03 at 04:53:15  Reply by: Fruchtzwerg (kifferstuebchen@hotmail.com)
+--------------------------------------------------
+The money isnt limited to 16.000, only the mod limits it during calculations. You can use all 5 bytes to show any value you want on the hud. But, there is not enough space on the screen, you will only see 6 digits. The same with the value in the memory, you can set it up to 65535. If it is stored in a doubleword, you can set it up to 4294967295.
+
+--------------------------------------------------
+01/25/03 at 16:51:11  Reply by: LeonThePro (sirgalahad@ozgn.com)
+--------------------------------------------------
+Sorry to reserect the dead and all...
+But how do you do the pvPrivate stuff in coding?
+
+--------------------------------------------------
+01/25/03 at 17:31:48  Reply by: Fruchtzwerg (kifferstuebchen@hotmail.com)
+--------------------------------------------------
+I did some ugly casts ;)
+
+--------------------------------------------------
+01/25/03 at 17:32:29  Reply by: LeonThePro (sirgalahad@ozgn.com)
+--------------------------------------------------
+Like how =\
+Can I see an example?
+
+--------------------------------------------------
+01/25/03 at 20:51:14  Reply by: Fruchtzwerg (kifferstuebchen@hotmail.com)
+--------------------------------------------------
+Something like this:
+
+code:
+
+
+pPtr=((unsigned char*)pEdict->pvPrivateData)+0x1E0;
+Money=*((unsigned int*)pPtr);
+
+
+
+
+I did some research on the 5 bytes in the network message. It seems, the new money value is stored in the first 2 bytes, the last 3 bytes can hold the difference between money updates. But I didnt figured out how it works correctly...
+
+--------------------------------------------------
+01/25/03 at 22:58:58  Reply by: Zmeko (dosap29@msn.com)
+--------------------------------------------------
+how did you find the extact place in the memory where the money value is kept?
+
+--------------------------------------------------
+01/26/03 at 05:29:32  Reply by: Phreak (dead_sexy_simon@hotmail.com)
+--------------------------------------------------
+
+
+Searching the SDK could have proven quite effective.
+
+Also, running debug mode in counter-strike may have worked, as it would have printed out the money's address in memory
+
+Or...I think it would of
+
+
+Phreak
+
+--------------------------------------------------
+01/26/03 at 06:03:02  Reply by: Fruchtzwerg (kifferstuebchen@hotmail.com)
+--------------------------------------------------
+
+QUOTE:
+how did you find the extact place in the memory where the money value is kept?
+
+
+
+
+Its very easy. Start a game with mp_startmoney 16000. Make a memory dump of your pvPrivateData. Buy something and make a second memory dump of your pvPrivateData, remember your money. Search in the first memory dump all places with the value 16000. Look at the second memory dump on the same positions, if you find the second money value, then you know the exact position.
+
+--------------------------------------------------
+01/30/03 at 20:45:34  Reply by: Neova (neova@pgl.com)
+--------------------------------------------------
+Goto amxmod.net and install thier metamod. There is a plugin for modifying money in CS.
+
+
+
+--------------------------------------------------
+01/31/03 at 04:47:13  Reply by: Fruchtzwerg (kifferstuebchen@hotmail.com)
+--------------------------------------------------
+Forget it, its only for start money.
+
+--------------------------------------------------
+01/31/03 at 14:30:33  Reply by: @$3.1415rin (johannes@_-removeifnotavirus-_lampel.net)
+--------------------------------------------------
+a plugin for changing just one cvar ?! huh, that's funny ;)
+
+--------------------------------------------------
+02/02/03 at 13:24:10  Reply by: Fruchtzwerg (kifferstuebchen@hotmail.com)
+--------------------------------------------------
+ Admin Money v0.9.2   
+ Author
+ : f117bomb 
+Date
+ : Feb 02 2003 - 07:58 
+ 
+
+Oh, they got it now! Wow. After they told in the forums its impossible to change the money. The coder must be a member of this forum :-)
+

@@ -1,0 +1,125 @@
+--------------------------------------------------
+Subject: bots for other mods
+--------------------------------------------------
+11/06/00 at 15:01:26  Posted by: 003 (b_minman@hotmail.com)
+--------------------------------------------------
+what if someone wanted to make a bot for a mod other than regular hl, tfc, cs, and op for; like the dstroth(i think it was him) did with firearms.  did he rewrite all of botmans code?  or how do u change the exsisting code so u can use it for another mod?  i hope u understand this.  thanks
+
+--------------------------------------------------
+11/06/00 at 15:19:03  Reply by: DStroth (dstroth@crosswinds.net)
+--------------------------------------------------
+Not a whole lot of the code needs to be modified. You need to add all the mod's entities to linkfunc.cpp, insert appropriate join code, add apropriate code to handle usage of new items, like weapons, and add code to handle loading of the mod's dll in h_export.cpp. It sounds like a lot, but for most mods it would only be a matter of hours to have a functional bot in them.
+
+DStroth
+
+
+--------------------------------------------------
+11/06/00 at 16:31:22  Reply by: 003 (b_minman@hotmail.com)
+--------------------------------------------------
+um..one more question.  how or where could i get all the entities for a mod?
+
+--------------------------------------------------
+11/06/00 at 17:03:27  Reply by: DStroth (dstroth@crosswinds.net)
+--------------------------------------------------
+Well.. What I did was use the Firearms FGD file and added all the entities listed in it. Then I started a game with the -dev command line option to see what other entities I'm missing.. I believe there is a simpler way, but I'm not sure what it is.
+
+DStroth
+
+--------------------------------------------------
+11/06/00 at 19:28:04  Reply by: dannywent (dannywent@hotmail.com)
+--------------------------------------------------
+yeah, i want to make my bot for a different mod, there's too many cs bots out already.  My bot doesn't use waypoints, so it would be idea for a more obscure mod for which there are no waypoint files.  Anyone have suggestions for which mods are most popular yet still don't have bots?
+
+--------------------------------------------------
+11/06/00 at 19:52:38  Reply by: ReDucTor[FGW] (sjdtmv@globalfreeway,com.au)
+--------------------------------------------------
+for all the mods that i have added i have added the mod to h_export.cpp and then i would go and define that in bot.h and then i would move on and goto bot_client.cpp and add all of them but showmenu and vgui for that mod and then i would add showmenu if there was the old menu's in the mod and i would add vgui if there was vgui in the mod, then i would put them in bot_client.h then i would move on to engine.cpp and add the stuff to "void pfnMessageBegin(int msg_dest, int msg_type, const float *pOrigin, edict_t *ed)" then i would add the stuff to "int pfnRegUserMsg(const char *pszName, int iSize)" which is also in engine.cpp and Because i have alpha 3 of hpb-bot with hpb-bot template bot_combat.cpp in that i just have to define the weapons in bot_weapons.h and then i would move on to bot.cpp and goto a section where this is :
+
+      if (mod_id == TFC_DLL)
+         pBot->start_action = MSG_TFC_IDLE;
+      else if (mod_id == CSTRIKE_DLL)
+         pBot->start_action = MSG_CS_IDLE;
+
+and i would add another one of them if the mod was team based and i would define that in bot.h now i would goto this part in bot.cpp :
+
+      if ((mod_id == TFC_DLL)  (mod_id == CSTRIKE_DLL))
+      {
+
+         if ((arg1 != NULL) && (arg1[0] != 0))
+         {
+            pBot->bot_team = atoi(arg1);
+
+            if ((arg2 != NULL) && (arg2[0] != 0))
+            {
+               pBot->bot_class = atoi(arg2);
+            }
+         }
+      }
+
+and i would add another mod to that once i have done that i would then move in the the "BotStartGame( bot_t *pBot )" and add the stuff needed for the bot to join teams if there is menus for the bot to join teams, [b](NOTE :[/b] This is were i made a very large error with my bot once before if you add something in here you must make sure that you have "pBot->not_started = 0;" at the end of it or else you bot will just sit there not moving not shooting just doing nothing :), now i would move on to the waypoints.cpp and add the mod to "WaypointLoad(edict_t *pEntity)" so then the bot can load the waypoints from the correct folder now i would goto "WaypointSave(void)" and add the mod to there so the bot knows where to save the waypoint files.. Now i would goto the mods folder and goto the models folder there and you will see folders that contain models in them now with these models you must know what models are used for the teams, and once you have worked out what models are for what team you would then open util.cpp and goto "UTIL_GetTeam(edict_t *pEntity)" and add the mod there this is what i have done for SI for an example :
+
+   else if (mod_id == SI_DLL)
+   {
+      char *infobuffer;
+      char model_name[32];
+
+      infobuffer = (*g_engfuncs.pfnGetInfoKeyBuffer)( pEntity );
+      strcpy(model_name, (g_engfuncs.pfnInfoKeyValue(infobuffer, "model")));
+
+      if (strcmp(model_name, "afd") == 0)
+      {
+         return 0;
+      }
+      else if (strcmp(model_name, "mcl") == 0)
+      {
+         return 1;
+      }
+
+      return 0;  // return zero if team is unknown
+   }
+
+
+that will return 0 if the model is afd and that model is only used if you are on the afd team and it would return 1 if the model is mcl which is only used if you are on the mcl team, now that is most of the stuff needed to add a mod done, now i would compile and put the dll that it has just been complied to in to the mods folder and then into a sub folder called dlls and then i would open liblist.gam in the mods folder in editplus (any other text editor will do e.g. notepad) and i would change "gamedll" to the place of the dll that i have just complied, and i would then save that and for the short cut to that mod or any other mod for that matter i would put in the command line "-dev" and i would then run that shortcut and goto custom game and select the mod, click activate and then click done now i would go mulitplayer...lan game...create game..(select a map)...click ok then i would wait for the game to start you will see little error message's apearing in the console like :
+
+Can't init weapon_radio
+
+and 
+
+Can't create entity: proj_lightningsatchel
+
+NULL Ent in UTIL_PrecacheOther
+
+and
+
+Can't create entity: weapon_staff
+
+NULL Ent in GiveNamedItem!
+
+
+now for them where it says "Can't create entity: ????????" where the ???????? is that will be the entity that is not in linkfunc.cpp now when i'm still in the game i would goto the console and type "condump entitys.txt" and then i would goto the mod's folder and there will be a text document named entitys.txt i would then open it in a text editor and i would see every thing that happened in the console in that text file, then i would get find all the lines that have "Can't create entity: ??????????" and i would copy the bit after "Can't create entity: " and i would paste it in to linkfunc in the mothod of all other entitys there so for the entitys if i had and in entitys.txt this "Can't create entity: weapon_blah" i would copy the weapon_blah and i would add it to the buttom of linkfunc.cpp in the following method for weapon_blah "LINK_ENTITY_TO_FUNC(weapon_blah, "weapon_blah");" now i would save [b](NOTE :[/b] if i was using ming i would run a clean(using "make clean") because if i did not then i would not have the entity added :)) now i would compile and then i would copy the dll in the the mods folder and then in to the sub folder dlls over writing the dll that you have compiled[b](Note :[/b] With hook dlls you must make sure that you have the orginal dll there) and then i would start the mod back up agian on another level(preferably a different type of level (for cs(counter-strike) i would have started it on a "cs_" level which would have goten the entitys for a hostage rescue map and then now i would run it on an "es_", "as_", "de_" map's any of them and i would make sure i have -dev in the command line and if i saw any "Can't create entity: ??????" i would type in the console "condump entitys.txt" agian and that would overwrite entitys.txt in the mods folder with every thing that happened in the console that time that you typed "condump entitys.txt" and then i would redo the part from adding entitys up the top for all the entitys that showed up with "Can't create entity: ??????" and now once i have done all that the bot should have the basic's done for the mod that you have just added....... and here are just a few things to keep in mind :
+
+1. For most mods most of the showmenus(old type menus) are in titles.txt in the mods folder for example in cs where the team menu show's up it will use the "Team_Select" section in there which you would add to bot_client in the showmenu section for it to read  the team_select :
+
+   if (strcmp((char *)p, "#Team_Select") == 0)  // team select menu?
+   {
+      bots[bot_index].start_action = MSG_CS_TEAM_SELECT;
+   }
+
+which would then send it to the bot.cpp in "BotStartGame( bot_t *pBot )" the "else if (mod_id == CSTRIKE_DLL)" and then i would use "if (pBot->start_action == MSG_CS_TEAM_SELECT)" for the MSG_CS_TEAM_SELECT you would define MSG_CS_TEAM_SELECT in bot.h :)
+
+
+
+
+2. The best way if you are going to make a bot if to download hpb-bot alpha 3 source and download hpb-bot template source and then extract both the archive's and put bot_comabt.cpp from the template source into the hpb-bot alpha 3 template source and then you will then change in the hpb-bot alpha 3 : in bot.h find the line "bool BotFireWeapon( Vector v_enemy, bot_t *pBot, int weapon_choice);" and replace it with "bool BotFireWeapon( Vector v_enemy, bot_t *pBot );" and now open bot.cpp and find the line "return (BotFireWeapon( v_enemy, pBot, VALVE_WEAPON_GLOCK ));" and replace it with "return (BotFireWeapon( v_enemy, pBot ));" and that should be it :)
+
+[b] YOU MUST IF YOU USE THIS ADD ME TO YOUR README FOR HELPING :) [/b]
+--------------------------------------------------
+11/06/00 at 20:40:48  Reply by: dannywent (dannywent@hotmail.com)
+--------------------------------------------------
+wow, there's a lot there, thanks, i'll need to know that stuff.  just curious, why would you use the old alpha 3 source, i'm just doing everything from the latest template
+
+--------------------------------------------------
+11/07/00 at 01:35:44  Reply by: terror (terrorvm@hotmail.com)
+--------------------------------------------------
+he uses alpha 3 because other wise u need to write all new waypoint code and it is easier to modify i think because its all there all u need is to take out and add bits its a lot easier
+

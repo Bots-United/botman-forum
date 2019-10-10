@@ -1,0 +1,102 @@
+--------------------------------------------------
+Subject: Bot can choose team but all DEAD~
+--------------------------------------------------
+04/18/03 at 08:57:18  Posted by: Tea (tea@mail97.com)
+--------------------------------------------------
+Hi all, this is my first post in this forum, I am making a bot for DOD and CS with the HPB_bot source 2.1, The bot can spawn in CS but have some spawn problem in DOD, actually it can spawn well if I use :
+
+pBot->bot_team = RANDOM_LONG(1, 2);
+
+But this is not the way I want because some bots will alway stuck in spector mode, so I use :
+
+pBot->bot_team = 5;
+
+And it work very well in CS, bots never stuck in spector mode anymore, but in DOD, all the bots who in same team with me can't spawn, they can successful choose a team but all show dead at the TAB Score Menu, if I use back the RANDOM_LONG(1,2); they can spawn without problem, and here is my DOD Team/Class-Select code, thank you very much for the help. BTW, could someone tell me what is the difference between "menuselect" and "jointeam" ? since both of them work for me, tks.
+
+else if (mod_id == DOD_DLL)
+{
+if (pBot->start_action == MSG_DOD_TEAM_SELECT)
+{
+pBot->start_action = MSG_DOD_IDLE;  // switch back to idle
+
+if ((pBot->bot_team != 1) && (pBot->bot_team != 2) &&
+(pBot->bot_team != 5))
+pBot->bot_team = 5;
+
+//if (pBot->bot_team == -1)
+//    pBot->bot_team = RANDOM_LONG(1, 2);
+
+// select the team the bot wishes to join...
+if (pBot->bot_team == 1)
+   strcpy(c_team, "1");
+else if (pBot->bot_team == 2)
+   strcpy(c_team, "2");
+else
+   strcpy(c_team, "5");
+
+FakeClientCommand(pEdict, "jointeam", c_team, NULL);
+
+return;
+}       
+             
+if (pBot->start_action == MSG_DOD_CLASS_SELECT)
+{
+pBot->start_action = MSG_DOD_IDLE;  // switch back to idle
+pBot->f_create_time = gpGlobals->time;  // reset
+
+if ((pBot->bot_class < 1) || (pBot->bot_class > 5))
+pBot->bot_class = 4;  // only use heavyweapons if invalid
+         
+ 
+// select the class the bot wishes to use...
+if (pBot->bot_class == 1 && pBot->bot_team == 1)
+    strcpy(c_class, "lightinf");
+else if (pBot->bot_class == 2 && pBot->bot_team == 1)
+    strcpy(c_class, "assaultinf");
+else if (pBot->bot_class == 3 && pBot->bot_team == 1)
+    strcpy(c_class, "sniper");
+else if (pBot->bot_class == 4 && pBot->bot_team == 1)
+    strcpy(c_class, "heavyweapons");
+else if (pBot->bot_class == 5 && pBot->bot_team == 1)
+    strcpy(c_class, "machinegunner");
+else if (pBot->bot_class == -1 && pBot->bot_team == 1)
+    strcpy(c_class, "randompc");
+else if (pBot->bot_class == 1 && pBot->bot_team == 2)
+    strcpy(c_class, "leichtinf");
+else if (pBot->bot_class == 2 && pBot->bot_team == 2)
+    strcpy(c_class, "sturmtrup");
+else if (pBot->bot_class == 3 && pBot->bot_team == 2)
+    strcpy(c_class, "germansniper");
+else if (pBot->bot_class == 4 && pBot->bot_team == 2)
+    strcpy(c_class, "heavyweaponsger");
+else if (pBot->bot_class == 5 && pBot->bot_team == 2)
+    strcpy(c_class, "machinegunnerger");
+else if (pBot->bot_class == -1 && pBot->bot_team == 2)
+    strcpy(c_class, "randompc");
+             
+FakeClientCommand(pEdict, c_class, NULL,NULL);
+
+// bot has now joined the game (doesn't need to be started)
+pBot->not_started = 0;
+return;
+
+}
+}
+
+--------------------------------------------------
+04/18/03 at 09:07:19  Reply by: Tea (tea@mail97.com)
+--------------------------------------------------
+Actually I have to press key "4" but not "5" like CS to select random team in DOD, so I have tried :
+
+pBot->bot_team = 4;
+
+But it have the same problem, and I am not understand why both pBot->bot_team = 4; and pBot->bot_team = 5; can select team success if the random key is "4" in DOD although both of them can't spawn ?
+
+--------------------------------------------------
+04/18/03 at 09:59:09  Reply by: Tea (tea@mail97.com)
+--------------------------------------------------
+Okay, I have solved the problem after I changed MSG_DOD_CLASS_SELECT to MSG_DOD_CLASS_ALLIES_SELECT and MSG_DOD_CLASS_AXIS_SELECT
+
+Now the only thing I don't understand is what is the difference between jointeam and menuselect and why is the random key is 5 but not 4 in DOD ?
+
+

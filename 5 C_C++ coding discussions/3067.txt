@@ -1,0 +1,163 @@
+--------------------------------------------------
+Subject: Getting word from bytes array
+--------------------------------------------------
+05/03/02 at 08:41:43  Posted by: SLAVIK (slava@deep-shadows.com)
+--------------------------------------------------
+Hi! I posted this question some day and lost the answer :( that is why I am posting it here again.
+I am a Delphi programmer, not a C++ that is why I need help. Can anyone tell me what this strings do:
+
+ data=new BYTE[fat_size];
+ read(hFile,data,fat_size);
+ srand((filelength(hFile)+'SZ') % 0xFFFF);//WHAT THIS CODE IS DOING? ANYONE KNOWS DELPHI ANALOGS?
+ for(i=0;i < fat_size;i++) data[i]^=rand() % 0xFF; //OR THAT?
+ {
+ ...
+ }
+
+--------------------------------------------------
+05/03/02 at 09:04:15  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Here's a description of what the C++ code does.  You'll have to translate that to Delphi...
+
+"data=new BYTE[fat_size];"
+
+This creates an array of bytes (unsigned characters) in memory.  The array is "fat_size" in size.
+
+"read(hFile,data,fat_size);"
+
+This reads from the file handle "hFile" (should have been previously opened using fopen), and reads "fat_size" bytes and stores the file data in the "data" memory buffer.
+
+"srand()"
+
+The srand() function seeds the random number generator.  The calculations inside the code take the file size of the "hFile" file, divides it by 65536 and uses the remainder to initialize the random number seed.
+
+"for(i=0;i < fat_size;i++)
+ data[i]^=rand() % 0xFF;"
+
+The for statement loops from 0 to "fat_size" and exclusive or's the current value in the "data" array with a random number (from 0 to 255).
+
+botman
+
+--------------------------------------------------
+05/03/02 at 09:44:02  Reply by: SLAVIK (slava@deep-shadows.com)
+--------------------------------------------------
+Thanks! But I have two more questions?
+in srand() there is such string:
+((filelength(hFile)+'SZ') % 0xFFFF
+you told this is the length of file dividing the 65536. But what does the 'SZ' letters?
+
+I understand all of that. But how can I for example copy from this decrypted bytes array word?
+I know that word is 4 bytes length, but how can I do that in C++?
+for example
+data array[256] of bytes
+w1 word
+data=ExcludeWordFromBUffer(w1,buffer).
+so that w1 will be cutted from buffer and buffer will be without that?
+
+Thanks again!
+
+--------------------------------------------------
+05/03/02 at 12:08:03  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+"filelength(hFile)+'SZ'" is not valid C/C++ code.  The single quote marks are used for character values (like 'A','z','1',' ', etc.).  'SZ' means nothing in C or C++.  I'm not sure where this code originally came from, but it should not compile like that.
+
+If you have an array of bytes and you want to access a int value (32 bits) from it you can do something like this...
+code:
+char data[256];
+int value, *p;
+
+p = &data[19];  // start at 20th byte
+value = *p;  // store the word pointed to by p in value
+
+...this assumes you want to store the 4 bytes starting at the 20th byte of the array (remember arrays in C begin at byte 0) in the variable "value".
+
+botman
+
+--------------------------------------------------
+05/03/02 at 23:15:42  Reply by: SLAVIK (slava@deep-shadows.com)
+--------------------------------------------------
+thanks for help botman. To get full help I must tell you what I want to dot :) so you can understand what I want ;)
+I have a procedure which extracts package files from one game I am working on...
+this packages have a header which is a bit encrypted (with that srand() proc).
+
+Header is :
+signaure DWORD
+Version INTEGER
+filescount INTEGER
+fat_size INTEGER (fat_size is a lenght of the WHOLE header)
+
+data=new BYTE[fat_size] (we are creating an array to read the header in)
+then we must read header into this array
+after we have header our filepos is in the attached files data position
+
+then we encrypt the header arrays data using srand() method
+after we made it we are reading header info in a loop:
+
+for n:=0 to FilesCount-1 do
+begin
+...
+
+    ptr=get_w(ptr,str_len); // word
+    ptr=get_a(ptr,szFileName,str_len);
+        szFileName[str_len]=0;
+    ptr=get_i(ptr,offset);
+    ptr=get_i(ptr,size);
+        ptr+=4;
+
+...
+end;
+    
+and then we have all information to extract attached files.
+if you need, here all variables from this proc:
+
+ DWORD signature;
+ long i,j,maxi,cur_offset;
+ int hFile,hNewFile;
+ int version,nFileInfo;
+ char szDirName[256],szFileName[256];
+ long fat_size;
+ WORD str_len;
+ int offset,size;
+ BYTE *buffer,*data,*ptr;
+
+Can you make for this get_w, get_a, get_i procedures please? because I can't do that with my knowledge of C++...
+thanks a lot for the answer...
+
+--------------------------------------------------
+05/04/02 at 05:18:05  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Sorry, you're on your own.
+
+botman
+
+--------------------------------------------------
+05/04/02 at 05:22:43  Reply by: SLAVIK (slava@deep-shadows.com)
+--------------------------------------------------
+I knew that was too much ;-)
+but stiil the last, last question:
+how can I cut the beginning of the array in C++ (for example 5 elements) and make array without it (sorry for my English).
+
+example:
+abcdefgh - array before
+we cutted "ab" and array is "cdefgh"
+
+thanks
+
+--------------------------------------------------
+05/05/02 at 05:36:57  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+You can either shuffle all the elements in the array down 2 positions...
+code:
+for (i=2; i < size_of_the_array; i++)
+   array[i-2] = array[i];
+
+...or just keep a "pointer" to where the "beginning" of the array is...
+code:
+int offset = 0;  //keeps track of the start of the array
+
+   offset = 2;  // now the array starts at the 2nd element
+ 
+   valve = array[offset];   // get the valve from the 1st array element
+
+botman
+

@@ -1,0 +1,88 @@
+--------------------------------------------------
+Subject: Bots dont spawn!!!
+--------------------------------------------------
+06/21/01 at 08:56:56  Posted by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+This is a big prob that happened by just adding one more thing into the bot_t structure!!! The main thing is that the bots dont spawn at all, all that happens is that their names might appear in the scoreboard but wont play. I might be lucky enough to see one bot managing to play.
+
+I wanted to add "bool tele_deployed" (to see if theyev already deployed a teleport in the mod RC, so they know to use primary fire or not) Ive initialised it in BotSpawnInit to FALSE.
+
+Heres an example of its use...
+
+code:
+
+
+else  // MUST be use_secondary...
+         {
+          pEdict->v.button = IN_ATTACK2;  // use secondary attack
+            if (mod_id == RC_DLL)
+            {            
+             if ((iId == VALVE_WEAPON_GAUSS)&&(pBot->tele_deployed = FALSE))
+              pBot->tele_deployed = TRUE;
+             else if ((iId == VALVE_WEAPON_GAUSS)&&(pBot->tele_deployed = TRUE))
+              pBot->tele_deployed = FALSE;
+            }
+
+
+
+
+and the primary fire bit...
+
+code:
+
+if (use_primary)
+         {
+          
+          if(mod_id == RC_DLL)
+            {          
+              if(iId == VALVE_WEAPON_TRIPMINE) //If holding tripmine
+              {                  
+                if(BotCheckWallOnRight(pBot)==TRUE) //If there is a wall on the right
+                  pBot->pEdict->v.ideal_yaw=pBot->pEdict->v.ideal_yaw+90; //Turn right
+                else if(BotCheckWallOnLeft(pBot)==TRUE) //If there is a wall on the left
+                   pBot->pEdict->v.ideal_yaw=pBot->pEdict->v.ideal_yaw-90; //Turn left
+                  BotFixIdealYaw(pEdict);
+              }
+              if ((iId == VALVE_WEAPON_GAUSS)&&(pBot->tele_deployed = FALSE))
+                    continue; //Dont attempt to use gauss primary if a teleport hasnt been deployed
+           }
+
+
+
+Oh BTW I dunno how Id let the bots to deploy a tripmine too! I just came up with that code up there but that doesnt seem to work, lol.
+
+
+
+--------------------------------------------------
+06/21/01 at 09:03:26  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+If you change anything in the .h files and you are using MingW32 or Borland, you should always use "make clean" and then "make" to rebuild all of the effected files.
+
+Microsoft Visual C++ does this automatically because it knows which .cpp files include which .h files and if any of the .h files change, it knows it should rebuild the .cpp files that include them just in case.
+
+MingW32 and Borland aren't smart enough to do this on their own.  You can set up the makefile to do this also (using dependancy rules), but it's kind of a pain to do so.  It's easier for novice developers to just use "make clean" and then "make" whenever they change a .h file.
+
+botman
+
+--------------------------------------------------
+06/21/01 at 09:27:20  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+How would I do it with mingw32???? I know how to rebuild everything again in borland but for some reason borland isnt working anymore...
+
+it keeps saying "Fatal: Unable to open file 'C0D32.OBJ'"
+
+Maybe u could help me there!!!!??
+
+
+
+
+--------------------------------------------------
+06/21/01 at 09:59:18  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+I deleted all of the object files and compiled it ,bots spawn ok now!!!!
+
+I forgot to copy the dll file at first leaving my old dll in!
+
+Another porb, all my bots are circling waypoints now and its getting laggy!!! Ill need to look atr that next!
+
+

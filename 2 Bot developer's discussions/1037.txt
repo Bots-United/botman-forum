@@ -1,0 +1,118 @@
+--------------------------------------------------
+Subject: hl crashes with my flf v1.1 bot
+--------------------------------------------------
+01/10/01 at 12:10:02  Posted by: impaqt (impaqt@online.no)
+--------------------------------------------------
+ok, ive started on a flf bot a while ago.
+So When botman released his 2nd template i chose to use it for my bot...but now hl crashes when i add a bot to the game, same thing happens when i build a clean copy of the 2nd template....
+
+whats wrong ?
+something in botmans source or something with my computer ?
+
+--------------------------------------------------
+01/10/01 at 13:52:41  Reply by: RedFox (redfox@nildram.co.uk)
+--------------------------------------------------
+You could try/see this 
+http://dynamic.gamespy.com/~botman/yabb/YaBB.pl?board=2&action=display&num=1026
+
+otherwise look through the stuff other ppl have posted on the subject (their are about 5threads)
+
+RedFox
+
+--------------------------------------------------
+01/10/01 at 13:54:52  Reply by: eLiTe (ali@elitegamer.fsnet.co.uk)
+--------------------------------------------------
+Same with me!!!! My bot works in TF if I do a Clean build in MSVC++, but it crashes in Counter-Strike after I add a bot
+
+It doesn't crash CS if I add the bots before I join a team, but I can't release a bot in that codition!!!
+
+Jorgen - What compiler are you using? Maybe the template 2 only crashes with Microsoft Visual C++ 6. Also try adding bots BEFORE you join a team - that may stop the crashes.
+
+Botman - if this is a problem with MSVC++, could you PLEASEPLEASEPLEASEPLEASEPLEASE tell me how to fix it? There's no way that ppl will want to use my bot in this condition... :(
+
+--------------------------------------------------
+01/10/01 at 14:26:43  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+When I built the template 2 source code, I tested adding bots in Half-Life, TFC, FLF, CS and OpFor.  I was able to add a bot in all of these without crashing the game.  I didn't play for more than 2 or 3 minutes per game, but I was able to add bots with no crashing.
+
+You may have problems with the Half-Life instalation or your Windows instalation.  Try uninstalling Half-Life, delete the Half-Life directory, re-install Half-Life, patch up to version 1.1.0.4 and try running the bot again.  You'd be amazed at how many people e-mail me with problems and when I tell them to do this they almost always write back that re-installing Half-Life fixed the problem.
+
+botman
+
+--------------------------------------------------
+01/10/01 at 15:16:54  Reply by: eLiTe (ali@elitegamer.fsnet.co.uk)
+--------------------------------------------------
+No, I tried that last night. I'm pretty sure it's a problem with MSVC++ or something like that, because it works properly in TFC if you do a clean rebuild, but to get it to work in CS, you have to add the bots before joining yourself... I think it's just after the last bot joins, and the bots start using BotThink.cpp 
+
+I tried commmenting out all my waypoint code and everything. It's DEFINITELY a problem with the basic HPB template 2, not anything I have added in afterwards. I know that you have no obligation at all to helps us, but it would be nice if you could help us fix this? Did you try compiling the bots in MSVC++, or were you using Ming? Should I just use Ming instead??
+
+--------------------------------------------------
+01/11/01 at 02:07:41  Reply by: eLiTe (ali@elitegamer.fsnet.co.uk)
+--------------------------------------------------
+The crash occurs at pfnrunPlayerMove. I tried commmenting out pfnRunPlayerMove and it doesn't crash. Obviously pfnRunPlayerMove does a lot of things and changes all the values of everything else and stuff, but it shows that it is not my code that is crashing the bot (I think). And the bots didn't crash when I threw a FB at them (even though they ran about, bcoz the Flashbang code uses pfnRunPlayerMove).
+
+The bug is definitely something to do with adding a bot after joining yourself - you can add in bot before you join and it won't crash, but even if you just add 1 bot afterwards it will crash... it's very weird. I thought it may be a problem with the menu codes, but the bot joins the game fine. It's only once pfnRunPlayerMove is accessed that it crashes.
+
+I tried specifying various NULL values in pfnRunPlayerMove to see what was causing the crash, but it won't work without the edict or the v.angles...
+
+Please Botman do you have ANY idea what the problem might be? I tried re-installing eveything yesterday (although I might do that again today, just for you, hehehehehe)
+
+--------------------------------------------------
+01/11/01 at 05:32:33  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+I use MSVC 6.0 for building everything.  I rebuilt the template code using Borland and MingW32, but didn't run the executable (the C++ code is the same and I trust the compilers to generate correct code).
+
+When you say "you can add in bot before you join and it won't crash" I assume you mean you add a bot before joining a team, and not add a bot before joining the server (i.e. you join the server and are in observer mode, you add a bot, then you join a team).  Is that correct?
+
+Just out of curiosity, did you fix the "welcome_msg" bug?  If not, just comment that stuff out and see if your crashing problem still occurs.  Leaving the welcome_msg like it is will definitely spray memory and clobber other data.
+
+botman
+
+--------------------------------------------------
+01/11/01 at 07:26:59  Reply by: eLiTe (ali@elitegamer.fsnet.co.uk)
+--------------------------------------------------
+Oops. didn't know about the welcome message - that would explain things... I take it the code tries to send the welcome message to the bots :P
+
+Okay, my bad... now I'll search for the post about that. I think you should make a section on your main page with the bugfixes (or better yet just fix the bugs yourself and update the template to 2.1 or something). So that other unsuspectinf fools like me won't get any problems :)
+
+--------------------------------------------------
+01/11/01 at 09:03:41  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+"I take it the code tries to send the welcome message to the bots"
+
+No, this is the welcome_msg bug I'm talking about...
+
+http://dynamic.gamespy.com/~botman/yabb/YaBB.pl?board=2&action=display&num=1038
+
+botman
+
+--------------------------------------------------
+01/11/01 at 11:36:28  Reply by: eLiTe (ali@elitegamer.fsnet.co.uk)
+--------------------------------------------------
+Aah. I found the problem!! There's a global in dll.cpp:
+
+bool newbie_programmer = TRUE
+
+When I changed it to this:
+
+bool newbie_programmer = FALSE
+
+the bots didn't crash anymore!! I hopre I didn't overstep my bounds by declaring myself no longer a newbie bot programmer? Obviously if you are smart enough to change this variable then you are no longer a newbie :P
+
+Only joking, u were right Botman - the Welcome Message wasn't being very welcoming to my bots, so I simply changed the definition of welcome_message[] to welcome_message[80]
+
+Thanks very much!! Now I can get back to working on getting my bots to understand your waypoint system, lol :)
+
+--------------------------------------------------
+03/03/01 at 12:20:49  Reply by: eLiTe (ali@elitegamer.fsnet.co.uk)
+--------------------------------------------------
+
+QUOTE:
+When I built the template 2 source code, I tested adding bots in Half-Life, TFC, FLF, CS and OpFor.  I was able to add a bot in all of these without crashing the game.  I didn't play for more than 2 or 3 minutes per game, but I was able to add bots with no crashing.
+
+
+
+I think there are serious problems somewhere in template 2 - when I first made a template 2 bot the bots would crash after about 30 mins of playing, and now that I have started again almost frmo scratch in template 2 (I have been working on my bots for MONTHS since then), it crashes after about 30 mins... so I think there is some memory that is not being freed back to the system or something, resulting in HL eventually running out of memory, and since you only tested the bots for about 3 mins, you wouldn't have noticed it...
+
+I am not saying that this isn't a problem with my code, I just think that if the problem was in MY code it would have showed up pretty quickly, as the bots will do every single combat thing withing the first few minutes of a test, and if it takes 30 mins to crash it is probably not the code I have added in - could you PLEASE either make a new version of the template? Maybe that's a lot to ask, but I think template 1 worked... I may try and port my bot back to template 1 and see if the crash still occurs, but I honestly don't think it's my fault - I even saw another author a while back (was it 'Zach' or something) mentioning that his bots crash after 20 mins too =(
+

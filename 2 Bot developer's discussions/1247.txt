@@ -1,0 +1,71 @@
+--------------------------------------------------
+Subject: Some questions for CS bots...
+--------------------------------------------------
+02/22/01 at 12:17:12  Posted by: Paulo-La-Frite (Paul.George@wanadoo.fr)
+--------------------------------------------------
+I have some questions without answers, plz help me :
+
+=> Where is exactly the head on a HL model (because I want to make a function that will help me avoid lot of headshots from bots). I'm sure it isn't only one point but more than one point (a square). If you know I need to know the right points for this square or circle please
+
+=> How can I give bots health or avoid some damages ? I can't tell more about that because it is a top secret function :p
+
+=> How can I make the bots seing smoke from smokegrandes ? I haven't found any way to do that...
+
+Thanks for your help !
+
+--------------------------------------------------
+02/22/01 at 15:38:21  Reply by: bigjesus (holybigjesus@hotmail.com)
+--------------------------------------------------
+look in botcombat cpp file. :)
+
+--------------------------------------------------
+02/23/01 at 01:56:54  Reply by: Paulo-La-Frite (Paul.George@wanadoo.fr)
+--------------------------------------------------
+I was sure nobody could understand what I want to know (moreover, it is very difficult to make you understand because I have not a good English, sorry :p)
+
+For the headshot points, I don't want only one point but something like a square or a circle, because when you spote the head of a Hl model, you can have more than 1 point that can make you a headshot !!!!!
+
+I need help plz !!!!
+
+--------------------------------------------------
+02/23/01 at 04:57:51  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+1. view_ofs in the entvars_t structure is the view offset from the center of the body.  This is used by the Half-Life engine to set the view point for the player (where the eyes are).  When you duck the view_ofs is adjusted to account for this change.  Therefore the center of the head of a player will always be...
+
+pev->origin + pev->view_ofs
+
+When a weapon using a UTIL_TraceLine() is fired (like the pistol or 357), the TraceResult structure will contain a field called iHitgroup.  iHitgroup will be HITGROUP_HEAD (from monsters.h) if the shot hit the player in the head.
+
+I don't know what the bounding box size of a player model in Counter-Strike is but in Half-Life deathmatch you can look at the player_shared.qc file and find the head hitgroup...
+
+$hbox 1 "Bip01 Head" 0.09 -3.66 -3.00  8.41 5.09 3.00
+
+...don't ask me what the numbers mean.  I'm a coder, not a modeler. :D
+
+2. pev->health = 100;  (Do this every frame and the bots won't die!)
+
+3. There will be a network message sent when the smoke grenade is created (and probably when it explodes or maybe not if the client keeps track of this).  Look for pfnMessageBegin() messages that occur when you throw a smoke bomb.  Use the "debug_engine" command to turn on logging these to the bot.txt file in the Half-Life directory.
+
+botman
+
+--------------------------------------------------
+02/23/01 at 05:16:00  Reply by: Paulo-La-Frite (Paul.George@wanadoo.fr)
+--------------------------------------------------
+Thanks botman !
+
+--------------------------------------------------
+02/23/01 at 05:26:36  Reply by: Paulo-La-Frite (Paul.George@wanadoo.fr)
+--------------------------------------------------
+Arf... I need more help for the health, because I want to avoid some damages but not all : for example, only headshots will make bot lose life !
+
+Please help me botman :)
+
+--------------------------------------------------
+02/23/01 at 05:34:50  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+Sorry, you don't have control over what the MOD does in it's TakeDamage() function.  You can keep increasing the bot's health when it drops, but there's no simple way to prevent some types of damage and not other types of damage.
+
+The Half-Life engine doesn't call a function in the MOD to inflict damage.  The MOD calls an internal function (called TakeDamage) that does damage to players.  When damage is inflicted on a player, the MOD will send the client a "Damage" message so that the HUD can display the little damage icons (the big red triangles in Half-Life) so that they player know which direction the damage came from.  So you can't "intercept" damage and prevent certain types of damages from occuring, the only thing you can do is artificially adjust the health upward after the damage has been done.
+
+botman
+

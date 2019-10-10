@@ -1,0 +1,157 @@
+--------------------------------------------------
+Subject: converting waypoint files?
+--------------------------------------------------
+10/14/03 at 18:18:21  Posted by: Boris (bbacher@insightbb.com)
+--------------------------------------------------
+I like the HPB_bot.  I've tried the Jumbot and Rhobot, but they don't seem as effective as the HPB.  Problem is, I have a LOT more maps than HPB waypoint files.  There are a LOT of Jumbot waypoint files (.jrf), but obviously they don't work with HPB_bot.
+
+Being a programmer, I thought of writing a VB program to reformat the .jrf files into HPB waypoint files.  The .jrf files are in an easily-read format - but the HPB waypoint files are not.
+
+Botman, have you ever considered translating waypoint files into HPB format?  Can you tell us the HPB waypoint file format so that we can do some translations?
+
+Has anyone else ever attempted such a thing?
+
+--------------------------------------------------
+10/15/03 at 05:20:24  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+The HPB bot waypoint file format is "documented" in the HPB bot source code as well as in my BSP tools source code (which attempts to automatically create waypoint files for maps, but doesn't do a real good job).
+
+The format is pretty simple...
+
+1. You have a header at the beginning of the .HPB_wpt file...
+
+code:
+// define the waypoint file header structure...
+typedef struct {
+   char filetype[8];  // should be "HPB_bot\0"
+   int  waypoint_file_version;
+   int  waypoint_file_flags;  // not currently used
+   int  number_of_waypoints;
+   char mapname[32];  // name of map for these waypoints
+} WAYPOINT_HDR;
+
+2. After this header, you have a list of all the waypoints with their flags and origin listed one after the other...
+code:
+// define the structure for waypoints...
+typedef struct {
+   int    flags;    // button, lift, flag, health, ammo, etc.
+   vec3_t origin;   // location
+} WAYPOINT;
+
+3. Then you have a list of all the paths from one waypoint to the other waypoints that it is directly connected to.  This is just a counter (number of routes), followed by the index number of the waypoints it connects to.  For example, if waypoint #37 (remember you start at #0, not #1), is connected to waypoints #47, #18, #103, #115 and #207 (5 total paths), you would have...
+
+5, 47, 18, 103, 115, 207
+
+...written to the file (all of these written as short 2 byte integers).
+
+If a waypoint has 0 paths, you just write the 0 for that index.
+
+Here's the source code that the BSP tools use (found in waypoint.cpp)...
+code:
+void WriteHPBWaypointFile(void)
+{
+   int index;
+   WAYPOINT_HDR header;
+   char filename[64];
+   path_t *p, *p_next;
+
+   strcpy(header.filetype, "HPB_bot");
+
+   header.waypoint_file_version = WAYPOINT_VERSION;
+
+   header.waypoint_file_flags = 0;  // not currently used
+
+   header.number_of_waypoints = num_waypoints;
+
+   ExtractFileBase (world.bspname, filename);
+   StripExtension(filename);
+
+   memset(header.mapname, 0, sizeof(header.mapname));
+   strncpy(header.mapname, filename, 31);
+   header.mapname[31] = 0;
+
+   DefaultExtension(filename, ".HPB_wpt");
+
+   printf("Creating waypoint file %s...\n", filename);
+
+   FILE *bfp = fopen(filename, "wb");
+
+   // write the waypoint header to the file...
+   fwrite(&header, sizeof(header), 1, bfp);
+
+   // write the waypoint information...
+   for (index = 0; index < num_waypoints; index++)
+   {
+      fwrite(&waypoints[index], sizeof(WAYPOINT), 1, bfp);
+   }
+
+   if (paths)
+   {
+      short int count;  // HPB bot uses short int for path count
+
+      for (index = 0; index < num_waypoints; index++)
+      {
+         // count the number of paths for this waypoint...
+         count = 0;
+         p = paths[index];
+         while (p)
+         {
+            p = p->next;
+            count++;
+         }
+
+         // write out the count, then write out the paths...
+         fwrite(&count, sizeof(count), 1, bfp);
+
+         p = paths[index];
+         while (p)
+         {
+            fwrite(&p->waypoint_index, sizeof(p->waypoint_index), 1, bfp);
+            p = p->next;
+         }
+      }
+
+      for (index = 0; index < num_waypoints; index++)
+      {
+         p = paths[index];
+         while (p)
+         {
+            p_next = p->next;
+            free(p);
+            p = p_next;
+         }
+      }
+
+      free(paths);
+      paths = NULL;
+   }
+   else
+   {
+      short int count = 0;
+
+      // write empty paths...
+      for (index = 0; index < num_waypoints; index++)
+         fwrite(&count, sizeof(count), 1, bfp);
+   }
+
+   fclose(bfp);
+}
+
+botman
+
+--------------------------------------------------
+10/17/03 at 04:42:32  Reply by: Boris (bbacher@insightbb.com)
+--------------------------------------------------
+Interesting, and more complicated than I expected.  The .jrf files are just xyz coordinates with an indicator that specifies whether a given point is a jump point, a weapon, etc.
+
+To translate them, one would have to calculate all the paths to store them in the HPB waypoint file.  Certainly doable, but perhaps more work than I had in mind.  I'll give it some thought.
+
+[modified on 10/17/03 at 04:42:32]
+--------------------------------------------------
+10/17/03 at 10:17:56  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Yes, the HPB_bot pathfinder uses a precomputed path table (Floyd table). Perhaps what you can do is to spawn your waypoints in a HL level, and then have them fire TraceLines to neighbours in order to build your paths, and then save the resulting waypoint+path structure back to disk.
+
+POD-bot 2.6 does this, for computing visibility tables. You can look at the source code.
+
+

@@ -1,0 +1,46 @@
+--------------------------------------------------
+Subject: edict_t->free for players?
+--------------------------------------------------
+10/27/01 at 11:42:10  Posted by: ProgramMan (thevbfreak.pa@netzero.net)
+--------------------------------------------------
+I am trying to select a random player for a game that I am creating.  I tried doing something like this:
+
+edict_t *pent;
+for (int i = 1;i <= gpGlobals->maxClients;i++)
+{
+    pent = INDEXENT(i);
+    if ((pent) && !(pent->free))
+    {
+        // Process pent here...
+    }
+}
+
+However, the game seems to process pent even when there is no player in that slot (I have confirmed this while in Debug Mode).  Is there any other way to check for a non-existent player?
+
+--------------------------------------------------
+10/27/01 at 14:32:01  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+The engine will reuse the "free" buffer for a player (and thus doesn't free it when a player leaves the server).
+
+The best way to keep track of which player slots are valid is to keep track of them yourself using ClientPutInServer() and ClientDisconnect().  ClientPutInServer will get called when the Half-Life engine adds a client to the game.  ClientDisconnect will be called when the engine determines that this player has left the server.  Just create your own array of edict_t pointers and add them to the array as they join and remove them from the array when they leave (and set the array value to NULL).  Then just scan the array for non-null edict values.
+
+botman
+
+--------------------------------------------------
+10/27/01 at 16:45:41  Reply by: ProgramMan (thevbfreak.pa@netzero.net)
+--------------------------------------------------
+That should work ;D.  I have another problem relating to edict_t *'s, however: when I try to access STRING(pent->v.netname), it gives me an empty string, even if the edict_t is valid.  I am using it in statements like:
+
+UTIL_SayTextAll(UTIL_VarArgs("*%s roolz!\n", STRING(pent->v.netname)),INDEXENT(0));
+
+Any way to get this to work?
+
+I tried using CBaseEntity::Instance(pent) to get the class and then use pPlayer->pev->classname, but it gives me an Access Violation when trying to access pent->pvPrivateData in Instance().
+
+--------------------------------------------------
+10/27/01 at 17:39:10  Reply by: ProgramMan (thevbfreak.pa@netzero.net)
+--------------------------------------------------
+I tried the player Edict list, and it worked well.  You can disregard my previous post on an empty string with STRING(pent->v.netname).
+
+Thanks Botman!
+

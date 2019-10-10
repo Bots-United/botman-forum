@@ -1,0 +1,148 @@
+--------------------------------------------------
+Subject: Velocity
+--------------------------------------------------
+05/23/01 at 10:55:41  Posted by: [LW]Rob (rob@tfcautoop.cjb.net)
+--------------------------------------------------
+What would the code be, say for instance I had an entity at the origin of the palyer and I wanted to throw it like a grenade in TFC, I understnad that I would have to modify the pev->velocity of the object, but how do I get it to "throw" in the direction the player is facing?
+
+thanks,
+
+- Rob.
+
+--------------------------------------------------
+05/23/01 at 11:18:42  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+The velocity is a vector.  A vector indicates magnitude AND direction.  Take the player's view angle (v_angle) and multiply that by some scale (that loosely corresponds to the distance you want the grenade to go).  Assign this value to the velocity.  The Half-Life engine will move the entity in the velocity vector direction frame by frame gradually reducing the velocity with each frame.
+
+botman
+
+
+--------------------------------------------------
+05/23/01 at 14:28:42  Reply by: [LW]Rob (rob@tfcautoop.cjb.net)
+--------------------------------------------------
+thanks, that actually cleared it up in my mind too :) so (v_angle + 500) would fire it accross in the direction, right? But what about dropping to the ground? I just want a grenade style throwing, I thought about using a cycler, as its simple but will this fall to the ground?
+
+thanks,
+
+- Rob
+
+--------------------------------------------------
+05/24/01 at 05:28:26  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+v_angle is an array of 3 angles.  v_angle.x (the pitch) is 0 for horizontally level.  v_angle.x = 45 would be a pitch of 45 degrees.  v_angle + 500 doesn't make any sense.
+
+Look at the grenade throwing code in the Half-Life Standard SDK (grenade.cpp) to see how greandes are thrown.
+
+botman
+
+--------------------------------------------------
+05/24/01 at 10:02:23  Reply by: [LW]Rob (rob@tfcautoop.cjb.net)
+--------------------------------------------------
+            Vector angThrow = m_pPlayer->pev->v_angle + m_pPlayer->pev->punchangle;
+
+            if (angThrow.x < 0)
+                  angThrow.x = -10 + angThrow.x * ((90 - 10) / 90.0);
+            else
+                  angThrow.x = -10 + angThrow.x * ((90 + 10) / 90.0);
+
+            float flVel = (90 - angThrow.x) * 4;
+            if (flVel > 500)
+                  flVel = 500;
+
+            UTIL_MakeVectors( angThrow );
+
+            Vector vecSrc = m_pPlayer->pev->origin + m_pPlayer->pev->view_ofs + gpGlobals->v_forward * 16;
+
+            Vector vecThrow = gpGlobals->v_forward * flVel + m_pPlayer->pev->velocity;
+
+This is code I grabbed from the SDK, so angThrow is the angle, v_forward is the magnitude of the force, right? But I dont get quite how this is put together, what are vecThrow and vecSrc used for?
+
+- Rob.
+
+--------------------------------------------------
+05/25/01 at 03:45:03  Reply by: [LW]Rob (rob@tfcautoop.cjb.net)
+--------------------------------------------------
+Ok I used a temp ent as a test and I have got it working now, I can use the TE as the grenade and it works, but this brings a new problem, I doubt I can make an explosion occur form the origin of a temp ent so I will probably have to use a real entity, right? So would it be possible to use a cycler, and "throw" it?
+
+- Rob.
+
+--------------------------------------------------
+05/25/01 at 05:00:19  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+I don't know, try it and see.
+
+botman
+
+--------------------------------------------------
+05/25/01 at 12:47:02  Reply by: [LW]Rob (rob@tfcautoop.cjb.net)
+--------------------------------------------------
+^_^ ok, ill tell u how it goes 
+
+- Rob.
+
+--------------------------------------------------
+05/28/01 at 09:11:06  Reply by: BillDoor (nf9576@bris.ac.uk)
+--------------------------------------------------
+Here's the code that spawns a flashbang in my mod. The physics aren't quite right for TFC but I don't really know how to find the correct way a TFC grenade should behave. This function is called from ClientCommand:
+
+void NeoTFFlashGren(edict_t *pEntity)
+{
+      edict_t *pFlash;
+       if((FStrEq(Cmd_Argv(0), "+gren2") || FStrEq(Cmd_Argv(0), "primetwo")) && (!pEntity->v.deadflag) && (EntInfo[ENTINDEX(pEntity)].Used.FlashGren < FLASHGREN_AMMO) && (pEntity->v.playerclass == CLASS_SNIPER) && (!EntInfo[ENTINDEX(pEntity)].Primed.FlashGren))
+    {
+          EntInfo[ENTINDEX(pEntity)].Primed.FlashGren = gpGlobals->time;
+        EntInfo[ENTINDEX(pEntity)].Used.FlashGren++;
+        MESSAGE_BEGIN(MSG_ONE, 79, NULL, pEntity);
+                  WRITE_BYTE(1);
+                  WRITE_CHAR(100);
+                  WRITE_CHAR(95);
+                  WRITE_STRING("concussiongrenade");
+                  WRITE_BYTE(255);
+                  WRITE_BYTE(160);
+                  WRITE_BYTE(0);
+        MESSAGE_END();
+        MESSAGE_BEGIN(MSG_ONE, 72, NULL, pEntity);
+                  WRITE_BYTE(1);
+                  WRITE_BYTE(FLASHGREN_AMMO - EntInfo[ENTINDEX(pEntity)].Used.FlashGren);
+            MESSAGE_END();
+    }
+       if((FStrEq(Cmd_Argv(0), "-gren2") || FStrEq(Cmd_Argv(0), "throwgren")) && (!pEntity->v.deadflag) && (pEntity->v.playerclass == CLASS_SNIPER) && (EntInfo[ENTINDEX(pEntity)].Primed.FlashGren))
+    {
+          UTIL_MakeVectors(pEntity->v.v_angle);
+          pFlash = CREATE_NAMED_ENTITY(MAKE_STRING("info_target"));
+          DispatchSpawn(pFlash);
+          pFlash->v.origin = pEntity->v.origin;
+          pFlash->v.owner = pEntity;
+          pFlash->v.angles = Vector(0, pEntity->v.v_angle.y, 0);
+          pFlash->v.velocity = pEntity->v.velocity + gpGlobals->v_forward*400 + Vector(0, 0, 32);
+        pFlash->v.takedamage = DAMAGE_NO;
+        pFlash->v.health = 1;
+        pFlash->v.movetype = MOVETYPE_BOUNCE;
+        pFlash->v.nextthink = gpGlobals->time;
+        // From ggrenade.cpp
+             // pGrenade->pev->gravity = 0.5;
+            // pGrenade->pev->friction = 0.8;
+        pFlash->v.gravity = 0.5;
+        pFlash->v.friction = 0.4;
+        pFlash->v.solid = SOLID_BBOX;
+          SET_MODEL(pFlash, "models/conc_grenade.mdl");
+          UTIL_SetSize(VARS(pFlash), Vector(0, 0, 0), Vector(0, 0, 0));
+          pFlash->v.classname = MAKE_STRING("ntf_flashgren");
+        EntTimes[ENTINDEX(pFlash)].EventTime = EntInfo[ENTINDEX(pEntity)].Primed.FlashGren + 4;
+        EntInfo[ENTINDEX(pEntity)].Primed.FlashGren = 0;
+        MESSAGE_BEGIN(MSG_ONE, 79, NULL, pEntity);
+                  WRITE_BYTE(0);
+                  WRITE_CHAR(100);
+                  WRITE_CHAR(95);
+                  WRITE_STRING("concussiongrenade");
+                  WRITE_BYTE(255);
+                  WRITE_BYTE(160);
+                  WRITE_BYTE(0);
+        MESSAGE_END();
+    }
+}
+
+
+Sorry the tabulation is horrible because Borland C++ Builder sucks at it :)
+
+

@@ -1,0 +1,66 @@
+--------------------------------------------------
+Subject: Jump higher or lower
+--------------------------------------------------
+11/22/01 at 12:24:27  Posted by: jObE (jobe@ottawa.com)
+--------------------------------------------------
+I am reading through the CBasePlayer:: Jump()in PLAYER.CPP
+to see what determines how high a player can jump.
+
+and anybody looked at this?
+does anyone know how it determines how high to jump?
+
+
+
+
+--------------------------------------------------
+11/22/01 at 13:50:36  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+45 units is highest normal jump. See botmans BotCanJumpUp() function in his hpb_bot bot template :)
+
+--------------------------------------------------
+11/22/01 at 15:50:50  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+I think 63 units is the max height you can jump if you press the duck key (to tuck your legs in) after pressing the jump key...
+
+...yup, I wuz rite...
+
+http://www.karljones.com/halflife/metrics.asp
+
+botman
+
+--------------------------------------------------
+11/23/01 at 06:53:14  Reply by: jObE (jobe@ottawa.com)
+--------------------------------------------------
+Well thats cool....I found the formula for the jump in the PM_SHARED.C ( PM_Jump around line 2614).
+pmove->velocity[2] = sqrt(2 * 800 * 45.0);
+
+I found that the last number is the one to change for height.
+So I changed the formula to this:
+
+pmove->velocity[2] = sqrt(2 * 800 * jcounter);
+I'm trying to make so that people can not bounce around ( ever time they jump the get a little tired and can not jump as high ).
+
+So I'm trying to make some kind of a function that will lower the value when the play jumps and then use a for loop to increase the value.
+
+BUt if I put the function in PM_jump and have a counter, will it distrupt the jump function intirely ( hence...will the jump function stop unti the counter is done?) 
+
+--------------------------------------------------
+11/23/01 at 07:22:45  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Everytime they jump, you could decrement your jcounter variable by a little bit (say maybe 5 units).
+
+Then, create another variable that keeps track of how much time has elapsed.  Each time this variable is less than the current time, store the current time plus a little bit (maybe 0.1 seconds) and add a little bit back to the jcounter variable.  Something like this...
+code:
+
+if (jump_recharge_time < current_game_time)
+{
+   jump_recharge_time = current_game_time + 0.1;
+   jcounter += 5;
+   if (jcounter > MAX_JUMP_VALUE)
+      jcounter = MAX_JUMP_VALUE;
+}
+
+...this will allow them to slowly increase the jump value back to a maximum value after some period of time.
+
+botman
+

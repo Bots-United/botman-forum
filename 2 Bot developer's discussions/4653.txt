@@ -1,0 +1,44 @@
+--------------------------------------------------
+Subject: For each bot a new .dll?!
+--------------------------------------------------
+07/17/03 at 22:46:00  Posted by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+Hey,
+
+As many bot authors already do, i am going to write another botframe so its not engine dependant. In fact, the whole bot code should be totally seperated from it. I'm discussing a template/idea with some Linux guru who has a lot of 'demands'. One of them was if it was possible to have for each bot a seperated bot process. So in any case you could stop this progress. By kicking the bot from the server, or if nescesary (due some bug in the code) you can kill the progress.
+
+Basicly the idea is like this:
+engine.dll/.so
+referee.dll/.so
+bot.dll/.so
+
+engine.dll intercepts the game specific functions. It will put them into standardized functions for the referee.dll
+
+referee.dll should 'intercept' these standardized functions and run a check on them. So bots will not gain more information as they should, perhaps even more. Here also console commands could be handled.
+
+bot.dll is a bot process. For every created bot, a new DLL should be created. The referee should find a free slot, attach the process to it and let it run along the entire process. 
+
+Again, this is an idea. Simply i don't know how to begin yet as i just used botmans template for starter and never really dug into DLL's. So i'll have to study on those, fine. However, still my question is: Is this doable? Won't this be 'overdoing' it and i'm also open for suggestions/thoughts about this whole concept. 
+
+Basicly, this could mean when you have a new game, all you need to rewrite is the engine.dll and include it with the bot. In fact, free the source of it and let other people try to attach their game into it. The bot.dll source could also be released even. Perhaps there could even be another dll where you put in functions which return important information (paths, best location for camping, etc). All the coder for the bot.dll needs to do is make it behave for the specific MOD. 
+
+Again, all theory. Any thoughts? 
+
+--------------------------------------------------
+07/18/03 at 05:45:41  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Many (most?) game engines aren't thread safe.  This means you can't have several different threads or processes making engine calls at the same time (internal engine structures will become corrupted in this case and lead to a crash).
+
+You could implement the bot 'brain' code in a separate executable (separate program running on the same machine) and send requests/responses back and forth between the game code and the bot brain code (using shared memory, sockets, or someother interprocess communication means), but this would increase the overhead between the bots and the game.
+
+The more processes and program you have running on the same machine at the same time will increase the number of context switches.  Each context switch will take away time from the game that could be spent rendering the graphics, or performing A.I. code for the bots.
+
+The ONLY case where I can think of that separate processes would help is where you have multiple CPUs in one box and you are running an operating system that support symetric multiprocessing (like WinXP).  Since most prople aren't going to have multiple CPUs, this would be a lot of work for a very few number of people who would make use of it.
+
+botman
+
+--------------------------------------------------
+07/18/03 at 14:46:27  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+so basicly , keeping everything in one dll is most sufficient. Although seperating the bot ai into a different dll would only be sufficient for multi-processor systems? As the person who asked about this multi-thread stuff also runs servers with multiple processors and stuff this could make sense to him. 
+

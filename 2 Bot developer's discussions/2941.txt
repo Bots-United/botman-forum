@@ -1,0 +1,815 @@
+--------------------------------------------------
+Subject: Certain client messages ignored.
+--------------------------------------------------
+04/03/02 at 11:45:40  Posted by: MagicScript (MagicScript@gdnmail.net)
+--------------------------------------------------
+I've searched around in the forum, but have unable to find help with what I'm looking for.
+For some reason, the 'buy' command is completely ignored when the bots issue it, and I'm completely baffled as to why this may be happening.  Perhaps someone has delt with this before?
+The 'menuselect' commands (with a number of course) work fine and the bots join teams fine.  I've tried code used in TEAMbot, and it just creates an infinit loop when executing the 'buy' command.  
+
+Thanks in advance.
+
+--------------------------------------------------
+04/03/02 at 12:49:03  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+Just wait a few days until I release a debug version of my bot then you can use my source code.
+
+
+
+--------------------------------------------------
+04/03/02 at 13:16:55  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+See the following threads...
+
+http://dynamic.gamespy.com/~botman/yabb/YaBB.pl?board=2&action=display&num=2032
+
+http://dynamic.gamespy.com/~botman/yabb/YaBB.pl?board=2&action=display&num=868
+(see Count Floyd's first response)
+
+Basically, if you are sticking the commands back-to-back and not waiting for the VGUI messages between menus, you can have problems with them not working.
+
+botman
+
+--------------------------------------------------
+04/05/02 at 10:51:01  Reply by: MagicScript (MagicScript@gdnmail.net)
+--------------------------------------------------
+I guess I didn't explain my situation properly.  When I send the 'buy' command, there is NO reply.  I get no VGUI message, the ClientCommand seems to be simply ignored.  The bot joins a team, so I know that the 'menuselect #' commands are working, but (and I have an output file to check) a VGUI 28 never comes up.  Has anyone encountered this before?
+
+MY 'buy' commands are processed; I can buy weapons.  My bots cannot.  Thanks in advance.
+
+--------------------------------------------------
+04/05/02 at 11:24:12  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+Have you hooked correctly the instant where the messages are registered for bots ? Look in engine.cpp and bot_client.cpp to see if those messages can be caught by your bots. If they appear in the bot.txt file when debug_engine is enabled, then there's no reason why your bots could not be able to catch them.
+
+
+--------------------------------------------------
+04/05/02 at 11:26:09  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Also, make SURE you are using the FakeClientCommand() and not ClientCommand() for the bots to send commands to the server.
+
+botman
+
+--------------------------------------------------
+04/05/02 at 12:01:03  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+Heres a weapon table you can make and use it in a similar way botman finds the best weapon for a bot to use except look for the best gun... The best gun maybe the gun with the highest cost that the bot can afford.
+
+I never released my CS bot but I made this code for it. I've made a lot of client commands but I tried using client commands on different frames and that didn't work (perhaps the "buy" didnt work either)
+
+So I guess I'll give out some code here :)
+
+code:
+
+typedef struct
+{
+
+int iId;                   // weapon ID
+int cost;                   // Cost of weapon
+char menu_category[32];             // The first menu selection to be made
+char menu_selection[32];             // The second menu selection to be made
+bool CT_can_buy_on_vip_map;       // Determines whether CT's can buy this weapon on AS_ maps
+bool CT_can_buy;            // Determines whether CT's can buy this weapon on normal maps
+bool T_can_buy_on_vip_map;      // Determines whether T's can buy this weapon on AS_ maps
+bool T_can_buy;                  // Determines whether T's can buy this weapon on normal maps
+int weapon_type;            // Determines if the weapon is a secondary, primary or greande etc
+char weapon_name[64];            // Entity Class Name
+
+}buy_weapon_t;
+
+
+
+code:
+
+buy_weapon_t cs_buy_weapons[]={
+      
+      /* WEAPON ID, COST, CATEGORY, SELECTION, CTCanBuyOnVIP, CTCanbuy, TCanBuyOnVIP, TCanBuy, Classname*/
+      
+      /*pistols*/
+      {CS_WEAPON_USP,               500, "1", "1", TRUE,      TRUE,      TRUE,      TRUE,      CS_TYPE_SECONDARY,      "weapon_usp"},
+      {CS_WEAPON_GLOCK18,        400, "1", "2", TRUE,      TRUE,      TRUE,      TRUE,      CS_TYPE_SECONDARY,      "weapon_glock18"},
+      {CS_WEAPON_DEAGLE,              650, "1", "3", TRUE,      TRUE,      TRUE,      TRUE,      CS_TYPE_SECONDARY,      "weapon_deagle"},
+      {CS_WEAPON_P228,               600, "1", "4", TRUE,      TRUE,      TRUE,      TRUE,      CS_TYPE_SECONDARY,      "weapon_p228"},
+      {CS_WEAPON_ELITE,             1000, "1", "5", FALSE,  FALSE,      TRUE,      TRUE,      CS_TYPE_SECONDARY,      "weapon_elite"},
+      {CS_WEAPON_FIVESEVEN,        750, "1", "6", TRUE,      TRUE,      FALSE,      FALSE,      CS_TYPE_SECONDARY,      "weapon_fiveseven"},
+      
+      /*shotguns*/
+      {CS_WEAPON_M3,                   1000, "2", "1", TRUE,      TRUE,      FALSE,      TRUE,      CS_TYPE_PRIMARY,      "weapon_m3"},
+      {CS_WEAPON_XM1014,             3000, "2", "2", TRUE,      TRUE,      FALSE,      TRUE,      CS_TYPE_PRIMARY,      "weapon_xm1014"},
+      
+      /*smgs*/
+      {CS_WEAPON_MP5NAVY,       1500, "3", "1", TRUE,      TRUE,      FALSE,      TRUE,      CS_TYPE_PRIMARY,      "weapon_mp5navy"},
+      {CS_WEAPON_TMP,             1250, "3", "2", TRUE,      TRUE,      FALSE,      FALSE,      CS_TYPE_PRIMARY,      "weapon_tmp"},
+      {CS_WEAPON_P90,             2750, "3", "3", TRUE,      TRUE,      FALSE,      TRUE,      CS_TYPE_PRIMARY,      "weapon_p90"},
+      {CS_WEAPON_MAC10,             1700, "3", "4", FALSE,  FALSE,      TRUE,      TRUE,      CS_TYPE_PRIMARY,      "weapon_mac10"},
+      {CS_WEAPON_UMP45,             1400, "3", "5", TRUE,      TRUE,      TRUE,      TRUE,      CS_TYPE_PRIMARY,      "weapon_ump45"},
+      
+      /*rifles*/
+      {CS_WEAPON_AK47,             2500, "4", "1", FALSE,  FALSE,      TRUE,      TRUE,      CS_TYPE_PRIMARY,      "weapon_ak47"},
+      {CS_WEAPON_SG552,             3500, "4", "2", FALSE,  FALSE,      FALSE,      TRUE,      CS_TYPE_PRIMARY,      "weapon_sg552"},
+      {CS_WEAPON_M4A1,             3100, "4", "3", TRUE,      TRUE,      FALSE,      FALSE,      CS_TYPE_PRIMARY,      "weapon_m4a1"},
+      {CS_WEAPON_AUG,             3500, "4", "4", TRUE,      TRUE,      FALSE,      FALSE,      CS_TYPE_PRIMARY,      "weapon_aug"},
+      {CS_WEAPON_SCOUT,             2750, "4", "5", FALSE,  TRUE,      FALSE,      FALSE,      CS_TYPE_PRIMARY,      "weapon_scout"},
+      {CS_WEAPON_AWP,             4750, "4", "6", FALSE,  TRUE,      TRUE,      TRUE,      CS_TYPE_PRIMARY,      "weapon_awp"},
+      {CS_WEAPON_SG550,             4200, "4", "8", TRUE,      TRUE,      FALSE,      FALSE,      CS_TYPE_PRIMARY,      "weapon_sg550"},
+      
+      /*machine gun*/
+      {CS_WEAPON_M249,             2500, "5", "1", FALSE,      FALSE,      FALSE,      TRUE,      CS_TYPE_PRIMARY,      "weapon_m249" },
+      
+      /*primary ammo*/
+      
+      {PRIMARY_AMMO,                     75, "6", "0", TRUE,      TRUE,      TRUE,      TRUE,      CS_TYPE_AMMO,            ""},
+      
+      /*secondary ammo*/
+      
+      {SECONDARY_AMMO,                 25, "7", "0", TRUE,      TRUE,      TRUE,      TRUE,      CS_TYPE_AMMO,            ""},
+      
+      /*equipment*/
+      
+      {ARMOR_KEVLAR,                    650, "1", "1", TRUE,      TRUE,      TRUE,      TRUE,      CS_TYPE_ARMOR,            ""},
+      {ARMOR_KEVLARHELMET,       1000, "1", "2", TRUE,      TRUE,      TRUE,      TRUE,      CS_TYPE_ARMOR,            ""},
+      {CS_WEAPON_FLASHBANG,        300, "1", "3", TRUE,      TRUE,      TRUE,      TRUE,      CS_TYPE_GRENADE,      ""},
+      {CS_WEAPON_HEGRENADE,        300, "1", "4", TRUE,      TRUE,      TRUE,      TRUE,      CS_TYPE_GRENADE,      ""},
+      {CS_WEAPON_SMOKEGRENADE, 300, "1", "5", TRUE,      TRUE,      TRUE,      TRUE,      CS_TYPE_GRENADE,      ""},
+      {DEFUSE_KIT,                     200, "1", "6", FALSE,  TRUE,      FALSE,      FALSE,      CS_TYPE_DEFUSE,            ""},
+      
+      /*terminator*/
+      
+      {0,0,"","",FALSE,FALSE,FALSE,FALSE,CS_TYPE_NONE, ""}
+      
+};
+
+
+
+code:
+
+void BotBuy( bot_t *pBot)
+{
+      
+      int choice = 0;
+      int maxcost = 0;
+      bool found_gun = FALSE;
+      int select_index;
+      edict_t *pEdict = pBot->pEdict;  
+      int max_indexes;
+      int current_weapon_cost;
+      
+      //Find a weapon to buy
+      
+      if(cs_buy_weapons)
+      {
+            
+            max_indexes = 0;
+            
+            while(cs_buy_weapons[max_indexes].iId > 0)
+            {
+                  max_indexes++;
+                  if( pBot->current_weapon.iId == cs_buy_weapons[max_indexes].iId )
+                        current_weapon_cost = cs_buy_weapons[max_indexes].cost;
+            }
+            
+            select_index = 0;
+            
+            for(select_index = 0; select_index < max_indexes; select_index++)
+            {         
+                  
+                  if ((pBot->bot_weapons & (1<<cs_buy_weapons[select_index].iId)))         // Does the bot already have this weapon?
+                  {  
+                        continue;            // Skip to the next weapon the bot can buy...
+                  }
+                  else
+                  {
+                        if( current_weapon_cost > cs_buy_weapons[select_index].cost )      //Don't buy a gun worse than the one you've got!
+                              continue;                                                      
+                  }
+                  
+                  if( pBot->bot_money < cs_buy_weapons[select_index].cost )             // Can the bot afford this weapon ???
+                  {  
+                        continue;                                                            // Skip to next weapon
+                  }
+                  
+                  if( (cs_buy_weapons[select_index].weapon_type == CS_TYPE_ARMOR) && ( (pBot->bot_armor > 99)(pBot->bought_armor == TRUE) ) )
+                  {
+                        continue;      
+                  }
+                  else if( (cs_buy_weapons[select_index].weapon_type == CS_TYPE_SECONDARY ) && (pBot->bought_sec_gun == TRUE) )
+                  {
+                        continue;      
+                  }
+                  else if( (cs_buy_weapons[select_index].weapon_type == CS_TYPE_PRIMARY ) && (pBot->bought_prim_gun == TRUE) )
+                  {
+                        continue;      
+                  }         
+                  else if( (cs_buy_weapons[select_index].weapon_type == CS_TYPE_DEFUSE) && (pBot->bot_has_defusekit))
+                  {
+                        continue;      
+                  }
+                  
+                  if( pBot->map_goal == MAP_AS ) // If this is a VIP MAP i.e. different  weapons will be availabled/disabled
+                  {
+                        if(  pBot->cs_team == 1 )                                                // If CT
+                        {
+                              if( !cs_buy_weapons[select_index].CT_can_buy_on_vip_map )             // If CT's cant buy this weapon on AS Map
+                              {   
+                                    continue;            
+                              }
+                        }
+                        else                                                                  // Must be terrorist
+                        {
+                              if( !cs_buy_weapons[select_index].T_can_buy_on_vip_map )             // If T's cant buy this weapon on AS Map
+                              {   
+                                    continue;            
+                              }
+                        }                
+                  }       // Must be a CS, DE or ES Map i.e. all weapons typical available                                                                  
+                  else                                     
+                  {
+                        if( pBot->cs_team == 1 )                                                // If CT
+                        {
+                              if( !cs_buy_weapons[select_index].CT_can_buy )                         // If CT's cant buy this weapon on AS Map
+                              {   
+                                    continue;            
+                              }
+                        }
+                        else                                                                  // Must be terrorist
+                        {
+                              if( !cs_buy_weapons[select_index].T_can_buy )                    // If T's cant buy this weapon on AS Map
+                              {   
+                                    continue;
+                              }
+                        }
+                  }
+                  
+                  // Terminator found, find best weapon to buy i.e. most expensive weapon !!!
+                  
+                  if ( cs_buy_weapons[select_index].cost > maxcost ) // The max cost hold the cost of the weapon the costs the most
+                  {
+                        maxcost = cs_buy_weapons[select_index].cost; // If the current found 'maxcost' is less than the cost for the weapon in this record, make this the new maxcost
+                        choice = select_index;
+                        found_gun = TRUE; // Set the flag so we know the bot has found a gun to buy.
+                  }
+            }
+            
+            if( found_gun )
+            {
+                  
+                  ALERT(at_console, "found a gun to buy!\n"); // These messages are only shown when 'developer 1' is used in the console
+                  
+                  FakeClientCommand(pEdict, "buy", NULL, NULL);
+                              
+                  FakeClientCommand(pEdict, "menuselect", cs_buy_weapons[choice].menu_category, NULL);
+                  
+                  if( strcmp("0",cs_buy_weapons[choice].menu_selection) != 0) // If there has to be another selection to be made
+                        FakeClientCommand(pEdict, "menuselect", cs_buy_weapons[choice].menu_selection, NULL); 
+                  
+                  if( cs_buy_weapons[choice].weapon_type == CS_TYPE_GRENADE) // Just make sure the bot knows how many grenades it has since there is a maximum
+                  {
+                        pBot->bought_gren = TRUE;
+                  }
+                  else if( cs_buy_weapons[choice].weapon_type == CS_TYPE_ARMOR ) // Don't let the bot buy lots of armour if it already has some
+                  {
+                        pBot->bought_armor = TRUE;
+                  }
+                  else if( (cs_buy_weapons[choice].iId == DEFUSE_KIT) ) 
+                  {  
+                        pBot->bot_has_defusekit = TRUE;
+                  }
+                  else if( cs_buy_weapons[choice].weapon_type == CS_TYPE_SECONDARY )
+                  {
+                        pBot->bought_sec_gun = TRUE;
+                        FakeClientCommand(pEdict, "buy", NULL, NULL);
+                        FakeClientCommand(pEdict, "menuselect", "7", NULL); // Buy Ammo
+                  }
+                  else if( cs_buy_weapons[choice].weapon_type == CS_TYPE_PRIMARY )
+                  {
+                        pBot->bought_prim_gun = TRUE;          
+                        FakeClientCommand(pEdict, "buy", NULL, NULL);
+                        
+                        FakeClientCommand(pEdict, "menuselect", "6", NULL); // Buy Ammo
+                  }
+                  if( (pBot->bot_money < 300)  ((pBot->bought_prim_gun)&&(pBot->bought_sec_gun)) )
+                        pBot->bot_has_bought = TRUE;
+            }
+  }
+  
+}
+
+
+I dont think you need primary ammo or secondary ammo there though...
+
+code:
+
+#define PRIMARY_AMMO             31
+#define SECONDARY_AMMO             32
+#define ARMOR_KEVLAR             33
+#define ARMOR_KEVLARHELMET       34
+#define DEFUSE_KIT             35
+
+#define CS_TYPE_NONE              0
+#define CS_TYPE_SECONDARY        1
+#define CS_TYPE_PRIMARY          2
+#define CS_TYPE_GRENADE             3
+#define CS_TYPE_ARMOR             4
+#define CS_TYPE_AMMO             5
+#define CS_TYPE_DEFUSE             6
+
+
+
+[modified on 04/05/02 at 12:01:03]
+--------------------------------------------------
+04/05/02 at 13:13:03  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+-JOKE- What sort of complicated stuff is this, cheesy ?? :-P
+
+code:
+
+// buy menu hierarchy for Counter-Strike
+#define BUY_PISTOLMENU "menuselect 1"
+#define BUY_USP "menuselect 1"
+#define BUY_GLOCK18 "menuselect 2"
+#define BUY_DEAGLE "menuselect 3"
+#define BUY_P228 "menuselect 4"
+#define BUY_ELITE "menuselect 5"
+#define BUY_FIVESEVEN "menuselect 6"
+#define BUY_SHOTGUNMENU "menuselect 2"
+#define BUY_M3 "menuselect 1"
+#define BUY_XM1014 "menuselect 2"
+#define BUY_SUBMACHINEGUNMENU "menuselect 3"
+#define BUY_MP5NAVY "menuselect 1"
+#define BUY_TMP "menuselect 2"
+#define BUY_P90 "menuselect 3"
+#define BUY_MAC10 "menuselect 4"
+#define BUY_UMP45 "menuselect 5"
+#define BUY_RIFLEMENU "menuselect 4"
+#define BUY_AK47 "menuselect 1"
+#define BUY_SG552 "menuselect 2"
+#define BUY_M4A1 "menuselect 3"
+#define BUY_AUG "menuselect 4"
+#define BUY_SCOUT "menuselect 5"
+#define BUY_AWP "menuselect 6"
+#define BUY_G3SG1 "menuselect 7"
+#define BUY_SG550 "menuselect 8"
+#define BUY_MACHINEGUNMENU "menuselect 5"
+#define BUY_M249 "menuselect 1"
+#define BUY_PRIMARYAMMO "menuselect 6"
+#define BUY_SECONDARYAMMO "menuselect 7"
+#define BUY_EQUIPMENTMENU "menuselect 8"
+#define BUY_KEVLAR "menuselect 1"
+#define BUY_KEVLARHELMET "menuselect 2"
+#define BUY_FLASHBANG "menuselect 3"
+#define BUY_HEGRENADE "menuselect 4"
+#define BUY_SMOKEGRENADE "menuselect 5"
+#define BUY_DEFUSEKIT "menuselect 6"
+#define BUY_NIGHTVISION "menuselect 7"
+#define BUY_CANCEL "menuselect 0"
+
+
+void BotBuyStuff (bot_t *pBot)
+{
+   // these weapon arrays MUST be sorted by INCREASING PRICE ORDER. Default pistols
+   // (GLOCK18 and USP) don't appear because we don't want bots to buy them.
+   int secondary_weapon_prices[4][2] = {
+      {CS_WEAPON_P228,      600},
+      {CS_WEAPON_DEAGLE,    650},
+      {CS_WEAPON_FIVESEVEN, 750},
+      {CS_WEAPON_ELITE,    1000},
+   };
+
+   int primary_weapon_prices[16][2] = {
+      {CS_WEAPON_TMP,      1250},
+      {CS_WEAPON_MAC10,    1400},
+      {CS_WEAPON_MP5NAVY,  1500},
+      {CS_WEAPON_M3,       1700},
+      {CS_WEAPON_UMP45,    1700},
+      {CS_WEAPON_P90,      2350},
+      {CS_WEAPON_AK47,     2500},
+      {CS_WEAPON_SCOUT,    2750},
+      {CS_WEAPON_XM1014,   3000},
+      {CS_WEAPON_M4A1,     3100},
+      {CS_WEAPON_AUG,      3500},
+      {CS_WEAPON_SG552,    3500},
+      {CS_WEAPON_SG550,    4200},
+      {CS_WEAPON_AWP,      4750},
+      {CS_WEAPON_G3SG1,    5000},
+      {CS_WEAPON_M249,     5750}
+   };
+
+   char model_name[32];
+   strcpy (model_name, (g_engfuncs.pfnInfoKeyValue ((*g_engfuncs.pfnGetInfoKeyBuffer) (pBot->pEdict), "model")));
+
+   // check if bot is VIP
+   if (strcmp (model_name, "vip") == 0)
+   {
+      pBot->f_buy_time = 0; // don't buy anything (VIPs don't buy stuff)
+      return;
+   }
+
+   // pause the bot for a while
+   pBot->f_pause_time = gpGlobals->time + 1.2;
+
+   // state 0: if armor is damaged and bot has some money, buy some armor
+   if (pBot->buy_state == 0)
+   {
+      if ((pBot->bot_armor < 80) && (pBot->bot_money > 1000))
+      {
+         FakeClientCommand (pBot->pEdict, "buy"); // enter the main buy menu
+         FakeClientCommand (pBot->pEdict, BUY_EQUIPMENTMENU); // enter submenu
+
+         // if bot is rich, buy kevlar + helmet, else buy a single kevlar
+         if (pBot->bot_money > 3000)
+               FakeClientCommand (pBot->pEdict, BUY_KEVLARHELMET);
+         else
+               FakeClientCommand (pBot->pEdict, BUY_KEVLAR);
+
+         pBot->f_buy_time = gpGlobals->time + RANDOM_FLOAT (0.2, 0.5); // delay next buy
+      }
+      pBot->buy_state++;
+      return;
+   }
+
+   // state 1: if no primary weapon and bot has some money, buy a better primary weapon
+   else if (pBot->buy_state == 1)
+   {
+      if (!pBot->has_primary_weapon && (pBot->bot_money > 1250))
+      {
+         char index = 0, weapon_index = 0;
+
+         // set the index at the position of the first gun bot can't buy
+         while (primary_weapon_prices[index][1] < pBot->bot_money)
+            index++;
+
+         // now pick up one randomly in the affordable zone of the array
+         weapon_index = RANDOM_LONG (0, index - 1);
+
+         FakeClientCommand (pBot->pEdict, "buy"); // enter the main buy menu
+
+         // handle each case separately
+         switch (primary_weapon_prices[weapon_index][0])
+         {
+            case CS_WEAPON_M3:
+               FakeClientCommand (pBot->pEdict, BUY_SHOTGUNMENU); // buy a SHOTGUN
+               FakeClientCommand (pBot->pEdict, BUY_M3); // buy the M3
+               break;
+            case CS_WEAPON_XM1014:
+               FakeClientCommand (pBot->pEdict, BUY_SHOTGUNMENU); // buy a SHOTGUN
+               FakeClientCommand (pBot->pEdict, BUY_XM1014); // buy the XM1014
+               break;
+            case CS_WEAPON_MP5NAVY:
+               FakeClientCommand (pBot->pEdict, BUY_SUBMACHINEGUNMENU); // buy a SUB-MACHINE GUN
+               FakeClientCommand (pBot->pEdict, BUY_MP5NAVY); // buy the MP5NAVY
+               break;
+            case CS_WEAPON_TMP:
+               FakeClientCommand (pBot->pEdict, BUY_SUBMACHINEGUNMENU); // buy a SUB-MACHINE GUN
+               FakeClientCommand (pBot->pEdict, BUY_TMP); // buy the TMP
+               break;
+            case CS_WEAPON_P90:
+               FakeClientCommand (pBot->pEdict, BUY_SUBMACHINEGUNMENU); // buy a SUB-MACHINE GUN
+               FakeClientCommand (pBot->pEdict, BUY_P90); // buy the P90
+               break;
+            case CS_WEAPON_MAC10:
+               FakeClientCommand (pBot->pEdict, BUY_SUBMACHINEGUNMENU); // buy a SUB-MACHINE GUN
+               FakeClientCommand (pBot->pEdict, BUY_MAC10); // buy the MAC10
+               break;
+            case CS_WEAPON_UMP45:
+               FakeClientCommand (pBot->pEdict, BUY_SUBMACHINEGUNMENU); // buy a SUB-MACHINE GUN
+               FakeClientCommand (pBot->pEdict, BUY_UMP45); // buy the UMP45
+               break;
+            case CS_WEAPON_AK47:
+               FakeClientCommand (pBot->pEdict, BUY_RIFLEMENU); // buy a RIFLE
+               FakeClientCommand (pBot->pEdict, BUY_AK47); // buy the AK47
+               break;
+            case CS_WEAPON_SG552:
+               FakeClientCommand (pBot->pEdict, BUY_RIFLEMENU); // buy a RIFLE
+               FakeClientCommand (pBot->pEdict, BUY_SG552); // buy the SG552
+               break;
+            case CS_WEAPON_M4A1:
+               FakeClientCommand (pBot->pEdict, BUY_RIFLEMENU); // buy a RIFLE
+               FakeClientCommand (pBot->pEdict, BUY_M4A1); // buy the M4A1
+               break;
+            case CS_WEAPON_AUG:
+               FakeClientCommand (pBot->pEdict, BUY_RIFLEMENU); // buy a RIFLE
+               FakeClientCommand (pBot->pEdict, BUY_AUG); // buy the AUG
+               break;
+            case CS_WEAPON_SCOUT:
+               FakeClientCommand (pBot->pEdict, BUY_RIFLEMENU); // buy a RIFLE
+               FakeClientCommand (pBot->pEdict, BUY_SCOUT); // buy the SCOUT
+               break;
+            case CS_WEAPON_AWP:
+               FakeClientCommand (pBot->pEdict, BUY_RIFLEMENU); // buy a RIFLE
+               FakeClientCommand (pBot->pEdict, BUY_AWP); // buy the AWP
+               break;
+            case CS_WEAPON_G3SG1:
+               FakeClientCommand (pBot->pEdict, BUY_RIFLEMENU); // buy a RIFLE
+               FakeClientCommand (pBot->pEdict, BUY_G3SG1); // buy the G3SG1
+               break;
+            case CS_WEAPON_SG550:
+               FakeClientCommand (pBot->pEdict, BUY_RIFLEMENU); // buy a RIFLE
+               FakeClientCommand (pBot->pEdict, BUY_SG550); // buy the AK47
+               break;
+            case CS_WEAPON_M249:
+               FakeClientCommand (pBot->pEdict, BUY_MACHINEGUNMENU); // buy a MACHINEGUN
+               FakeClientCommand (pBot->pEdict, BUY_M249); // buy the M249
+               break;
+            default:
+               break;
+         }
+
+         pBot->has_primary_weapon = TRUE; // hoho, bot got a big gun now
+         pBot->f_buy_time = gpGlobals->time + RANDOM_FLOAT (0.2, 0.5); // delay next buy
+      }
+      pBot->buy_state++;
+      return;
+   }
+
+   // state 2: if bot has still some money, buy more primary ammo
+   else if (pBot->buy_state == 2)
+   {
+      if (pBot->bot_money > 300)
+      {
+         FakeClientCommand (pBot->pEdict, "buy"); // enter the main buy menu
+         FakeClientCommand (pBot->pEdict, BUY_PRIMARYAMMO); // to buy some primary ammo
+
+         pBot->f_buy_time = gpGlobals->time + RANDOM_FLOAT (0.2, 0.5); // delay next buy
+      }
+      pBot->buy_state++;
+      return;
+   }
+
+   // state 3: if bot has still some money, buy a better secondary weapon
+   else if (pBot->buy_state == 3)
+   {
+      if (pBot->bot_money > 1200)
+      {
+         char index = 0, weapon_index = 0;
+
+         // set the index at the position of the first gun bot can't buy
+         while (secondary_weapon_prices[index][1] < pBot->bot_money)
+            index++;
+
+         // now pick up one randomly in the array "buyable" zone
+         weapon_index = RANDOM_LONG (0, index - 1);
+
+         FakeClientCommand (pBot->pEdict, "buy"); // enter the main buy menu
+
+         // handle each case separately
+         switch (secondary_weapon_prices[weapon_index][0])
+         {
+            case CS_WEAPON_DEAGLE:
+               FakeClientCommand (pBot->pEdict, BUY_PISTOLMENU); // buy a PISTOL
+               FakeClientCommand (pBot->pEdict, BUY_DEAGLE); // buy the DEAGLE
+               break;
+            case CS_WEAPON_P228:
+               FakeClientCommand (pBot->pEdict, BUY_PISTOLMENU); // buy a PISTOL
+               FakeClientCommand (pBot->pEdict, BUY_P228); // buy the P228
+               break;
+            case CS_WEAPON_ELITE:
+               FakeClientCommand (pBot->pEdict, BUY_PISTOLMENU); // buy a PISTOL
+               FakeClientCommand (pBot->pEdict, BUY_ELITE); // buy the ELITE
+               break;
+            case CS_WEAPON_FIVESEVEN:
+               FakeClientCommand (pBot->pEdict, BUY_PISTOLMENU); // buy a PISTOL
+               FakeClientCommand (pBot->pEdict, BUY_FIVESEVEN); // buy the FIVESEVEN
+               break;
+            default:
+               break;
+         }
+
+         pBot->f_buy_time = gpGlobals->time + RANDOM_FLOAT (0.2, 0.5); // delay next buy
+      }
+      pBot->buy_state++;
+      return;
+   }
+
+   // state 4: if bot has still some money, choose if bot should buy a grenade or not
+   else if (pBot->buy_state == 4)
+   {
+      if ((pBot->bot_money > 600) && (RANDOM_LONG (1, 100) < 66))
+      {
+         FakeClientCommand (pBot->pEdict, "buy"); // enter the main buy menu
+         FakeClientCommand (pBot->pEdict, BUY_EQUIPMENTMENU); // enter submenu
+
+         if (RANDOM_LONG (0, 100) < 50)
+            FakeClientCommand (pBot->pEdict, BUY_HEGRENADE); // buy HE grenade
+         else if (RANDOM_LONG (0, 100) < 50)
+            FakeClientCommand (pBot->pEdict, BUY_FLASHBANG); // buy flashbang
+         else
+            FakeClientCommand (pBot->pEdict, BUY_SMOKEGRENADE); // buy smokegrenade
+
+         pBot->f_buy_time = gpGlobals->time + RANDOM_FLOAT (0.2, 0.5); // delay next buy
+      }
+      pBot->buy_state++;
+      return;
+   }
+
+   // state 5: if bot has still some money, buy more secondary ammo
+   else if (pBot->buy_state == 5)
+   {
+      if (pBot->bot_money > 300)
+      {
+         FakeClientCommand (pBot->pEdict, "buy"); // enter the main buy menu
+         FakeClientCommand (pBot->pEdict, BUY_PRIMARYAMMO); // to buy some primary ammo
+
+         pBot->f_buy_time = gpGlobals->time + RANDOM_FLOAT (0.2, 0.5); // delay next buy
+      }
+      pBot->buy_state++;
+      return;
+   }
+
+   // state 6: if bot is counter-terrorist, buy the defuse kit
+   else if (pBot->buy_state == 6)
+   {
+      if ((GetTeam (pBot->pEdict) == CS_COUNTER_TERRORIST) && (pBot->bot_money > 200))
+      {
+         FakeClientCommand (pBot->pEdict, "buy"); // enter the main buy menu
+         FakeClientCommand (pBot->pEdict, BUY_DEFUSEKIT); // to buy some primary ammo
+
+         pBot->f_buy_time = gpGlobals->time + RANDOM_FLOAT (0.2, 0.5); // delay next buy
+      }
+      pBot->buy_state++;
+      return;
+   }
+
+   // state 7: switch to best weapon
+   else if (pBot->buy_state == 7)
+   {
+      BotSwitchToBestWeapon (pBot);
+      pBot->f_buy_time = 0; // don't buy anything more after that
+      pBot->buy_state = 0; // reset buy state
+      pBot->f_shoot_time = gpGlobals->time; // reset next shoot time
+
+      if (RANDOM_LONG (1,100) <= (56 - 2 * gpGlobals->maxClients))
+      {
+         pBot->BotChat.b_sayaudio_firstspawn = TRUE; // bot says 'go go go' or something like that
+         pBot->f_bot_sayaudio_time = gpGlobals->time + RANDOM_FLOAT (0.5, 10.0);
+      }
+
+      return;
+   }
+}
+
+
+
+I like to keep things simple 8)
+
+--------------------------------------------------
+04/05/02 at 14:16:15  Reply by: @$3.1415rin (joebot@botepidemic.com)
+--------------------------------------------------
+well, but the code is still quite long ...
+
+to avoid
+code:
+
+switch (primary_weapon_prices[weapon_index][0])          {             case CS_WEAPON_M3:              ......
+
+
+
+
+i used an array
+
+code:
+void (*Buy[32])(CBotBase *);
+
+
+and put the functions to that array to buy stuff, functions like
+
+code:
+void BotBuy_CS_WEAPON_P228(CBotBase *pBot){
+      edict_t *pEdict = pBot->pEdict;
+      
+      FakeClientCommand(pEdict,"buy",0,0);
+      FakeClientCommand(pEdict,"menuselect","1",0);
+      FakeClientCommand(pEdict,"menuselect","4",0);
+}
+
+
+and then I wrote some stuff to decide on which weapon. A table of buy probabilities is loaded from an external file, the costs are hardcoded... i hope most of the names are self explanitory :)
+
+code:
+
+if(bot_teamnm == CT){            // check team dep weapon stuff and evtl. change favourite weapon
+                        if(lPWeapon == CS_WEAPON_AK47)
+                              lPWeapon = CS_WEAPON_M4A1;
+                        else if(lPWeapon == CS_WEAPON_MAC10)
+                              lPWeapon = CS_WEAPON_TMP;
+                        else if(lPWeapon == CS_WEAPON_G3SG1)
+                              lPWeapon = CS_WEAPON_SG550;
+                        else if(lPWeapon == CS_WEAPON_SG552)
+                              lPWeapon = CS_WEAPON_AUG;
+                  }
+                  else{      // te
+                        if(lPWeapon == CS_WEAPON_M4A1)
+                              lPWeapon = CS_WEAPON_AK47;
+                        else if(lPWeapon == CS_WEAPON_TMP)
+                              lPWeapon = CS_WEAPON_MAC10;
+                        else if(lPWeapon == CS_WEAPON_SG550)
+                              lPWeapon = CS_WEAPON_G3SG1;
+                        else if(lPWeapon == CS_WEAPON_AUG)
+                              lPWeapon = CS_WEAPON_SG552;
+                  }
+                  fChoice = RANDOM_FLOAT(0.0,100.0);
+                  
+                  //////////////////////////////////
+                  float fTemp[32];
+                  memcpy(fTemp,WeaponDefs.fPBuyProb[CSTRIKE_DLL],sizeof(float) * 32);
+                  float fSum=0,fLast=0;
+                  long lschl;
+                  for(lschl=0;lschl<32;lschl++){
+                        if((IsSniperWeapon(1<<lschl)&&bKSniper)                  // bit higher priority for weapons with which the bot has been klled often
+                              (IsSubMWeapon(1<<lschl)&&bKSub)
+                              (IsShotgunWeapon(1<<lschl)&&bKShot)){
+                              fTemp[lschl]*=1.5;
+                        }
+                        if(lPWeapon == lschl)                                          // pref weapon
+                              fTemp[lschl] *=2.0;
+                        if(WeaponDefs.iCost[CSTRIKE_DLL][lschl] > ibot_money){      // no prob for too expenive weapons
+                              fTemp[lschl]=0;
+                        }
+                        if(WeaponDefs.iTeam[CSTRIKE_DLL][lschl] != -1){
+                              if(WeaponDefs.iTeam[CSTRIKE_DLL][lschl] != bot_teamnm){
+                                    fTemp[lschl]=0;
+                              }
+                        }
+                  }
+                  for(lschl=0;lschl<32;lschl++)
+                        fSum+=fTemp[lschl];
+
+                  for(lschl=0;lschl<32;lschl++){
+                        fBuyLProb[lschl] = fLast + fTemp[lschl] / fSum * 100.0f;
+                        fLast = fBuyLProb[lschl];
+                        if(fTemp[lschl] == .0)
+                              fBuyLProb[lschl] = 0;
+                  }
+                  //////////////////////////////////
+                  
+                  for(ischl=0;ischl<32;ischl++){
+                        if(fChoice < fBuyLProb[ischl]){
+                              iWeaponDecision = ischl;
+                              break;
+                        }
+                  }
+                  if(iWeaponDecision!=-1){
+#ifdef __LOG
+                        FILE *fhdf;fhdf=fopen("buy.txt","a");fprintf(fhdf,"%s",weapon_defs[iWeaponDecision].szClassname);fclose(fhdf);
+#endif
+                        
+                        if(WeaponDefs.iCost[CSTRIKE_DLL][iWeaponDecision] > ibot_money){
+#ifdef __LOG
+                              FILE *fhd;fhd=fopen("buy.txt","a");fprintf(fhd," is too expensive - %i\n",ibot_money);fclose(fhd);
+#endif
+                              iWeaponDecision = -1;
+                        }
+                        else if(WeaponDefs.iTeam[CSTRIKE_DLL][iWeaponDecision] != -1
+                              &&WeaponDefs.iTeam[CSTRIKE_DLL][iWeaponDecision] != bot_teamnm){
+                                    iWeaponDecision = -1;
+#ifdef __LOG
+                                    FILE *fhd;fhd=fopen("buy.txt","a");fprintf(fhd," is wrong team \n");fclose(fhd);
+#endif
+                        }
+                        else if(iWeaponDecision !=-1 ){
+#ifdef __LOG
+                              FILE *fhd;fhd=fopen("buy.txt","a");fprintf(fhd," is ok\n");fclose(fhd);
+#endif
+                        }
+                        
+                        //FakeClientCommand(pEdict,"menuselect","0",0);      //quit fuckin menues
+                        Buy[iWeaponDecision](this);
+                  }
+            }
+            
+            BotBuy_PAmmo(this);
+
+
+
+
+
+ok, not much shorter, but i like the array approach :)
+
+[modified on 04/05/02 at 14:16:15]
+--------------------------------------------------
+04/05/02 at 15:15:13  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+LOL neat ;)
+I guess this thread will become a reference for all those guys saying "hey botman, how do I make the HPB bot buy guns in Counter Strike ?" ;D
+
+but btw, what is this??
+
+                        Buy[iWeaponDecision](this);
+                           ^^^^^^^^^^^^^^^^^
+
+
+An array of functions ? How do you do such a thing ?
+
+--------------------------------------------------
+04/06/02 at 02:05:20  Reply by: @$3.1415rin (joebot@botepidemic.com)
+--------------------------------------------------
+yep, it's an array of functions ... it's initialized at the beginning like this
+
+code:
+
+Buy[CS_WEAPON_P228]                  = BotBuy_CS_WEAPON_P228;
+
+
+
+btw, all that _LOG stuff was just for debugging ... i could have ripped it out :)
+
+[modified on 04/06/02 at 02:05:20]

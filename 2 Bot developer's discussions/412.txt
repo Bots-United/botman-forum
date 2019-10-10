@@ -1,0 +1,147 @@
+--------------------------------------------------
+Subject: HOW DO YOU ADD AN ACTION DELAY??
+--------------------------------------------------
+10/24/00 at 15:55:14  Posted by: tweak3d (Tweak3d@home.com)
+--------------------------------------------------
+I want to know how i add a delay to the bots reaction time. because right now they see me and instantly start firing. its a little unrealalistic. by the way this is for TFC.
+
+Justin
+
+
+--------------------------------------------------
+10/24/00 at 18:54:03  Reply by: BrianL (halfkiller@hotmail.com)
+--------------------------------------------------
+Well you can do this:
+
+Open up bot.h and find bot_t struct:
+And add this to the end of it
+
+  // Fire Delay - Start  (Brian L)
+  float fire_delay_time; 
+  // Fire Delay - End    (Brian L)
+
+Now close bot.h
+
+Now open bot_combat.cpp and find the function
+void BotShootAtEnemy( bot_t *pBot )
+ Now at the very bottom there's a line that looks like this: BotFireWeapon(v_enemy, pBot);
+
+Change it to this:
+
+  if (pBot->fire_delay_time < gpGlobals->time)
+     BotFireWeapon(v_enemy, pBot);
+
+Now close bot_combat.cpp
+
+Now open bot.cpp and find the function 
+BotSpawnInit( bot_t *pBot )
+
+Now somewhere in there put this line:
+  pBot->fire_delay_time = gpGlobals->time + 1.2;
+
+Now compile and play!
+You can change the delay by just replacing 1.2 with something else!
+
+Have Fun!  
+
+--------------------------------------------------
+10/25/00 at 02:33:28  Reply by: theimann (theimann@stud.fh-heilbronn.de)
+--------------------------------------------------
+Does this work?
+As far as I know BotSpawnInit only gets called when a bot is respawned. Putting the fire_delay_time init code there would cause the bot not to shoot for the first 1.2 seconds after respawning.
+You want to delay it after seeing an enemy, right? So you have to put the code where checking if the bot sees an enemy. You will need another bool variable firstSighting to make it work like this:
+
+if pBot->seesEnemy() {
+  if (firstSighting) {
+    firstSighting=false;
+    pBot->fire_delay_time = gpGlobals->time + 1.2;
+  }
+  ... // the other stuff
+}
+else firstSighting = true;
+
+Note that if several enemies are around, the bot doesn't delay before changing his target (if the enemy he shot at is dead or has disappeared). Don't know if that's the behaviour you want, but should be fine for the beginning.
+
+Tobias
+
+--------------------------------------------------
+10/25/00 at 12:42:06  Reply by: tweak3d (Tweak3d@home.com)
+--------------------------------------------------
+ok, the code sounds good, but!!! when i compile it gives me an error 'struct bot_t' has no member named 'fire_delay_time' . you guys got any comments on this?
+
+--------------------------------------------------
+10/25/00 at 12:47:13  Reply by: Auxois (auxois@nuclearbox.com)
+--------------------------------------------------
+*sigh*
+
+--------------------------------------------------
+10/25/00 at 13:02:52  Reply by: CountFloyd (countfloyd_1999@yahoo.com)
+--------------------------------------------------
+LOL, Justin did you even THINK about buying that C++ book ? Brian meant to place that variable _INSIDE_ at the end of bot_t struct. Then you don't have that error you speaking of. BTW. I don't recommend to do it that way. Stick with Tobias suggestion instead. For a start try for example to set firstSighting to FALSE if you didn't spot an enemy for 3 secs or so. And make up some ideas to change this if the Bot is camping, since he won't be that surprised then...
+
+--------------------------------------------------
+10/25/00 at 13:22:57  Reply by: tweak3d (Tweak3d@home.com)
+--------------------------------------------------
+like i have already said i have already read a couple c++ books. 3 to be exact. and yes, im not an idiot so i did already do that (sorry if i seem pissed but its cause i just have a really bad memory when it comes to rememberign stuff out of books. but yes i did put it INSIDE at the end of bot_t struct. im not that forget full. but for some reasone sometimes when i compile it gives me errors and there is nothing wrong with the code so i bring the file on a floppy to this computer and compile and it works fine. how wierd is that?
+
+justin
+
+
+--------------------------------------------------
+10/25/00 at 17:02:26  Reply by: Shagwana (Shagwana@btinternet.com)
+--------------------------------------------------
+OK lets 'say' you have finished your c++ books, now go and look at some web-sites or books on software design!. This should help you convert your ideas into code. While your at it have a look at your manual for the compiler you are using (this should help u fix those errors you get!).
+ 
+While I am at it, also go and get yourself a BIG pad of paper and a new snazzy pen. Then when ever you get stuck and can't figure a way to code something then write it down!. If you can't see a clear way to typing your problem out in code, then break it down into smaller steps!. If these steps are still to big for simple code then break them down again, and again, and again, so on, so on......!. If you do this enought times you should be able to figure out a lot of the code yourself!. After you have broken your problem down into a lot of smaller problems, then you will have the core elements that give you the answer to your own question. (Anyway hope that helps)
+
+
+
+Adding a delay to anything (like reaction time), is just a matter of recording the time when it happened ->
+
+<your varible> = gpGlobals->time; //record time
+
+adding the amount of delay you require ->
+
+<your varible> += 0.2;   //0.2 of a second
+
+then check to see if current time is equal or more to the delay time do the action that you want to do ->
+
+if <your varible> more then (gpGlobals->time)
+    //delay time not reached yet
+else 
+    //do the action we wanted
+
+
+/me hopes this helps
+
+
+
+
+
+
+--------------------------------------------------
+10/25/00 at 21:17:44  Reply by: BrianL (halfkiller@hotmail.com)
+--------------------------------------------------
+I foregot about an extra line to put in there :(
+
+In bot.cpp in the function BotThink (bot_t *pBot)
+
+Find This ->>: BotShootAtEnemy( pBot );
+
+ Right above that add this:
+   
+  if (pBot->fire_delay_time < gpGlobals->time+1)
+     pBot->fire_delay_time = gpGlobals->time + 1.2;
+
+That should work :)_
+
+Justin,
+
+ float fire_delay_time; 
+
+ Goes into bot.h in the struct bot_t!!
+
+ok I'll shutup now :)
+ 
+
+

@@ -1,0 +1,70 @@
+--------------------------------------------------
+Subject: 3th and 4th attack
+--------------------------------------------------
+03/10/03 at 02:49:41  Posted by: ScoBra7 (alabuschagne@grintek.com)
+--------------------------------------------------
+Hi
+
+I've implemented the tut (http://hlpp.telefragged.com/tuts/multi-fire-modes.htm) to make a 3th attack function for some weapons, more a select mode thingy.  It seems that the key does not bind or the function is not called when pressing the "new" key.  Furthermore; the console does not seem to work when my mod is running so I don't know if it's throwing errors.
+
+Please help.
+Thanx
+ScoBra7
+
+--------------------------------------------------
+03/24/03 at 23:20:05  Reply by: ScoBra7 (alabuschagne@grintek.com)
+--------------------------------------------------
+I’ve found the answer to my question, accidentally.
+In <b>client.cpp</b> in the function <b>void ClientCommand( edict_t *pEntity )</b> I’ve added this:
+code:
+
+else if (FStrEq(pcmd, "firemode" ))
+{
+GetClassPtr((CBasePlayer *)pev)->ChangeFireMode();
+}
+else if (FStrEq(pcmd, "zoommode" ))
+{
+GetClassPtr((CBasePlayer *)pev)->ChangeZoom();
+}
+
+
+after this:
+code:
+
+else if (FStrEq(pcmd, "lastinv" ))
+{
+GetClassPtr((CBasePlayer *)pev)->SelectLastItem();
+}
+
+
+This picks up commands send to the server side dll, I think
+
+And in <b>player.h</b> in the class definition <b>class CBasePlayer : public CBaseMonster</b> added this:
+code:
+
+void ChangeFireMode(void);
+void ChangeZoom(void);
+
+
+This enables the call <b>GetClassPtr((CBasePlayer *)pev)-></b> to execute, remeber to give these functions body in player.cpp
+
+and also in <b>weapons.h</b> in the class definition <b>class CBasePlayerItem : public CBaseAnimating</b> added it:
+code:
+
+virtual unsigned int ChangeFireMode(void){ return -1; };  //-1 if not implemented by child
+virtual bool CanZoom(int FOV) {return false;}; //false if not implemented by child
+
+
+This allows the call in player.cpp, <b>m_pActiveItem->ChangeFireMode()</b> to execute
+I’ve override these two functions for weapons supports these function.
+
+Remember also to add (create / copy from vavle it for your mod) in ../gfx/shell/kb_act.lst these lines:
+
+"firemode"                        "Weapon Fire Mode"
+"zoommode"                        "Weapon Zoom Mode"
+This statements are needed for key binding in the game, "control"
+[modified on 03/24/03 at 23:10:40]
+
+[modified on 03/24/03 at 23:18:30]
+
+[modified on 03/24/03 at 23:20:05]

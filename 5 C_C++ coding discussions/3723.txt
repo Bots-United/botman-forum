@@ -1,0 +1,225 @@
+--------------------------------------------------
+Subject: Edit lines in config.cfg
+--------------------------------------------------
+10/04/02 at 16:24:46  Posted by: Deacon (Deacon@mail.dk)
+--------------------------------------------------
+Can someone tell me how I can load the config file in C:\SIERRA\Half-Life\cstrike\ in my project and read line 7 (for instance) and change it and then save it?
+I NEED HELP!!!
+
+--------------------------------------------------
+10/05/02 at 07:44:41  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Use the standard C library function fopen() to open the file (in readonly mode), read all the data and store that in an array then fclose() the file.  Modify whatever data you want to in the array (as you read it in or later after you close the file).  Use fopen() again but this time open the file in write mode.  Write all the modified data back to the file and use fclose() to close it.
+
+There's PLENTY of examples of using fopen(), fread(), fwrite() and fclose() on the Internet so I should really need to show you any code here.
+
+botman
+
+--------------------------------------------------
+10/06/02 at 12:57:32  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+a little example from me, in extenso (pick up what interests you) :
+code:
+
+#include <stdio.h>
+#include <string.h>
+
+
+// one is sufficient
+void main (int argc, char *argv[])
+{
+   FILE *fp, *fp2;
+   char line_buffer[1024], line_buffer2[1024], file_buffer[16384], filename[256], modname[32], language[32];
+
+   if ((argc != 2) || (strcmp ("/?", argv[1]) == 0) || (strcmp ("/help", argv[1]) == 0))
+   {
+      printf ("\n");
+      printf ("PATCH.EXE - Game config file parser/patcher for the RACC install procedure\n");
+      printf ("\n");
+      printf ("- Retrieves the LANGUAGE of the game to patch files with the correct language\n");
+      printf ("- Patches liblist.gam for the MOD dll field to point to the RACC dll\n");
+      printf ("- Patches settings.scr if install/LANGUAGE/settings.scr.patch exists\n");
+      printf ("- Patches commandmenu.txt if install/LANGUAGE/MOD_commandmenu.txt.patch exists\n");
+      printf ("- Patches gfx/shell/kb_act.lst if install/LANGUAGE/MOD_kb_act.lst.patch exists\n");
+      printf ("\n");
+      printf ("Usage: PATCH.EXE mod_name\n");
+      printf ("\n");
+      return; // if too few/too many arguments, exit
+   }
+
+   sprintf (modname, argv[1]); // store wanted MOD's name
+
+   // get the game language from the sierra.inf file
+   fp = fopen ("../sierra.inf", "r"); // opens file readonly
+
+   if (fp != NULL)
+   {
+      // reads line per line
+      while (fgets (line_buffer, 255, fp) != NULL)
+      {
+         if ((line_buffer[0] == '\n') || ((line_buffer[0] == '/') && (line_buffer[1] == '/')))
+            continue; // ignore line if void or commented
+
+         // if that line tells the standard American/English language definition
+         if (strncmp ("ShortTitle=HALFLIFE", line_buffer, 19) == 0)
+         {
+            sprintf (language, "english");
+            break;
+         }
+
+         // else if that line tells it's French
+         else if (strncmp ("ShortTitle=HLIFEFR", line_buffer, 18) == 0)
+         {
+            sprintf (language, "french");
+            break;
+         }
+
+         // else if that line tells it's German
+         else if (strncmp ("ShortTitle=HLIFEDE", line_buffer, 18) == 0)
+         {
+            sprintf (language, "german");
+            break;
+         }
+
+         // else if that line tells it's Italian
+         else if (strncmp ("ShortTitle=HLIFEIT", line_buffer, 18) == 0)
+         {
+            sprintf (language, "italian");
+            break;
+         }
+
+         // else if that line tells it's Spanish
+         else if (strncmp ("ShortTitle=HLIFEES", line_buffer, 18) == 0)
+         {
+            sprintf (language, "spanish");
+            break;
+         }
+      }
+
+      fclose (fp); // close file
+   }
+   else
+   {
+      printf ("ERROR: sierra.inf file not found. Ensure you are running this program\n");
+      printf ("from the RACC root directory (for instance, \"C:\\Games\\Half-Life\\RACC\")\n");
+      return; // error message if not found
+   }
+
+   // process liblist.gam
+   file_buffer[0] = 0x00;
+   sprintf (filename, "install/%s_liblist.prv", modname);
+   fp = fopen (filename, "r"); // opens file readonly
+   if (fp != NULL)
+   {
+      while (fgets (line_buffer, 255, fp) != NULL) // reads line per line
+      {
+         if (strncmp ("gamedll ", line_buffer, 8) == 0) // if we have reached the gamedll field
+            sprintf (file_buffer, "%sgamedll \"../racc/release/%s/release/racc.dll\"\n", file_buffer, modname); // patch original file
+         else
+            sprintf (file_buffer, "%s%s", file_buffer, line_buffer); // append line to output file
+      }
+      fclose (fp); // close original file
+      sprintf (filename, "../%s/liblist.gam", modname);
+      fp = fopen (filename, "w"); // opens file for writing
+      if (fp != NULL)
+      {
+         fputs (file_buffer, fp); // write to file
+         fclose (fp); // close file
+      }
+   }
+   else
+   {
+      printf ("ERROR: MOD's liblist.gam file not found. Ensure you specify the directory\n");
+      printf ("name rather than MOD's full name (for instance, \"PATCH.EXE cstrike\")\n");
+      return; // error message if not found
+   }
+
+   // process settings.scr
+   file_buffer[0] = 0x00;
+   sprintf (filename, "install/%s_settings.prv", modname);
+   fp = fopen (filename, "r"); // opens file readonly
+   if (fp != NULL)
+   {
+      while (fgets (line_buffer, 255, fp) != NULL) // reads line per line
+      {
+         if ((line_buffer[0] == '}') && (line_buffer[1] == '\n')) // if we have reached the good place
+         {
+            sprintf (filename, "install/%s/settings.scr.patch", language);
+            fp2 = fopen (filename, "r"); // opens patch file readonly
+            if (fp2 != NULL)
+            {
+               while (fgets (line_buffer2, 255, fp2) != NULL) // reads line per line
+                  sprintf (file_buffer, "%s%s", file_buffer, line_buffer2); // patch original file
+               fclose (fp2); // close patch file
+            }
+         }
+         sprintf (file_buffer, "%s%s", file_buffer, line_buffer); // append line to output file
+      }
+      fclose (fp); // close original file
+      sprintf (filename, "../%s/settings.scr", modname);
+      fp = fopen (filename, "w"); // opens file for writing
+      if (fp != NULL)
+      {
+         fputs (file_buffer, fp); // write to file
+         fclose (fp); // close file
+      }
+   }
+
+   // process kb_act.lst
+   file_buffer[0] = 0x00;
+   sprintf (filename, "install/%s_kb_act.prv", modname);
+   fp = fopen (filename, "r"); // opens file readonly
+   if (fp != NULL)
+   {
+      sprintf (filename, "install/%s/%s_kb_act.lst.patch", language, modname);
+      fp2 = fopen (filename, "r"); // opens patch file readonly
+      if (fp2 != NULL)
+      {
+         while (fgets (line_buffer, 255, fp2) != NULL) // reads line per line
+            sprintf (file_buffer, "%s%s", file_buffer, line_buffer); // patch original file
+         fclose (fp2); // close patch file
+      }
+      while (fgets (line_buffer, 255, fp) != NULL) // reads line per line
+         sprintf (file_buffer, "%s%s", file_buffer, line_buffer); // append line to output file
+      fclose (fp); // close original file
+      sprintf (filename, "../%s/gfx/shell/kb_act.lst", modname);
+      fp = fopen (filename, "w"); // opens file for writing
+      if (fp != NULL)
+      {
+         fputs (file_buffer, fp); // write to file
+         fclose (fp); // close file
+      }
+   }
+
+   // process commandmenu.txt
+   file_buffer[0] = 0x00;
+   sprintf (filename, "install/%s_commandmenu.prv", modname);
+   fp = fopen (filename, "r"); // opens file readonly
+   if (fp != NULL)
+   {
+      sprintf (filename, "install/%s/%s_commandmenu.txt.patch", language, modname);
+      fp2 = fopen (filename, "r"); // opens patch file readonly
+      if (fp2 != NULL)
+      {
+         while (fgets (line_buffer, 255, fp2) != NULL) // reads line per line
+            sprintf (file_buffer, "%s%s", file_buffer, line_buffer); // patch original file
+         fclose (fp2); // close patch file
+      }
+      while (fgets (line_buffer, 255, fp) != NULL) // reads line per line
+         sprintf (file_buffer, "%s%s", file_buffer, line_buffer); // append line to output file
+      fclose (fp); // close original file
+      sprintf (filename, "../%s/commandmenu.txt", modname);
+      fp = fopen (filename, "w"); // opens file for writing
+      if (fp != NULL)
+      {
+         fputs (file_buffer, fp); // write to file
+         fclose (fp); // close file
+      }
+   }
+
+   return; // end of processing
+}
+
+
+
+

@@ -1,0 +1,105 @@
+--------------------------------------------------
+Subject: ez error
+--------------------------------------------------
+12/29/02 at 19:47:32  Posted by: Snake (Liquid_snakeX2@hotmail.com)
+--------------------------------------------------
+stealthsuit.cpp
+Linking...
+   Creating library .\Profilemp/mp.lib and object .\Profilemp/mp.exp
+stealthsuit.obj : error LNK2001: unresolved external symbol "public: void __thiscall CStealth::UnCloak(void)" (?UnCloak@CStealth@@QAEXXZ)
+.\Profilemp/mp.dll : fatal error LNK1120: 1 unresolved externals
+
+[modified on 12/29/02 at 19:47:32]
+--------------------------------------------------
+12/30/02 at 05:44:14  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Don't use the "Profile" build, it doesn't work.
+
+Click on "Build->Set Active Configuration" and choose the "Debug" or "Release" build depending on whether you are building a Debug release or the final version (the "Release" version).
+
+botman
+
+--------------------------------------------------
+12/30/02 at 14:43:57  Reply by: Snake (Liquid_snakeX2@hotmail.com)
+--------------------------------------------------
+Linking...
+   Creating library .\Releasemp/mp.lib and object .\Releasemp/mp.exp
+stealthsuit.obj : error LNK2001: unresolved external symbol "public: void __thiscall CStealth::UnCloak(void)" (?UnCloak@CStealth@@QAEXXZ)
+.\Releasemp/mp.dll : fatal error LNK1120: 1 unresolved externals
+Error executing link.exe.
+
+--------------------------------------------------
+12/30/02 at 14:45:30  Reply by: Snake (Liquid_snakeX2@hotmail.com)
+--------------------------------------------------
+Linking...
+   Creating library .\Debug\mp.lib and object .\Debug\mp.exp
+stealthsuit.obj : error LNK2001: unresolved external symbol "public: void __thiscall CStealth::UnCloak(void)" (?UnCloak@CStealth@@QAEXXZ)
+.\debugmp/mp.dll : fatal error LNK1120: 1 unresolved externals
+Error executing link.exe.
+
+--------------------------------------------------
+12/30/02 at 16:42:29  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+You didn't define the CStealth::Uncloak() function anywhere or you didn't add the new .cpp file to the project.
+
+botman
+
+--------------------------------------------------
+12/30/02 at 17:39:29  Reply by: Snake (Liquid_snakeX2@hotmail.com)
+--------------------------------------------------
+did both
+
+void CStealth::UnCloak()
+{
+//Uncloaking here
+m_pPlayer->pev->renderamt = cloak; //Return them to normal values
+m_pPlayer->pev->renderfx = kRenderFxNone; 
+m_pPlayer->pev->rendermode = kRenderNormal; 
+cloaked=0;
+return;
+}
+
+http://www.thewavelength.net/oldsite/coding/tutorials/29.htm
+
+[modified on 12/30/02 at 17:39:29]
+--------------------------------------------------
+12/30/02 at 17:51:26  Reply by: Snake (Liquid_snakeX2@hotmail.com)
+--------------------------------------------------
+Compiling...
+stealthsuit.cpp
+
+stealthsuit.obj - 0 error(s), 0 warning(s)
+
+i get 0 errors but when i build get 2?
+
+--------------------------------------------------
+12/30/02 at 18:16:34  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Normal
+When you compile, you translate just the code that is inside the single .cpp file into machine code, in .obj files. It means at least the problem isn't in your .cpp file.
+The error occurs within the linker. The linker takes all the .obj files you compiled and tries to build them together in one single file (here, a DLL file). When, for example, a cpp file is told to call a function in another cpp file, the linker "links" the two .obj files together.
+Here your linker is just telling you that it has been unable to find the UnCloak() function the stealthsuit.cpp file expects to find in another file. It parsed all the files you asked it to link together, but it couldn't find that UnCloak() function. Hence the failure.
+
+Maybe because
+1°) you have forgotten to ask it to link some other file together with those you want to link, in which the UnCloak() function would be
+2°) you have forgotten to write that UnCloak() function at all
+3°) you actually wrote that function, but you wrote it inside the stealthsuit.cpp file (and not in an external file) and paradoxally you are still declaring it as "extern". The linker assumes then it will find that function outside the stealthsuit.cpp file and doesn't look for it at the right location.
+
+In either case, you should now know what you're left to check.
+
+
+--------------------------------------------------
+12/30/02 at 18:33:05  Reply by: Snake (Liquid_snakeX2@hotmail.com)
+--------------------------------------------------
+i think it's 3
+but now i dont no were to put it lol
+
+[modified on 12/30/02 at 18:33:05]
+--------------------------------------------------
+12/31/02 at 05:26:22  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+Copy your class only into the file "weapons.h"
+
+make a new file called "stealthsuit.cpp" to the project, and include "weapons.h" in the cpp file with other header files if needed.
+
+[modified on 12/31/02 at 05:26:22]

@@ -1,0 +1,47 @@
+--------------------------------------------------
+Subject: Quick Question
+--------------------------------------------------
+02/18/02 at 07:08:55  Posted by: FaulT (faultered@barrysworld.com)
+--------------------------------------------------
+Just a simple question.
+How do i find out what map is being played. Is it stored anywhere or do i have to catch a message for which map is loading and store it myself.
+
+Also, which function is called when the game has finished and the scoreboard is shown, if any.
+Thanks in advance.
+
+--------------------------------------------------
+02/18/02 at 07:24:25  Reply by: FaulT (faultered@barrysworld.com)
+--------------------------------------------------
+Right, i found the mapname in gpGlobals->mapname.
+Just need answer to the second part of my question.
+
+--------------------------------------------------
+02/18/02 at 11:09:02  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+In the SDK, the ChangeLevel() function in multiplay_gamerules.cpp sets a global variable called "g_fGameOver" to TRUE when the round has ended.  The CHalfLifeMultiplay::Think() function, also in multiplay_gamerules.cpp, checks to see if the game is over and calls GoToIntermission() which sets the player's HUD to intermission mode (where the scores are displayed).
+
+botman
+
+--------------------------------------------------
+02/18/02 at 12:37:03  Reply by: FaulT (faultered@barrysworld.com)
+--------------------------------------------------
+So am i safe in assuming that in your template i can put end of level things into the pfnChangeLevel fucntion?
+
+--------------------------------------------------
+02/18/02 at 12:56:16  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Yes, but this will ONLY work if the level changes due to a time limit or frag limit.
+
+If the server operator changes the map using the "map" or "changelevel" command, the MOD DLL won't see this (and neither will any add-on DLLs either), since that's all handled internally in the engine.
+
+I get around this problem by keeping track of the game time (gpGlobals->time) in the StartFrame() function.  I keep track of the previous time and compare that to the current time.  The previous time should always be less than the current time while a map is loaded.  When a new map is loaded (regardless of what caused it to load), the game time (gpGlobals->time) will be reset to zero.  Whenever the game time is less than the previous time (which will be some large non-zero value from the previous map), I know that a new map has just been loaded and can initialize stuff at that point.
+
+You can also intercept the pfnDispatchSpawn() requests looking for "worldspawn" to be spawned.  worldspawn is always the first entity spawned when a new map is loaded and you can key off of this classname to initialize variables for that newly loaded map.
+
+botman
+
+--------------------------------------------------
+02/18/02 at 15:49:06  Reply by: FaulT (faultered@barrysworld.com)
+--------------------------------------------------
+Ok, thanks for the help.
+

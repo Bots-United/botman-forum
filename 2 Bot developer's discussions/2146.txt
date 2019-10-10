@@ -1,0 +1,56 @@
+--------------------------------------------------
+Subject: Path Finding "First Depth Search" algorithm... 
+--------------------------------------------------
+08/13/01 at 05:06:57  Posted by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+I've figured out a path finding algorithm on my own. Botman explained me it looks like a "First Depth Search". So, now i know what kind of name it has. 
+
+There is still some trouble, the path algorithm is always 'the same'. The paths always take you to the goal (if enough data available), however, always via the same route. I've added only one line extra resulting in random paths. 
+
+Even better results gave the 'i Have been here already' code. Simply hold a value how much time the waypoint has been selected and when you try to calculate the path again, you should filter those waypoint connections out.
+
+Maybe if someone has some comments? i'd be glad to hear. Also, i've some trouble on this one. WHen i try to make the path in a smooth line, it seems to pick a waypoint through a wall. Although i have checked for this! The traceline tool doesnt seem to be 100% working i think.
+
+For a picture about the randomness and the working 'i have been here' code, look at:
+http://people.a2000.nl/rhendrik/randompaths.jpg
+
+(800x600 JPG, 65KB)
+
+--------------------------------------------------
+08/13/01 at 06:33:41  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+Here's an animation of a Depth First search in action (trying to find a path from 'a' to 'i')...
+
+http://al.ei.tuat.ac.jp/~sekisita/graph-e.html
+
+...compare this to a Breadth First search...
+
+http://al.ei.tuat.ac.jp/~sekisita/graph2-e.html
+
+...the problem with a bot always selecting the same path is due to using an algorithm that selects the shortest path.  The shortest path from A to B is ALWAYS the same path (unless your environment is dynamic and blockable objects are moving around).  Depth First search, Breadth First search, Floyd-Warshall algorithm and, to some extent, A* all have this problem.  If you are using an algorithm to find the shortest path and you aren't changing the environment or the rules used to select paths (i.e. always shortest distance), the path will always be the same from A to B.
+
+You can vary the path using A* by changing the heuristic used to determine the next path (but unless you have a fairly complex heuristic, the paths will still tend to be the same).
+
+To my knowledge there aren't any generic algorithms that find "alternate routes" from one point to another.  Even with a fairly small number of waypoints (a few hundred) there are literally thousands of paths between one point and another.  Most of those paths involve backtracking or semi-random wandering back and forth.  99.9% of these paths will look un-natural to a human observer.
+
+Welcome to the wonderful world of graphing algorithms.  Navigation from one point to another is not a simple thing.  If it was, everybody would be doing it.  You can pick an algorithm that repeats the same shortest paths over and over.  You can pick an algorithm that offers some dynamic path finding based on terrain rules (like A*), or you can just randomly wander all over the map and hope to arrive at your destination.
+
+Random wandering (with sufficient knowledge about where you have been) can guarentee (with sufficient amount of time) that you will reach a goal (if it is at all reachable from your current location).  If you think about navigation as though you are wandering a maze, and you have been given enough pebbles to mark your path, you can place markers at places where you have been and retrace your steps when you come to a dead end.  When you return to a junction that you have been at before, you can choose another path and continue in this manner until you have exhausted all possible paths (and thus the goal is unreachable) or until you have reached your goal.  This method would also appear un-natural to human observers.
+
+Coming up with a navigation algorithm that provides quick, efficient routes to a goal and one that allows multiple routes to a goal is not trivial.  It can be done if you are willing to manually mark waypoints in a level to indicate which paths can be used from commonly accessible points (i.e. if there are choke points in a map you could pick those as common and manually create alternate routes between them).  But this method requires that you manually mark which waypoints belong to which paths (i.e. path A, path B, path C, etc.).  Doing this automatically could also be done, but would require quite a bit of CPU time and probably should not be done during the game (as you would probably have to exhaustively search every possible path from one point to another).
+
+As with anything else computer related, there are trade offs that you have to make (memory verses CPU time, etc.)  Navigation has these same trade offs.  Do you want the bots to get to the goal as quickly as possible or do you want the bots to choose random paths?
+
+botman
+
+--------------------------------------------------
+08/13/01 at 06:47:58  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+Thanks for the information botman. However, i think i got the randomness working quite well. I think a 'good' randomness is to let bots change the waypoints values. Not the connections, but the values. So when you are trying to find a path, you should copy the new values while you create a temporarily matrix with the connections. This way you can change things per bot and let the paths be choosen on its current situation. As i do now btw :)
+
+Navigating from one point to another look easy, but sure takes some time for thinking and coding. Its very sensitive for tiny errors as i noticed. I'm actually happy about that one.
+
+Now i'm wondering, maybe a waypointless navigation is not that so much impossible. I mean, you could try tracing a line from A to B (to the goal) , then where it blocks you trace back 45 degrees and see if its clear (at a distance of 200), you can trace further from those points and using this way you can add 'traced' waypoints. Its just a vague idea anywayz.
+
+Actually, it think this way of navigating is superb. I'm glad i did it otherwise, i saw now both sides , and i'm convinced this type of navigating using an Algorith, weather its a First Depth search, Breath Depth Search or Floyd Warshall, its great and you can indeed apply very handy information now for tactics with bots.
+

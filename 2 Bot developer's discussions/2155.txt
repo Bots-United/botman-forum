@@ -1,0 +1,182 @@
+--------------------------------------------------
+Subject: Fake Lag?
+--------------------------------------------------
+08/14/01 at 19:15:53  Posted by: fluffy (talk_to_me85@yahoo.com)
+--------------------------------------------------
+Hi everyone,
+
+How do i make the bots ping in the scoreboard show latency over 0? I dont mind if the bots dont lag just as long as i can show some fake latency so my regular players dont know im running a bot :)
+
+--------------------------------------------------
+08/15/01 at 04:09:07  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+I don't think you can make it be anything other than 5 in the scoreboard.  You can introduce fake lag by not calling the BotThink() function every frame (maybe call it every 1/10th of a second or every 1/2 a second), but the ping time will still be 5 since that's handled by the Half-Life engine not the bot code.
+
+botman
+
+--------------------------------------------------
+08/15/01 at 07:44:49  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+Is it possible to make bots REALLY lag then? I mean, if you somehow can make the sending 'bot' data or something slow, then you should have 'lag' right? 
+
+I mean, lag is produced because real players recieve data 'slow' or send data 'slow'. So if you could make bots stall their information sending... you could produce 'real' fake lag.. 
+
+right?
+
+--------------------------------------------------
+08/15/01 at 08:32:07  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+Lag is produced from clients when they don't send position updates to the engine in a speedy fashion.  By not calling the BotThink function during every frame, you will also not call the pfnRunPlayerMove() function which bots use to send position information to the server.  The local player will be updating their position every frame but bots may be updating their position every 1/10th of a second or every 1/2 a second (or however often you call the BotThink function for that bot).
+
+The "ping" time will still display as 5ms since you can't change the amount of time it takes for a virtual network "packet" to go between the engine fake client (bot) and the engine.  There will be lag, but the ping time will stay the same.
+
+botman
+
+--------------------------------------------------
+08/15/01 at 09:21:25  Reply by: fluffy (talk_to_me85@yahoo.com)
+--------------------------------------------------
+Thnx botman,
+
+Since i can make the bots lag but not increase their pings, is their a special function somwhere that lets you *overide* the bots or anyones pings on the scoreboard(i dont mind if its constant)? I know it's their somewhere!
+
+[modified on 08/15/01 at 09:21:25]
+--------------------------------------------------
+08/15/01 at 11:02:48  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+No, the ping is calculated by the Half-Life engine network code.  It's based on the round trip time that a packet takes to get from the server through the client and back to the server again.
+
+The ping times displayed are contantly recalculated and will be constantly changing (even if you are on a LAN).
+
+botman
+
+--------------------------------------------------
+08/22/01 at 13:20:34  Reply by: Sephnroth (sephnroth@lineone.net)
+--------------------------------------------------
+Hey, I was just surfing by and noticed this forum, this may be a one stop thing or I may be back :)
+
+Anyway, I must confess that I havnt throughly looked through the hl sdk and also my c skills arnt top notch.  But I do code several other languages and by following basic programming princiables hacking the ping count and adding your own shouldnt be impossiable, just hard.  You may need access to engine code that isnt supplied with the standard sdk (you would have to apply for the full if this is the case) though.
+
+The ping count would be done the way botman said, but you would have to think basics to make this work.  Ultimatly the ping that is displayed would be a variable and the text on the screen would be the engine displaying that variable.  The ping variable in question may well come about because of much maths, packet sending and other variables to achieve the final value, but none the less it should end up as just one.  You would have to find it and manually set its value to whatever, or simply remove the final print (or whatever c uses, cout mebbe) statment and replace it with one of your own.
+
+OR, maybe when its sending its packets, write a line of code to effectivly lie to the game engine, telling it that its getting a different result by as soon as its value has been set, resetting it.  Example: (in no real coding language)
+
+lets say our variable is called ping.
+
+Send a packet.
+ping=packet_trip_time;
+Then intervine here with
+ping=30;
+
+whatever.
+
+I could be talking total bs as like i already said, I dont know that engine or this language, but hey :)  At least I made a post :P  
+
+Its all alot of faffling about for a little result though.  But I still belive it could be done if you wanted it that much :P
+
+later.
+
+-Seph
+
+
+
+
+
+--------------------------------------------------
+08/26/01 at 23:05:59  Reply by: CountFloyd (countfloyd@botepidemic.com)
+--------------------------------------------------
+Btw. Botman was damn right about the Bots Ping. Cut out from the actual engine code:
+code:
+
+// bots don't have a real ping
+if ( cl->fakeclient )
+      return 5;
+
+
+
+No fakeping for Bots :(
+
+
+--------------------------------------------------
+08/27/01 at 04:11:41  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+"No fakeping for Bots :("
+
+...unless you hack the engine!  :)
+
+botman
+
+--------------------------------------------------
+08/27/01 at 14:53:10  Reply by: CountFloyd (countfloyd@botepidemic.com)
+--------------------------------------------------
+QUOTE:
+
+...unless you hack the engine!  :)
+
+
+
+
+And get banned by PunkBuster for the Violation...
+:)
+
+--------------------------------------------------
+08/27/01 at 17:12:15  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+Really?! :)
+
+--------------------------------------------------
+08/28/01 at 05:50:50  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+
+QUOTE:
+"No fakeping for Bots :("
+
+...unless you hack the engine!  :)
+
+botman
+
+
+
+
+maybe a more friendly way is to ask Valve if they could change it into a random value very now and then for the SDK 2.x
+
+--------------------------------------------------
+08/28/01 at 08:49:41  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+If you make it random, it doesn't have any meaning.  It means what it says.  There is no lag between the engine and the bot clients.
+
+botman
+
+--------------------------------------------------
+08/30/01 at 00:12:19  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+ofcourse it doesnt have any meaning. But it does give you a sort of realism. Atleast, lots of people want bots to have 'lag' or 'fakelag'. 
+
+Oh well, it never hurts to ask :)
+
+--------------------------------------------------
+08/30/01 at 10:28:30  Reply by: CountFloyd (countfloyd@botepidemic.com)
+--------------------------------------------------
+"But it does give you a sort of realism. Atleast, lots of people want bots to have 'lag' or 'fakelag'"
+
+Realism ? Why that ? Even if there would be a way to change the Ping Display (NOTE: Display) Bots wouldn't be affected. People would think of being cheated if they would see Bots with an extremely high Ping still kicking their ass (because they don't have a lag). You can already simulate lag by not calling the BotThink Function every frame.
+
+--------------------------------------------------
+08/30/01 at 10:49:39  Reply by: sadbloke (sadbloke@lineone.net)
+--------------------------------------------------
+Well it would fool me... but I have the IQ of a rock.
+
+--------------------------------------------------
+08/30/01 at 11:41:22  Reply by: fluffy (talk_to_me85@yahoo.com)
+--------------------------------------------------
+Guys what i meant was that the fake ping wouldnt make it so obvious that the players were playing with bots.Like ive said before when ppl see the 5 ping they immediatly know theyre playing with bots.
+
+--------------------------------------------------
+09/04/01 at 08:13:23  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+@Count-Floyd
+
+When we can change the display, we can also affect the bots. So we can make them lag too. And play like they are lagging and not noticing/reacting things so fast.
+
+I think this could indeed add realism.
+
+

@@ -1,0 +1,229 @@
+--------------------------------------------------
+Subject: knowing if doors are openable
+--------------------------------------------------
+12/09/03 at 16:05:09  Posted by: Cheesemonster!!! (cheeseh(at)rcbot(dot)net)
+--------------------------------------------------
+Hey guys.
+
+I am wondering if it's easy to know if a door can be opened or not, I have problems finding this out on doors that have multi managers, I've tried using the CBaseToggle class but their master is always nothing.
+
+How to find the buttons for doors with multimanagers is also a pain and that would be a bonus to know.
+
+I'm using Svencoop so it's classic HL classes being used I believe.
+
+--------------------------------------------------
+12/09/03 at 18:13:54  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+pDoorEdict->v.target
+
+pDoorEdict->v.targetname
+
+return either the button for the door, or the door for the button (but I can't remember which one does what)
+
+
+--------------------------------------------------
+12/10/03 at 00:26:06  Reply by: @$3.1415rin (johannes@_-removeifnotavirus-_lampel.net)
+--------------------------------------------------
+pierre is right ...
+
+and maybe this code snippet from old joebot helps  ...
+
+code:
+void CBotBase :: TestOnButtonWay(edict_t **pToUse){
+      int iNearWP = WaypointFindNearest(pEdict,1000,bot_teamnm);
+      CWay pWay;
+
+      ConvertFloyd2Way(bot_teamnm,iNearWP,iGoal,&pWay);            // convert to way
+
+      TestOnButtonWay(pWay,pToUse);
+}
+
+void CBotBase :: TestOnButtonWay(CWay &pWay,edict_t **pToUse){
+      // look if there is something (door lift etc) in between which has to be 
+      // opened by a button etc
+      int i,is;
+      //WAY *pWay = new WAY;
+      edict_t *pEnt;
+      TraceResult tr;
+      edict_t *pButton[10];
+      int iCount,iOCount;
+      int distance[10];
+      Vector entity_origin;
+      int iNWP;
+      //char szClassname[100];
+      
+      *pToUse = 0;
+      
+      for(i=0,is=1;is < pWay.iNum;i++,is++){
+            /*if(WPStat.GetVisible(pWay->iIndices[i],pWay->iIndices[is]))
+                  continue;*/
+
+            UTIL_TraceLine(waypoints[pWay.iIndices[i}}.origin,waypoints[pWay.iIndices[is}}.origin,ignore_monsters,0,&tr);
+            
+            if(tr.pHit != 0){            // hit an ent
+                  //FILE *fhdf;fhdf=fopen("toopen.txt","a");fprintf(fhdf,"%s\t%s\t%s\n",STRING(tr.pHit->v.classname),STRING(tr.pHit->v.target),STRING(tr.pHit->v.targetname));fclose(fhdf);
+                  pButton[0] = 0;
+                  iCount = 0;
+                  pEnt = 0;
+                  while(pEnt = UTIL_FindEntityByString( pEnt, "target", STRING( tr.pHit->v.targetname ) )){      // look for sth which has this as target
+                        //if(!strcmp(STRING(pEnt<->v.classname),"func_button")){            // only buttons
+                        iNWP = WaypointFindNearest(VecBModelOrigin(VARS(pEnt)),pEdict,300,bot_teamnm);
+
+                        distance[iCount] = WaypointDistanceFromTo(iNearWP,iNWP,bot_teamnm);
+                        pButton[iCount] = pEnt;
+                        //*pToUse = pEnt;
+                        if(iCount < 10-1)
+                              iCount++;
+                  }            // todo
+                  iOCount = iCount;
+                  int ischl;
+                  for(ischl=0;ischl < iCount;ischl++){
+                        iNWP = WaypointFindNearest(VecBModelOrigin(VARS(pButton[ischl])),pEdict,300,bot_teamnm);
+                        if(BoolTestOnButtonWay(iNearWP,iNWP)){
+                              *pToUse = pButton[ischl];
+                              break;
+                        }
+                  }
+
+                  if(*pToUse){
+                        //if(pEdictPlayer)
+                        //WaypointDrawBeam(pEdictPlayer,waypoints[pWay->iIndices[i}}.origin,waypoints[pWay->iIndices[is}}.origin,10,10,255,255,255,255,10);
+                        break;
+                  }
+                  else{
+                        if(iOCount){
+                              iFarGoal = -1;
+                              iGoal = -1;
+                              //FakeClientCommand(pEdict,"say","no poss to get there ",0);
+                        }
+                        //if(pEdictPlayer)WaypointDrawBeam(pEdictPlayer,waypoints[pWay->iIndices[i}}.origin,waypoints[pWay->iIndices[is}}.origin,10,10,255,255,100,10,10);
+                  }
+            }
+      }
+}
+
+--------------------------------------------------
+12/10/03 at 12:17:35  Reply by: Cheesemonster!!! (cheeseh(at)rcbot(dot)net)
+--------------------------------------------------
+Their "targets" are what they trigger aren't they?
+
+The targetname for a door is it's map name, e.g. if something triggers it. BUT sometime;s this is NULL if its triggered by a master. A master LOCKS the door, when the master is activated the door can be opened.. this is the main problem I am facing.. I want bots to know if they can open a door so I can alter the navigation path.
+
+The targetname thing is what I do, but unfortunately doors with multimanagers are different. If you search for their targetname by using an entity string search, you'll get a multimanager or multisource entity. Now how do I get the button from that? And more importantly how do I know it's open?
+
+I just skimmed your code joe I'll have another look in a sec though :p
+
+
+
+by the way this is the code i use
+
+code:
+
+edict_t *BotFunc_FindNearestButton ( Vector vOrigin, entvars_t *pDoor )
+{
+      float fNearest = 0;
+      float fDist;
+      
+      edict_t *pBestTarget = NULL;
+      edict_t *pTarget = NULL;
+      
+      char *szTargetname = (char*)STRING(pDoor->targetname);
+      
+      Vector vEntityOrigin;
+
+      TraceResult tr;
+
+// Used to find masters at start of map and their targets, but this would never work!
+/*      dataStack<entity_master_t> tempStack = gBotGlobals.m_EntityMasters;
+      entity_master_t *pMaster;
+      edict_t *pDoorEdict = ENT(pDoor);
+
+      // If a multi_manager is used...
+      while ( !tempStack.IsEmpty() )
+      {
+            pMaster = tempStack.ChoosePointerFromStack();
+
+            if ( pMaster->pEntity == pDoorEdict )
+            {
+                  pTarget = UTIL_FindEntityByString((edict_t*)NULL,(char*)pMaster->szMaster,"0");
+                  
+                  if ( pTarget )
+                  {
+                        szTargetname = (char*)STRING(pTarget->v.targetname);
+                        
+                        tempStack.Init();
+                        break;
+                  }
+            }
+      }
+*/      
+      // Check buttons or other stuff that targets this door
+      while ( (pTarget = UTIL_FindEntityByString(pTarget,"target",szTargetname)) != NULL )
+      {
+            vEntityOrigin = EntityOrigin(pTarget);
+            
+            fDist = (vEntityOrigin - vOrigin).Length();
+            
+            if ( (pBestTarget == NULL) || (fDist < fNearest) )
+            {
+                  if ( gBotGlobals.m_iCurrentMod != MOD_SVENCOOP )
+                  {
+                        UTIL_TraceLine(vOrigin,vEntityOrigin,ignore_monsters,NULL,&tr);
+                        
+                        if ( (tr.pHit == pTarget) || (tr.flFraction >= 1.0) )
+                        {
+                              pBestTarget = pTarget;
+                              fNearest = fDist;
+                        }
+                  }
+                  else
+                  {
+                        // lots of svencoop doors are opend miles away :p      
+                        pBestTarget = pTarget;
+                        fNearest = fDist;
+                  }
+                  
+            }
+      }
+
+      if ( pBestTarget )
+      {
+            // Is this a MULTISOURCE???? or something that simply cant be used...
+            if ( pBestTarget->v.size.Length() == 0 )
+                  return NULL;
+            // can't USE trigger multiples. (or trigger_once entities, but at least
+            // we don't need to go back there all the time.
+            if ( strcmp("trigger_multiple",STRING(pBestTarget->v.classname)) == 0 )
+                  return NULL;
+      }
+
+// Nearest button searching that could possibly be linked to door... commented out.
+/*      if ( pBestTarget == NULL )
+      {
+            pTarget = NULL;
+
+            while ( (pTarget = UTIL_FindEntityByClassname(pTarget,"func_button")) != NULL )
+            {
+                  vEntityOrigin = EntityOrigin(pTarget);
+                  
+                  fDist = (vEntityOrigin - vOrigin).Length();
+                  
+                  if ( (pBestTarget == NULL) || (fDist < fNearest) )
+                  {
+                        UTIL_TraceLine(vOrigin,vEntityOrigin,ignore_monsters,pTarget,&tr);
+                        
+                        if ( tr.flFraction >= 1.0 )
+                        {
+                              pBestTarget = pTarget;
+                              fNearest = fDist;
+                        }
+                  }
+            }
+      }
+*/
+      return pBestTarget;
+}
+
+
+
+[modified on 12/10/03 at 12:17:35]

@@ -1,0 +1,129 @@
+--------------------------------------------------
+Subject: Monitoring Accuracy
+--------------------------------------------------
+11/17/01 at 20:39:34  Posted by: Jock (i.mckay@Designersgate.com)
+--------------------------------------------------
+Is it possible to monitor a bots accuracy? If so, how would I go about doing this?
+
+Also I was dumping all the messages into spawn.txt and came across this:
+
+pfnMessageBegin: edict=1de62e8 dest=1 type=115
+pfnWriteString: TForm1
+pfnWriteString: AutoShoot:  http://www.hlcheaters.com
+pfnMessageEnd:
+
+Why is there a link to a cheating website sent in the network messages?
+
+[modified on 11/17/01 at 20:39:34]
+--------------------------------------------------
+11/18/01 at 02:35:12  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+anything's possible howveer I don't know how to check accuracy ;D
+
+U may have an autoshoot installed!!! (As your opengl DLL no doubt!!!) ;)
+
+[modified on 11/18/01 at 02:35:12]
+--------------------------------------------------
+11/18/01 at 04:28:44  Reply by: @$3.1415rin (joebot@botepidemic.com)
+--------------------------------------------------
+for this hlcheaters stuff look here : http://dynamic.gamespy.com/~botman/yabb/YaBB.pl?board=2&action=display&num=2064
+
+--------------------------------------------------
+11/18/01 at 06:01:40  Reply by: Onslaught (None)
+--------------------------------------------------
+Try using WaypointDrawBeam in order to draw beams from the bot's gun to the bot's target(use BotBodyTarget)
+
+--------------------------------------------------
+11/18/01 at 11:19:09  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+I tried using the waypointdrawbeam code in the UTIL_traceline function to view tracelines but it kept crashing after a few seconds however it worked ;D
+
+--------------------------------------------------
+11/19/01 at 02:59:05  Reply by: Onslaught (None)
+--------------------------------------------------
+Maybe you're drawing too many beams! Try to limit the number of beams drawn on screen.
+
+--------------------------------------------------
+11/19/01 at 04:31:21  Reply by: @$3.1415rin (joebot@botepidemic.com)
+--------------------------------------------------
+but if you are drawing too many beams, then you jsut get this overflow message, but there is no crash - ok, you can call this a crash too, but ...
+
+--------------------------------------------------
+11/19/01 at 06:27:13  Reply by: Onslaught (None)
+--------------------------------------------------
+well, many people consider it a crash... so maybe that it is the kind of "crash" that he is talking about... 
+
+
+--------------------------------------------------
+11/19/01 at 08:01:57  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+The first time I got an illegal operation thingy ;)
+
+Then the second time I tried it it said I overflowed and took me back to the console...
+
+Anyhoo how can I limit the amount of beams being drawn?
+
+--------------------------------------------------
+11/19/01 at 08:19:50  Reply by: jerry_stoel (jerry_stoel@hotmail.com)
+--------------------------------------------------
+Can you add messages to a bot??
+I thought they couldn't accept messages. Hmmm maybe I am wrong here.
+
+I mean like the waypointdrawbeam function:
+
+code:
+
+void WaypointDrawBeam(edict_t *pEntity, Vector start, Vector end, int width,
+        int noise, int red, int green, int blue, int brightness, int speed)
+{
+   MESSAGE_BEGIN(MSG_ONE, SVC_TEMPENTITY, NULL, pEntity);
+   WRITE_BYTE( TE_BEAMPOINTS);
+   WRITE_COORD(start.x);
+   WRITE_COORD(start.y);
+   WRITE_COORD(start.z);
+   WRITE_COORD(end.x);
+   WRITE_COORD(end.y);
+   WRITE_COORD(end.z);
+   WRITE_SHORT( m_spriteTexture );
+   WRITE_BYTE( 1 ); // framestart
+   WRITE_BYTE( 10 ); // framerate
+   WRITE_BYTE( 10 ); // life in 0.1's
+   WRITE_BYTE( width ); // width
+   WRITE_BYTE( noise );  // noise
+
+   WRITE_BYTE( red );   // r, g, b
+   WRITE_BYTE( green );   // r, g, b
+   WRITE_BYTE( blue );   // r, g, b
+
+   WRITE_BYTE( brightness );   // brightness
+   WRITE_BYTE( speed );    // speed
+   MESSAGE_END();
+}
+
+
+
+You have to give a entity with the message which do you take the bot or the person executing the command. Hope you get my drift :).
+
+[modified on 11/19/01 at 08:19:50]
+--------------------------------------------------
+11/20/01 at 06:24:14  Reply by: Onslaught (None)
+--------------------------------------------------
+QUOTE:
+
+Anyhoo how can I limit the amount of beams being drawn? 
+
+
+
+Although overflows didn't happen to me, this might be a solution:
+Don't call the function every frame. Call it every 3 or 4 frames (I think this might solve the overflow problem)
+
+Be sure to use listenserver_edict for the pEntity parameter of the function.
+
+
+--------------------------------------------------
+11/20/01 at 09:18:45  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+overflows do happen, when you draw more then 40 beams each frame. So what i did, i simply counted 40 beams and then cut off any routine. THis way not all beams get drawn :(
+
+You could spread out the beams drawment over frames, like, you hold the counter of the loop and the next frame you continue with that. Since you can specify how long a frame should live, you can easily draw all frames then.
+

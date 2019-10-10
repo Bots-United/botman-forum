@@ -1,0 +1,368 @@
+--------------------------------------------------
+Subject: Enters BotStartGame but won't pick class
+--------------------------------------------------
+01/09/03 at 23:35:14  Posted by: Swift (sjackson@britsys.net)
+--------------------------------------------------
+I just thought I would pick the great minds here, see if anyone else asked the question before or anyone has any ideas, nothing useful came up on the search. Yep, I read the man, but nothing pop'ed up at me, here's the deal.
+
+I pulled the corect net mesages from the debug file, and added them to a new BotClient VGUI. I then enter a game, add a bot, it picks a team, but no class, just seams to loop in BotStartGame in the else if (mod_id == ESF_DLL).
+
+Here's a Debug dump:
+--------------------------------
+
+ClientCommand: addbot
+ClientUserInfoChanged: pEntity=5f58d78 infobuffer=\name\Goku\model\gordon\topcolor\1\bottomcolor\1
+pfnMessageBegin: edict=5f58a54 dest=1 type=71
+pfnWriteByte: 1
+pfnWriteString: Creating HPB bot...
+
+pfnMessageEnd:
+pfnPvAllocEntPrivateData:
+ClientConnect: pent=5f58d78 name=Goku
+ClientPutInServer: 5f58d78
+pfnSetPhysicsKeyValue:
+pfnSetPhysicsKeyValue:
+pfnFindEntityInSphere:
+pfnFindEntityInSphere:
+pfnSetModel: edict=5f58d78 models/player.mdl
+pfnSetSize: 5f58d78
+pfnSetClientMaxspeed: edict=5f58d78 speed=0.000000
+pfnMessageBegin: edict=5f58d78 dest=1 type=95
+pfnWriteByte: 100
+pfnMessageEnd:
+pfnMessageBegin: edict=5f58d78 dest=1 type=98
+pfnWriteLong: 120000
+pfnMessageEnd:
+pfnSetSize: 5f58a54
+pfnSetSize: 5f58a54
+pfnSetSize: 5f58a54
+pfnSetSize: 5f58a54
+pfnSetSize: 5f58a54
+pfnSetSize: 5f58a54
+pfnSetSize: 5f58a54
+pfnSetSize: 5f58a54
+*****Entered BotStartGame for MOD
+
+// some stuff removed for brevity \\
+
+pfnMessageBegin: edict=5f58d78 dest=1 type=92
+pfnWriteByte: 2
+******Bot Saw Team Select VGUI NetMessage
+pfnMessageEnd:
+
+// some stuff removed for brevity \\
+
+
+pfnGetPhysicsInfoString:
+*****Entered BotStartGame for MOD
+*****Entered Bot Team Selection
+FakeClientCommand=jointeam 1
+ClientCommand: jointeam 1
+pfnMessageBegin: edict=5f58d78 dest=1 type=92
+pfnWriteByte: 3
+pfnMessageEnd:
+pfnMessageBegin: edict=5f58d78 dest=1 type=70
+pfnWriteByte: 2
+pfnWriteString: * Goku has joined Good
+
+// some stuff removed for brevity \\
+
+pfnMessageBegin: edict=0 dest=2 type=77
+pfnWriteByte: 2
+pfnWriteShort: 0
+pfnWriteShort: 0
+pfnWriteShort: 0
+pfnWriteShort: 0
+pfnWriteShort: 1
+pfnMessageEnd:
+*****Bot Sent Team Selection
+pfnSetSize: 5f58d78
+pfnSetSize: 5f58d78
+
+// some stuff removed for brevity \\
+
+
+pfnSetSize: 5f58a54
+pfnSetSize: 5f58a54
+*****Entered BotStartGame for MOD
+pfnSetSize: 5f58d78
+pfnSetSize: 5f58d78
+pfnGetPhysicsInfoString:
+pfnSetFatPVS:
+pfnSetFatPAS:
+pfnGetCurrentPlayer:
+pfnGetCurrentPlayer:
+pfnGetCurrentPlayer:
+pfnGetCurrentPlayer:
+pfnGetCurrentPlayer:
+pfnGetCurrentPlayer:
+pfnGetCurrentPlayer:
+pfnGetCurrentPlayer:
+pfnGetCurrentPlayer:
+pfnSetSize: 5f58a54
+pfnSetSize: 5f58a54
+pfnSetSize: 5f58a54
+pfnSetSize: 5f58a54
+pfnSetSize: 5f58a54
+pfnSetSize: 5f58a54
+pfnSetSize: 5f58a54
+pfnSetSize: 5f58a54
+*****Entered BotStartGame for MOD
+pfnSetSize: 5f58d78
+pfnSetSize: 5f58d78
+pfnSetSize: 5f58d78
+pfnSetSize: 5f58d78
+pfnGetPhysicsInfoString:
+pfnSetFatPVS:
+pfnSetFatPAS:
+pfnGetCurrentPlayer:
+pfnGetCurrentPlayer:
+pfnGetCurrentPlayer:
+pfnGetCurrentPlayer:
+pfnGetCurrentPlayer:
+pfnGetCurrentPlayer:
+pfnGetCurrentPlayer:
+pfnGetCurrentPlayer:
+pfnGetCurrentPlayer:
+pfnSetSize: 5f58a54
+pfnSetSize: 5f58a54
+pfnSetSize: 5f58a54
+pfnSetSize: 5f58a54
+pfnSetSize: 5f58a54
+pfnSetSize: 5f58a54
+pfnSetSize: 5f58a54
+pfnSetSize: 5f58a54
+*****Entered BotStartGame for MOD
+pfnSetSize: 5f58d78
+pfnSetSize: 5f58d78
+pfnSetSize: 5f58d78
+pfnSetSize: 5f58d78
+pfnGetPhysicsInfoString:
+pfnSetFatPVS:
+pfnSetFatPAS:
+pfnGetCurrentPlayer:
+
+"And so on"
+
+-------------------------------
+
+The "*****" messages are hard encoded in to the functions via fprintf statements. If you need the code posted, can do, just let me know which file and which parts. I'm sure this is just a newbie error that I keep glazing over. Thanks for any help.
+
+[modified on 01/09/03 at 23:35:14]
+--------------------------------------------------
+01/10/03 at 04:20:48  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+Have you added things to BotStartGame() for bots to choose the correct class when the mod_id is ESF_DLL ?
+
+[modified on 01/10/03 at 04:20:48]
+--------------------------------------------------
+01/10/03 at 06:41:05  Reply by: Swift (sjackson@britsys.net)
+--------------------------------------------------
+Here is some code cuts...
+
+
+From bot_clent.cpp
+-------------------------------------
+void BotClient_ESF_VGUI(void *p, int bot_index)
+{
+   static int state = 0;   // current state machine state
+
+   if (state == 0)
+   {
+      if ((*(int *)p) >= 3)  // is it a team select menu?
+        {
+        bots[bot_index].start_action = MSG_ESF_CHAR_SELECT;
+
+            fp=fopen("HPB_bot.txt","a"); 
+            fprintf(fp,"******Bot Saw Char Select VGUI NetMessage\n"); 
+            fclose(fp);
+
+        }
+      else if ((*(int *)p) == 2)  // is is a char. select menu?
+        {
+        bots[bot_index].start_action = MSG_ESF_TEAM_SELECT;
+             
+            fp=fopen("HPB_bot.txt","a"); 
+            fprintf(fp,"******Bot Saw Team Select VGUI NetMessage\n"); 
+            fclose(fp);
+        }
+   }
+
+   state++;
+
+   if (state == 2)  // ignore other fields in VGUI message
+      state = 0;
+
+}
+
+---------------------------------
+
+and
+
+
+From bot_start.cpp
+---------------------------------
+else if (mod_id == ESF_DLL)
+   {
+      // handle ESF stuff here...
+
+             fp=fopen("HPB_bot.txt","a"); 
+           fprintf(fp,"*****Entered BotStartGame for MOD\n"); 
+           fclose(fp);
+
+      if (pBot->start_action == MSG_ESF_TEAM_SELECT)
+      {
+             fp=fopen("HPB_bot.txt","a"); 
+           fprintf(fp,"*****Entered Bot Team Selection\n"); 
+           fclose(fp);
+
+         pBot->start_action = MSG_ESF_IDLE;  // switch back to idle
+
+         if ((pBot->bot_team != 1) && (pBot->bot_team != 2) &&
+             (pBot->bot_team != 5))
+            pBot->bot_team = -1;
+
+         if (pBot->bot_team == -1)
+            pBot->bot_team = RANDOM_LONG(1, 2);
+
+         // select the team the bot wishes to join...
+         if (pBot->bot_team == 1)
+            strcpy(c_team, "1");
+         else if (pBot->bot_team == 2)
+            strcpy(c_team, "2");
+         else
+            strcpy(c_team, "5");
+
+            
+         FakeClientCommand(pEdict, "jointeam", c_team, NULL);
+
+             fp=fopen("HPB_bot.txt","a"); 
+             fprintf(fp,"*****Bot Sent Team Selection\n"); 
+             fclose(fp);
+            
+         return;
+      }
+
+      if (pBot->start_action == MSG_ESF_CHAR_SELECT)  // counter terrorist
+      {
+             fp=fopen("HPB_bot.txt","a"); 
+             fprintf(fp,"Bot Entered Char Select Menu\n"); 
+             fclose(fp);
+
+         pBot->start_action = MSG_ESF_IDLE;  // switch back to idle
+
+             pBot->f_create_time = gpGlobals->time;  // reset
+
+         if ((pBot->bot_class < 0) || (pBot->bot_class > 10))
+            pBot->bot_class = -1;
+
+         if (pBot->bot_class == -1)
+            pBot->bot_class = RANDOM_LONG(1, 10);
+
+         //team = UTIL_GetTeam(pEdict);
+
+             // Should not be needed
+
+/*
+         if (team_class_limits[team] == -1)  // civilian only?
+         {
+            pBot->bot_class = 0;  // civilian
+         }
+         else
+         {
+            if (pBot->bot_class == 10)
+               class_not_allowed = team_class_limits[team] & (1<<7);
+            else if (pBot->bot_class <= 7)
+               class_not_allowed = team_class_limits[team] & (1<<(pBot->bot_class-1));
+            else
+               class_not_allowed = team_class_limits[team] & (1<<(pBot->bot_class));
+
+            while (class_not_allowed)
+            {
+               pBot->bot_class = RANDOM_LONG(1, 10);
+
+               if (pBot->bot_class == 10)
+                  class_not_allowed = team_class_limits[team] & (1<<7);
+               else if (pBot->bot_class <= 7)
+                  class_not_allowed = team_class_limits[team] & (1<<(pBot->bot_class-1));
+               else
+                  class_not_allowed = team_class_limits[team] & (1<<(pBot->bot_class));
+            }
+         }
+*/
+
+         // select the class the bot wishes to use...
+         if (pBot->bot_class == 0)
+            strcpy(c_class, "cell");
+         else if (pBot->bot_class == 1)
+            strcpy(c_class, "fatbuu");
+         else if (pBot->bot_class == 2)
+            strcpy(c_class, "frieza");
+         else if (pBot->bot_class == 3)
+            strcpy(c_class, "gohan");
+         else if (pBot->bot_class == 4)
+            strcpy(c_class, "krillin");
+         else if (pBot->bot_class == 5)
+            strcpy(c_class, "piccolo");
+         else if (pBot->bot_class == 6)
+            strcpy(c_class, "goku");
+         else if (pBot->bot_class == 7)
+            strcpy(c_class, "trunks");
+         else if (pBot->bot_class == 8)
+            strcpy(c_class, "vegeta");
+         else
+             {
+                  FakeClientCommand(pEdict, "randompc", NULL, NULL);
+
+                  fp=fopen("HPB_bot.txt","a"); 
+                  fprintf(fp,"Bot Sent Char Selection\n"); 
+                  fclose(fp);
+
+                  // bot has now joined the game (doesn't need to be started)
+                  pBot->not_started = 0;
+                  return;
+             }
+
+         //FakeClientCommand(pEdict, "model", c_class, NULL);
+             FakeClientCommand(pEdict, "model", c_class, NULL);
+
+             fp=fopen("HPB_bot.txt","a"); 
+             fprintf(fp,"Bot Sent Char Selection\n"); 
+             fclose(fp);
+             
+         // bot has now joined the game (doesn't need to be started)
+         pBot->not_started = 0;
+
+         return;
+      }
+
+   }
+
+
+------------------------------
+
+The traps have been set in engine.cpp also. It seams to pick up the Team VGUI NetMessage properly, (but entered BotStartGame before the log reported it saw the Select Team VGUI Message, but I was just chalking that up to lag). It Enters BotStartGame, and then gets into if structure for the TeamSelects ok. Exit it after the jointeam command has been sent, but either doesn't break out of it properly, or keeps trapping on the same netmessage from bot_clent.cpp, which it nevers enters the MSG_ESF_TEAM_SELECT if structure again, just the else if (mod_id == ESF_DLL) in BotStartGame. I kinda adopted this code from a friend who can't work on it anymore, but I read through the readme and checked for the changes as I went along.
+
+--------------------------------------------------
+01/11/03 at 10:59:03  Reply by: Swift (sjackson@britsys.net)
+--------------------------------------------------
+Well, I found somthing werid, I added a bot, then kicked the bot. Right after that I added a new bot and came in to the game with no problems.
+
+
+Ever seen this before? 
+
+--------------------------------------------------
+01/11/03 at 22:49:11  Reply by: Swift (sjackson@britsys.net)
+--------------------------------------------------
+Got it, stupid error as I expected....
+
+I was returning
+
+FakeClientCommand(pEdict, "model", c_class, NULL);
+
+from MSG_ESF_CHAR_SELECT, this command nulled out, it's to swtich models, but shouldnt be used to select a initinal model (class). I switch the return to 
+
+FakeClientCommand(pEdict, c_class, NULL, NULL);
+
+and everything works ok now. No looping in BotStartGame anymore. I hope this helps someone else, thanks for your help guys :-).
+

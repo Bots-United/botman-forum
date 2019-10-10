@@ -1,0 +1,105 @@
+--------------------------------------------------
+Subject: Tracing the bullets...
+--------------------------------------------------
+07/09/03 at 13:06:24  Posted by: Zycat (blackeagle@gamebox.net)
+--------------------------------------------------
+How to trace the bullets, and optionally make a nice beam for them?
+
+--------------------------------------------------
+07/09/03 at 13:52:49  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Look in the PodFix plugin I made how I trace bullets fired by players to disallow damage to hostages
+http://www.racc-ai.com/podfix_plugin.exe
+
+Hint: hook pfnTraceline together with IN_ATTACK.
+
+
+--------------------------------------------------
+07/09/03 at 15:09:36  Reply by: botmeister (meister@telus.net)
+--------------------------------------------------
+I have yet to make a beam draw for my bots when playing on a dedicated server. Anyone know how to get this to work? I have plenty of examples that work only when playing locally, but I have found no examples of how to do it from a dedicated server when playing remotely.
+
+
+--------------------------------------------------
+07/09/03 at 16:12:50  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Just send the beam effect to the client edict that you want to see the beams on (via MessageBegin, MessageEnd, etc.).
+
+botman
+
+--------------------------------------------------
+07/09/03 at 22:37:23  Reply by: Zycat (blackeagle@gamebox.net)
+--------------------------------------------------
+Still don't get it... :/
+
+What I want is to draw the tracer not origin->target but the actual bullet fired.
+
+[modified on 07/09/03 at 22:37:23]
+--------------------------------------------------
+07/10/03 at 10:35:33  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+You can't draw the "bullet" if that's what you mean. Projectiles like this don't exist in the game for the engine. When a player fires a bullet, the engine plays an animation, draws a muzzle flash, plays a fancy sound, and fires a TraceLine from this player's entity view point in the direction he is facing. If the TraceLine hit something, then the engine displays a nice gunshot decal. And if it hits a player, some blood, and it makes the victim lower his health.
+
+To botmeister: you can very simply draw beams for whatever client, just decide not to send the message to listenserver_edict (or pListenserverEntity or whatever), but instead to a client of your choice. Notice how the listenserver_edict pointer gets attributed an address and instead of catching the client who is connecting from the loopback, catch another one given its IP address. All is in ClientConnect().
+
+
+--------------------------------------------------
+07/10/03 at 13:56:17  Reply by: Zycat (blackeagle@gamebox.net)
+--------------------------------------------------
+Well if the engine fires TraceLine then there must be some way of intercepting it....or not?
+
+--------------------------------------------------
+07/10/03 at 14:19:28  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+That's what I am telling you: look in the PodFix plugin source code to see how I did it.
+
+
+--------------------------------------------------
+07/10/03 at 23:58:06  Reply by: Zycat (blackeagle@gamebox.net)
+--------------------------------------------------
+And that's what I don't understand -_-; Need more examples...
+
+Or do you know how to run Metamod with a bot (listenserver)?
+
+[modified on 07/10/03 at 23:58:06]
+--------------------------------------------------
+07/10/03 at 19:28:44  Reply by: botmeister (meister@telus.net)
+--------------------------------------------------
+I tried sending a broadcast message to all clients to draw the beam which did not work. I'll try a loop through the clients and send the message individually instead. Thanks for the help guys.
+
+--------------------------------------------------
+07/11/03 at 00:59:14  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+QUOTE:
+Or do you know how to run Metamod with a bot (listenserver)?
+
+
+
+I hacked metamod to make it run with listenservers here:
+http://www.racc-ai.com/metamod-1.16sp.zip (source code distribution)
+
+
+--------------------------------------------------
+07/11/03 at 05:01:59  Reply by: @$3.1415rin (johannes@_-removeifnotavirus-_lampel.net)
+--------------------------------------------------
+a hack to run bots with metamod on a listenserver ? and why does it run here without that hack ? maybe because my metamod version is pretty old ( almost a month I think ) ?!
+
+--------------------------------------------------
+07/11/03 at 05:38:04  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+No, in fact the hack enables metamod to run on single player listenservers too (so that you can use your favourite plugins while playing the Half-Life storyline, for example).
+
+It's the same fix than in botman's bot to get the exports array working correctly.
+
+
+--------------------------------------------------
+07/11/03 at 09:05:25  Reply by: Zycat (blackeagle@gamebox.net)
+--------------------------------------------------
+I'm sorry but how do you use your Metamod with a non-metamod bot? I usually started a closed LAN game to test my bots, but you can't add both dlls to liblist.gam do you?
+
+--------------------------------------------------
+07/11/03 at 09:35:48  Reply by: @$3.1415rin (johannes@_-removeifnotavirus-_lampel.net)
+--------------------------------------------------
+try +localinfo mm_gamedll botdllwithpath in the commandline
+
+[modified on 07/11/03 at 09:35:48]

@@ -1,0 +1,96 @@
+--------------------------------------------------
+Subject: Multithreading, Classes
+--------------------------------------------------
+10/10/03 at 14:08:04  Posted by: koraX (jowag@szm.sk)
+--------------------------------------------------
+Hi there !
+
+I am trying to make a bot to CS. I am only at the begining and I have some questions :)
+
+1. Is Multithreading pro or con ? (ex. each bot will think in a different thread) Will it increase efficiency or will it slow down the game more than using single thread ?
+
+2. Using Classes (C++ classes).
+I am studying a lot of bot source codes to learn how hl1 sdk and bot coding works (Botman's sourcer, RACC source, PodBot). But I can't see Classes, only structures and simple C things. I would like to use C++ classes, and my question is : Will it have some impact on bot's performance ? Will it be more cpu intensive ?
+
+Thanx,
+
+Jozef Wagner.
+
+--------------------------------------------------
+10/10/03 at 14:35:52  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+1. The Half-Life engine is NOT thread safe!  You can't make engine calls from multiple threads, things will get clobbered inside the engine.  Don't even try this unless you have a single thread that is used to communicate with the engine and MOD DLL code.
+
+2. C++ classes are fine, but not really necessary in my opinion.  Classes are great where you have some base class that other classes will derrive from.  In this case, all you have is a player.  Unless you plan on making the base bot Class be a simple dumb robot and then derriving different classes with different behaviors from this base class, you probably don't need to go to the trouble of creating C++ classes.  C++ classes will work fine if you want to use them.  There shouldn't be any performance problems (not anymore than using standard C structures anyway).
+
+botman
+
+--------------------------------------------------
+10/10/03 at 14:52:44  Reply by: koraX (jowag@szm.sk)
+--------------------------------------------------
+1. Yes I know hl is not thread-safe. I would have to write my own synchronization.
+
+2. Well I am using C++ classes everyday so it is better for me to use them. Also my intention is to make a more complex bots (something like Pierre-Marie is doing) so I will need C++ classes IMHO.
+
+Thanx for your time.
+
+Jozef Wagner
+
+--------------------------------------------------
+10/10/03 at 16:47:55  Reply by: botmeister (meister@telus.net)
+--------------------------------------------------
+QUOTE:
+I would like to use C++ classes, and my question is : Will it have some impact on bot's performance ? Will it be more cpu intensive ?
+
+
+
+
+Since you are already comfortable with using C++ classes, I suggest that you stick with it. If you notice a performance penalty, then it will be due to reasons other than the classes.
+
+QUOTE:
+Is Multithreading pro or con ? (ex. each bot will think in a different thread) Will it increase efficiency or will it slow down the game more than using single thread ?
+
+
+
+
+Threading is certainly possible and may help smooth out lengthy computations and may even make some of you code simpler because you will not have to break up lengthy processing between frames to prevent "choppy" game play. 
+
+The usual method is ensure smooth game play is to break up lengthy processing between frames so that only a limited amount of cpu time is spent on each bot for each frame. This is the prefered method, and keeping the processing time limited per frame can be relatively easy to do even for very complex tasks.
+
+If you decide to use threads as a smoothing technique, then I suggest that you first build a general purpose syncronized event schedular (or task schedular) to manage the coordination of events with the engine, game dll and your threads.
+
+Even if you do not use threads, it is still a good idea to build a synchronized event schedluar anyway.
+
+Be aware that the synchronization will still have to be kept in check, otherwise you'll still end up with choppy bots as they wait around for events to complete in the right order. You also have to watch out for deadlocks and infinite loops.
+
+IMO the extra complextity of using threads may not be worth the effort. On the other hand, it would be a very educational experience in trying.
+
+
+--------------------------------------------------
+10/11/03 at 01:16:14  Reply by: koraX (jowag@szm.sk)
+--------------------------------------------------
+well I can say I am skilled with multithreading, deadlocks and stuff like that, but thanx :) .
+I think I can use threads for some complex computations like you posted. (paths, tactics ...)
+Also bot I am trying to develop is mainly for scientific purposes ( http://www.ai-cit.sk/ )
+
+--------------------------------------------------
+10/11/03 at 02:43:24  Reply by: koraX (jowag@szm.sk)
+--------------------------------------------------
+hl -dev  writes some stuff to console that helps with debugging. Is there a way to log the console to the file ? The text in console is scrolling too fast and i can't read it all :)
+
+--------------------------------------------------
+10/11/03 at 06:50:49  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+I think "condump" is the command to dump the console scrollback contents to a text file (called condump.txt if I remember correctly).
+
+You can also scroll back in the console holding down the CTRL key (or is it the Shift key?) while using PgUp/PgDn.
+
+It's been so long since I've needed to do that, that I've forgotten how.
+
+botman
+
+--------------------------------------------------
+10/11/03 at 20:19:57  Reply by: botmeister (meister@telus.net)
+--------------------------------------------------
+You should probably just create a function that writes messages to a text file and console at the same time. 
+

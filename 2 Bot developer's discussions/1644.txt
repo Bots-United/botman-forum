@@ -1,0 +1,62 @@
+--------------------------------------------------
+Subject: monster_miniturret
+--------------------------------------------------
+05/10/01 at 03:19:16  Posted by: [LW]Rob (rob@tfcautoop.cjb.net)
+--------------------------------------------------
+hey, how would I go about activating and deactivating a monster miniturret, providing I have a pointer to it thru the DLL?
+
+I have tried triggering it with a trigger_auto to shut it off, but with no luck
+
+My latest attempt was to change its view so it couldnt see anyone, 'view_ofs.z = -9999' it does stop, but it continually beeps and just looks down, the effect im looking for is for it to actually act like there is no players in its vecninty, and in case it makes any difference Im talking about TFC here.
+
+well any help would be appriciated.
+
+- Rob.
+
+
+
+
+
+--------------------------------------------------
+05/10/01 at 05:32:19  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+Looking at the CBaseTurret::AutoSearchThink() in the turret.cpp file of the Full SDK you see this...
+code:
+// This think function will deploy the turret when something comes into range. This is for
+// automatically activated turrets.
+//
+void CBaseTurret::AutoSearchThink(void)
+{
+      // ensure rethink
+      StudioFrameAdvance( );
+      pev->nextthink = gpGlobals->time + 0.3;
+
+      // If we have a target and we're still healthy
+
+      if (m_hEnemy != NULL)
+      {
+            if (!m_hEnemy->IsAlive() )
+                  m_hEnemy = NULL;// Dead enemy forces a search for new one
+      }
+
+      // Acquire Target
+
+      if (m_hEnemy == NULL)
+      {
+            Look( TURRET_RANGE );
+            m_hEnemy = BestVisibleEnemy();
+      }
+
+      if (m_hEnemy != NULL)
+      {
+            SetThink(Deploy);
+            EMIT_SOUND(ENT(pev), CHAN_BODY, "turret/tu_alert.wav", TURRET_MACHINE_VOLUME, ATTN_NORM);
+      }
+}
+
+...so it calls BestVisibleEnemy() in monsters.cpp to find an enemy.  That function checks the relationship between the caller and visible entities to find the closest or most hated one.
+
+Since you can't force entities to be visible (unless you want to intercept the UTIL_Traceline calls), you're next best bet would be to assign m_hEnemy to an entity (providing you can find that in the monster_miniturret class) and setting the m_pfnThink function to the Deploy() function in the monster_miniturret class (you should be able to find this from the C++ name mangled exported function list).
+
+botman
+

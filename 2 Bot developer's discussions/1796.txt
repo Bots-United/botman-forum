@@ -1,0 +1,60 @@
+--------------------------------------------------
+Subject: HL Crashes
+--------------------------------------------------
+06/12/01 at 14:02:28  Posted by: ShadyAl (shady_alan@yahoo.co.uk)
+--------------------------------------------------
+Been designing some new navigation code:
+
+I've defined variable "dest" as a Vector (in CBot) and i've got a function which looks something like this:
+
+void CBot::GetDest(void)
+{
+   Vector v_look;
+   TraceResult tr;
+
+   v_look = pev->origin + (gpGlobals->v_forward * 64);
+   UTIL_TraceLine(pev->origin, v_look, ignore_monsters, pev->pContainingEntity, &tr);
+   if (tr.flFraction >= 0)
+   {
+      dest = v_look;
+   }
+}
+
+When I try to run the new code HL crashes.  By commenting lines out I've discovered that the "dest = v_look" line is causing the crash.  I tried replacing this line with 3 lines that read:
+
+dest.x = v_look.x
+dest.y = v_look.y
+dest.z = v_look.z
+
+but the game still crashed.  What's going on?
+
+--------------------------------------------------
+06/12/01 at 14:49:33  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+You should ALWAYS use UTIL_MakeVectors() before using gpGlobals->v_up, gpGlobals->v_right, or gpGlobals->v_forward.
+
+I assume you wanted this...
+code:
+Vector dest;  // global copy of vector
+
+void CBot::GetDest(void)
+{
+   Vector v_look;
+   TraceResult tr;
+ 
+   // set up v_forward in the player's view angle direction
+   UTIL_MakeVectors(pev->v_angle);
+ 
+   v_look = pev->origin + (gpGlobals->v_forward * 64);
+   UTIL_TraceLine(pev->origin, v_look, ignore_monsters, pev->pContainingEntity, &tr);
+ 
+   if (tr.flFraction >= 0)
+   {
+      dest = v_look;
+   }
+}
+
+...tr.flFraction will ALWAYS be greater than or equal to 0.  If the line traced part way it will be slightly bigger than 0.  If the line traced all the way, it will be 1.0.  Did you mean ">= 1.0" in the "if" statement?
+
+botman
+

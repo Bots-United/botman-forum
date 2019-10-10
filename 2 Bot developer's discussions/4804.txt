@@ -1,0 +1,335 @@
+--------------------------------------------------
+Subject: HPBbot to target Monsters?
+--------------------------------------------------
+09/08/03 at 10:51:42  Posted by: Dakne (conny_k80@hotmail.com)
+--------------------------------------------------
+Hi all.
+I was just finished making a conversion of HPBbot to fit Svencoop.
+Ofcourse I am a noob but everything works the way it should all enitys are there and the bots spawn.
+Only 1 major problem the bots thinks its deatmatch and ignore monster and shooting at echater :P
+So I wonder is there anyway to make all Bots Allies and ofcourse allies with players to ;D
+
+And also make them shoot back at monsters ..
+
+It would be cool :) All help appriciated.
+
+And I know my english sucks ,,,
+
+[modified on 09/08/03 at 10:51:42]
+--------------------------------------------------
+09/09/03 at 05:04:14  Reply by: Cheesemonster!!! (cheeseh(at)houstondod(dot)com)
+--------------------------------------------------
+something like this
+
+code:
+
+edict_t *BotFindEnemyMonster ( bot_t *pBot, float fRange )
+{
+  int i;
+
+  TraceResult tr;
+
+  edict_t *pMonster;
+  entvars_t *pMonsterpev;
+  edict_t *pNearestMonster = NULL;
+
+  float fDistance;
+
+  Vector vMonsterOrigin;
+  
+  // start from the list of entities after the clients.
+  for ( i = gpGlobals->maxClients+1; i <= gpGlobals->maxEntities; i ++ )
+  {
+    pMonster = INDEXENT(i);
+
+    if ( !pMonster <<OR>> FNullEnt(pMonster) )
+       continue;
+
+    pMonsterpev = &pMonster->v;
+
+    if ( !(pMonsterpev->flags & FL_MONSTER) )
+      continue;
+    // do other stuff here to determine if the monster is freindly or not
+    // and continue if freindly, i dont know how sven coop does this
+    // may need to ask sven-viking.
+
+    vMonsterOrigin = pMonsterpev->origin+pMonsterpev->view_ofs;
+
+    if ( FInViewCone(&vMonsterOrigin,pBot->pEdict) )
+    {
+      if ( (fDistance = (vMonsterOrigin - pBot->pEdict->v.origin).Length()) < fRange )
+      {
+        UTIL_TraceLine(pBot->pEdict->v.origin,vMonsterOrigin,ignore_monsters,NULL,&tr);
+        // can the bot see the monster.
+        if ( tr.flFraction >= 1.0 )
+        {
+          fRange = fDistance;
+          pNearestMonster = pMonster;
+        }
+      }    
+    }
+  }
+
+  return pNearestMonster;
+}
+
+
+/edit: forgot the traceline stuff.[/code]
+
+/<<OR>> is the two pipe signs (forum doesnt view them :(
+
+[modified on 09/08/03 at 18:54:19]
+
+[modified on 09/09/03 at 05:04:14]
+--------------------------------------------------
+09/08/03 at 14:01:26  Reply by: Dakne (conny_k80@hotmail.com)
+--------------------------------------------------
+Thanx Ill try this right away .
+Fast reply love ya ;D
+
+Oh by the way I can see this dont make all players allies ( same team ) 
+I dont want them to shot players or other bots Just monsters it this possible?
+
+[modified on 09/08/03 at 14:01:26]
+--------------------------------------------------
+09/08/03 at 14:03:12  Reply by: Cheesemonster!!! (cheeseh(at)houstondod(dot)com)
+--------------------------------------------------
+that's what it does, read:
+
+QUOTE:
+
+// start from the list of entities after the clients.   for ( i = gpGlobals->maxClients+1; i <= gpGlobals->maxEntities; i ++ )   { 
+
+
+
+
+it looks through the list of entities after all the lclients, why not try it ay? :P
+
+--------------------------------------------------
+09/08/03 at 14:15:15  Reply by: Dakne (conny_k80@hotmail.com)
+--------------------------------------------------
+Im sorry mate ;> 
+As I sad I am a noob at this so if u could explain this error i got I would be happy I proberly did som mistake :
+code:
+
+\HPB_bot\dlls\bot_combat.cpp(1620) : error C2679: binary '=' : no operator defined which takes a right-hand operand of type 'class Vector' (or there is no acceptable conversion)
+
+
+It point to this; if ( (fDistance = ((vMonsterOrigin)-pBot->pEdict->v.origin)) < fRange ) 
+
+
+--------------------------------------------------
+09/08/03 at 18:54:48  Reply by: Cheesemonster!!! (cheeseh(at)houstondod(dot)com)
+--------------------------------------------------
+ive modified it again. read the old post again, didnt require a genius to fix it 8)
+
+--------------------------------------------------
+09/09/03 at 02:27:34  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+...then you're not a genius, Cheesy ;)
+
+the method is not called Distance(), but Length()
+
+A more complete answer, having bots to target monsters is more difficult than that. There are countless places in the code where the combat AI expect to deal with entities that are PLAYERS, and not monsters. Specific code is used there, such as relying on the entity index, on its netname, on the player's infobuffer, its weapons, etc...
+
+It's not as easy as it seems, Cheesy.
+
+[modified on 09/09/03 at 02:27:34]
+--------------------------------------------------
+09/09/03 at 05:06:44  Reply by: Cheesemonster!!! (cheeseh(at)houstondod(dot)com)
+--------------------------------------------------
+lol so it is, It was late at night and I was tired 8)
+
+then basically its used like
+
+
+...BotThink...
+{
+...
+pBot->pBotenemy = BotFindEnemyMonster(pBot,2048.0);
+...
+}
+
+
+[modified on 09/09/03 at 05:06:44]
+--------------------------------------------------
+09/09/03 at 16:43:06  Reply by: Dakne (conny_k80@hotmail.com)
+--------------------------------------------------
+Thanx for ure help.
+But it still dosent work. It compiles correctly and the dll works but The bots act normally :( Maybe U can help me and see what I do wrong.
+
+I added ure code in:
+bot_combat.cpp
+Before: edict_t *BotFindEnemy( bot_t *pBot )
+And i added this in edict_t *BotFindEnemyMonster ( bot_t *pBot, float fRange ); in bot_func.h 
+
+I think thats it :( 
+
+Oh an I also tried this when it didnt work:
+
+   pNewEnemy = BotFindEnemyMonster(pBot); 
+I added it after:
+   pNewEnemy = NULL;
+In bot_combat.cpp
+But then i got a wierd error while compiling..
+
+\HPB_bot\dlls\bot_combat.cpp(888) : error C2660: 'BotFindEnemyMonster' : function does not take 1 parameters
+
+[modified on 09/09/03 at 16:43:06]
+--------------------------------------------------
+09/09/03 at 17:05:09  Reply by: LazyOne (the_lazy_one_09@hotmail.com)
+--------------------------------------------------
+pNewEnemy = BotFindEnemyMonster(pBot); 
+
+Your function prototype states it takes bot_t pointer and a float parameter.
+I'm sure you can figure out how to fix it from here.
+
+HINT: You're only passing one parameter.
+
+
+
+
+[modified on 09/09/03 at 17:05:09]
+--------------------------------------------------
+09/09/03 at 17:30:37  Reply by: Cheesemonster!!! (cheeseh(at)rcbot(dot)net)
+--------------------------------------------------
+QUOTE:
+
+...
+then basically its used like 
+...
+... 
+pBot->pBotenemy = BotFindEnemyMonster(pBot,2048.0); 
+... 
+
+
+
+
+REad the function it has another paramter called range incase you want to change it so your bot can search within 2048 units away, or 4096 units away or whatever.
+
+--------------------------------------------------
+09/09/03 at 17:36:54  Reply by: Dakne (conny_k80@hotmail.com)
+--------------------------------------------------
+As I said Im a noooob.
+But Ill sit all night figuring out.. :D
+The answer will come to me thanx guys
+
+--------------------------------------------------
+09/09/03 at 18:11:23  Reply by: Dakne (conny_k80@hotmail.com)
+--------------------------------------------------
+I proberly thinking wrong now..
+Bur it compiles correcly and the bot dont shoot monsters and shoot players.
+So I am stupid and cant figure it out,
+So can you tell me how to do it . 
+
+
+--------------------------------------------------
+09/09/03 at 18:22:49  Reply by: Dakne (conny_k80@hotmail.com)
+--------------------------------------------------
+Never mind I figured it out sorry ..
+void BotThink( bot_t *pBot )
+Didnt think about that small brain..
+
+--------------------------------------------------
+09/11/03 at 17:29:17  Reply by: Dakne (conny_k80@hotmail.com)
+--------------------------------------------------
+Hi I need som more help.
+I found out what kind of command they had had to make monsters allys, but I cant get it to work.
+I changed ure code like this, (dont laugh ;D ).
+code:
+
+      pMonsterpev = &pMonster->v; 
+
+      if ( !(pMonsterpev->flags & FL_MONSTER) )
+      
+            {
+                  if( m_fPlayerAlly || true == 0 )         
+                  continue;
+            }
+
+      else;
+   continue; 
+
+
+
+The command they used was a bool value, m_fPlayerAlly true or false.
+This code i made compiles but the bots dont shoot any monster not the allied and not the enemies either ;( .
+
+
+
+--------------------------------------------------
+09/11/03 at 18:00:06  Reply by: LazyOne (the_lazy_one_09@hotmail.com)
+--------------------------------------------------
+You cannot access the mod's private information like that. If the friendly/enemy flag is set in the .fgd file, hook pfnKeyValue and check for the monster_whatever entity.
+
+I couldn't say because I haven't had svencoop installed in a long time.
+
+
+--------------------------------------------------
+09/12/03 at 03:23:15  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+QUOTE:
+
+                  if( m_fPlayerAlly || true == 0 )         
+
+
+
+Is this REALLY what you wanted to write ?
+Do you understand the condition here ?
+
+
+--------------------------------------------------
+09/12/03 at 06:17:56  Reply by: Cheesemonster!!! (cheeseh(at)rcbot(dot)net)
+--------------------------------------------------
+Probably not,
+
+Find out from SvenViking the Private data offset for the m_fPlayerAlly variable.. then you can get it like..
+
+bool m_fPlayerAlly = (bool*)((int)pMonster->pvPrivateData + OFFSET);
+
+...And you want the code on your post to be..
+
+     if ( pMonsterpev->flags & FL_MONSTER )
+     {
+         if( m_fPlayerAlly )         
+            continue;
+     }
+     else;
+        continue; 
+
+[edit]
+
+actually, probably having it better like this, in-case it's not a m,onster and private data is out of limits.
+
+you don't need the new variable, try this
+code:
+
+    if ( pMonsterpev->flags & FL_MONSTER ) 
+    { 
+        if( (bool*)((int)pMonster->pvPrivateData + OFFSET) )         
+           continue; 
+    } 
+    else; 
+       continue; 
+
+
+
+[modified on 09/12/03 at 06:17:56]
+--------------------------------------------------
+11/25/03 at 12:47:17  Reply by: Pidgeon (giuseppe.cerqui@inwind.it)
+--------------------------------------------------
+So, what are the full complete steps for modifying combat.cpp for the monster function? How can I compile the dlls? Sorry I am a noob ;)
+
+--------------------------------------------------
+11/26/03 at 12:04:45  Reply by: Cheesemonster!!! (cheeseh(at)rcbot(dot)net)
+--------------------------------------------------
+Basically...
+
+in HPB_Bot framework...
+
+BotFindEnemy returns an edict pointer to an edict in the game that wants to become its enemy.
+
+So return a monster's edict_t pointer. To do this, look a botman's code in finding players to become enemies, you can adapt this to search from 1 to gpGlobals->maxEntities. And check if it's a monster, then it's ok, otherwise just ignore the edict in the loop.
+
+Eventually it should be made the new enemy if it's not a good distance away.
+

@@ -1,0 +1,415 @@
+--------------------------------------------------
+Subject: get rid of angle overflows once for all !
+--------------------------------------------------
+01/20/02 at 07:26:58  Posted by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+I wrote some stuff that can get rid once for all of those angle problems that always lockup the Half-Life engine when you never expect it:
+
+(in UTIL.CPP):
+code:
+
+void BotSetIdealYaw (bot_t *pBot, float value)
+{
+   pBot->pEdict->v.ideal_yaw = UTIL_WrapAngle (value);
+}
+
+
+void BotAddIdealYaw (bot_t *pBot, float value)
+{
+   pBot->pEdict->v.ideal_yaw = UTIL_WrapAngle (pBot->pEdict->v.ideal_yaw + value);
+}
+
+
+void BotSetIdealPitch (bot_t *pBot, float value)
+{
+   pBot->pEdict->v.idealpitch = UTIL_WrapAngle (value);
+}
+
+
+void BotAddIdealPitch (bot_t *pBot, float value)
+{
+   pBot->pEdict->v.idealpitch = UTIL_WrapAngle (pBot->pEdict->v.idealpitch + value);
+}
+
+
+void BotSetViewAngles (bot_t *pBot, Vector v_angles)
+{
+   pBot->pEdict->v.v_angle = UTIL_WrapAngles (v_angles);
+}
+
+
+void BotAddViewAngles (bot_t *pBot, Vector v_angles)
+{
+   pBot->pEdict->v.v_angle = UTIL_WrapAngles (pBot->pEdict->v.v_angle + v_angles);
+}
+
+
+float UTIL_WrapAngle (float angle_to_wrap)
+{
+   float angle = angle_to_wrap;
+
+   // check for wraparound of angle
+   while (angle > 180)
+      angle -= 360;
+   while (angle < -180)
+      angle += 360;
+
+   return angle;
+}
+
+
+Vector UTIL_WrapAngles (Vector angles_to_wrap)
+{
+   Vector angles = angles_to_wrap;
+
+   // check for wraparound of angles
+   while (angles.x > 180)
+      angles.x -= 360;
+   while (angles.x < -180)
+      angles.x += 360;
+   while (angles.y > 180)
+      angles.y -= 360;
+   while (angles.y < -180)
+      angles.y += 360;
+   while (angles.z > 180)
+      angles.z -= 360;
+   while (angles.z < -180)
+      angles.z += 360;
+
+   return angles;
+}
+
+
+
+Check it out!
+
+--------------------------------------------------
+01/20/02 at 07:31:48  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+what about the o so famous BotFixIdealYaw(pEdict) :) ?
+
+(edit) pEdict soz ;) (/edit)
+
+[modified on 01/20/02 at 07:31:48]
+--------------------------------------------------
+01/21/02 at 06:59:43  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+the BotFixIdealPitch and BotFixIdealYaw do not wrap model angles neither view angles directly, but only ideal_yaw and idealpitch ; furthermore they don't wrap correctly big overflows (as seen when spawning HPB template bots in de_dust2). And finally, calling pfnRunPlayerMove like this:
+code:
+
+g_engfuncs.pfnRunPlayerMove (pBot->pEdict, UTIL_WrapAngles (pBot->pEdict->v.v_angle), (etc...));
+
+
+(note the UTIL_WrapAngles) is the best way to get rid of the problem once for all.
+
+[modified on 01/21/02 at 06:58:55]
+
+[modified on 01/21/02 at 06:59:43]
+--------------------------------------------------
+01/21/02 at 08:22:15  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+ah
+
+There is also a function (in SDK) called UTIL_Anglemod which I took coded out of for wrapping angles :D I dunno if it does what you're trying either ;)
+
+--------------------------------------------------
+01/21/02 at 09:10:39  Reply by: William (william@cgf-ai.com)
+--------------------------------------------------
+Pierre-Marie
+
+>furthermore they don't wrap correctly big overflows
+
+
+Neither does:
+code:
+
+while (angle > 180)
+     angle -= 360;
+
+
+
+If angle is a large enough floating point value, subtracting 360 simply yields the same large value, and an endless loop is the result.
+
+So either:
+- add an assert, to warn for incorrect input, like:
+code:
+
+assert( angle < 2 * 360 );
+
+
+- or do a fool-proof cast to integer, modulo 360 and back to float again
+
+William
+
+--------------------------------------------------
+01/21/02 at 17:08:19  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+I don't understand...
+Have you an example where it would not work ?
+
+--------------------------------------------------
+01/22/02 at 00:56:22  Reply by: William (william@cgf-ai.com)
+--------------------------------------------------
+Just try this and step through it in your debugger:
+code:
+
+  float angle = 10e28f;
+
+  while ( angle > 360 )
+    {
+      angle -= 360;
+      printf("angle = %f\n", angle);
+    }
+
+
+
+What you'll see is:
+- angle apparently starts as 1 followed by 29 zeros, but the 'float' type cannot record that value up all from the megabillions to the thousands with perfect precision. 
+- subtracting a value way smaller than the float precision for the current large angle value simply doesn't do anything to angle. 
+
+You don't get a long loop, you get an infinite loop.
+
+Graphically:
+code:
+
+  100,000,000,000,000,000,000,000,000,000
+ -                                    360
+  ======================================= 
+  100,000,000,000,000,000,000,000,000,000
+
+
+
+because float only can hold something like:
+  100,000,000,000,000,000,000,***,***,***
+and treats all these numbers as one number.
+
+William
+ 
+
+--------------------------------------------------
+01/22/02 at 15:36:03  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+thanks for the explanation !
+
+I'll brute-force cast it to something smaller then...
+
+
+--------------------------------------------------
+01/23/02 at 09:28:24  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+look at this instead:
+
+code:
+
+float UTIL_WrapAngle (float angle_to_wrap)
+{
+   float angle = angle_to_wrap;
+
+   // check for wraparound of angle (handle big overflows too - thanks William at CGF)
+   while (angle > 180)
+      angle -= ((int) angle % 360 + 1) * 360;
+   while (angle < -180)
+      angle += ((int) angle % 360 + 1) * 360;
+
+   return angle;
+}
+
+
+Vector UTIL_WrapAngles (Vector angles_to_wrap)
+{
+   Vector angles = angles_to_wrap;
+
+   // check for wraparound of angles (handle big overflows too - thanks William at CGF)
+   while (angles.x > 180)
+      angles.x -= ((int) angle % 360 + 1) * 360;
+   while (angles.x < -180)
+      angles.x += ((int) angle % 360 + 1) * 360;
+   while (angles.y > 180)
+      angles.y -= ((int) angle % 360 + 1) * 360;
+   while (angles.y < -180)
+      angles.y += ((int) angle % 360 + 1) * 360;
+   while (angles.z > 180)
+      angles.z -= ((int) angle % 360 + 1) * 360;
+   while (angles.z < -180)
+      angles.z += ((int) angle % 360 + 1) * 360;
+
+   return angles;
+}
+
+
+
+[modified on 01/23/02 at 09:28:24]
+--------------------------------------------------
+01/23/02 at 08:58:23  Reply by: @$3.1415rin (joebot@botepidemic.com)
+--------------------------------------------------
+well, i'm using a view system based on speeds and momentums and i never get any type of angle overflows :) lucky me 
+
+(ok, i've to admit, during development that was by primary problem :D )
+
+--------------------------------------------------
+01/23/02 at 14:09:58  Reply by: William (william@cgf-ai.com)
+--------------------------------------------------
+why not:
+code:
+
+float UTIL_WrapAngle (float angle_to_wrap) 
+{   
+  int angle = static_cast<int>(angle_to_wrap);
+  angle %= 360; // angle in [-359,359]
+  if ( angle < 0 )
+    angle += 360;
+
+  return static_cast<float>(angle);
+}
+
+
+
+You can leave the static_cast<type> stuff out, if that scares you.
+
+William
+
+--------------------------------------------------
+01/25/02 at 01:56:35  Reply by: CountFloyd (countfloyd@botepidemic.com)
+--------------------------------------------------
+Angles need to be within the -180/+180 Range if I'm not mistaken.
+Why not:
+code:
+
+typedef struct
+{
+      float x;
+      float y;
+      float z;
+} Vector;
+
+void UTIL_ClampAngle(float* fAngle)
+{
+      char cSign;
+      int iAngle = static_cast<int>(*fAngle);
+      if(iAngle < 0)
+            cSign = -1;
+      else
+            cSign = 1;
+            
+      iAngle %= 180;
+      if(iAngle == 0)
+            iAngle = 180 * cSign;
+      *fAngle = static_cast<float>(iAngle);
+}
+
+void UTIL_ClampVector(Vector *vecAngles)
+{
+      char cSign;
+      int iAngle = static_cast<int>(vecAngles->x);
+      if(iAngle < 0)
+            cSign = -1;
+      else
+            cSign = 1;
+            
+      iAngle %= 180;
+      if(iAngle == 0)
+            iAngle = 180 * cSign;
+      vecAngles->x = static_cast<float>(iAngle);
+      iAngle = static_cast<int>(vecAngles->y);
+      if(iAngle < 0)
+            cSign = -1;
+      else
+            cSign = 1;
+            
+      iAngle %= 180;
+      if(iAngle == 0)
+            iAngle = 180 * cSign;
+      vecAngles->y = static_cast<float>(iAngle);
+      iAngle = static_cast<int>(vecAngles->z);
+      if(iAngle < 0)
+            cSign = -1;
+      else
+            cSign = 1;
+            
+      iAngle %= 180;
+      if(iAngle == 0)
+            iAngle = 180 * cSign;
+      vecAngles->z = static_cast<float>(iAngle);
+}
+
+int main(int argc, char* argv[])
+{
+      float fTestAngle = -360.0;
+      UTIL_ClampAngle(&fTestAngle);
+      printf("%f\n",fTestAngle);
+
+      Vector vecTest;
+      vecTest.x = -390.0;
+      vecTest.y = -200.0;
+      vecTest.z = 1289.0;
+      UTIL_ClampVector(&vecTest);
+      printf("%f %f %f\n",vecTest.x,vecTest.y,vecTest.z);
+      return 0;
+}
+
+
+
+
+--------------------------------------------------
+01/25/02 at 02:28:00  Reply by: William (william@cgf-ai.com)
+--------------------------------------------------
+the only thing I forgot to add is an assert for excessively large/small angles. I've sprinkled my code with those asserts, and you can figure out really soon when some code forgets to properly initialize the angles.
+
+William
+
+--------------------------------------------------
+01/25/02 at 09:13:27  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+Don't you lose some accuracy casting your floats to integers ?
+@William : i'm no C guru, what's an 'assert' ?
+
+
+--------------------------------------------------
+01/25/02 at 11:29:55  Reply by: CountFloyd (countfloyd@botepidemic.com)
+--------------------------------------------------
+Don't use the code I posted above it doesn't work correctly !!
+
+QUOTE:
+
+I've sprinkled my code with those asserts, and you can figure out really soon when some code forgets to properly initialize the angles
+
+
+
+Beat this :)
+code:
+
+      assert(pEdict->v.v_angle.x > -181.0 && pEdict->v.v_angle.x < 181.0
+      && pEdict->v.v_angle.y > -181.0 && pEdict->v.v_angle.y < 181.0
+      && pEdict->v.angles.x > -181.0 && pEdict->v.angles.x < 181.0
+      && pEdict->v.angles.y > -181.0 && pEdict->v.angles.y < 181.0
+      && pEdict->v.ideal_yaw > -181.0 && pEdict->v.ideal_yaw < 181.0
+      && pEdict->v.idealpitch > -181.0 && pEdict->v.idealpitch < 181.0);
+
+
+
+QUOTE:
+
+i'm no C guru, what's an 'assert' ?
+
+
+
+
+assert is very helpful to check if statements are valid. It will only be compiled in the debug version and you'll get a nice message with the option to enter your code if it's untrue. Your MSDN Infos should be able to tell you more about its usage (there are also modified assert functions in the HL SDK like ASSERTSZ but I don't like them that much because they just print Messages to the console). You only have a problem if you're using assert with CS and you want to continue debugging because of the in-built debugger protection. You either have to remove the protection from the client.dll (set a breakpoint on kernel32 "IsDebuggerPresent") or you have to debug a dedicated server.
+
+--------------------------------------------------
+01/25/02 at 11:50:55  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+static casts and asserts scare me :)
+
+--------------------------------------------------
+01/26/02 at 10:21:45  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+while we are talking about it, what's the difference between a static cast and a normal cast and why use it here, teacher ?
+
+...I apologize for my stupid questions, when I was doing BASIC on my 8088 ten years ago there were no such complicated stuff :)
+
+--------------------------------------------------
+01/26/02 at 11:45:27  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+there is a thread somewhere about static casts, doesn't say much but I still don't get it... ;)
+

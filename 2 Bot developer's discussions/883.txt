@@ -1,0 +1,104 @@
+--------------------------------------------------
+Subject: Dll - Size
+--------------------------------------------------
+12/17/00 at 06:51:55  Posted by: @$3.1415rin (as3.1415rin@gmx.de)
+--------------------------------------------------
+Hi
+
+Sorry when sb already wrote this, I just havn't found sth similar in this forum.
+
+When I build my bot with mingw32, the dll is about 1.7 MB (but u can run it). I've only about 650kb Sourcecode, and another compiler compiles it to about 400kb, so I ask how could it be ?
+
+my makefile is (bit stupid with absolute paths, cause I have problems setting paths in W2k) :
+
+CPP = gcc
+CPPFLAGS = -march=pentium -O2 -w -I../engine -I../common -I../pm_shared -I../NNSim -I../NNSim/SOM
+
+OBJ = bot.o bot_client.o bot_combat.o bot_navigate.o dll.o engine.o \
+      h_export.o linkfunc.o util.o waypoint.o nn.o NNWeapon.o ../NNSim/SOM/CqSOM2d.o \
+      ../NNSim/SOM/nVec.o ../NNSim/SOM/fNBorKernel.o ../NNSim/SOM/SOMPattern.o \
+      ../NNSim/SOM/SOMPatternElem.o
+
+joebot.dll:      ${OBJ} HPB_bot_ming.def
+      dllwrap -s --def HPB_bot_ming.def --driver-name gcc -o joebot.dll \
+            ${OBJ} h:/mingw32/lib/libstdc++.a
+
+HPB_bot_ming.def:      ${OBJ}
+      dllwrap -s --output-def HPB_bot_ming.def --driver-name gcc -o joebot.dll \
+            ${OBJ} h:/mingw32/lib/libstdc++.a
+      type GiveFnpt.dat >> HPB_bot_ming.def
+
+clean:
+      -del *.o
+      -del *_ming.def
+      -del *.dll      
+
+%.o:      %.cpp
+      ${CPP} ${CPPFLAGS} -c $< -o $@
+
+%.o:      %.c
+      ${CPP} ${CPPFLAGS} -c $< -o $@
+
+
+
+
+
+--------------------------------------------------
+12/16/00 at 05:49:46  Reply by: Gen[X]Cops (lastride87@hotmail.com)
+--------------------------------------------------
+This question had already been brought up many times here. Use the "search" fuction at the top of this forum to search for releated stuff. (well, at least thats what botman will say!)
+
+--------------------------------------------------
+12/17/00 at 06:52:10  Reply by: @$3.1415rin (as3.1415rin@gmx.de)
+--------------------------------------------------
+Although I'm a german, I know, what 'to search' means, and 'cause i'm not blind I used this 'search' link. I only found stuff, where sb. wasn't able to from the debug to release mode in MSVC or to clean up his files.
+I use ming, cleaned everything up, switched off optimization and other options and I still get this f**ckin big dlls. The only possible thing I can think of now is that ming has probably problems with recursive functions, cause the biggest .o file has to have some recursive functions inside. Havn't found reports on such problems on ming - related sites.
+
+Hoping not to appear too stupid
+
+
+--------------------------------------------------
+12/16/00 at 08:41:16  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+How big are the .o files in the NNSim directory?
+
+If they are including some C++ standard templates (which it looks like they are if you need libstc++) then the included template code from the template library may be the lion's share of the size.
+
+Try commenting out the stuff the uses the standard templates and rebuilding everything without the libstc++ library.  You will probably find that the size becomes much smaller after this.
+
+botman
+
+
+--------------------------------------------------
+12/16/00 at 08:58:58  Reply by: pikachu (emperorstuart@hotmail.com)
+--------------------------------------------------
+try deleting all the .o or .obj files and recompile.
+
+--------------------------------------------------
+12/17/00 at 06:52:48  Reply by: @$3.1415rin (as3.1415rin@gmx.de)
+--------------------------------------------------
+QUOTE:
+try deleting all the .o or .obj files and recompile.
+
+
+
+lol - That's what I meant with cleaning up
+
+->botman
+
+All the nn - stuff .o files take about 600kb. The problem is waypoint.o which is about 1MB (contains this recursive stuff) First I thought the compiler extends this functions (O2), but without any optimization it's the same - I took a look on the dll, but get no information about with what's filled up.
+I had to add this libstc++, cause I use this simulator for other more theoretical problems and there I need sometimes cout and cerr for printing error - messages. I could put every cerr into #ifdef - #endif, but that would be too much work, and obviously I found this big file - waypoint.o
+I just remarked all this stuff, 'cause other compilers produce only 400kb.
+But OK, nobody knows a solution and I just saw, that I can zip this 1.7MB file to about 250kb - so that'll be no real problem with downloading - But it's still not very beautiful.
+
+
+--------------------------------------------------
+12/19/00 at 11:05:15  Reply by: @$3.1415rin (as3.1415rin@gmx.de)
+--------------------------------------------------
+
+FOUND THE SOLUTION !!!!!!
+
+(I'm so happy)
+
+I'm using backtracking for finding ways to certain locations. Therefore I had a field (about 1Meg) to store about 500 possibilities. Because I havn't allocated this field dynamically, but wrote it as global variable, the ming compiler just added this big field into the dll instead of allocating the space needed, when running :-( / :-)
+

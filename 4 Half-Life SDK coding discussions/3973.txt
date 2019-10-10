@@ -1,0 +1,252 @@
+--------------------------------------------------
+Subject: How can I tell if a point belongs to a plane ?
+--------------------------------------------------
+01/01/03 at 16:23:55  Posted by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Maths again...
+
+I have 3 vectors
+code:
+
+Vector v_vertex1;
+Vector v_vertex2;
+Vector v_vertex3;
+
+
+These 3 vectors are the 3 first vertices of a BSP face. They describe the plane on which the face is.
+
+Now I have another vector
+code:
+
+Vector v_entity_feet = (pEntity->v.absmin + pEntity->v.absmax) / 2; // getting entity origin
+v_entity_feet.x = pEntity->v.absmin.x; // lowering it to the bottom of entity's BB
+
+
+
+Now how can I tell if v_entity_feet belongs to the plane (v_vertex1; v_vertex2; v_vertex3) ?
+
+I've tried googl'ing for it, but every site that seems to give a method go complicated maths and I don't f***ing understand a word. So if you know a good "vector math for dummies" site, or know yourself a method and can explain me _slowly_ how to work this out, I'm all ears. My math knowledge never went up to plane-oriented computations.
+
+
+--------------------------------------------------
+01/01/03 at 17:19:31  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+You're trying to find whether or not a point is contained within a polygon (not a plane).  Finding whether a point is contained within a polygon is a specialized case of finding whether a point is contained within a plane.
+
+One "simple" method of finding out whether a point is contained within an n-sided polygon is to create vectors between the point and 2 vertexes of the polygon.  Do this for each pair of vertexes and add the angles together.  If the sum of the angles is 360 degrees, then the point MUST lie within the polygon.
+
+For example, let's say you had a 4 sided polygon ABCD and a point P somewhere inside the polygon.  If you find the angles APB, BPC, CPD, and DPA and add those together you would only get 360 degrees if the point lies within the polygon.  There's an example of this in the waypoint.cpp file included with my BSP tools source code.
+
+This method is not the fastest way of determining if a point lies inside a polygon, but it is a pretty simple way to do it.  You can create vectors from vertexes to the point pretty quickly.  You can find the angle between 2 vectors by getting the Dot Product.  The angle will be in radians, so either convert that to degrees or compare to 2 PI radians (360 degrees).  Obviously the total for floating point calculations won't be EXACTLY 360 degrees so do something like this...
+code:
+if (fabs(angle_total - TWO_PI_RADIANS) <= 0.0001)  // is it close enough?
+{
+   // angle total equals 2 PI radians
+}
+
+botman
+
+[modified on 01/01/03 at 17:19:31]
+--------------------------------------------------
+01/01/03 at 17:22:35  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+You're a genius botman !
+I'm stunned
+
+
+--------------------------------------------------
+01/01/03 at 17:37:44  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+"There's an example of this in the waypoint.cpp file included with my BSP tools source code."
+
+Doooooh!, actually it is contained in the trace.cpp file.  The function is called TraceLineFindFace().
+
+botman
+
+--------------------------------------------------
+01/01/03 at 18:26:17  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Good ! But too late, I already wrote my implementation. Since I'm using a quadtree (well Count Floyd told me yesterday that what I am using for sorting my BSP data is called a "quadtree") for faster lookups I prefer my function ;)
+
+code:
+
+dface_t *GetGroundFace (edict_t *pEntity)
+{
+   // this function returns the ground face supporting pEntity on floor. All the local variables
+   // have been made static to speedup recurrent calls of this function.
+
+   static int i, j, count, edge_index;
+   static float angle;
+   static dface_t *face;
+   static Vector v_worldmins, v_worldmaxs, v_entity_bottom, v_bound1, v_bound2;
+
+   // first reset the face pointer
+   face = NULL;
+
+   if (IsNull (pEntity)  !IsOnFloor (pEntity))
+      return (face); // reliability check
+
+   // get a quick access to the world's bounding box and entity bottom origin
+   v_worldmins = map.dmodels[0].mins;
+   v_worldmaxs = map.dmodels[0].maxs;
+   v_entity_bottom = BottomOriginOf (pEntity); // get entity bottom origin
+
+   // compute the latitude and longitude in the topologic array
+   i = (int) ((v_entity_bottom.x - v_worldmins.x) / (v_worldmaxs.x - v_worldmins.x) * MAP_TOPOLOGY_GRANULARITY);
+   j = (int) ((v_entity_bottom.y - v_worldmins.y) / (v_worldmaxs.y - v_worldmins.y) * MAP_TOPOLOGY_GRANULARITY);
+
+   // handle the cases where the delimiter is just on the right or upper edge of the array...
+   if (i > MAP_TOPOLOGY_GRANULARITY - 1)
+      i = MAP_TOPOLOGY_GRANULARITY - 1;
+   if (j > MAP_TOPOLOGY_GRANULARITY - 1)
+      j = MAP_TOPOLOGY_GRANULARITY - 1;
+
+   // loop through all the face we know to be in this topological zone
+   for (count = 0; count < map.topology[i][j].faces_count; count++)
+   {
+      face = &map.topology[i][j].faces[count]; // quick access to the face
+      angle = 0; // reset angle
+
+      // face is walkable, loop though the edges and get the vertexes...
+      for (edge_index = 0; edge_index < face->numedges; edge_index++)
+      {
+         // get the coordinates of the vertex of this edge...
+         edge = map.dsurfedges[face->firstedge + edge_index];
+
+         // if its index in the BSP tree is negative...
+         if (edge < 0)
+         {
+            edge = -edge; // revert it
+            edge_boundary = 1; // consider the other side of the segment
+         }
+         else
+            edge_boundary = 0; // else consider the first side of the segment
+
+         // locate the first vertice of this edge
+         v_bound1 = map.dvertexes[map.dedges[edge].v[edge_boundary}}.point;
+
+         // get the coordinates of the vertex of the next edge...
+         edge = map.dsurfedges[face->firstedge + ((edge_index + 1) % face->numedges)];
+
+         // if its index in the BSP tree is negative...
+         if (edge < 0)
+         {
+            edge = -edge; // revert it
+            edge_boundary = 1; // consider the other side of the segment
+         }
+         else
+            edge_boundary = 0; // else consider the first side of the segment
+
+         // locate the second vertice of this edge
+         v_bound2 = map.dvertexes[map.dedges[edge].v[edge_boundary}}.point;
+
+         // sum up all the angles vertex - point - next vertex and check if we have 360 (thx botman)
+         angle += abs (UTIL_AngleOfVectors ((v_bound1 - v_entity_bottom), (v_bound2 - v_entity_bottom)));
+      }
+
+      // if the resulting angle is 360, then the point is likely to be on the face
+      if (abs (UTIL_EngineWrapAngle (angle)) - 360 < 1)
+         return (face); // if entity is not on face, then it's damn close !
+   }
+
+   return (NULL); // well, not found a face entity could be on I guess...
+}
+
+
+
+[modified on 01/01/03 at 18:26:17]
+--------------------------------------------------
+01/01/03 at 18:22:00  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+Damn there was me staying up for an extra hour trying to work this one out. :P
+
+I came up with this
+
+code:
+
+float UTIL_AngleBetweenVectors(Vector vec1, Vector vec2)
+{
+      double pi = 3.1415926535898;
+
+      double vec1Dotvec2 = vec1.x*vec2.x + vec1.y*vec2.y + vec1.z*vec2.z;
+      double veclengths = vec1.Length() * vec2.Length();
+
+      return ( (float)(acos( vec1Dotvec2/veclengths ) /pi)*180 );
+}
+
+bool BelongsToPlane( const Vector &v_vertex1, 
+                     const Vector &v_vertex2, 
+                     const Vector &v_vertex3,
+                     const Vector &v_entity_feet )
+{
+      if ( !PointBetweenVertices(v_vertex1,v_vertex2,v_vertex3,v_entity_feet) )
+            return FALSE;
+
+      if ( !PointBetweenVertices(v_vertex2,v_vertex3,v_vertex1,v_entity_feet) )
+            return FALSE;
+
+      if ( !PointBetweenVertices(v_vertex3,v_vertex2,v_vertex1,v_entity_feet) )
+            return FALSE;
+
+      return TRUE;
+}
+
+bool PointBetweenVertices( const Vector &v_vertex1, 
+                                       const Vector &v_vertex2, 
+                                       const Vector &v_vertex3, 
+                                       const Vector &v_point )
+{
+  float theangle,tempangle1,tempangle2;
+
+  tempangle1 = UTIL_AngleBetweenVectors(v_vertex1,v_vertex2);
+  tempangle2 = UTIL_AngleBetweenVectors(v_vertex1,v_vertex3);
+  theangle = UTIL_AngleBetweenVectors(v_vertex1,v_point);
+
+  if ( tempangle1 < tempangle2 ) // is tempangle1 the smallest angle?
+        return (( theangle >= tempangle1 ) && ( theangle <= tempangle2 ));
+  else
+        return (( theangle <= tempangle1 ) && ( theangle >= tempangle2 ));
+}
+
+
+
+All I do is get the angles between each vertex and find out if the angle to the point is between them for each vertex... I don't even know if it works, and it certainly isnt that fastest way of finding it :(
+
+Damn this code should find out if a point lies exactly on a plane (i think)...
+
+[modified on 01/01/03 at 18:22:00]
+--------------------------------------------------
+01/01/03 at 18:28:47  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+nm Cheesy but thanks anyway, good to know there are always some cool ass friends out there for helping ya out ;D
+
+
+--------------------------------------------------
+01/02/03 at 02:43:51  Reply by: @$3.1415rin (johannes@_-removeifnotavirus-_lampel.net)
+--------------------------------------------------
+a fact that might also be useful for this is, that a point in a plane ( a plane, not a polygon in this case ) dotproduct the normal vector of the plane is a constant value ... might be used for a quick check at the beginning of other checks ...
+
+--------------------------------------------------
+01/02/03 at 05:01:56  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+yea also if you are looking for an exact angle, instead of taking an arc/inverse cosine, return true if the dotproduct is the same as the cosine of the angle, which can save a cosine instruction :)
+
+[modified on 01/02/03 at 05:01:56]
+--------------------------------------------------
+01/02/03 at 06:43:02  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+eeeeh? ???
+
+--------------------------------------------------
+01/02/03 at 08:52:24  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+;) Well I was hinting you could, instead of adding up the angles, add up the dot products and if the total is 0, that CAN be 360 degrees, but it could also mean 0,360,720,1080... etc instead (just hinted this this to avoid using the cosine function)
+
+--------------------------------------------------
+01/02/03 at 13:31:29  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+I see (had forgotten that rule, as usual)
+
+Thanks for the hint !
+
+

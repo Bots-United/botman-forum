@@ -1,0 +1,73 @@
+--------------------------------------------------
+Subject: colored names in chat box
+--------------------------------------------------
+08/07/01 at 07:35:30  Posted by: daRope (fzschocke@web.de)
+--------------------------------------------------
+Hey, cool idea this new forum. If it keeps up with the discussion in the bot coding forum this is gonna be my favourite HL SDK coding resource. :)
+
+To the point. In some version CS added colored name tags for the players in the chat area. Ts were red and CTs were blue. How can I change the color of text in the chat area? Is that done with ACSII control sequences or how?
+
+--------------------------------------------------
+08/07/01 at 07:41:55  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+The team color is controlled in the client.dll code, hence you can't change it.  All you can do is control which team number is send to the Counter-Strike client for a say message (I believe the first byte of the message indicates the team).
+
+botman
+
+--------------------------------------------------
+08/08/01 at 14:27:03  Reply by: BillDoor (nf9576@bris.ac.uk)
+--------------------------------------------------
+I think the colour of the text is set by the team of the entity passed in the SayText message. In TFC I use the following code to fake says, teamsays, etc.:
+
+code:
+
+void FakeSay(char *Message)
+{
+      char buf[8192];
+    sprintf(buf, "%c%s: %s\n", 0x02, STRING(pev->netname), Message);
+      MESSAGE_BEGIN(MSG_ALL, 78);
+               WRITE_BYTE(ENTINDEX(edict()));
+            WRITE_STRING(buf);
+      MESSAGE_END();
+}
+
+void FakeTeamSay(char *Message)
+{
+      char buf[8192];
+      int i;
+    CBaseEntity *pCOther;
+    sprintf(buf, "%c(TEAM) %s: %s\n", 0x02, STRING(pev->netname), Message);
+    for(i = 1; i<=gpGlobals->maxClients; i++)
+    {
+          if(pCOther = UTIL_PlayerByIndex(i))
+        {
+              if((pCOther->pev->team == pev->team)  (TeamAlly[pCOther->pev->team-1] & (1<<pev->team)))
+            {
+                  MESSAGE_BEGIN(MSG_ONE, 78, NULL, pCOther->edict());
+                      WRITE_BYTE(ENTINDEX(edict()));
+                    WRITE_STRING(buf);
+                MESSAGE_END();
+            }
+        }
+    }
+}
+
+void FakeSayToPlayer(edict_t *pPlayer, char *Message)
+{
+      char buf[8192];
+    sprintf(buf, "%c%s: %s\n", 0x02, STRING(pev->netname), Message);
+      MESSAGE_BEGIN(MSG_ONE, 78, NULL, pPlayer);
+               WRITE_BYTE(ENTINDEX(edict()));
+            WRITE_STRING(buf);
+      MESSAGE_END();
+
+}
+
+
+
+The 78 in MESSAGE_BEGIN is a SayText message in TFC, I think -- it may be different in other mods, so you'd be best to log some to see for yourself.
+I think what happens is that the 0x02 character at the start of the say string is stripped and tells Half-Life to colour everything up to the colon the colour of the player's team, hence the need to pass the player's index with the message.
+
+[EDIT] There should be an OR (double pipe) in that if, but I can't get it to show :( [/EDIT]
+
+[modified on 08/08/01 at 14:27:03]

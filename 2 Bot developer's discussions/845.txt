@@ -1,0 +1,124 @@
+--------------------------------------------------
+Subject: Proper Error handling (Botman?)
+--------------------------------------------------
+12/11/00 at 16:38:14  Posted by: CountFloyd (countfloyd_1999@yahoo.com)
+--------------------------------------------------
+If a critical error occurs in my Bot I'm using the ALERT Function to pop up the Standard Errorbox. As you know this only works if you started HL in developer mode. My question: Is there another Function which you can call to have some error reminder without using developer mode ? Or do I have to do it the old-fashioned Windows way with GetSafeHWND and stuff like that ? What about the compatibility to Linux then ?
+Another question:
+Is there a fail-safe method to exit the DLL when a critical (unrecoverable) error happened ?
+
+--------------------------------------------------
+12/12/00 at 04:59:51  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+I use ALERT for errors that I want to report during runtime (you can turn developer mode on inside a script file by using "developer 1"), like this...
+
+ALERT( at_error, "Bot Error - Terminating Game!" );
+
+I don't know of any other generic way of reporting errors to users other than the ALERT function (which will also terminate the DLL and exit Half-Life). I believe the ALERT (at_error) stuff is also supported under Linux.
+
+Is this what you were looking for?
+
+botman
+
+--------------------------------------------------
+12/12/00 at 08:04:18  Reply by: CountFloyd (countfloyd_1999@yahoo.com)
+--------------------------------------------------
+No, not exactly...I already use the Alert Function but I wanted to have Error Messages for the average User who hasn't turned on Developer Mode (and doesn't know how to do this). Like I said HL does allow you to use all Windows API Functions so I could easily throw out a Messagebox myself, but I don't know about Window coding in Linux. That's why I asked the question about a standard way supported by HL. Too bad, there's not a crash-handler we know of...
+
+--------------------------------------------------
+12/13/00 at 05:35:02  Reply by: William (william@botepidemic.com)
+--------------------------------------------------
+A next best solution is to log the error to a text file in the bot's directory and ask the gamer, when complaining :), to send that specific text file.
+
+I understand that explicitly and immediately confronting the gamer with the message is a better solution. 
+Spawning that text file (most likely using notepad) in the background would be a solution, though platform specific. A Linux counterpart would be easier to develop than an ALERT counterpart.
+
+I expect that spawning a new process that launches the text file / notepad in the background takes about 2 lines of code.
+
+William
+
+
+
+
+--------------------------------------------------
+12/13/00 at 17:40:54  Reply by: CountFloyd (countfloyd_1999@yahoo.com)
+--------------------------------------------------
+Yes logging to a file could be a solution. But don't underestimate the average idiot user who doesn't even know how to locate the written file. And spawning notepad can't be a solution because if it goes wrong in some of my routines you won't see much more than a percect blue-screen-of-death. Besides, I don't know exactly about Linux but I believe spawning is a lot different from Windows and Windows itself has differences with that between its versions (NT and 98). For example you can't use the runtime spawn function in some Windows Versions (would propably use ShellExecute instead) but you could use it under Linux. Does anybody know what the SysError Function does (I don't have the SDK to look it up) ?
+
+--------------------------------------------------
+12/14/00 at 04:20:06  Reply by: theimann (theimann@stud.fh-heilbronn.de)
+--------------------------------------------------
+> Does anybody know what the SysError Function does (I don't have the SDK to look it up) ? 
+
+I don't have the SDK here so that's not a 100% guaranteed answer, but I remember some comment that says something like "The SysError function is called whenever a critical error occurs. MOD-authors should put a breakpoint here to debug their code". If you want to notify the user of the fatal errors only, this would be the spot to put your routine I guess...
+
+Tobias
+
+
+--------------------------------------------------
+12/14/00 at 05:39:25  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+The MOD Sys_Error() function will be called by the Half-Life engine whenever any critical error occurs (like EntIndexOfEdict errors, etc.).  There will be a string passed to this function with the Half-Life error message that can be logged to a text file by the MOD if desired.
+
+If you are using Microsoft Visual C++ and running under the debugger, it is a good idea to set a breakpoint on this function to catch places where you forgot to initialize a pointer or other nasty coding bugs that lead to crashes.  Note that this function will ONLY be called by the Half-Life engine in cases where the game is about to terminate (and that the MOD can't do anything to recover and prevent the game from terminating once this function is called).
+
+botman
+
+--------------------------------------------------
+12/14/00 at 07:13:19  Reply by: CountFloyd (countfloyd_1999@yahoo.com)
+--------------------------------------------------
+Didn't try this yet, could this function be called by the Bot DLL to bail out of the game or does it just put this MessageBox on the screen ? 
+
+--------------------------------------------------
+12/14/00 at 07:37:22  Reply by: William (william@botepidemic.com)
+--------------------------------------------------
+Count,
+
+I acknowledge the differences between OS's, but it would be only a few lines of code, neatly hidden beyond a function declaration, and guarded by some #ifdef-s.
+I expect there's a Win32 call that does the job for all Win9x/NT, possibly preceded by an OS specific call to fetch some parameters.
+
+Under Win2k, a crashing PODbot (or other bot :) ) returns me to the desktop. I wouldn't mind to see your message there, though it isn't guaranteed to work all time.
+
+Every working solution is better than what the HL bots do today. The logging (without the spawning) works fine for me.
+
+William
+
+--------------------------------------------------
+12/14/00 at 11:14:21  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+"could this function be called by the Bot DLL to bail out of the game or does it just put this MessageBox on the screen?"
+
+It doesn't do either.  All it does is return to the Half-Life engine.  The engine is the one that generates the MessageBox and then exits the game after the "OK" button is clicked.
+
+Here's the simplest Windows program I have ever seen for displaying a message box...
+
+code:
+#include <windows.h>
+
+int STDCALL
+WinMain (HINSTANCE hInst, HINSTANCE hPrev, LPSTR lpCmd, int nShow)
+{
+      MessageBox (NULL, "Hello, Windows!", "Hello", MB_OK);
+      return 0;
+}
+
+
+...notice that it doesn't require a Window handle to display the message.  And of course this won't work under Linux.
+
+The only way I know of for the MOD DLL to exit is to use the SERVER_COMMAND() function to execute the "quit" command.
+
+Since the dedicated console under Linux is just a text application you can use printf() to display a message and then use "quit" to exit the dedicated server.
+
+botman
+
+--------------------------------------------------
+12/14/00 at 13:31:45  Reply by: CountFloyd (countfloyd_1999@yahoo.com)
+--------------------------------------------------
+William:
+You already convinced me to do the logging file, I already do a lot of logging in my debug build.
+
+Botman:
+"Here's the simplest Windows program..."
+
+LOL ! I might be new to Bot programming but I surely did a lot of Windows and DirectX programming before, so you don't need to post such a HelloWorld program. And the original question was how to do these things in Linux. I could do a lot of fancy things in Windows, but wouldn't know how to do the same under Linux. Besides, if I would have doubts how to do code something for Windows I would look it up in my MSDN CD and wouldn't cut and paste it out of this board. Apart from this, thanks for all your insights...
+

@@ -1,0 +1,326 @@
+--------------------------------------------------
+Subject: Help My Buy System...
+--------------------------------------------------
+07/23/01 at 10:22:46  Posted by: redlink (redlink_star@hotmail.com)
+--------------------------------------------------
+I have designed a Basic Bot Buy Weapon System...
+
+I dont know where to put the:
+FakeClientCommand(pEdict, "buy", NULL, NULL);
+ 
+and how to make the bots buy in the start please help me some body... 
+
+void BuyWeapon( bot_t *pBot )
+{
+    
+         FakeClientCommand(pEdict, "buy", NULL, NULL);
+   }
+
+      if (pBot->bot_money >=4000)
+
+           switch (RANDOM_LONG(0,5))
+                                    {
+                                          case 0:
+                                                
+                                FakeClientCommand(pEdict, "menuselect", "3", "1");
+                                                  break;
+                                          case 1:
+                                                
+                                FakeClientCommand(pEdict, "menuselect", "4", "1");
+                                                break;
+                                          case 2:
+                                          
+                                FakeClientCommand(pEdict, "menuselect", "4", "2");
+                                                break;
+                                          case 3:
+                                                
+                                FakeClientCommand(pEdict, "menuselect", "4", "3");
+                                                break;
+                                          case 4:
+                                                
+                                FakeClientCommand(pEdict, "menuselect", "4", "4");
+                                                break;
+                                          case 5:
+                                                
+                                FakeClientCommand(pEdict, "menuselect", "1", "3");
+                                              break;
+                                          
+                                    }
+      if (pBot->bot_money <=1000)
+
+           switch (RANDOM_LONG(0,0))
+                                    {
+                                          
+                                          case 0:
+                                                
+                                FakeClientCommand(pEdict, "menuselect", "1", "3");
+                                              break;
+                                          
+                                    }
+}
+
+--------------------------------------------------
+07/23/01 at 10:40:10  Reply by: jerry_stoel (jerry_stoel@hotmail.com)
+--------------------------------------------------
+You can't do it like this. You have to wait on the vgui messages. So when you got a vgui message then you fire the fakeclientcommand. Here a little example:
+
+code:
+
+FakeClientCommand(pEdict, "buy", NULL, NULL);
+
+      if(pBot->start_action == MSG_CS_BUY_MENU)
+      {
+            FakeClientCommand(pEdict, "menuselect", "8", NULL);
+
+            if(pBot->start_action == MSG_CS_EQUIP_MENU)
+            {                  
+                  if((money >= 1500) && (pBot->bot_armor < 80))
+                  {
+                        FakeClientCommand(pEdict, "menuselect", "2", NULL);
+                  }
+                }
+}
+
+
+
+This piece of code buy's armor. And as you can see it waits until it receives the a vguimessage.
+
+Hope this helps.
+Seeya,
+
+--------------------------------------------------
+07/23/01 at 10:55:47  Reply by: redlink (redlink_star@hotmail.com)
+--------------------------------------------------
+Does this work then but i get a error:
+: error C2065: 'pEdict' : undeclared identifier
+
+void BuyWeapon( bot_t *pBot )
+{
+  
+   FakeClientCommand(pEdict, "buy", NULL, NULL); 
+ 
+      if(pBot->start_action == MSG_CS_BUY_MENU) 
+      { 
+                  if (pBot->bot_money >=4000)
+
+           switch (RANDOM_LONG(0,5))
+                                    {
+                                          case 0:
+                                                
+                                FakeClientCommand(pEdict, "menuselect", "3", "1");
+                                                  break;
+                                          case 1:
+                                                
+                                FakeClientCommand(pEdict, "menuselect", "4", "1");
+                                                break;
+                                          case 2:
+                                          
+                                FakeClientCommand(pEdict, "menuselect", "4", "2");
+                                                break;
+                                          case 3:
+                                                
+                                FakeClientCommand(pEdict, "menuselect", "4", "3");
+                                                break;
+                                          case 4:
+                                                
+                                FakeClientCommand(pEdict, "menuselect", "4", "4");
+                                                break;
+                                          case 5:
+                                                
+                                FakeClientCommand(pEdict, "menuselect", "1", "3");
+                                              break;
+                                          
+                                    }
+                        } 
+                  }
+
+
+--------------------------------------------------
+07/23/01 at 11:44:07  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+you've got to understand that when somrething is undeclared it means you havent defined at reachable code.
+
+botman uses pEdict instead of pBot->pEdict for speed, quicker to type, basically.
+
+And what is pEdict? It is a structure made from the edict_t table. So to create it you'll need
+
+code:
+
+edict_t *pEdict = pBot->pEdict;
+
+
+--------------------------------------------------
+07/23/01 at 11:55:47  Reply by: @$3.1415rin (as3.1415rin@gmx.de)
+--------------------------------------------------
+i dunno if it works to do 
+
+fakeclient(...,"buy",...
+fakeclient(...,"3","1",...
+
+i used this here and it even works without testing the menu state
+
+code:
+
+void BotBuy_CS_WEAPON_P228(bot_t *pBot){
+      edict_t *pEdict = pBot->pEdict;
+      
+      FakeClientCommand(pEdict,"buy",0,0);
+      FakeClientCommand(pEdict,"menuselect","1",0);
+      FakeClientCommand(pEdict,"menuselect","4",0);
+}
+
+
+
+--------------------------------------------------
+07/23/01 at 14:18:26  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+I created a buy system which allows the bot to choose the best weapon with the amount of money it has by using new structures which hold the weapons id, cost, weapon type and the menu selections needed to buy it. :)
+
+--------------------------------------------------
+07/23/01 at 14:45:34  Reply by: @$3.1415rin (as3.1415rin@gmx.de)
+--------------------------------------------------
+I've a similar system. The cost, type and "buyability" for teams of weapons are stored in an array. Then i search the best weapon. The field contains a field of pointers to the buy functions as well, therefore i have one function for each weapon. so the decision code itself is really short
+
+--------------------------------------------------
+07/23/01 at 23:58:31  Reply by: BigAl (pekka.pitkanen@quicknet.inet.fi)
+--------------------------------------------------
+:). All the good examples seem to be given already, but here comes.
+
+You shouldnt just say " if (pbot->money > 4000) " because later you will notice that it gets boring when bots buy same weapons.So place a minimum and maximum value: if ((pbot->money > 4000) && pbot->money < 5000)). The longer and more variations you can write to buyfuncion the better =).
+
+make them randomize what they buy, if they have over 5000 of money. And sometimes those fakeclient() commands get issued too fast on fast computers that bots actually dont buy anything, so place a delay ie. float buydelay = 30.0
+raw example:
+
+if (!newroundstarted)
+ buydone = false
+ if ((buydelay < gpglobals->time) && (buydone = false))
+ _issue_buy_commands_and_so_on
+ buydone = true;
+ 
+regards,
+Sakari
+
+[modified on 07/23/01 at 23:58:31]
+--------------------------------------------------
+07/24/01 at 03:00:19  Reply by: Spectual (spectual@hotmail.com)
+--------------------------------------------------
+And sometimes those fakeclient() commands get issued too fast on fast computers >>> Wasn't that the whole point (to avoid it) in jerry van der stoel 's code????
+
+--------------------------------------------------
+07/24/01 at 08:04:25  Reply by: noskill (ownz0r@hotmail.com)
+--------------------------------------------------
+umm, i dont think you can send multiple selections in 1 menuselect command.  If you want to buy an AK, you would have to do 
+menuselect 1
+menuselect 4
+NOT
+menuselect 1 4
+
+--------------------------------------------------
+07/24/01 at 09:31:01  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+Howver using the code to check if the vgui menu appears kinda will ruin my code becuase then I believe the bot won't buy anything :(
+
+--------------------------------------------------
+07/24/01 at 09:57:53  Reply by: BigAl (pekka.pitkanen@quicknet.inet.fi)
+--------------------------------------------------
+Yeah,my bad, im sorry Klaus Petersen. Obviously i cant read today, not the first time today believe me.
+
+--------------------------------------------------
+07/24/01 at 11:16:47  Reply by: jerry_stoel (jerry_stoel@hotmail.com)
+--------------------------------------------------
+It is really not that hard. You just have to define the vgui messages in the bot.h file like this:
+
+code:
+
+// buy menu's
+#define MSG_CS_BUY_MENU                  1
+#define MSG_CS_PISTOL_MENU            2
+#define MSG_CS_SHOTGUN_MENU              3
+#define MSG_CS_SUB_MENU                  4
+#define MSG_CS_RIFLE_MENU            5
+#define MSG_CS_PARA_MENU            6
+#define MSG_CS_EQUIP_MENU            7
+
+
+
+Then you have to change the bot_client.cpp, the function bot_client_cs_vgui like this (put this under the other vgui messages):
+code:
+
+else if ((*(int *)p) == 28)  // buy menu
+
+      bots[bot_index].start_action = MSG_CS_BUY_MENU;
+
+      else if ((*(int *)p) == 29)  // pistol menu
+
+      bots[bot_index].start_action = MSG_CS_PISTOL_MENU;
+      
+      else if ((*(int *)p) == 30)  // shotgun menu
+
+      bots[bot_index].start_action = MSG_CS_SHOTGUN_MENU;
+
+      else if ((*(int *)p) == 31)  // rifle menu (NOT SUB MENU)!!!!!!!
+
+      bots[bot_index].start_action = MSG_CS_RIFLE_MENU;
+
+      else if ((*(int *)p) == 32)  // submachine gun menu (NOT RIFLE MENU)!!!!!!!
+
+      bots[bot_index].start_action = MSG_CS_SUB_MENU;
+
+      else if ((*(int *)p) == 33)  // para menu
+
+      bots[bot_index].start_action = MSG_CS_PARA_MENU;
+
+      else if ((*(int *)p) == 34)  // equipment menu
+
+      bots[bot_index].start_action = MSG_CS_EQUIP_MENU;
+
+
+
+And then create your buy function. For example:
+code:
+
+FakeClientCommand(pEdict, "buy", NULL, NULL);
+
+     if(pBot->start_action == MSG_CS_BUY_MENU)
+     {
+           FakeClientCommand(pEdict, "menuselect", "8", NULL);
+
+           if(pBot->start_action == MSG_CS_EQUIP_MENU)
+           {                  
+                 if((money >= 1500) && (pBot->bot_armor < 80))
+                 {
+                       FakeClientCommand(pEdict, "menuselect", "2", NULL);
+                 }
+               }
+}
+
+
+
+And like cheesemonster said define pEdict:
+code:
+
+edict_t *pEdict = pBot->pEdict;
+
+
+
+That's it!
+
+Seeya,
+
+--------------------------------------------------
+07/27/01 at 16:26:43  Reply by: murph (Dmurphy58@prodigy.net)
+--------------------------------------------------
+hehe, damn I could have used this code when I was working on a half-life paintball bot.
+
+--------------------------------------------------
+07/28/01 at 04:44:33  Reply by: @$3.1415rin (as3.1415rin@gmx.de)
+--------------------------------------------------
+i think it's a bit strange that this start_action variable is updated within the fakeclient command, within one frame ... but ok, if it works ... my system works even without that and even on fast computers ( 1ghz, 512 mb ram ) and on slow ones ( p166 64mb ram ) ...
+
+--------------------------------------------------
+07/28/01 at 07:33:07  Reply by: jerry_stoel (jerry_stoel@hotmail.com)
+--------------------------------------------------
+Start_action is only a VGUI_menu variable. Like when you buy a weapon in counterstrike. You first select buy, then nr. 1 and then nr. 3 for example. It just looks cool in the code (Advanced :P).
+
+Seeya,
+

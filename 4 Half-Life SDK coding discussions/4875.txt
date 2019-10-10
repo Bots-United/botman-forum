@@ -1,0 +1,54 @@
+--------------------------------------------------
+Subject: Bot code
+--------------------------------------------------
+10/03/03 at 09:59:50  Posted by: NightmR (dragonboy1@ofir.dk)
+--------------------------------------------------
+I'm playing a little with some of your bot code and are currently trying to implant it in some amx module. The sad thing is that the last line crashes my server :( 
+
+char botname[64] = "MyBot"; 
+     char ptr[128]; 
+
+     edict_t *pEdict = g_engfuncs.pfnCreateFakeClient( botname ); 
+
+     if (!pEdict) 
+     { 
+           AMX_RAISEERROR(amx,AMX_ERR_NATIVE); 
+           return 0; 
+     } 
+
+     pEdict->v.flags |= FL_FAKECLIENT; 
+
+
+     player(VARS(pEdict)); 
+
+            
+     char* infobuffer = GET_INFOBUFFER( pEdict ); 
+   int clientIndex = ENTINDEX( pEdict ); 
+     SET_CLIENT_KEY_VALUE( clientIndex, infobuffer, "model", "vip" ); 
+     SET_CLIENT_KEY_VALUE( clientIndex, infobuffer, "rate", "3500.000000"); 
+   SET_CLIENT_KEY_VALUE( clientIndex, infobuffer, "cl_updaterate", "20"); 
+      
+     (*gFunctionTable.pfnClientConnect)(pEdict, botname, "127.0.0.1", ptr); 
+     (*gFunctionTable.pfnClientPutInServer)(pEdict); 
+
+Any help would be great :) 
+
+
+--------------------------------------------------
+10/03/03 at 12:02:42  Reply by: NightmR (dragonboy1@ofir.dk)
+--------------------------------------------------
+Okay, I got it to work :) And my bot connect's properly. Now, it seems like I can't get it to join the game (cs). I tryed the FakeClientCommand but honestly can't figure out how it works. Something with intercepting some metamod functions.. And loading it into a stucture.. But how will that execute the command on my bot?
+
+Else, Thanks for a good forum :)
+
+--------------------------------------------------
+10/03/03 at 12:50:30  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+You will need to send a command to get the bot to join a team.  The HPB bot does this by intercepting the network messages that would normally go from the server to a human client and uses those messages to figure out what response needs to get sent back to the server (to get the bot to join a team).
+
+The HPB bot code has a special function that's used to send a message to the server as though a human client had sent a message.  In the HPB bot code this is the FakeClientCommand() function.  This function uses a global memory buffer to store the command text and when the MOD DLL game code requests command text from the engine, the HPB bot code intercepts this function and sends the text from the global buffer instead.
+
+I don't know if AMX has this functionality or not.  It would only be needed when you need to fake a response from a client.
+
+botman
+

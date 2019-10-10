@@ -1,0 +1,526 @@
+--------------------------------------------------
+Subject: obtaining data for entities, players and server
+--------------------------------------------------
+03/30/03 at 14:08:02  Posted by: BAStumm (bs@bs-linux.com)
+--------------------------------------------------
+Can someone point me to some resource that describes how to get the various data about the game? This is in reference to modifications to botmans source (2.1). Here is a wish list with some of the stuff we've already figured out. Specifically we are looking for data related to TFC.
+
+code:
+
+
+SERVER=>        HOSTNAME
+                IP : PORT
+                PLAYERS / MAX     / gpGlobals->maxclients
+                MAP             STRING(gpGlobals->mapname)
+                TIMELEFT
+                TEAM SCORES
+                                
+                                
+PLAYER=>        (FOR EACH)
+                NAME            STRING(INDEXENT(i)->v.netname)
+                TEAM            UTIL_GetTeam(INDEXENT(i))
+                CLASS           STRING(INDEXENT(i)->v.playerclass)
+                HEALTH          INDEXENT(i)->v.health / INDEXENT(i)->v.max_health
+                ARMOR           INDEXENT(i)->v.armorvalue / tfc_max_armor[INDEXENT(i)->v.playerclass]
+                FRAGS
+                DEATHS
+                CURRENT WEAPON
+                HOLDING FLAG?
+                X COORD         INDEXENT(i)->v.origin.x
+                Y COORD         INDEXENT(i)->v.origin.y
+                Z COORD         INDEXENT(i)->v.origin.z
+                PING
+                TIME CONNECTED
+                IP ADDY
+                USERID
+                WONID
+                INDEXID
+
+
+ENTITIES=>      (FOR EACH)
+                SENTRY GUNS=>                   pent = UTIL_FindEntityByClassname( pent, "building_sentrygun" )
+                                OWNER
+                                TEAM            pent->v.colormap
+                                X COORD         pent->v.origin.x
+                                Y COORD         pent->v.origin.y
+                                Z COORD         pent->v.origin.z
+                                HEALTH          pent->v.health / pent->v.max_health
+                                LEVEL
+
+                DISPENSERS=>                    pent = UTIL_FindEntityByClassname( pent, "building_dispenser" )  ???
+                                OWNER
+                                TEAM            ?? (maybe not needed) ??
+                                X COORD         pent->v.origin.x
+                                Y COORD         pent->v.origin.y
+                                Z COORD         pent->v.origin.z
+                                HEALTH          pent->v.health / pent->v.max_health
+
+                FLAGS=>                         UTIL_FindEntityByClassname( pent, "item_tfgoal" )
+                                TEAM
+                                X COORD         pent->v.origin.x
+                                Y COORD         pent->v.origin.y
+                                Z COORD         pent->v.origin.z
+
+
+
+
+[modified on 03/30/03 at 14:08:02]
+--------------------------------------------------
+03/30/03 at 15:21:48  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+code:
+
+SERVER=> HOSTNAME        if for a server side mod, you know it (eventually call a GetHostByName on your current IP)
+         IP : PORT       if for a server side mod, you know it as well
+         PLAYERS / MAX   count++ in ClientPutInServer, count-- in ClientDisconnect  / gpGlobals->maxclients
+         MAP             STRING(gpGlobals->mapname)
+         TIMELEFT        record round start time, get round duration CVAR then (round_start_time + round_duration - gpGlobals->time)
+         TEAM SCORES     unavailable AFAIK
+                                
+PLAYER=> (FOR EACH)
+         NAME            STRING(INDEXENT(i)->v.netname)
+         TEAM            UTIL_GetTeam(INDEXENT(i))
+         CLASS           STRING(INDEXENT(i)->v.playerclass)
+         HEALTH          INDEXENT(i)->v.health / INDEXENT(i)->v.max_health
+         ARMOR           INDEXENT(i)->v.armorvalue / tfc_max_armor
+         FRAGS           INDEXENT(i)->v.frags
+         DEATHS          in pvPrivateData (unavailable), record them in realtime
+         CURRENT WEAPON  STRING(INDEXENT(i)->v.weaponmodel)
+         HOLDING FLAG?   (v_position_of_flag == INDEXENT(i)->v.origin)
+         X COORD         INDEXENT(i)->v.origin.x
+         Y COORD         INDEXENT(i)->v.origin.y
+         Z COORD         INDEXENT(i)->v.origin.z
+         PING            unavailable
+         TIME CONNECTED  record player connection date in ClientPutInServer() then (gpGlobals->time - client[index].connection_time)
+         IP ADDY         record in ClientConnect, szAddress parameter (char *)
+         USERID          pfnGetPlayerUserId(INDEXENT(i))
+         WONID           pfnGetPlayerWONId(INDEXENT(i))
+         INDEXID         what the crap is that ???
+
+ENTITIES=>(FOR EACH)
+         SENTRY GUNS=>   pent = UTIL_FindEntityByClassname( pent, "building_sentrygun" )
+         OWNER           STRING (pent->v.owner->v.netname)
+         TEAM            pent->v.colormap
+         X COORD         pent->v.origin.x
+         Y COORD         pent->v.origin.y
+         Z COORD         pent->v.origin.z
+         HEALTH          pent->v.health / pent->v.max_health
+         LEVEL           probably around v.model (might be weaponmodel), dunno - else record in realtime
+
+         DISPENSERS=>    pent = UTIL_FindEntityByClassname( pent, "building_dispenser" )
+         OWNER           STRING (pent->v.owner->v.netname)
+         TEAM            dunno, maybe colormap
+         X COORD         pent->v.origin.x
+         Y COORD         pent->v.origin.y
+         Z COORD         pent->v.origin.z
+         HEALTH          pent->v.health / pent->v.max_health
+
+         FLAGS=>         UTIL_FindEntityByClassname( pent, "item_tfgoal" )
+         TEAM            based on pent->v.colormap
+         X COORD         pent->v.origin.x
+         Y COORD         pent->v.origin.y
+         Z COORD         pent->v.origin.z
+
+
+Here you are.
+
+
+-- €dited, had to keep the indentation :)
+
+[modified on 03/30/03 at 15:21:48]
+--------------------------------------------------
+03/30/03 at 15:36:09  Reply by: BAStumm (bs@bs-linux.com)
+--------------------------------------------------
+Hey thanks for the quick reply... :)
+
+Question though, if the mod displays team scores to the client when the press the tab key (default) then that info must be coming from the mod (through the middleman dll this case botmans) to the engine and out to the client... Correct? In which case it should be able to be intercepted right? 
+
+INDEXID is the slot they occupy on server... ie if you have 10 max player than all players will be 1 through 10. But whereas it might be
+
+#1 bob 
+#2 tim
+#4 joe
+
+#3 isn't used because that player left. If I can't get all the data through hacking botmans code I need a crossreference identifier. Was hoping to use userid or preferably wonid... But if all else fails I can use the indexid (slot occupied) to cross reference them and get the other data from another source (halfd). 
+
+Also, when I said hostname I meant ie:
+
+botmans TF1.5 bot server
+
+not 
+
+www.botman.com
+
+[modified on 03/30/03 at 15:36:09]
+--------------------------------------------------
+03/31/03 at 00:12:43  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+QUOTE:
+Question though, if the mod displays team scores to the client when the press the tab key (default) then that info must be coming from the mod (through the middleman dll this case botmans) to the engine and out to the client... Correct?
+
+
+Yes, but this is engine internals. The display of the scoreboard is handled by the client's engine, which asks to the server engine for the relevant info. This network information never goes up and down through the server DLL, which is what botman's bots DLL is about.
+
+QUOTE:
+
+In which case it should be able to be intercepted right?
+
+
+Hence no, too bad :(
+
+QUOTE:
+
+INDEXID is the slot they occupy on server... ie if you have 10 max player than all players will be 1 through 10. But whereas it might be
+#1 bob 
+#2 tim
+#4 joe
+#3 isn't used because that player left. If I can't get all the data through hacking botmans code I need a crossreference identifier. Was hoping to use userid or preferably wonid... But if all else fails I can use the indexid (slot occupied) to cross reference them and get the other data from another source (halfd). 
+
+
+
+Then what you call "indexid" is actually the same thing as entity index. In the Half-Life engine, entity #0 is always worldspawn, entities #1 to #maxplayers are reserved for player slots, then come the map entities, then the temporary entities. If you know the pointer to the player entity, all you have to do to get its entity index is ENTINDEX(pEdictOfYourPlayer). On the other hand, if you want to cycle through all the player slots and check whether player slot #n is occupied or not, there is already samples of such a thing in botman's code. It's basically a for loop that associates a pointer to every player slot and tests for its validity using FNullEnt().
+
+QUOTE:
+
+Also, when I said hostname I meant ie:
+botmans TF1.5 bot server
+not 
+www.botman.com
+
+
+
+Okay, then I don't think it is possible to ask it directly to the engine. You can still, though, open manually the server.cfg and listenserver.cfg files, parse them, and get yourself the info you need (it's the line starting with "hostname").
+
+
+--------------------------------------------------
+04/02/03 at 00:28:20  Reply by: RobGP (rob@planetfortress.com)
+--------------------------------------------------
+" PING            unavailable "
+
+You can get the ping of a player using the engine function GET_CNX_STATS (or similar).
+
+--------------------------------------------------
+04/02/03 at 00:32:03  Reply by: RobGP (rob@planetfortress.com)
+--------------------------------------------------
+also /me not sure that SGs dispensers hold the owner in pev->owner, in fact I am sure they do not as if that were teh case, the sentrygun would be non solid to the owner.
+
+the team of a flag goal can be determined at map load by looking at its keyvalues, the otehr way is to look at the skin property of the edict, not the colormap.
+
+[modified on 04/02/03 at 00:32:03]
+--------------------------------------------------
+04/02/03 at 04:33:15  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+About flags and keyvaluedata : yes, indeed, RobGP is right, I remember botman doing so in the HPB_bot code.
+
+About SG owners not linked to pev->owner, I'm not sure he is though... but I may be mistaken.
+
+
+--------------------------------------------------
+04/02/03 at 05:39:51  Reply by: redlink (redlink_star@hotmail.com)
+--------------------------------------------------
+If i wan't save each players cord each 30s.. how? i mean save the data from each player each 30s (z,x,y) and then see if they've been on the same spot a longer time. 
+
+So i can see if they are "AFK"?
+
+I'm working on a AFK system that will kick, ban, slay or tell that a player is AFK!
+
+[modified on 04/02/03 at 05:39:51]
+--------------------------------------------------
+04/02/03 at 06:08:42  Reply by: RobGP (rob@planetfortress.com)
+--------------------------------------------------
+[i]About SG owners not linked to pev->owner, I'm not sure he is though... but I may be mistaken.[/i]
+
+I am right. The pev->owner is not used at all as far as engineer buildings are concerned.
+
+--------------------------------------------------
+04/02/03 at 07:32:21  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Okay, good to know. My bad ;D
+
+
+--------------------------------------------------
+04/02/03 at 08:18:48  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+Redlink, CS already has an AFK kicking system. I'm sure you can edit it so it kicks them quicker.
+
+--------------------------------------------------
+04/02/03 at 08:34:07  Reply by: redlink (redlink_star@hotmail.com)
+--------------------------------------------------
+"Redlink, CS already has an AFK kicking system. I'm sure you can edit it so it kicks them quicker." 
+
+Does it.. Diden't know that =)) It has to take like 4 houers of AFK then? i've been away eating and still in the same game when i come back!
+
+[modified on 04/02/03 at 08:34:07]
+--------------------------------------------------
+04/02/03 at 10:25:36  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+There is an option to enable/disable the feature, it was probably diabled. Check out the settings in creating lan games.
+
+--------------------------------------------------
+10/06/03 at 21:05:50  Reply by: BAStumm (bs@bs-linux.com)
+--------------------------------------------------
+UPDATE AND A QUESTION :)
+
+First question...
+
+pfnCVarGetString() can be used to get cvar values like hostname, port, mp_timeleft, etc... But when I ask for ip it reports "localhost" yet a console status command lists my IP addy correct as 216.blah. I know I can use +ip at startup of hlds but is there another way to get server IP address?
+
+Now for the update:
+
+code:
+
+SERVER=>        HOSTNAME        pfnCVarGetString("hostname")
+                IP : PORT       same as hostname, use ip and hostport +ip must be set at startup
+                PLAYERS / MAX   ???  / gpGlobals->maxclients
+                MAP             STRING(gpGlobals->mapname)
+                TIMELEFT        similar to hostname but with mp_timeleft.
+                TEAM SCORES     interceptin pfnMessageBegin() (msg_type = 95)
+                
+                
+PLAYER=>        (FOR EACH)
+                NAME            STRING(INDEXENT(i)->v.netname)
+                TEAM            UTIL_GetTeam(INDEXENT(i))  
+                CLASS           STRING(INDEXENT(i)->v.playerclass)
+                HEALTH          INDEXENT(i)->v.health / INDEXENT(i)->v.max_health
+                ARMOR           INDEXENT(i)->v.armorvalue / tfc_max_armor[INDEXENT(i)->v.playerclass] ## *NOTE ARMOR ##
+                FRAGS           INDEXENT(i)->v.frags
+                DEATHS          just gotta count em in Valve_DeathMsg()   
+                CURRENT WEAPON  STRING(INDEXENT(i)->v.weaponmodel)
+                HOLDING FLAG?   ???
+                X COORD         INDEXENT(i)->v.origin.x
+                Y COORD         INDEXENT(i)->v.origin.y
+                Z COORD         INDEXENT(i)->v.origin.z
+                PING            SEE NOTE  ## *NOTE PINGS ##
+                TIME CONNECTED  *ALFRED SAYS NOT POSSIBLE* ???  
+                IP ADDY         record it in pfnClientConnect() 
+                USERID          pfnGetPlayerUserId(INDEXENT(i)) 
+                WONID           pfnGetPlayerWONId(INDEXENT(i))
+                INDEXID         the "i" incremental value used in INDEXENT
+                                
+                
+ENTITIES=>      (FOR EACH)
+                SENTRY GUNS=>                   pent = UTIL_FindEntityByClassname( pent, "building_sentrygun" )
+                                OWNER           STRING (pent->v.owner->v.netname)
+                                TEAM            pent->v.colormap        ## *NOTE_COLORMAP ##
+                                X COORD         pent->v.origin.x
+                                Y COORD         pent->v.origin.y
+                                Z COORD         pent->v.origin.z
+                                HEALTH          pent->v.health / pent->v.max_health
+                                LEVEL           STRING(pent->v.model)
+
+                DISPENSERS=>                    pent = UTIL_FindEntityByClassname( pent, "building_dispenser" )  ???
+                                OWNER           pent->v.colormap        ## *NOTE_COLORMAP ##
+                                TEAM            STRING (pent->v.owner->v.netname)
+                                X COORD         pent->v.origin.x
+                                Y COORD         pent->v.origin.y
+                                Z COORD         pent->v.origin.z
+                                HEALTH          pent->v.health / pent->v.max_health
+
+                FLAGS=>                         UTIL_FindEntityByClassname( pent, "item_tfgoal" )
+                                TEAM            pent->v.skin
+                                X COORD         pent->v.origin.x
+                                Y COORD         pent->v.origin.y
+                                Z COORD         pent->v.origin.z
+                                
+                                
+*NOTE ARMOR USES THE FOLLOWING
+                                
+code:
+---------------------------------------------
+int tfc_max_armor[10] = {0, 50, 50, 200, 120, 100, 300, 150, 100, 50};
+---------------------------------------------
+
+*NOTE PING USES THE FOLLOWING
+                                
+code:
+---------------------------------------------
+    pfnGetPlayerStats(INDEXENT(i), &ping, &packet_loss);
+----------------------------------------------
+                                
+*NOTE COLORMAP FOR ENTITY TEAM USES THE FOLLOWING
+                                
+code:                           
+----------------------------------------------
+    team = -1;
+    if (pent->v.colormap == 0xA096)
+      team = 0;  // blue team's sentry
+    else if (pent->v.colormap == 0x04FA)
+      team = 1;  // red team's sentry
+    else if (pent->v.colormap == 0x372D)
+      team = 2;  // yellow team's sentry
+    else if (pent->v.colormap == 0x6E64)
+      team = 3;  // green team's sentry
+----------------------------------------------
+
+
+
+
+I assume that teleporters are same as sentries and dispensers... Anyone know what teleporters are called for a getentitybyclassname ???
+
+answered my own question, its building_teleporter.
+
+[modified on 10/06/03 at 20:59:27]
+
+[modified on 10/06/03 at 21:05:50]
+--------------------------------------------------
+10/06/03 at 16:33:32  Reply by: BAStumm (bs@bs-linux.com)
+--------------------------------------------------
+In case anyone wondered, the reason for all this was I built a tcp socket into botmans code as kind of an enhanced query system that php can interface for cool live web stats... Send commands and it replies tab delimited... ie:
+
+COMMAND
+
+code:
+
+GET_SERVER
+
+
+
+REPLY
+
+code:
+
+TYPE    SERVER
+MAP_NAME        2fort
+HOST_NAME        SpokaneTeamFortress.com
+ADDR_IP         bs-linux.com
+ADDR_PORT       27015
+TIMELEFT        1522
+TEAM_NAMES      Blue    Red
+TEAM_SCORES     0       0
+
+
+
+[modified on 10/06/03 at 16:33:32]
+--------------------------------------------------
+10/06/03 at 21:06:44  Reply by: BAStumm (bs@bs-linux.com)
+--------------------------------------------------
+I think my question may get lost in my sea of info and the later reply... So here goes again...
+
+QUOTE:
+
+
+pfnCVarGetString() can be used to get cvar values like hostname, port, mp_timeleft, etc... But when I ask for ip it reports "localhost" yet a console status command lists my IP addy correct as 216.blah. I know I can use +ip at startup of hlds but is there another way to get server IP address? 
+
+
+
+
+--------------------------------------------------
+10/06/03 at 21:26:44  Reply by: botmeister (meister@telus.net)
+--------------------------------------------------
+Good question. Try this ...
+
+pfnCVarGetString("net_address");
+
+If you are using a router, you'll get the local IP, so in that case you'll have to manually set the CVAR "ip" to the correct external ip and use that instead.
+
+
+--------------------------------------------------
+10/06/03 at 22:01:09  Reply by: BAStumm (bs@bs-linux.com)
+--------------------------------------------------
+Nice...
+
+QUOTE:
+
+[bs@Dragon bs]$ hlcmd -g tfc net_address
+Found a running server, connecting...
+Sent 'net_address ' to server
+"net_address" is "216.255.199.157:27015"
+
+
+
+
+That should work I'm guessing...
+
+I'll include an array key for all of them... net_address, hostport and ip... Just to cover all bases... 
+
+
+For anyone interested the end product for this project is this...
+
+http://bs-linux.com/hlwebtv2/?hostport=30016
+
+I
+
+
+
+[modified on 10/06/03 at 22:01:09]
+--------------------------------------------------
+10/06/03 at 22:08:11  Reply by: BAStumm (bs@bs-linux.com)
+--------------------------------------------------
+quick recompile confirms it works :) thanky....
+
+code:
+
+[bs@Dragon bs]$ telnet 127.1 30016
+Trying 127.0.0.1...
+Connected to localhost.localdomain (127.0.0.1).
+Escape character is '^]'.
+GET_SERVER
+TYPE    SERVER
+MAP_NAME        2fort
+HOST_NAME        SpokaneTeamFortress.com #2
+NET_ADDR        216.255.199.157:27016
+ADDR_IP 216.255.199.157
+ADDR_PORT       27016
+TIMELEFT        1784
+TEAM_NAMES      Blue    Red
+TEAM_SCORES     0       0
+
+
+--------------------------------------------------
+10/07/03 at 11:17:45  Reply by: botmeister (meister@telus.net)
+--------------------------------------------------
+You could do this, where the "ip" cvar takes precedence over the "net_address" if it is set.
+
+if (ip_cvar == "") then
+  use net_address_cvar;
+else
+  use ip_cvar;
+
+This is because the ip cvar will normally only be set when the net_address is different than what the external ip should look like. For example, when your server is behind a firewall net_address will display the local LAN ip, which is incorrect (and won't work for your server). To correct it, you have to set "ip" to the external ip behind the firewall.
+
+... on second thought, you may as well get everything and leave the "ip" logic to whatever hooks onto the data.
+
+[modified on 10/07/03 at 11:17:45]
+--------------------------------------------------
+10/07/03 at 12:18:24  Reply by: BAStumm (bs@bs-linux.com)
+--------------------------------------------------
+This data feed is for a php project for web stuff and I intend to do the logic on the PHP side. :)
+
+Thanks for the info though, I wasn't really aware of that. My server is behind a NAT router but reports the correct IP. Course I have my "hostname" of my linux box set to my domain name so it prolly resolves it that way... I most certainly have a unique setup compared to what most game servers will be configured like... 
+
+--------------------------------------------------
+10/07/03 at 13:00:20  Reply by: botmeister (meister@telus.net)
+--------------------------------------------------
+Don't forget the CVAR "port"
+
+--------------------------------------------------
+10/07/03 at 14:50:33  Reply by: BAStumm (bs@bs-linux.com)
+--------------------------------------------------
+Huh? Its hostport, port is the client side I'm guessing...
+
+Anyway here's what I got...
+
+code:
+
+GET_SERVER
+TYPE    SERVER
+MAP_NAME        2fort
+HOST_NAME        SpokaneTeamFortress.com #2 // hostname cvar
+NET_ADDR        216.255.199.157:27016 //net_address cvar
+ADDR_IP 216.255.199.157  //ip cvar
+ADDR_PORT       27016 //hostport cvar
+TIMELEFT        468
+TEAM_NAMES      Blue    Red
+TEAM_SCORES     120     0
+
+
+--------------------------------------------------
+10/07/03 at 14:53:43  Reply by: botmeister (meister@telus.net)
+--------------------------------------------------
+The cvar "port" is used in the same way as the cvar "ip". If your hostport is different than your external port, then you must set "port" to the correct value.
+
+--------------------------------------------------
+10/07/03 at 15:53:32  Reply by: BAStumm (bs@bs-linux.com)
+--------------------------------------------------
+AHH... Thanks again for saving me the trouble of finding out the hard way :)
+

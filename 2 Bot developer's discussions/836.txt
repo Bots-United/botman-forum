@@ -1,0 +1,295 @@
+--------------------------------------------------
+Subject: To Botman...
+--------------------------------------------------
+12/11/00 at 04:46:30  Posted by: eLiTe (ali@elitegamer.fsnet.co.uk)
+--------------------------------------------------
+How good does my bot have to be b4 you put a link to it on your site? I don't want one yet, but I think the navigation of my bot is pretty good at the moment, and when I have added in simple weapon buying my bot should be good enough to be released to the public.
+
+Current status:
+
+Waypoint system - working fine, but I'm still testing an fine-tuning it.
+
+Navigation system - pretty simple at the moment, the bot just looks at a waypoint and walks towards it (even up ladders). I'm currently thinking about how to implement simple terrain analysing so that the bot can jump over obstacles/gp through vents/avoid other players.
+
+Combat AI - very simple at the moment, bots simply point'n'shoot while strafing. While this is effective, I want to give the bots different syles of fighting, depending on bot-skill and distance from enemy (eg strafing up close and crouching/sniping over long distances).
+
+Communication - currently the bot cannot hear radio commands (or if they do, they just ignore them :P ), and do not chat/send radio messages. I need to know more about the menu-messages the server sends to the bot b4 I continue with this (don't want to just have a delay system, as this could be buggy).
+
+Bomb planting/defusing - I want to get the wapons system done b4 I consider this. I think bomb planting will be very simple to do, but defusing it will be a problem (I don't know how to detect entities yet).
+
+TF Stuff- I want to put Counter-Strike specific stuff in first, but my bot will also be for TF. It probably won't compete with even the HPB Bot in terms of features, but I want to add in things such as bots figuring out if you're a spy or not (eg if you are disguised as a medic and there are no medics on that bots team). This is WAAAAY in the future, so plz don't expect any TF specific stuff anytime soon. I expect that the bot can play CTF maps, but I suppose that the bot would not know the difference between the enemy return point and the return point in it's own base (I use the same waypoints for both teams).
+
+If anyone has tested my bot and found any bugs plz tell me, thankyou.
+
+--------------------------------------------------
+12/11/00 at 05:21:35  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+"How good does my bot have to be b4 you put a link to it on your site?"
+
+It doesn't have to be any good at all.  All you gotta do is ask.  Do you want a link from my "Links" page to your site?
+
+botman
+
+--------------------------------------------------
+12/11/00 at 15:37:07  Reply by: eLiTe (ali@elitegamer.fsnet.co.uk)
+--------------------------------------------------
+Yes. Thankyou!
+
+Next On the Agenda: I tried to implement some buy code tonight - I looked at the way you make the bots select a team, and I added my own code into the menu-detection code. It looks like this:
+
+   else if (((*(int *)p) == 110)  ((*(int *)p) == 92)) // is it a buy menu?
+      {
+         ShowMessage("Got a VGUI menu!!!");
+
+        bots[bot_index].menu_notify = MSG_CS_MENU;
+      }
+
+I KNOW that this code is never executed, because I don't get the "Got a VGUI menu!!!" message logged in my debug file. Have I got the wrong value? The only message values I could see in the bot.txt debug_engine file were 110 & 92.
+
+Just in case, I made [i]this[/i] function to check for old-style menus (even though I use the VGUI):
+
+      else if (strcmp((char *)p, "#Buy") == 0)  // CT model select menu?
+   {
+                       ShowMessage("Got a normal menu!!!");
+      bots[bot_index].menu_notify = MSG_CS_MENU;
+   }
+
+This doesn't get executed either... help!!!! :(
+
+--------------------------------------------------
+12/11/00 at 16:08:48  Reply by: dannywent (dannywent@hotmail.com)
+--------------------------------------------------
+hey, if all you have to do is ask, well i guess i'm asking.  of course i'll take no offense if you don't....
+but here's my link 
+hotbot.freehosting.net
+its a waypointless bot for flf
+
+thanks
+
+Dan
+
+--------------------------------------------------
+12/12/00 at 01:59:24  Reply by: eLiTe (ali@elitegamer.fsnet.co.uk)
+--------------------------------------------------
+So can anyone tell me what the code for a VGUI buy menu is? The code I posted is from the bot_client.cpp file
+
+I know there's probably a simple solution, but I've narrowed the bug down to this function and I don't know how to get it to work... there are no compile time errors (yes I have defined CS_VGUI_MENU in bot.h), I just need a way to tell if a menu is being displayed
+
+--------------------------------------------------
+12/12/00 at 05:51:54  Reply by: MKlimstra (mklimstra@zonnet.nl)
+--------------------------------------------------
+The values for the VGUI-messag index are 28-33.
+28 is the "buymenu" and 29-33 are the menus for handguns, sub-machine guns, rifles and machine guns.
+
+Example:
+int i = *(int *)p;
+
+if (i == 28)
+    bots[index].menu_notify = BuyMenu;
+else if (i == 29)
+    bots[index].menu_notify = HandgunMenu;
+...
+
+
+
+
+
+
+--------------------------------------------------
+12/12/00 at 06:28:28  Reply by: eLiTe (ali@elitegamer.fsnet.co.uk)
+--------------------------------------------------
+Cool! Thanks, now I can have some REAL fights with my bots, not just pistol fights!!
+
+--------------------------------------------------
+12/13/00 at 01:13:54  Reply by: eLiTe (ali@elitegamer.fsnet.co.uk)
+--------------------------------------------------
+Are you sure about those codes? My bots don't seem to be getting the buy menu code...? They seem to be getting lots of Rifle_menu codes - even b4 they buy anything? I'm not even using the same variable that the team select menu does...
+
+Anyone got a basic example of how to buy things? I've spent a few hours bugfixing everything, and I STILL don't know how to tell if the menu is up...
+
+--------------------------------------------------
+12/13/00 at 01:41:01  Reply by: MKlimstra (mklimstra@zonnet.nl)
+--------------------------------------------------
+It doesn't work? Strange. Works fine for me. Do you check the state of the message?
+
+This is basically the code I have:
+
+static int State = 0;
+
+if (State == 0)
+{
+   ...
+   else if ((BuyState == BUYSTATE_BUY) && (i == 28))
+      BuyState = BUYSTATE_MENU1;
+   else if ((BuyState == BUYSTATE_MENU1) && ((i == 29)II(i == 30)II(i == 31)II(i == 32)II(i == 33)))
+      BuyState = BUYSTATE_MENU2;
+   ...
+}
+else if (State == 4)
+   State = -1;
+
+State++;
+
+
+
+
+--------------------------------------------------
+12/13/00 at 04:19:04  Reply by: eLiTe (ali@elitegamer.fsnet.co.uk)
+--------------------------------------------------
+No, there is no state checking for the VGUI menus - only the 'normal' menus... I don't really know what the state thing is for anyway.
+
+The code 28 is never sent to the CS_VGUI funtcion, even though my bots should be sending out the 'buy' command. I get values like 27, -1 and 32. I think that the 27 and -1 are related to the bots joining teams, and the 32 may be an error in my buy code - but I don't see how the rifle menu (32) would come up b4 the normal buy menu (28)
+
+I'm sorry I'm asking these stupid questions, but I've been trying really hard to fix this and don't know what the problem is
+
+--------------------------------------------------
+12/13/00 at 04:43:55  Reply by: MKlimstra (mklimstra@zonnet.nl)
+--------------------------------------------------
+A Half-Life message consists of several Writexxx functions, where xxx is Angle, Byte, Char, String or something. In the case of the VGUI message, 4 bytes are sent for ONE message. The first one is for identifying which menu it is.
+
+A static variable will remain in memory even when the function has already ended. The initial value will be zero in this case.
+So the first time the BotClient_CS_VGUI function is being called, the value is 0, the second time it is 1, the 5th time it will be 4. Then it will be set back to 0 with this statement:
+
+else if (State == 4) State = -1;
+
+(As you can see, the State var is actually set to -1, but the next statement, State++, will set it to 0)
+
+I don't know why the code 28 is never sent. Are you sure you're calling the buy-command correctly?
+
+
+--------------------------------------------------
+12/13/00 at 11:36:06  Reply by: eLiTe (ali@elitegamer.fsnet.co.uk)
+--------------------------------------------------
+It should be the first thing that happens in my buy code (if buying == 1). I'll check into it.
+
+Thanks very much for all your help, it's really nice of you :)
+
+--------------------------------------------------
+12/13/00 at 14:57:01  Reply by: eLiTe (ali@elitegamer.fsnet.co.uk)
+--------------------------------------------------
+YEEEES!!!! WOOOOOHOOOOOOOOOOOOO!!!
+
+I did it!!! My bots bought the deagle and blew me away with only 1 shot!!!
+
+I was setting the menu value to MSG_CS_IDLE after each FakeClientCommand - I thought that the menu-codes routine would be called AFTER the buy code - it's actually called as soon as you issue the FakeClientCommand. Hmm.
+
+Again, THANKYOU FOR YOUR HELP MARCUS!! You gave me the codes I needed, and I also implemented the state thingy, and I'm sure that's saved me from having more problems trying to interpret the VGUI menu codes!!! Which bot is yours? You must have a bot if you know so much about CS bot making...
+
+This is amazing, now I'm going to add in the rest of the weapons, make a decent waypoint file, and have a 'playtest' with my bots!!!
+
+--------------------------------------------------
+12/14/00 at 01:25:30  Reply by: MKlimstra (mklimstra@zonnet.nl)
+--------------------------------------------------
+You're welcome :)
+
+I haven't released by bot yet. I will when it's almost completly finished (I hope in a couple of weeks)
+
+--------------------------------------------------
+12/14/00 at 04:13:00  Reply by: eLiTe (ali@elitegamer.fsnet.co.uk)
+--------------------------------------------------
+I bet it's great, you really sound like you know what you're doing :) - any hints on what it's called or anything like that?
+
+--------------------------------------------------
+12/14/00 at 04:39:07  Reply by: Gen[X]Cops (lastride87@hotmail.com)
+--------------------------------------------------
+Do you mean you made your bots for counter-strike? I am intrested in this cos i am also trying to make my bots buy weapons.
+
+--------------------------------------------------
+12/14/00 at 05:20:39  Reply by: eLiTe (ali@elitegamer.fsnet.co.uk)
+--------------------------------------------------
+Just look at this topic, it has all you need I think.
+
+To start you off - take a good look through the bot's VGUI joining code - it is exactly the same sort of process as for buying.
+
+The CS VGUI menu intercept function is near the top of bot_client.cpp, you'll have to add in your own code checking for the buy menu and each weapon menu. The buy menu is 28, weapon menus are 29 - 33, equipment menu is 34
+
+Things to remember - I think you might need a 1 second delay every round b4 the bots can buy anything... not sure why, but it's better just to let the round start properly instead of buying everything the first frame of the round.
+
+Not all of the messages sent to the CS VGUI menu function are menu codes - you'll have to ignore some. I accept the first one, ignore the next, 4, accept 1, ignore 4, etc. This seems to work (if you get it wrong then the bots won't be able to join a team, and you'll get lots of 'unassigned' bots, so be careful :)
+
+Hope that helps!!! Good luck with making your bot :)
+
+--------------------------------------------------
+12/14/00 at 11:12:07  Reply by: MKlimstra (mklimstra@zonnet.nl)
+--------------------------------------------------
+QUOTE:
+I bet it's great, you really sound like you know what you're doing :) - any hints on what it's called or anything like that?
+
+
+
+It has a very original name: MBot!!! I hope I'll come up with something better when I release it :)
+
+--------------------------------------------------
+12/14/00 at 14:40:36  Reply by: eLiTe (ali@elitegamer.fsnet.co.uk)
+--------------------------------------------------
+Hmm. A few suggestions:
+
+1) DeathToAllYouGuysWhoDontWantAnotherBot Bot
+
+2) ThisBotWillKickYourButt Bot
+
+3) DoYouKnowHowMuchWorkIPutIntoThisBot Bot
+
+I'll think of some more later if you want :)
+
+--------------------------------------------------
+12/15/00 at 04:33:36  Reply by: MKlimstra (mklimstra@zonnet.nl)
+--------------------------------------------------
+Thanks! I'll consider them :)
+
+--------------------------------------------------
+12/15/00 at 05:26:16  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+How about the "Kill-o-bot".  Sort of a Hitchhicker's Guide kinda thing.
+
+botman
+
+--------------------------------------------------
+12/15/00 at 05:28:54  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+I've got a great name for a bot but I ws going to use it If I made my own bot so... No I won't tell ya unless you give me some cash :)
+
+--------------------------------------------------
+12/15/00 at 05:36:05  Reply by: MKlimstra (mklimstra@zonnet.nl)
+--------------------------------------------------
+lol, I won't call it "CheeseBot" anyway.
+
+--------------------------------------------------
+12/15/00 at 06:23:52  Reply by: eLiTe (ali@elitegamer.fsnet.co.uk)
+--------------------------------------------------
+NuclearBot would be the best name for a bot so far - someone mentioned that on NuclearBox, that all the bot authors on NukeBox should join together and make NuclearBot.
+
+But since nobody has used that name so far, any new bot author could use it :)
+
+And I've never seen/read/heard HitchHikers Guide to the Galaxy... so I don't understand the 'Kill-o-bot' thing, apart from that it might be a play on 'Kilobyte'...
+
+--------------------------------------------------
+12/15/00 at 14:06:56  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+"And I've never seen/read/heard HitchHikers Guide to the Galaxy"
+
+There's this ray gun in H.G. called the Kill-O-Zap gun.
+
+botman
+
+--------------------------------------------------
+12/15/00 at 14:46:44  Reply by: DarkYouth (darkyouth@thegraze.freeserve.co.uk)
+--------------------------------------------------
+I own the video and all the books (even Mostly Harmless)
+
+I love it...
+
+Nearly as much as red dwarf.
+
+--------------------------------------------------
+12/15/00 at 17:15:54  Reply by: CountFloyd (countfloyd_1999@yahoo.com)
+--------------------------------------------------
+DY, and don't you like Floyd, the manic-depressive robot in that series ? ;)
+
+--------------------------------------------------
+12/15/00 at 17:19:43  Reply by: DarkYouth (darkyouth@thegraze.freeserve.co.uk)
+--------------------------------------------------
+Actually its Marvin who is the manic droid in hitchhikers guide to the galaxy...
+
+"Brain the size of the planet and they want me to make the tea? Life you call this life?"
+

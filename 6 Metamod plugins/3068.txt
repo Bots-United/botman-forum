@@ -1,0 +1,513 @@
+--------------------------------------------------
+Subject: Quantums Crossfire DM Config - Updated
+--------------------------------------------------
+05/03/02 at 10:10:01  Posted by: quantum (quantum_red@yahoo.com)
+--------------------------------------------------
+Here's my updated Crossfire DM Config. This has been very popular on my server. I added some new things which show some advanced techniques.
+
+There's a new button in the bunker which is the "monster override button". This hides the monster button for one cycle. This is for those who don't like the monster and gives them a way to prevent it from respawning for a while.
+
+This was actually pretty tricky because you don't want this button to simply toggle the monster (air-strike) button state, but only deactivate it if it is active. This involves adding a few trigger_changetargets, a multimanager, and adjusting a few of the existing multimanagers. I also added some game_text entities to give user feedback. Try it out to see what I mean.
+
+In order to allow the monster on a server, you must set mp_allowmonsters 1 in your server.cfg. 
+
+Features:
+* Monster spawned by air-strike button
+* Monster override button - to disable monster button for 3 minutes
+* Alien Alert sound
+* Teleporter from yard area to bunker
+* Various (extensive) weapon modifications
+
+Comments welcome, and thanks to Botman for a great tool. 
+
+==============================================
+// crossfire_str.cfg 
+
+// Weapons and monsters to be stripped first 
+
+[strip] 
+weapon_egon
+ammo_gaussclip
+ammo_rpgclip
+ammo_crossbow
+monster_barney
+trigger_relay //to reduce the wait time before first monster can be spawned
+multi_manager (64 -2304 -1840) // air-strike
+multi_manager (64 -1696 -1296) // air-strike
+weapon_crossbow (640 1376 -1664) //secret room
+weapon_crossbow (-688 944 -1520) //ledge - replace with shotgun
+weapon_crossbow (288 1024 -1520) //ledge - replace with shotgun
+weapon_gauss (-976 608 -1520) //replace with satchel
+weapon_gauss (288 848 -1664) //replace with 9mmAR
+weapon_rpg (320 1184 -1664) //same level as elevator - replace with satchel
+weapon_rpg (544 1024 -1520) //above elevator - strip
+weapon_rpg (-256 704 -1808) //center yard - strip
+item_battery (624 1280 -1664) //secret room
+item_battery (624 1312 -1664) //secret room
+item_battery (624 1328 -1664) //secret room
+item_healthkit (624 1456 -1664) //secret room
+item_healthkit (624 1424 -1664) //secret room
+weapon_hornetgun (-752 512 -1680)
+ammo_ARgrenades (-72 1120 -1520)
+
+[add]
+
+// *****************************************************************
+// OVERRIDE BUTTON
+// *****************************************************************
+{ // OVERRIDE BUTTON CHANGETARGET OFF - NEW
+      classname/trigger_changetarget
+      targetname/CT_OR_OFF
+      origin/1314 -3442 -130
+      target/OR_BUTTON
+      m_iszNewTarget/OR_TEXT_DISABLED
+}
+{ // OVERRIDE BUTTON CHANGETARGET ON - NEW
+      classname/trigger_changetarget
+      targetname/CT_OR_ON
+      origin/1314 -3442 -130
+      target/OR_BUTTON
+      m_iszNewTarget/OR_MM
+}
+{ // OVERRIDE BUTTON MULTI MANAGER - NEW
+      classname/multi_manager
+      targetname/OR_MM
+      CT_OR_OFF/0
+      strike_ready_door/.5
+      strike_timer_mmb/.5
+      OR_TEXT_ACTIVE/.5      
+}
+{ // OVERRIDE BUTTON BRUSH - NEW
+      classname/func_wall
+      model/*35
+      origin/1314 -3442 -130
+}
+{ // OVERRIDE BUTTON FUNC_BUTTON - NEW
+      classname/func_button
+      targetname/OR_BUTTON
+      target/OR_TEXT_DISABLED
+      origin/481 -2101 -1788
+      angles/0 180 0
+      bbox_min/-20 -20 -20
+      bbox_max/20 20 20
+      health/0 
+      //target/secret_door 
+       spawnflags/1 
+} 
+{ // OVERRIDE BUTTON INACTIVE TEXT - NEW
+      classname/game_text
+      targetname/OR_TEXT_DISABLED
+      origin/481 -2101 -1788
+      x/-1
+      y/-1
+      color/100 100 100
+      color2/240 110 0
+      fadein/1.5
+      fadeout/0.5
+      holdtime/3
+      fxtime/0.25
+      channel/1
+      message/Monster Override button inactive. Each cycle lasts 3 minutes.
+      effect/0
+}
+{ // OVERRIDE BUTTON SUCCESSFUL TEXT - NEW
+      classname/game_text
+      targetname/OR_TEXT_ACTIVE
+      origin/481 -2101 -1788
+      x/-1
+      y/-1
+      color/100 100 100
+      color2/240 110 0
+      fadein/1.5
+      fadeout/0.5
+      holdtime/3
+      fxtime/0.25
+      channel/1
+      spawnflags/1
+      message/Monster override successful. Monster button deactivated until next cycle.
+      effect/0
+}
+// *****************************************************************
+// MONSTER
+// *****************************************************************
+{ // MONSTERMAKER - NEW
+      targetname/mm_gargantua
+      classname/monstermaker 
+      //origin/0 -900 -1500 
+      origin/-355 -963 -1650
+      angle/-2 
+      monstercount/-1
+      m_imaxlivechildren/1
+      monstertype/monster_gargantua
+      delay/-1
+      spawnflags/0
+} 
+{ // MONSTER BUTTON MULTI MANAGER - REPLACEMENT
+      classname/multi_manager
+      spawnflags/1
+      targetname/strike_timer_mma
+      strike_ready_door/0
+      towers_button_doors/0
+      towers_redlight/0
+      towers_greenlight/0
+      strike_ready_message/0
+      CT_OR_ON/0
+      MONSTER_BUTTON_AVAILABLE/0
+      origin/64 -1696 -1296
+}
+{ // MONSTER BUTTON ACTIVATED TEXT - NEW
+      classname/game_text
+      targetname/MONSTER_BUTTON_ACTIVE
+      origin/481 -2101 -1788
+      x/-1
+      y/-1
+      color/100 100 100
+      color2/240 110 0
+      fadein/1.5
+      fadeout/0.5
+      holdtime/3
+      fxtime/0.25
+      channel/1
+      message/Monster button activated. Monster has been spawned!
+      spawnflags/1
+      effect/0
+}
+{ // MONSTER BUTTON AVAILABLE TEXT - NEW
+      classname/game_text
+      targetname/MONSTER_BUTTON_AVAILABLE
+      origin/481 -2101 -1788
+      x/-1
+      y/-1
+      color/100 100 100
+      color2/240 110 0
+      fadein/1.5
+      fadeout/0.5
+      holdtime/3
+      fxtime/0.25
+      channel/1
+      message/Monster button available. Monster can be summoned.
+      spawnflags/1
+      effect/0
+}
+{ // MONSTER BUTTON TRIGGER RELAY - REPLACEMENT - to reduce wait time before first spawn
+      classname/trigger_relay
+      spawnflags/1
+      target/strike_timer_mma
+       //delay/180
+      delay/5 //new
+      triggerstate/1
+      targetname/strike_timer_relay
+      origin/32 -1696 -1296
+}
+{ // MONSTER BUTTON MULTI MANAGER - REPLACEMENT
+      classname/multi_manager
+      targetname/strike_mm
+      //strike_siren/3
+      //strike_siren#1/5
+      mm_gargantua/0 //NEW
+      mm_gargantua/1 //NEW
+      sound_alien1/0 //NEW
+      sound_alien2/1 //NEW
+      MONSTER_BUTTON_ACTIVE/0 //NEW
+      //bunker_maindoor/20
+      //strike_flybywav/44
+      //strike_flash/52
+      //strike_shake/52
+      //strike_wav/52
+      //strike_pain/52
+      //strike_pain#1/52.1
+      //bunker_maindoor#1/64
+      //bunker_towerdoors/47
+      strike_timer_mmb/5
+      towers_button_doors/2
+      strike_ready_door/2
+      CT_OR_OFF/0
+      //bunker_towerdoors#1/54
+      origin/64 -2304 -1840
+}
+{ // MONSTER BUTTON ALIEN ALERT SOUND - NEW
+   targetname/sound_alien1
+   classname/ambient_generic
+   spawnflags/49 //play everywhere(1), not looped(32), start silent(16)
+   message/vox/alien.wav
+   health/10  // volume (1-10)
+   origin/64 -2304 -1840
+}
+{ // MONSTER BUTTON ALIEN ALERT SOUND - NEW
+   targetname/sound_alien2
+   classname/ambient_generic
+   spawnflags/49 //play everywhere(1), not looped(32), start silent(16)
+   message/vox/alert.wav
+   health/10  // volume (1-10)
+   origin/64 -2304 -1840
+}
+// *****************************************************************
+// TELEPORTER
+// *****************************************************************
+{ // TELEPORTER TRIGGER
+       classname/trigger_multiple
+       target/tele1_mm
+       wait/3
+      origin/-256 704 -1837
+      bbox_min/-20 -20 -2
+      bbox_max/20 20 2
+}
+{ // TELEPORTER MULTI MANAGER
+      classname/multi_manager
+      targetname/tele1_mm
+      tele1_sound1/0
+      tele1_fade/0
+      tele1_ms/.7
+      tele1_ms#1/.8
+      origin/-256 704 -1808
+      tele1_shake/.1
+}
+{ // TRIGGER TELEPORT
+      classname/trigger_teleport
+      target/tele1_dest
+      delay/0
+      master/tele1_ms
+      origin/-256 704 -1808
+      bbox_min/-20 -20 -20
+      bbox_max/20 20 20
+}
+{ // TELEPORTER SOUND
+      classname/ambient_generic
+      spawnflags/49
+      message/debris/beamstart1.wav
+      health/10
+      preset/0
+      volstart/10
+      fadein/0
+      fadeout/0
+      pitch/100
+      pitchstart/100
+      spinup/0
+      spindown/0
+      lfotype/0
+      lforate/0
+      lfomodpitch/0
+      lfomodvol/0
+      cspinup/0
+      targetname/tele1_sound1
+      origin/-256 704 -1808
+}
+{ // TELEPORTER FADE
+      classname/env_fade
+      spawnflags/5
+      rendercolor/0 255 0
+      duration/1
+      holdtime/0
+      targetname/tele1_fade
+      renderamt/255
+      origin/-256 704 -1808
+}
+{ // TELEPORTER SHAKE
+      classname/env_shake
+      radius/50
+      duration/2
+      frequency/128
+      amplitude/10
+      targetname/tele1_shake
+      spawnflags/0
+      origin/-256 704 -1808
+}
+{ // TELEPORTER SPRITE
+      classname/env_sprite
+      renderfx/2
+      rendermode/5
+      renderamt/128
+      rendercolor/0 0 0
+      model/sprites/enter1.spr
+      framerate/40
+      origin/-256 704 -1808
+}
+{ // TELEPORTER MULTISOURCE
+      classname/multisource
+      targetname/tele1_ms
+      origin/-256 704 -1808
+}
+{ // TELEPORTER DESTINATION
+      classname/info_teleport_destination
+      targetname/tele1_dest
+      origin/64 -2304 -1840
+}
+// *****************************************************************
+// SECRET DOOR BUTTONS
+// *****************************************************************
+{ //BOTMANS SECRET DOOR BUTTONS
+  classname/func_wall 
+  model/*24 
+  origin/250 1366 -152 
+} 
+{ //BOTMANS SECRET DOOR BUTTONS
+  classname/func_wall 
+  model/*31 
+  origin/1044 86 -152 
+} 
+{ //BOTMANS SECRET DOOR BUTTONS
+  classname/func_button 
+  origin/640 1430 -1800 
+  angles/0 180 0 
+  mins/639 1438 -1798 
+  maxs/641 1442 -1802 
+  health/0 
+  target/secret_door 
+  spawnflags/1 
+} 
+// *****************************************************************
+// MONSTER INFO_NODES IN OPEN AREA
+// *****************************************************************
+// towers are south
+{ // NW
+      classname/info_node
+      origin/-700 -554 -1650
+} 
+{ // N
+      classname/info_node
+      origin/0 -554 -1650
+} 
+{ // NE
+      classname/info_node
+      origin/768 -683 -1650
+} 
+{ // E
+      classname/info_node
+      origin/772 -956 -1650
+} 
+{ // SE
+      classname/info_node
+      origin/711 -1292 -1650
+} 
+{ // S
+      classname/info_node
+      origin/-11 -1275 -1650
+} 
+{ // SW
+      classname/info_node
+      origin/-838 -1384 -1650
+} 
+{ // W
+      classname/info_node
+      origin/-889 -948 -1650
+} 
+{ // Middle
+      classname/info_node
+      origin/-355 -963 -1650
+} 
+
+// *****************************************************************
+// ASSORTED WEAPONS AND AMMO ADDITIONS
+// *****************************************************************
+
+{ // SHOTGUN AMMO
+      classname/ammo_buckshot
+      origin/-268 -191 -1660
+}
+{ // SHOTGUN AMMO
+      classname/ammo_buckshot
+      origin/349 -161 -1660
+}
+{ // SHOTGUN AMMO
+      classname/ammo_buckshot
+      origin/320 1489 -1500
+}
+{ // SHOTGUN AMMO
+      classname/ammo_buckshot
+      origin/-88 -175 -1500
+}
+{ // 357 MAGNUM ON BOX LOOKING TOWARDS TOWERS
+       classname/weapon_357
+       origin/332 -301 -1421
+}
+{ // ADD 357 MAGNUM
+       classname/weapon_357
+       origin/-752 512 -1680
+}
+{ // MAGNUM AMMO
+       classname/ammo_357
+       origin/-752 494 -1680
+}
+{ // MAGNUM AMMO
+       classname/ammo_357
+       origin/-752 530 -1680
+}
+{
+   classname/weapon_shotgun
+   origin/-688 944 -1520
+}
+{
+   classname/weapon_shotgun
+   origin/288 1024 -1520
+}
+{
+   classname/weapon_satchel
+   origin/-976 608 -1520
+}
+{
+   classname/weapon_9mmAR
+   origin/288 848 -1664
+}
+{
+   classname/weapon_satchel
+   origin/320 1184 -1664
+}
+{
+   classname/ammo_9mmAR
+   origin/-616 -2624 -1784
+}
+{
+   classname/ammo_9mmAR
+   origin/-472 -2504 -1784
+}
+{
+   classname/ammo_9mmAR
+   origin/472 -2480 -1784
+}
+{
+   classname/ammo_9mmAR
+   origin/616 -2624 -1784
+}
+{
+   classname/ammo_ARgrenades
+   origin/544 -2728 -1784
+}
+
+// QUANTUM DECALS
+{ 
+  classname/infodecal 
+  texture/{capsq
+  origin/-445 450 -1760 
+} 
+{ 
+  classname/infodecal 
+  texture/{capsu
+  origin/-445 469 -1760 
+} 
+{ 
+  classname/infodecal 
+  texture/{capsa
+  origin/-445 484 -1760 
+} 
+{ 
+  classname/infodecal 
+  texture/{capsn
+  origin/-445 507 -1760 
+} 
+{ 
+  classname/infodecal 
+  texture/{capst
+  origin/-445 526 -1760 
+} 
+{ 
+  classname/infodecal 
+  texture/{capsu
+  origin/-445 545 -1760 
+} 
+{ 
+  classname/infodecal 
+  texture/{capsm
+  origin/-445 564 -1760 
+} 
+
+

@@ -1,0 +1,288 @@
+--------------------------------------------------
+Subject: DOD 2.0 crash
+--------------------------------------------------
+03/02/02 at 08:19:28  Posted by: Noplay (jame4-bond@laposte.net)
+--------------------------------------------------
+When my bot spawn i have this error message
+
+SZ_GetSPace: Tried to write to an unintialised sizebuf_t ???
+
+The last ligne of my bot.txt is 
+
+pfnClientCommand: edict=26f652c cmd=cl_dodmusic 3
+
+
+Excuse my english but i am french
+
+[modified on 03/02/02 at 08:19:28]
+--------------------------------------------------
+03/02/02 at 09:29:49  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+If the bots are trying to use client command check they are definetly using fakeclientcommand() function. Else check this forum for a fix botman gave a while back for this problem to do with clientcommand (the TFC spy bug)
+
+--------------------------------------------------
+03/02/02 at 11:42:44  Reply by: Noplay (jame4-bond@laposte.net)
+--------------------------------------------------
+How i can make this?
+
+--------------------------------------------------
+03/02/02 at 12:08:50  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Something in the DOD code is trying to send "cl_dodmusic 3" to a client.  This will cause the engine to crash under Half-Life 1.1.0.8.
+
+If you use pfnClientPrintf() or pfnClientCommand() and the edict points to a fake client, the engine will crash with that error.  This also happens a LOT in AdminMOD when people add bots to a server and AdminMOD tries to send text messages to clients.
+
+You can prevent this crashing problem in your bot code.  Download the HPB bot 1.8a source code and look at what I do in the pfnClientCommand() function in the engine.cpp file.  It checks to see if the client is a bot and if it's NOT a bot, then it sends the message on through.
+
+I should have really added the same thing to the pfnClientPrintf() function in the engine.cpp file, but I was lazy and didn't do it in that one.
+
+botman
+
+--------------------------------------------------
+03/02/02 at 13:15:04  Reply by: Noplay (jame4-bond@laposte.net)
+--------------------------------------------------
+but i use the hbpbot 1.8 a
+
+--------------------------------------------------
+03/02/02 at 16:54:01  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Then you shouldn't be getting the "tried to write to uninitialized sizebuf_t error"!  ;D
+
+Perhaps something else is causing the crash.  Like I said above, make SURE you also put the fake client check code in the pfnClientPrintf() function as well since it too can crash the engine.
+
+botman
+
+--------------------------------------------------
+03/03/02 at 01:25:25  Reply by: Noplay (jame4-bond@laposte.net)
+--------------------------------------------------
+void pfnClientPrintf( edict_t* pEdict, PRINT_TYPE ptype, const char *szMsg )
+{
+   if (debug_engine) { fp=fopen("phoenix_bot/phoenix_bot.txt","a"); fprintf(fp,"pfnClientPrintf:\n"); fclose(fp); }
+   if (!(pEdict->v.flags & FL_FAKECLIENT))
+    (*g_engfuncs.pfnClientPrintf)(pEdict, ptype, szMsg);
+}
+
+
+It's your code
+
+[modified on 03/03/02 at 01:25:25]
+--------------------------------------------------
+03/03/02 at 04:48:30  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+Therte will be other funtions besided ClientPrint no doubt!
+
+--------------------------------------------------
+03/03/02 at 05:03:37  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+No, the only two that seem to cause the "tried to write to uninitialized sizebuf_t" errors are pfnClientPrintf() and pfnClientCommand().
+
+Leon Hartwig (from Valve) e-mailed me that these 2 bugs in the engine code will be fixed in the next client update (1.1.0.9 I guess).  Maybe the problem will go away then when Valve releases the next update.
+
+botman
+
+--------------------------------------------------
+03/03/02 at 05:10:50  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+What about message_begin and all the network message stuff? WIll they cause a crash if certain types of messages are sent?
+
+--------------------------------------------------
+03/03/02 at 06:15:03  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+Why don't you just catch and destroy the guilty network message ?
+
+
+--------------------------------------------------
+03/03/02 at 06:35:02  Reply by: Noplay (jame4-bond@laposte.net)
+--------------------------------------------------
+How?
+
+ps: vu que ton site est en france je pense que tu peut me mettre la réponse en français ce sera plus clair merci.
+
+--------------------------------------------------
+03/03/02 at 11:20:02  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+Perhaps the new DOD version has a new type of network message that doesn't work with bots or something! Or maybe it's just what botman said ;)
+
+--------------------------------------------------
+03/03/02 at 11:50:49  Reply by: Noplay (jame4-bond@laposte.net)
+--------------------------------------------------
+but the sturmbot can work
+
+--------------------------------------------------
+03/04/02 at 02:23:48  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+
+QUOTE:
+How?
+
+ps: vu que ton site est en france je pense que tu peut me mettre la réponse en français ce sera plus clair merci.
+
+
+
+
+Réponse en français:
+
+Visiblement ça plante à cause d'une commande client: cl_dodmusic 3
+Vu qu'elle passe dans ClientCommand(), ce que tu fais dans ce cas, c'est que tu rajoutes un bloc if dans ta fonction ClientCommand() qui va terminer et abandonner la fonction si le paramètre incriminé vaut "cl_dodmusic 3" au lieu de passer la main à pfnClientCommand() - qui est la fonction équivalente, mais du côté du moteur.
+
+
+--------------------------------------------------
+03/04/02 at 06:11:12  Reply by: @$3.1415rin (joebot@botepidemic.com)
+--------------------------------------------------
+pouvez vous écrire vos textes ici en anglais comme tous les autres ? merci
+
+[modified on 03/04/02 at 06:11:12]
+--------------------------------------------------
+03/04/02 at 11:18:48  Reply by: Noplay (jame4-bond@laposte.net)
+--------------------------------------------------
+Excuse me but i have test this and i have the same bogue.
+
+In client command
+
+else if (FStrEq(pcmd, "cl_dodmusic"))
+      {
+       ClientPrint(pEntity, HUD_PRINTNOTIFY, "cl_dodmusic was send"); 
+       return;
+      }
+
+But i have not my message
+
+--------------------------------------------------
+03/04/02 at 14:48:39  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+It wont reach that part of the code for a bot because there is a check at the top of clientcommand that botman put in so only the listen_server edict can use these commands
+
+i.e...
+
+code:
+
+   if ((gpGlobals->deathmatch) && (!IsDedicatedServer) &&
+       (pEntity == listenserver_edict))
+
+
+
+You might want to move your cl_dodmusic check before this and move the pcmd,arg1,arg2 etc to the very top of the function if not already there.
+
+You can check to see if the client recieving the cl_dodmusic command is a fakeclient and if so, just "return"
+
+--------------------------------------------------
+03/05/02 at 03:04:23  Reply by: Noplay (jame4-bond@laposte.net)
+--------------------------------------------------
+.... I have the same probleme
+
+
+void ClientCommand( edict_t *pEntity )
+{
+   const char *pcmd = Cmd_Argv(0);
+   const char *arg1 = Cmd_Argv(1);
+   const char *arg2 = Cmd_Argv(2);
+   const char *arg3 = Cmd_Argv(3);
+   const char *arg4 = Cmd_Argv(4);
+   const char *arg5 = Cmd_Argv(5);
+
+  if (FStrEq(pcmd, "cl_dodmusic")) 
+     { 
+      if (isFakeClientCommand)
+   {
+       return;
+       }
+} 
+
+
+--------------------------------------------------
+03/05/02 at 03:39:47  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+instead of saying " if (isFakeClientCommand)" just use
+
+code:
+
+if( pEntity->v.flags & FL_FAKECLIENT )
+  return;
+
+
+
+isFakeClientCommand will only be 1 or TRUE when you use the FakeClientCommand() function, which you are not doing.
+
+[modified on 03/05/02 at 03:39:47]
+--------------------------------------------------
+03/05/02 at 06:27:55  Reply by: Noplay (jame4-bond@laposte.net)
+--------------------------------------------------
+but i have the same bogue! I understand not.
+
+--------------------------------------------------
+03/05/02 at 07:52:13  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+code:
+
+void ClientCommand( edict_t *pEntity ) 
+{ 
+  const char *pcmd = Cmd_Argv(0); 
+  const char *arg1 = Cmd_Argv(1); 
+  const char *arg2 = Cmd_Argv(2); 
+  const char *arg3 = Cmd_Argv(3); 
+  const char *arg4 = Cmd_Argv(4); 
+  const char *arg5 = Cmd_Argv(5); 
+
+  if (FStrEq(pcmd, "cl_dodmusic")) 
+  { 
+    if( pEntity->v.flags & FL_FAKECLIENT )
+      return;
+  } 
+
+
+
+??? Using this code?
+
+--------------------------------------------------
+03/05/02 at 08:27:16  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+ClientCommand() has nothing to do with bots.  The ClientCommand() function will ONLY be called by the Half-Life engine when a REAL client sends a command to the server.  Bot's don't have a client and can NEVER generate a message that will show up in ClientCommand().
+
+Besides, your problem isn't stuff coming from the client to the server (which is what ClientCommand is for), your problem is stuff going from the server to the clients (which is what pfnClientCommand, pfnClientPrintf, and pfnMessageBegin is for).
+
+botman
+
+--------------------------------------------------
+03/25/02 at 14:22:22  Reply by: Kill1Frenzy (killar@get2net.dk)
+--------------------------------------------------
+I have the same problem, but it doesn't seem to be pfnClientPrintf() or pfnClientCommand()which causes the problem. And I don't think the problem is cl_dodmusic 3, cause it plays cl_dodmusic 2 without problems, which is just before cl_dodmusic 3. After the cl_dodmusic 3 message it is supposed to update the score_info, dod2 uses a custom score table so it could be the problem(probaly not).
+
+--------------------------------------------------
+03/25/02 at 14:37:23  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+QUOTE:
+ClientCommand() has nothing to do with bots.  The ClientCommand() function will ONLY be called by the Half-Life engine when a REAL client sends a command to the server.  Bot's don't have a client and can NEVER generate a message that will show up in ClientCommand().
+
+
+
+
+Am I blind or do I see in your code that FakeClientCommand() calls ClientCommand() ???
+
+
+
+--------------------------------------------------
+03/25/02 at 15:27:36  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+Well that's only if specifically called by your bot ;D
+
+--------------------------------------------------
+03/25/02 at 18:26:17  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+Doooh, you were talking about pfnClientCommand, NOT ClientCommand. I misunderstood. Nevermind.
+
+
+--------------------------------------------------
+03/29/02 at 14:48:51  Reply by: Kill1Frenzy (killar@get2net.dk)
+--------------------------------------------------
+Problem solved... I was using hpb bot 1.8 as my template, I moved all my code to bot template3 and it worked.
+
+--------------------------------------------------
+04/09/02 at 11:59:29  Reply by: Noplay (jame4-bond@laposte.net)
+--------------------------------------------------
+Why its works with template and not 1.8a or 2.0?
+
+--------------------------------------------------
+04/27/02 at 03:40:15  Reply by: Noplay (jame4-bond@laposte.net)
+--------------------------------------------------
+it's work with hl 1.1.09 thanks
+

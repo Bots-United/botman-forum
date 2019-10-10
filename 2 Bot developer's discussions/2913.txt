@@ -1,0 +1,159 @@
+--------------------------------------------------
+Subject: New DMC Problem :(
+--------------------------------------------------
+03/28/02 at 12:20:52  Posted by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+My bots don't seem to want to shoot the Rocket launcher or grenade launcher or lightning gun in dmc. Does anyone have similar problems? I practically copied/pasted the DMC weapons stuff from hpb_bot source ;) Call me lazy, but hey it works for the  most part except that the bots dont seem to think they either :
+
+dont have the weapon when they have
+dont have enough ammo when they have
+
+or ammo is 0 in the ammo array when infact it isn't
+
+--------------------------------------------------
+03/28/02 at 13:04:09  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+You may not be initializing the ammo properly or you might not have the weapon bits code storing things properly (remember the weapons in DMC are bit masks, 1, 2, 4, 8, 16, etc. not sequential 1,2,3,4,5, etc. like in other MODs).  Make sure you are handling the weapon ID as a bit mask and NOT an index in both the bot_combat.cpp code AND in the bot_client.cpp code (where the get the weapon).
+
+P.S. There's still a bug in DMC where the player's don't always spawn with the crowbar (but they magically get it after they pick up their first weapon).  It doesn't sound like this is causing you problems though.
+
+botman
+
+--------------------------------------------------
+03/28/02 at 13:06:32  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+More info: 
+
+It seems that the rocket launcher/grenade launcher and lightning gun isn't in weapon_defs for some reason, even though the bot has the weapon.
+
+when I was debugging it got onto these parts in botcombat.cpp
+
+code:
+
+                  if ((primary_percent <= pSelect[select_index].primary_fire_percent) &&
+                        ((weapon_defs[weapon_index].iAmmo1 == -1) 
+                        (pBot->m_rgAmmo[weapon_defs[weapon_index].iAmmo1] >=
+                        pSelect[select_index].min_primary_ammo)) &&
+                        (primary_in_range))
+                  {
+                        use_primary = TRUE;
+                  }
+                  
+                  // otherwise see if there is enough secondary ammo AND
+                  // the bot is far enough away to use secondary fire AND
+                  // the bot is close enough to the enemy to use secondary fire
+                  
+                  else if (((weapon_defs[weapon_index].iAmmo2 == -1) 
+                        (pBot->m_rgAmmo[weapon_defs[weapon_index].iAmmo2] >=
+                        pSelect[select_index].min_secondary_ammo)) &&
+                        (secondary_in_range))
+                  {
+                        use_secondary = TRUE;
+                  }
+
+
+
+pBot->m_rgAmmo[weapon_defs[weapon_index].iAmmo1]
+and
+pBot->m_rgAmmo[weapon_defs[weapon_index].iAmmo2]
+were both zero.
+
+Also weapon_defs[weapon_index].iAmmo2 wasn't -1 !
+
+So that's all that seems to be annoying me :(
+
+oh and all the other weapons work fine except rocket/grenade launcher and lightning gun... 
+
+[modified on 03/28/02 at 13:06:32]
+--------------------------------------------------
+03/28/02 at 13:16:17  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+this may sound crazy... But I've copied and pasted every thing to do with DMC from HPB Bot source and I still have the problem...
+
+The weapon_defs[] just simply doesn't have rocket launcher or any other weapon that doesn't work... :(
+
+--------------------------------------------------
+03/28/02 at 13:48:52  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+Oops...!!!
+
+Forget about all that, botman. Looks like you forgot to add this into the weaponlist in botclient.
+
+code:
+
+   else if (state == 7)
+   {
+      state++;
+
+        int iId = *(int *)p;
+        int value = 0;
+
+        if (mod_id == DMC_DLL)
+        {
+              bot_weapon.iId = 0;
+              value = iId;
+              while (value)
+              {
+                    bot_weapon.iId++;
+                    value = value >> 1;
+              }
+        }
+        else
+              bot_weapon.iId = iId;
+   }
+
+
+
+You just had botweapon.iId = iId in the source :)
+
+[modified on 03/28/02 at 13:48:52]
+--------------------------------------------------
+03/28/02 at 14:44:31  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+the fact was without that extra piece of codee (I just stole from bot_combat!) The iId was 120(The ID of the lightning gun) And that was WAY too big for the weapon_defs array. It seems to add them ok to the weapon_defs now but there are probably some more about I have to fix because they atill aren't using the weapons I want them to use!!!
+
+[modified on 03/28/02 at 14:44:31]
+--------------------------------------------------
+03/28/02 at 14:56:02  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+Oh you'll also have to store the actuall iId that was given in the network message so it can be added to bot_weapons
+
+the bot_weapon.iId is used to find the weapon_def index.
+
+--------------------------------------------------
+03/28/02 at 15:24:10  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+I have this instead...
+code:
+      if (mod_id == DMC_DLL)
+      {
+         bots[bot_index].bot_weapons |= bot_weapon.iId;
+      }
+
+...which stores the bitmask weapon ID (1,2,4,8,etc.) instead of the sequential weapon ID (like 1,2,3,4,5,etc.).
+
+But you have to make sure you are comparing bitmask values in the bot_combat.cpp code also otherwise you are comparing apples and oranges.
+
+botman
+
+--------------------------------------------------
+03/29/02 at 18:42:01  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+Typically in other MODs, when there is a problem with weapon pickup code, the weapon data table still remains correctly updated, thanks to UpdateClientData() which is called in StartFrame, if I'm not mistaken. The trick is that in DMC, UpdateClientData() is USELESS. So you need to DOUBLE-CHECK all your weapon-related stuff in bot_client.cpp, bot_combat.cpp, and everywhere you use weapon code, because if there's a bug somewhere, it won't be automagically corrected by UpdateClientData().
+
+The whole deal consists in replacing ordinal indexation with bitwise indexation. Once you're done, it works. Or maybe you've got a bug that is even most underhand than that, like the one I experienced with my own DMC bot code for several months ? ;D
+
+Good luck ;-P
+
+[modified on 03/29/02 at 18:42:01]
+--------------------------------------------------
+03/30/02 at 04:38:04  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+I got it working a day or two ago :-P
+
+It was the current weapon, weapon list, AmmoX and Ammo pickup client functions I changed.
+
+I added the piece of code that gets the correct m_rgAmmo/weapon_defs index for a DMC weapon (I just took for bot_combat) :D And used that index to store the new weapon info. 
+
+The problem was that the weapon ID was being used as the m_rgAmmo/weapon_defs index. And because the DMC weapons had a bitmaped ID many weapons ID was too large to use for the index.. e.g. The lightning gun has an ID of 128 and that was beign used for an array that only had 32 positions in it. :) At least I changed all that and it seems to work now.
+

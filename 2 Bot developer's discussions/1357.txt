@@ -1,0 +1,255 @@
+--------------------------------------------------
+Subject: CODE: New "cleaner" item handling code
+--------------------------------------------------
+03/13/01 at 12:48:55  Posted by: DarkYouth (darkyouth@thegraze.freeserve.co.uk)
+--------------------------------------------------
+This is a stripped down function and is very simple to follow, even for newbie coders. There are no comments as such but the BotSay stuff should explain really what each part does.
+
+
+bool SWAT_ItemHandler( bot_t *pBot )
+{
+      if (pBot->use_item_time > gpGlobals->time)
+            return FALSE;
+
+      float distance;
+      char item_name[40];
+      if (pBot->pBotPickupItem != NULL)      // If we have an item
+      {
+            if ((!WaypointReachable(pBot->pEdict->v.origin, pBot->pBotPickupItem->v.origin, pBot->pEdict)) || (!FVisible(pBot->pBotPickupItem->v.origin, pBot->pEdict)))
+            {
+                  pBot->pBotPickupItem = NULL;
+                  BotSay(pBot->pEdict, "SWAT: Item cleared");
+                  return FALSE;
+            }
+            else if ((pBot->pBotPickupItem->v.origin - pBot->pEdict->v.origin).Length() > 75)
+            {
+                  // We arent close enough to do anything yet, so lets "use" the item
+                  Vector v_item = pBot->pBotPickupItem->v.origin - pBot->pEdict->v.origin;
+
+                  Vector bot_angles = UTIL_VecToAngles( v_item );
+
+                  pBot->pEdict->v.ideal_yaw = bot_angles.y;
+
+                  BotFixIdealYaw(pBot->pEdict);
+                  BotSay(pBot->pEdict, "SWAT: Heading to item");
+                  return TRUE;
+            }
+            else
+            {
+                  strcpy(item_name, STRING(pBot->pBotPickupItem->v.classname));
+                  // Handle the various items
+                  if (strcmp("func_button", item_name) == 0)
+                  {
+                        pBot->pEdict->v.button |= IN_USE;
+                        BotSay(pBot->pEdict, "SWAT: Using button");
+                        pBot->pBotPickupItem = NULL;
+                        pBot->use_item_time = gpGlobals->time + 10;
+                        return TRUE;
+                  }
+                  else if (strcmp("hostage_entity", item_name) == 0)
+                  {
+                        int resc = WaypointFindRandomGoal(pBot->pEdict, UTIL_GetTeam(pBot->pEdict), W_FL_RESCUE);
+
+                        if (resc != -1)
+                              pBot->waypoint_goal = resc;
+
+                        pBot->pEdict->v.button |= IN_USE;
+                        BotSay(pBot->pEdict, "SWAT: Getting hostage to follow");
+                        pBot->pBotPickupItem = NULL;
+                        pBot->use_item_time = gpGlobals->time + 60;
+                        return TRUE;
+                  }
+                  else
+                  {
+                        BotSay(pBot->pEdict, "SWAT: Unhandled Item");
+                        return FALSE;
+                  }
+            }
+      }
+      else
+      {
+            // Search for an item to call my own :)
+            edict_t *pent = NULL;
+            int radius = 500;
+
+            while ((pent = UTIL_FindEntityInSphere( pent, pBot->pEdict->v.origin, radius )) != NULL)
+            {
+                  strcpy(item_name, STRING(pent->v.classname));
+                  // Item checks!
+
+                  if ((UTIL_GetTeam(pBot->pEdict) == 1) && (strcmp("hostage_entity", item_name) == 0))
+                  {
+                        pBot->pBotPickupItem = pent;
+                        BotSay(pBot->pEdict, "SWAT: Aquired hostage");
+                        return TRUE;
+                  }
+                  if (strcmp("func_button", item_name) == 0)
+                  {
+                        pBot->pBotPickupItem = pent;
+                        BotSay(pBot->pEdict, "SWAT: Found a button..");
+                        return TRUE;
+                  }
+            }
+      }
+      return FALSE;
+}
+
+
+The above code needs a new parameter defined in bot.h and some code added to bot think. It also makes references to a flag or two that are CS specific for waypointing (comment the FindGoal line out if need be)
+
+Call it like this in your main think loop:
+
+
+...
+  if (hasenemy)
+  { 
+         shootenemy
+  }
+  else if (SWAT_HandleItem(pBot))
+  {
+        // Do nothing (self contained)
+  }
+  else
+  {
+     // Navigation stuff
+
+
+Also remove any reference to BotFindItem in your botthink and now your bots will use doors and hostages (I think)
+
+This code is heavily stripped down and there may be errors in my simplification of the code (I took a tonne of stuff out like weapon dropping and bomb defusing)
+
+Enjoy.
+
+--------------------------------------------------
+03/13/01 at 14:34:02  Reply by: eLiTe (ali@elitegamer.fsnet.co.uk)
+--------------------------------------------------
+Hehe I just added in the button stuff to my code 2 nights ago (basically just copying it from BotFindItem and stripping out all the un-ndecessary stuff), and I put the hostage thing in a while ago :)       But when I made my hostage system I put in something to store the edict of used hostages so that the bots wouldn't try to steal hostages from each other, and it worked first time!! Of course the bots will still steal hostages from humans but I don't think that will matter a lot, when I get my nav system working EXACTLY right... :)
+
+--------------------------------------------------
+03/13/01 at 14:40:34  Reply by: DarkYouth (darkyouth@thegraze.freeserve.co.uk)
+--------------------------------------------------
+OOOPS!
+
+One error in my code!
+
+Instead of refering to the origin of the entity refer directly it must pass through VecBModelOrigin function first or you will not detect buttons correctly! aha! :)
+
+FIXED FUNCTION
+
+bool SWAT_ItemHandler( bot_t *pBot )
+{
+      if (pBot->use_item_time > gpGlobals->time)
+            return FALSE;
+      Vector entity_origin;
+      float distance;
+      char item_name[40];
+      if (pBot->pBotPickupItem != NULL)      // If we have an item
+      {
+            entity_origin = VecBModelOrigin(pBot->pBotPickupItem);
+            if ((!WaypointReachable(pBot->pEdict->v.origin, entity_origin, pBot->pEdict)) || (!FVisible(pBot->pBotPickupItem->v.origin, pBot->pEdict)))
+            {
+                  pBot->pBotPickupItem = NULL;
+                  BotSay(pBot->pEdict, "SWAT: Item cleared");
+                  return FALSE;
+            }
+            else if ((entity_origin - pBot->pEdict->v.origin).Length() > 45)
+            {
+                  // We arent close enough to do anything yet, so lets "use" the item
+                  Vector v_item = entity_origin - pBot->pEdict->v.origin;
+
+                  Vector bot_angles = UTIL_VecToAngles( v_item );
+
+                  pBot->pEdict->v.ideal_yaw = bot_angles.y;
+
+                  BotFixIdealYaw(pBot->pEdict);
+                  BotSay(pBot->pEdict, "SWAT: Heading to item");
+                  return TRUE;
+            }
+            else
+            {
+                  strcpy(item_name, STRING(pBot->pBotPickupItem->v.classname));
+                  // Handle the various items
+                  if (strcmp("func_button", item_name) == 0)
+                  {
+                        pBot->pEdict->v.button |= IN_USE;
+                        BotSay(pBot->pEdict, "SWAT: Using button");
+                        pBot->pBotPickupItem = NULL;
+                        pBot->use_item_time = gpGlobals->time + 10;
+                        return TRUE;
+                  }
+                  else if (strcmp("hostage_entity", item_name) == 0)
+                  {
+                        int resc = WaypointFindRandomGoal(pBot->pEdict, UTIL_GetTeam(pBot->pEdict), W_FL_RESCUE);
+
+                        if (resc != -1)
+                              pBot->waypoint_goal = resc;
+
+                        pBot->pEdict->v.button |= IN_USE;
+                        BotSay(pBot->pEdict, "SWAT: Getting hostage to follow");
+                        pBot->pBotPickupItem = NULL;
+                        pBot->use_item_time = gpGlobals->time + 60;
+                        return TRUE;
+                  }
+                  else
+                  {
+                        BotSay(pBot->pEdict, "SWAT: Unhandled Item");
+                        return FALSE;
+                  }
+            }
+      }
+      else
+      {
+            // Search for an item to call my own :)
+            edict_t *pent = NULL;
+            int radius = 500;
+
+            while ((pent = UTIL_FindEntityInSphere( pent, pBot->pEdict->v.origin, radius )) != NULL)
+            {
+                  entity_origin = VecBModelOrigin(pent);
+                  if (!(pent->v.effects & EF_NODRAW))
+                  {
+                        strcpy(item_name, STRING(pent->v.classname));
+                        // Item checks!
+                        if (FVisible(entity_origin, pBot->pEdict))
+                        {
+                              if (strcmp("func_button", item_name) == 0)
+                              {
+                                    pBot->pBotPickupItem = pent;
+                                    BotSay(pBot->pEdict, "SWAT: Found a button..");
+                                    Vector v_item = entity_origin - pBot->pEdict->v.origin;
+
+                                    Vector bot_angles = UTIL_VecToAngles( v_item );
+
+                                    pBot->pEdict->v.ideal_yaw = bot_angles.y;
+                        
+                                    BotFixIdealYaw(pBot->pEdict);
+                                    return TRUE;
+                              }
+                              else if ((UTIL_GetTeam(pBot->pEdict) == 1) && (strcmp("hostage_entity", item_name) == 0))
+                              {
+                                    pBot->pBotPickupItem = pent;
+                                    BotSay(pBot->pEdict, "SWAT: Aquired hostage");
+                                    Vector v_item = entity_origin - pBot->pEdict->v.origin;
+      
+                                    Vector bot_angles = UTIL_VecToAngles( v_item );
+      
+                                    pBot->pEdict->v.ideal_yaw = bot_angles.y;
+      
+                                    BotFixIdealYaw(pBot->pEdict);
+                                    return TRUE;
+                              }
+                        }
+                  }
+            }
+      }
+      return FALSE;
+}
+
+--------------------------------------------------
+03/14/01 at 03:28:28  Reply by: theimann (tobias.heimann@cl.cam.ac.uk)
+--------------------------------------------------
+Hi guys! While the code presented above will work fine (I guess) for most "newbie-bots", please don't forget that the ideal item handling looks very different:
+You (as a player) don't stroll around the map and use any item within a certain distance if you haven't used anything for some time... The quest is to make this item-handling goal-driven. Example: If the bot has to get through a door, then it should press the appropriate button before that (even if it used a hostage 3 seconds ago). That's the aim you should keep in mind while designing your item-code. A bot that pushes buttons it comes along is better than a bot that doesn't push buttons at all, but it's for sure not a very intelligent behaviour.
+
+Tobias
+

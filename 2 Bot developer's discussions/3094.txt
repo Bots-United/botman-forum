@@ -1,0 +1,256 @@
+--------------------------------------------------
+Subject: The magical v_angle and v.angles
+--------------------------------------------------
+05/11/02 at 05:04:38  Posted by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+Well, since the discussion on the nuclearbox is really getting out of hand and some things should be really cleared up. 
+
+In my experience:
+pEdict->v.angles affect the head/gun pointing into a general direction
+pEdict->v.v_angles affects the body
+
+now, i do agree that they are used combined, because when i let the bot 'look back' the body also will 'look back' automaticly. Still, its not clear what is what, i always use the above angles and they always work fine. I also ran experiments as you can see on the nuclearbox post, but still i get answer that i am doing it wrong. I am getting really confused here!
+
+Lets clear this up, once and for all.
+
+The nuclearbox post can be found at : http://forums.nuclearbox.com/thread.php?threadid=12142&boardid=6&page=3#57
+
+--------------------------------------------------
+05/11/02 at 05:25:59  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+The pev->v_angle variable is used to control the direction the player is looking (the view angles).  The pev->angles field is used to control the direction the body is facing.  For human players, the client keeps the body angles and the view angles the same.  For bots, if you set the pev->v_angle independantly of the pev->angles then you can get the upper part of the body facing one direction and the lower part of the body facing a different direction.  The player model will only allow just so much twist so you can't have the legs facing one direction (controlled by pev->angles) and the head facing 180 degrees in the other direction (controlled by pev->v_angle).
+
+botman
+
+--------------------------------------------------
+05/11/02 at 06:01:16  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+look Stefan,
+
+http://www.racc-ai.com/v_angles.gif
+
+I have tried to explain as much as possible.
+I hope you will understand this time :)
+
+--------------------------------------------------
+05/11/02 at 06:25:39  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+The problem with me is, why are my bots not looking the way i want them or walking the way i want them when i change the angles?!
+
+i mean, i even use it at the last lines of my code, as described in the nuclearbox thingy. WHy does it work then!?!? aargh
+
+--------------------------------------------------
+05/11/02 at 06:37:22  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+What I described in this pic is also applicable for the Y axis, the engine won't let your bots get a stiff neck if you set your model's angles to improper values. It adjusts its view angles accordingly. It's exactly the same.
+
+;D looks like Stefan will spend looooong nights recoding his bot
+
+
+
+--------------------------------------------------
+05/11/02 at 07:15:41  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+I read the NukeBox thread and believe some of the confusion is due to the rest of the code you have in your bots (aiming code, navigation code, etc.).  Use this VERY simple BotThink() function to replace the one in your code (just rename the old one temporarily)...
+code:
+void BotThink( bot_t *pBot )
+{
+   static float walk_angle = 15.0f;  // direction the bot will walk
+
+   Vector v_diff;             // vector from previous to current location
+   float moved_distance;      // length of v_diff vector (distance bot moved)
+
+   edict_t *pEdict = pBot->pEdict;
+
+   pEdict->v.flags = FL_FAKECLIENT;
+
+// TheFatal - START from Advanced Bot Framework (Thanks Rich!)
+
+   // adjust the millisecond delay based on the frame rate interval...
+   if (pBot->msecdel <= gpGlobals->time)
+   {
+      pBot->msecdel = gpGlobals->time + 0.5;
+      if (pBot->msecnum > 0)
+         pBot->msecval = 450.0/pBot->msecnum;
+      pBot->msecnum = 0;
+   }
+   else
+      pBot->msecnum++;
+
+   if (pBot->msecval < 1)    // don't allow msec to be less than 1...
+      pBot->msecval = 1;
+
+   if (pBot->msecval > 100)  // ...or greater than 100
+      pBot->msecval = 100;
+
+// TheFatal - END
+
+   float f_frame_time = pBot->msecval / 1000;  // calculate frame time
+
+   pEdict->v.button = 0;  // clear the IN_ATTACK, IN_JUMP, IN_DUCK, etc. buttons
+   pBot->f_move_speed = 100;  // set to 100 units per second
+
+   // if the bot hasn't selected stuff to start the game yet, go do that...
+   if (pBot->not_started)
+   {
+      BotStartGame( pBot );
+
+      g_engfuncs.pfnRunPlayerMove( pEdict, pEdict->v.v_angle, pBot->f_move_speed,
+                                   0, 0, pEdict->v.button, 0, pBot->msecval);
+
+      return;
+   }
+
+   // if the bot is dead, randomly press fire to respawn...
+   if ((pEdict->v.health < 1)  (pEdict->v.deadflag != DEAD_NO))
+   {
+      if (RANDOM_LONG(1, 100) > 50)
+         pEdict->v.button = IN_ATTACK;
+
+      g_engfuncs.pfnRunPlayerMove( pEdict, pEdict->v.v_angle, pBot->f_move_speed,
+                                   0, 0, pEdict->v.button, 0, pBot->msecval);
+
+      return;
+   }
+
+   if (pBot->f_speed_check_time <= gpGlobals->time)
+   {
+      // see how far bot has moved since the previous position...
+      v_diff = pBot->v_prev_origin - pEdict->v.origin;
+      moved_distance = v_diff.Length();
+
+      // save current position as previous
+      pBot->v_prev_origin = pEdict->v.origin;
+      pBot->f_speed_check_time = gpGlobals->time + 0.2;
+   }
+   else
+   {
+      moved_distance = 2.0;
+   }
+
+   if (pEdict->v.movetype == MOVETYPE_FLY)  // bot stuck on a ladder?, jump off
+      pEdict->v.button = IN_JUMP;
+
+   if (moved_distance <= 1.0)  // is the bot stuck?, turn at little...
+      walk_angle += 103.0f;  // turn 103 degrees to avoid repeated paths
+
+   if (walk_angle > 360)
+      walk_angle -= 360;
+
+   float forward_speed = sin(walk_angle) * pBot->f_move_speed;
+   float side_speed = cos(walk_angle) * pBot->f_move_speed;
+
+   pEdict->v.angles.x = 0.0f;
+   pEdict->v.angles.y = 0.0f;
+   pEdict->v.angles.z = 0.0f;
+
+   pEdict->v.v_angle.x = 0.0f;
+   pEdict->v.v_angle.y = 0.0f;
+   pEdict->v.v_angle.z = 0.0f;
+
+   g_engfuncs.pfnRunPlayerMove( pEdict, pEdict->v.v_angle, forward_speed, side_speed,
+                                0, pEdict->v.button, 0, pBot->msecval);
+
+   return;
+}
+
+All this bot does is walk around and bounce off of the walls, nothing else, no aiming, no navigation, no searching for entities, etc.  The bot will ALWAYS face the same direction (unless you change the bot angles yaw (angle.y) value).  You can play with the angles and v_angle fields to see what effect it has.  For example, you can set the v_angle.x to pitch the body up and down as though they are aiming at something (notice ALSO that setting angles.x causes the body to lean backwards WHICH ALSO makes them look like they are aiming at something, but not in a natural fashion).
+
+I STRONGLY suggest that you only change ONE of these at a time and only change the .x, .y or .z values one at a time otherwise you will add to your confusion.
+
+Because of the limitations of the player model studio controller bones, when you modify one of these fields you can effect others.  Don't see the angles to very extreme values either (since you won't be able to tell if the engine is limiting it to something else).
+
+EDIT: You should also ONLY create ONE bot since the "walk_angle" variable is a global static variable (and if you create more than one bot they will all "share" this value and it will change for all bots when one bot runs into something).  You could add the "walk_angle" to the bot_t structure and change the code to handle that but I didn't want to have to change more than one file for this simple test.
+
+botman
+
+[modified on 05/11/02 at 07:15:41]
+--------------------------------------------------
+05/11/02 at 07:49:00  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+:) clever, that sin and cos stuff... I wouldn't have thought of that !
+
+OK so, was I right in the drawing I posted the URL above, or are there some things that are mistaken, and if so, which are they ? Did you read it, Botman ?
+
+I'd like to be sure and certain, this time, and I hope it'll be the last time I will wonder this question !
+
+
+
+--------------------------------------------------
+05/11/02 at 09:18:58  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Your drawing looks correct (especially the case where the body pitch angle (pev->angles.x) is set to a non-zero value when the view angles are zero (level horizontally).  This is the case that I was talking about where the player "looks" like they are aiming up at someone but when viewed in the game the player is bent backwards at the waist and the gun is still at right angles to the chest.  It doesn't look natural (i.e. like the way normal human players aim).
+
+So, you should be using v_angle to aim where the bot is looking and aiming.  You should use angles to adjust which way the lower body is facing.  Since the client code keeps these the same for human players, I don't see any reason why you would want bots to look any different.  Keep adjusting the view angle yaw to aim at stuff and set the body angle yaw to the same as the view angle yaw.  Then adjust the view angle pitch to aim at something and set the body angle pitch to 1/3 of that (to aim the gun correctly).  You probably want to keep reseting the view angle and body angle roll so that the bot doesn't start to slant sideways (which can happen while they are falling through air).  Here's what I've currently got in the HPB bot code right before the call to pfnRunPlayerMove()...
+code:
+   pEdict->v.v_angle.z = 0;  // reset roll to 0 (straight up and down)
+
+   // set the body angles the same way the bot is looking/aiming
+   pEdict->v.angles.x = -pEdict->v.v_angle.x / 3;
+   pEdict->v.angles.y = pEdict->v.v_angle.y;
+   pEdict->v.angles.z = pEdict->v.v_angle.z;
+
+...I keep adjusting the view angles to the direction (or target) that I want to bot to be looking at and the body angles get set based on those.
+
+botman
+
+--------------------------------------------------
+05/12/02 at 04:50:52  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+THanks for all the help guys, i will get on it as soon as possible. Thanks for the drawing aswell Pierre, i finally get to understand this better, rofl i am confusing myself.. THis is not good. Luckily i have all fucntions centralized so i dont have to change much code if i need to.
+
+
+
+--------------------------------------------------
+05/12/02 at 10:54:45  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+Ok, i tried botmans botthink. And i notice one thing that really differs in code.
+
+Botman you use a specific formula to make the bots movement go to a specific angle correct? As i see walk_angle sets the side speed and forward speed. This way the bot will 'walk' to that direction of walk_angle.
+
+I can change the variables and still the bot will walk to that walk_angle.
+
+I realized that realbot does not do this at all!
+RealBot simply lets the pBot->pEdict->v.v_angle 'look' at any vector it should move to. Using the function i already posted on the nuclearbox forum. The sidespeed is only used when strafing! 
+
+What differs between botmans code and realbots code is:
+
+-> the sidespeed is ALWAYS 0 when the bot is not strafing with RealBot.
+-> the v_angle is taken to 'look' in the direction we should walk to
+
+Therefor i think we got confused. While in my point of view the bot walks into the direction of v_angle (which realbot does), in your code the bot does not really do that at all, but simply walks the way how the side/forward speed is given.
+
+
+EDIT:
+Actually, botmans way is more neater and i think it wont be a problem to change the code so that it will use the forward/side speed.
+
+EDIT 2:
+I added a bit of code and the bots now walk the 'walk/sidespeed way'. The bots walk way more jerky though, when just reached a waypoint it seems to realize a bit to late it reached it.
+
+[modified on 05/12/02 at 10:54:45]
+--------------------------------------------------
+05/12/02 at 13:00:26  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+aargh, will we ever understand each other ;D
+
+Botman's sine and cosine stuff is used *only* in this example to make the bots go ONE direction <b>WHATEVER THEIR ANGLES ARE</b>. This way it ensures you can set the bot's angles and v_angle variables to your tastes <b>without</b> interfering the bot's direction (Olo's PLBot does this for its bots in unwaypointed maps).
+
+You <b>DON'T NEED</b> this stuff, because it is not human-like. In a regular bot code, movespeed and sidespeed can take <b>only</b> 3 values : engine.cpp's fNewMaxspeed (bot is running), fNewMaxspeed / 2 (bot is walking), and 0.0f (bot is standing still). And you let the bot go in the direction pointed by its body angles.
+
+Verstandest du ?
+
+--------------------------------------------------
+05/12/02 at 14:04:59  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+@pierre, yes you are correct about botmans code. However, i tried it for fun on my bots and it even works quite well actually ;)
+
+anywayz, botman's code showed me indeed that pBot->pEdict->v.angles = body
+pBot->pEdict->v.v_angle = head
+
+your drawing also explains a lot. Anywayz, my reply actually is a bit vague, i am not entirely 100% focussed.
+
+edit: Still, even i have the proof something is not right at here. And botmans code is ok, i cannot find what is wrong or makes my realbot do act weird. I dont want to dig into it now, its way to late.
+
+and yes pierre, we are doomed to misunderstood each other forever. :P
+
+[modified on 05/12/02 at 14:04:59]

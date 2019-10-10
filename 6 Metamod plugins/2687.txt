@@ -1,0 +1,172 @@
+--------------------------------------------------
+Subject: How to create brush models (func_wall)
+--------------------------------------------------
+02/03/02 at 10:38:31  Posted by: botman (botman@planethalflife.com)
+--------------------------------------------------
+You'll notice in the example configuration file for crossfire, I duplicate a couple of the brush models to create "buttons" to open the secret door.  What do you need to know to create a brush model and position it correctly?
+
+You will need to know all of the brush models that are available in that map.  You can only clone existing brush models, you can't make them from scratch.  If you use my BSP tools, you can generate the list of brush models available in a map.  Use the "-m" option on bsp_tool.exe to print out the brush models.  You can redirect this output to a file like so...
+code:
+C:\BSP_tool> bsp_tool -m stalkyard.bsp > stalkyard.txt
+
+Each brush model in the output will have a minimum bounding box coordinate and a maximum bounding box coordinate.  These two coordinates tell you where a brush model is located.  The origin for this brush model is in the exact middle of the minimum and maximum coordinates (add the X coordinates together and divide by 2, add the Y coordinates together and divide by 2, and add the Z coordinates together and divide by 2 to get the origin).
+
+The model index number is the brush model number.  Worldcraft and Half-Life use a asterisk '*' in front of the brush model number in the model key of the entity.  For example, if I wanted to create a func_wall entity and use brush model 37, the "model" key value would be "*37".
+
+As I said above, you can't create brush models, you can only clone existing brush models.  When you clone a brush model the clone will be exactly the same size, shape, and have exactly the same textures as the original brush model.  There's no way to change any of this.  You also can't change the orientation (angles) that the brush model is rendered with (well, actually you can, but it's a REAL pain in the ass trying to determine what the correct origin of the cloned model should be, more on this later).
+
+In order to clone the brush model, you need to know what the origin of the clone will be.  The origin for cloned brush models doesn't work like the origin for other entities.  The origin for brush models is a RELATIVE origin.  The origin for the clone is a position in 3D space RELATIVE to the original brush model.  For example, if I had a brush model with a minimum bounding box of (10, 20, 40) and a maximum bounding box of (40, 80, 100), I would know that the origin of the original brush model is (25, 50, 70).  If I wanted to place a cloned version of this brush model at ABSOLUTE coordinates (25, 50, 170), 100 units above the original, I would use (0, 0, 100) as the origin of the cloned brush model.
+
+You can determine the origin of the cloned brush model, by subtracting the ABSOLUTE 3D coordinate of where you want the clone to be positioned from the origin of the original brush model.  In my example this would be (25-25, 50-50, 170-70) or (0, 0, 100).
+
+Remember that this only copies the brush model to a new location in the world, it does not scale it up or down, it does not change the textures and it does not rotate it.
+
+If you want to modify the Stripper2 source code to allow you to rotate a cloned brush model, I can give you a couple of pointers...
+
+First, you will need to set the angles of the entity (pev->angles) after you have called the DispatchSpawn() function for it.  If you look in the SDK at the source code for func_wall, for example, it explicitly sets the pev->angles to (0, 0, 0).  Only the DispatchSpawn() function has returned to the Stripper2 code, you are free to change the angles of that newly created entity.
+
+After some experimenting, it appears that the Half-Life engine applys the rotation to the entity first before it translates it based on the offset.  The problem is that this translation happens with respect to the origin of the ORIGINAL brush model.  So for example, if you have an brush model at (140, -350, 1530) and you rotate it around the Z axis at 90 degrees, you wind up with an brush model at (-1530, -350, 140).  At least, I think that's where it ends up.  Once the rotation is complete, then the brush faces are translated based on the offset you specified as the origin key in the cloned entity (i.e. since it was rotated, the origin will now have to change to position it at the same absolute 3D world coordinate).
+
+Even with knowing the rotation relative to the absolute 3D coordinate of the original brush model and the adjusted offset for the origin of the cloned brush model, I still wasn't able to get the math working properly to position things exactly where I wanted, so I left out this feature from the Stripper2 plugin.  At first, I wasn't sure if it used the "origin" of the brush model, the minimum bounding box coordinate, or the maximum bounding box coordinate for all the rotation and translation stuff (it makes a BIG difference), but I using the "origin" of the brush model gave me the closest results to where I wanted to position the clone in absolute 3D coordinates.
+
+botman
+
+--------------------------------------------------
+02/07/02 at 20:32:07  Reply by: bmccartn (Hogweed@optonline.net)
+--------------------------------------------------
+First off, great work! A really handy resource that can breathe alot of variety into some tired maps.
+
+I'm fairly familiar with using ripent from ZTHL to modify the entities within a .bsp. It seems that most of what stripper2 does could be done with ripent. 
+
+Except for the "cloning" of brushes. After reading this I've tried to clone a few things using ripent, no success. Is this something only stripper2 can do, or am I missing something?
+
+--------------------------------------------------
+02/07/02 at 21:23:09  Reply by: bmccartn (Hogweed@optonline.net)
+--------------------------------------------------
+Never mind, I figured it out. Cool idea, never thought of it.
+
+I cloned a few of the func_pushable boxes on the hunted map, strange thing is, when you spray a decal on one box, it appears on the other one too!
+
+--------------------------------------------------
+02/08/02 at 04:41:17  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+The major difference between Stripper2 and ripent is that Stripper2 allows random placement of entities.  With ripent they are always at the same place all of the time and you can't make something appear some of the time and not appear the rest of the time.
+
+botman
+
+--------------------------------------------------
+02/08/02 at 04:42:15  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+P.S. Stripper2 also allows you to specify a bounding box size (for trigger type entities) which ripent doesn't allow for (the default bounding box size will be 2x2x2).
+
+botman
+
+--------------------------------------------------
+05/01/02 at 13:33:47  Reply by: quantum (quantum_red@yahoo.com)
+--------------------------------------------------
+So you can only duplicate a brush that is part of an entity, such as func_wall.
+
+Other brushes in the map that are part of the architecture and not func_wall, func_button, etc can not be duplicated?
+
+--------------------------------------------------
+05/02/02 at 04:33:22  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+All brush entities are the same.  You can duplicate any brush model ("*N" where N is the index of the brush model).
+
+botman
+
+--------------------------------------------------
+05/02/02 at 10:53:28  Reply by: quantum (quantum_red@yahoo.com)
+--------------------------------------------------
+"Brush entities" and "brush models" are terms I think you're applying to brushes that are, for example, the moving door in a func_door, or the moving button in a func_button, or the non moving wall in a func_wall.
+
+All the crates in the map stalkyard are part of the map architecture and not part of an entity. The floors, walls, columns, etc are also not entities. These are usually referred to as "brushes" by mappers, or maybe "world brushes".
+
+It is these "brushes" that I was referring to that I believe can not be duplicated by the technique you described.
+
+--------------------------------------------------
+05/02/02 at 12:42:39  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Correct.  Brushes that are part of the world I call "world brushes" (as does Worldcraft).  Brushes that are parts of models I call "brush models".  You can not duplicate the world brushes.
+
+If you dump the BSP models (-m in my BSP_tool app), the world is brush model 0 (which is a world brush).  Brush model 0 includes all the walls, ceilings and floors (things that aren't part of entities).  Brush models 1 to N are entities brushes (for things like func_door, func_wall, func_button, etc.).  These brush models are pretty much all the same as far as cloning them goes (i.e. you can clone a func_wall brush and add it to a func_button entity).
+
+Therefore, if you have a func_wall entity using brush model 87, you can create a func_door entity that clones this brush model 87 and use it for the door.  My point was that if you are creating a func_button entity, you don't have to clone another func_button brush model, but can use any brush model that already exists in that map (as long as it's not the world brush).
+
+botman
+
+--------------------------------------------------
+06/30/02 at 10:47:59  Reply by: qboney (codex@hotmail.com)
+--------------------------------------------------
+Ok, its pure madness caused by my ignorance....
+I cant seem to complet my truck in cs_assault.
+I can do the tires (47) to the bed lights (60),
+but no further??? I think that the rest of the
+truck is made like "walls" ??? Maybe???
+How do i make a wall??? Can someone help me with
+this??? I'm getting VERRY FRUSTRATED!!!!
+
+Here is my truck so far, built in cs_assault in
+the Terrorist spawn garage...
+
+{
+   classname/func_wall   // tire(1)
+   model/*47
+   origin/-386 1700 0
+}
+{
+   classname/func_wall   // tire(2)
+   model/*48
+   origin/-386 1700 0
+}
+{
+   classname/func_wall   // tire(3)
+   model/*49
+   origin/-386 1700 0
+}
+{
+   classname/func_wall  // tire(4)
+   model/*50
+   origin/-386 1700 0
+}
+{
+   classname/func_wall  // Radar Antenna
+   model/*54
+   origin/-386 1700 0
+}
+{
+   classname/func_wall  // viewing panels
+   model/*55
+   origin/-386 1700 0
+}
+{
+   classname/func_wall  // front window
+   model/*56
+   origin/-386 1700 0
+}
+{
+   classname/func_wall  // Drivers Window
+   model/*57
+   origin/-386 1700 0
+}
+{
+   classname/func_wall  // Passenger Window
+   model/*58
+   origin/-386 1700 0
+}
+{
+   classname/func_wall  // Bed Lights fore 
+   model/*59
+   origin/-386 1700 0
+}
+{
+   classname/func_wall  // Bed Lights aft
+   model/*60
+   origin/-386 1700 0
+}
+
+Thanks in advance for ANY help!!! And please
+excuse my ignorance...
+-Quint
+Codex@Hotmail.Com
+

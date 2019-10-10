@@ -1,0 +1,278 @@
+--------------------------------------------------
+Subject: on team but not??
+--------------------------------------------------
+11/24/00 at 08:34:58  Posted by: ARES (j.sdubbelboer@freeler.nl)
+--------------------------------------------------
+I have fixed the bots not joining a team after you kicked a bot. Now the bots just play normal in the game but they are in the unasigned section. someone know what to do. 
+
+
+
+--------------------------------------------------
+11/24/00 at 15:08:25  Reply by: Spyro (b2.mccarthy@student.qut.edu.au)
+--------------------------------------------------
+Hi,
+
+I got it working (F*@K YEAH!!).
+
+Here we go
+in bot.h:
+add 2 more vars to the bot_t struct
+float start_action_time; //next time to take action
+int next_start_action; // next action to take
+
+in bot.cpp:
+in BotStartGame:
+   if (mod_id == TFC_DLL) {
+     if (pBot->start_action_time < gpGlobals->time && pBot->start_action_time != 0) {
+       if (pBot->start_action == MSG_TFC_IDLE) {
+         pBot->start_action = pBot->next_start_action;
+         if (pBot->next_start_action == MSG_TFC_TEAM_SELECT) {
+           pBot->next_start_action = MSG_TFC_CLASS_SELECT;
+         }
+         pBot->start_action_time = gpGlobals->time + 1.5;
+      }
+    }
+      // handle Team Fortress Classic stuff here...
+
+in BotCreate:
+      if (mod_id == TFC_DLL) {
+         pBot->start_action = MSG_TFC_IDLE;
+         pBot->next_start_action = MSG_TFC_TEAM_SELECT;
+         pBot->start_action_time = gpGlobals->time + 1.5;
+      }
+
+That works. yay. Got to go to work now anyway. no applause nessesary.
+
+bye,
+
+
+
+
+
+
+
+--------------------------------------------------
+11/24/00 at 22:11:06  Reply by: Gen[X]Cops (lastride87@hotmail.com)
+--------------------------------------------------
+This happens to my bot for CS too. Does this method works for CS bots?
+
+--------------------------------------------------
+11/25/00 at 04:36:04  Reply by: Spyro (b2.mccarthy@student.qut.edu.au)
+--------------------------------------------------
+Hi,
+my dad just read the posts and said to tell you:
+
+"suck it and see"
+
+try it, you'll just have to change the tfc bits to cs bits.
+
+bye,
+
+--------------------------------------------------
+11/25/00 at 10:46:35  Reply by: BrianL (halfkiller@hotmail.com)
+--------------------------------------------------
+Yeah but does this work with the Template Source??
+Because I just put this in to see if it worked, I kicked a few bots out and added them back in and they didn't join the game still????
+
+:(
+
+--------------------------------------------------
+11/25/00 at 11:21:31  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+It looks like all it does is force the "jointeam" command, followed by the command to select a class.  I don't see how this will add the bot to TFC unless TFC first sends the menu asking which team you want to be on (unless the same thing is used to switch teams, which I haven't looked at, and TFC still thinks the bot is on the team it was on before it got kicked).
+
+Either way, this looks like a nasty hack.  I'd like to know why TFC doesn't send the team select menu when a bot joins right after a bot was kicked.  Something is not getting cleared or initialized properly when the kick occurs.
+
+botman
+
+--------------------------------------------------
+11/25/00 at 13:03:11  Reply by: Spyro (b2.mccarthy@student.qut.edu.au)
+--------------------------------------------------
+Hi,
+
+TFC doesn't send the messages to a real player if they disconnect and rejoin either. I think it assumes that the client remembers the menu. It sends the menu if you kick them, change maps, then add them. You probably have to talk to valve to find out what exactly is going on.
+
+It does force to jointeam command, but this is exactly what happens to a real client. I don't pretend to know why.
+
+bye,
+
+--------------------------------------------------
+11/25/00 at 13:49:44  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+Hmmmmm, okay.  I'll have to try disconnecting and reconnecting a real client on my LAN server at work.  I was sure that when I looked at that before, real clients (after being kicked) would get the "jointeam" VGUI menu right after the ClientConnect() function, but bots didn't.
+
+If your fix works then that's great, but I would think that you still wouldn't have to force the class selection even if you had to force the "jointeam" command.  Have you tried only force feeding the "jointeam" fake client command then waiting for the class selection menu?
+
+botman
+
+--------------------------------------------------
+11/26/00 at 00:00:07  Reply by: ARES (j.sdubbelboer@freeler.nl)
+--------------------------------------------------
+The fix above doesn't work very well.
+I have fixed it good.
+Here's what I did:
+
+in bot.h
+
+#define K_NONE  0
+#define K_TEAM  1
+#define K_CLASS 2
+
+in dll.cpp
+
+int bot_kicked = K_NONE;
+
+in ClientDisconnect:
+
+bot_kicked = K_TEAM;
+
+FakeClientCommand(bots[index].pEdict, "spectate", NULL, NULL);
+
+in bot.cpp
+
+in BotThink:
+
+if (pBot->not_started)
+   {
+         if (bot_kicked == K_TEAM)
+         {
+               pBot->start_action = MSG_TFC_TEAM_SELECT;
+         }
+         else if (bot_kicked == K_CLASS)
+         {
+               pBot->start_action = MSG_TFC_CLASS_SELECT;
+         }
+
+      BotStartGame( pBot );
+
+      g_engfuncs.pfnRunPlayerMove( pEdict, pBot->angles, 0.0,
+                                   0, 0, pEdict->v.button, 0, pBot->msecval);
+
+      return;
+   }
+
+in BotStartGame:
+
+FakeClientCommand(pEdict, "jointeam", c_team, NULL);
+
+if (bot_kicked == K_TEAM)
+{
+    bot_kicked = K_CLASS;
+}
+
+and:
+
+FakeClientCommand(pEdict, c_class, NULL, NULL);
+
+if (bot_kicked == K_CLASS)
+{
+    bot_kicked = K_NONE;
+}
+
+This way the bot who gets kicked will first go to spectater mode. I did this becouse TFC things that the next bot who joins the game has the team of the bot who just got kicked. If you don't do this and the next bot joins the same team, it will be in the unasigned section. Becouse TFC thinks that the next bot already has a team, it doesn't send the team select or the class select message. that way the bots sends the jointeam message itself.
+
+
+--------------------------------------------------
+11/26/00 at 04:41:46  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+Here's the changes that I made (that seems to be simpler)...
+
+In bot.h add this to the bot_t structure...
+
+   float create_time;
+
+...then in BotCreate() add this (right after the pBot->is_used statement)...
+
+   pBot->is_used = TRUE;
+   pBot->create_time = gpGlobals->time;
+
+...then in the BotStartGame() function add this (after the mod_id == TFC)...
+
+   if (mod_id == TFC_DLL)
+   {
+      if ((pBot->start_action == MSG_TFC_IDLE) &&
+          (pBot->create_time + 3.0 <= gpGlobals->time))
+      {
+         pBot->start_action = MSG_TFC_TEAM_SELECT;  // force team selection
+      }
+
+      // handle Team Fortress Classic stuff here...
+ 
+      if (pBot->start_action == MSG_TFC_TEAM_SELECT)
+
+...then in the same function (BotStartGame), add a line to reset the create_time again in both places inside the TFC code where the start_action is set back to IDLE (these probably aren't really necessary)...
+
+      if (pBot->start_action == MSG_TFC_TEAM_SELECT)
+      {
+         pBot->start_action = MSG_TFC_IDLE;  // switch back to idle
+         pBot->create_time = gpGlobals->time;  // reset
+
+...and...
+
+      if (pBot->start_action == MSG_TFC_CLASS_SELECT)
+      {
+         pBot->start_action = MSG_TFC_IDLE;  // switch back to idle
+         pBot->create_time = gpGlobals->time;  // reset
+
+This forces the BotStartGame to send the "jointeam" command if the bot hasn't received the menu within 3 seconds of joining the game.  Once the bot has joined a team, TFC will send the class selection menu by itself and the bot will choose it's class just like it normally would.
+
+I still need to double check that real players see this same behavior.
+
+Thanks to Brendan (and his dad?) for helping getting this worked out.  Sooner or later all these bugs will get squashed!  :)
+
+botman
+
+--------------------------------------------------
+11/26/00 at 05:40:47  Reply by: ARES (j.sdubbelboer@freeler.nl)
+--------------------------------------------------
+Botman you forgot something. Now if the next bot has the same team as the bot who got kick it will join the game but it will still be in the unasigned section. Thats way you have to put the kicked bot to spetator mode
+
+--------------------------------------------------
+11/26/00 at 09:30:04  Reply by: BrianL (halfkiller@hotmail.com)
+--------------------------------------------------
+[b]ARES[/b]: I tried your code rebuilt the whole source.  Went into the game added 2 or 3 bots kick 1 and added 1.  He came back ok but it still says he's unassigned though :(
+
+--------------------------------------------------
+11/26/00 at 14:06:33  Reply by: Spyro (b2.mccarthy@student.qut.edu.au)
+--------------------------------------------------
+Hi again,
+
+Heres a new one:
+addbot
+addbot
+addbot
+kick #3
+addbot
+
+The bot appears and joins the right team after a 1.5 second delay, then immediately selects a class.
+
+But he doesn't come into the game proper. He was standing there with no weapon and you could walk through him.
+
+kick #4
+addbot
+kick #2
+addbot
+
+after this, and they bot worked fine. I have no idea what is happening here. any help?
+
+It has only happenned the once, so it could be the result of something else but i think this would likely be the problem.
+
+bye,
+
+
+--------------------------------------------------
+11/26/00 at 15:30:15  Reply by: Spyro (b2.mccarthy@student.qut.edu.au)
+--------------------------------------------------
+hi [i]again[/i],
+
+An update:
+The ghost type bot is actually in the game, and plays as a normal player, bot the bot that you can walk through just stands there. The models and such change though. On the hunted, i kicked the ghostly bot and added him again. His model went: red medic, red scout, gina, orange sniper. And then the real sniper shot me :). Wierd huh. This still happens on 1.0.1.4 which i just downloaded.
+
+This is all on the hunted btw.
+bye,
+
+--------------------------------------------------
+11/26/00 at 23:35:30  Reply by: ARES (j.sdubbelboer@freeler.nl)
+--------------------------------------------------
+On my computer it works fine. mabe you put something at the wrong place.
+

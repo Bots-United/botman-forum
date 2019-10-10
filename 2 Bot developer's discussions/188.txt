@@ -1,0 +1,101 @@
+--------------------------------------------------
+Subject: A fix for the UTIL_GetTeam code
+--------------------------------------------------
+10/04/00 at 15:30:01  Posted by: Muerte (dalvis@aztec.asu.edu)
+--------------------------------------------------
+For Botman:
+Here is some code that will fix the bots ability to recognize disguised spys, I've tested it and it works great:
+
+From the util.h:
+----------------
+int UTIL_GetTeam(edict_t *pEntity, int override=0);
+
+(the override parm is when you need to know what team they are really on, like for waypoint checking and such.)
+
+From the util.cpp:
+------------------
+#define TEAM_COLOR_BLUE   150
+#define TEAM_COLOR_RED    250
+#define TEAM_COLOR_YELLOW 45
+#define TEAM_COLOR_GREEN  100
+
+
+// return team number 0 through 3 based what MOD uses for team numbers
+int UTIL_GetTeam(edict_t *pEntity, int override)
+{
+   char *infobuffer;
+
+   if (mod_id == TFC_DLL)
+   {
+            if(!override)
+            {
+                  char topcolor[5];
+                  int  colorlist[4]={TEAM_COLOR_BLUE,TEAM_COLOR_RED,TEAM_COLOR_YELLOW,TEAM_COLOR_GREEN};
+                  int  color;
+
+                  //Get the topcolor value from the client
+                  infobuffer = (*g_engfuncs.pfnGetInfoKeyBuffer)( pEntity );
+                  strcpy(topcolor, (g_engfuncs.pfnInfoKeyValue(infobuffer, "topcolor")));
+
+                  //Now compare it against the teams colors to find a match
+                  color=atoi(topcolor);
+                  for(int i=0;i<4;i++)
+                  {
+                        if(color==colorlist[i])
+                              return i;
+                  }
+            }
+          return pEntity->v.team - 1; // TFC teams are 1-4
+   }
+   else if (mod_id == CSTRIKE_DLL)
+...
+
+(This is get the team from the client's top color variable, since the engine sets this, it is easly checked for)
+
+
+I'm not sure about the new code for the beta 1.0, but it may require a change to the BotFindEnemy function so that a bot will stop attacking a spy if it undisguised to it's own team.
+
+Let me know if this is of use to you.
+
+
+
+--------------------------------------------------
+10/04/00 at 17:13:38  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+Okay, that looks good and will work.  But don't you want them to know that it's really the enemy when they start shooting at you?
+
+Don't take this the wrong way, I do appreciate the help and will probably use this, but I'll have to figure out someway to know that someone that looks like my team member really isn't.
+
+botman
+
+--------------------------------------------------
+10/07/00 at 12:13:54  Reply by: DarkYouth (darkyouth@thegraze.freeserve.co.uk)
+--------------------------------------------------
+Easily done.
+
+Surely a bot could simply notice after a set time (2/3 seconds) and ignore the spy (Track them by their Edict and time in an array in pBot->)
+
+or
+
+Re perform the viewcone calculation for seeing enemies so that if the enemy in a view cone with an fov of about 20 then it ignores colour. The next time the enemy function is called this will be carried over as you only have to check for colour at initial targeting.
+
+i.e.
+
+if (SeeEnemy)
+___if (EnemyDisguised)
+________if (InNarrowView)
+___________return true;
+________else
+___________return false;
+___else
+_______normal stuff
+
+--------------------------------------------------
+10/07/00 at 14:44:04  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+Yes, this would work better, but you shouldn't hard code a fixed 20 degree angle.  The angle that would be used to ID the other player would be smaller the farther the player is away from the bot.  I could set up some sort of inverse ratio of the angle to the distance (with some upper and lower bounds) to let the bot use the aiming cursor to ID the enemy.
+
+One more thing to add to the long list of features waiting to be implemented.  :)
+
+botman
+

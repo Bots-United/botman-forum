@@ -1,0 +1,82 @@
+--------------------------------------------------
+Subject: adding server commands?
+--------------------------------------------------
+05/29/02 at 18:45:15  Posted by: PlasticWarrior (tigerstorm023@netscape.net)
+--------------------------------------------------
+is there a way to add a server command (you know, besides a polled cvar like admin_command in adminmod). For instance, if i wanted to execute a .cfg file on the server, SERVER_COMMAND("exec something.cfg"); and have it include things like "blah blah this is a command" where blah is my new command and the rest is arguments. Now i know you'll say, "Why dont you just make a cvar for every command Plastic?" Well, the answer is simple, I have used up all the cvars it will allow. Any ideas?
+
+--------------------------------------------------
+05/30/02 at 04:13:13  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+pfnAddServerCommand() can be used to create a new command...
+code:
+.
+.
+(*g_engfuncs.pfnAddServerCommand)("mycommand", MyCommand);
+.
+.
+void MyCommand(void)
+{
+   // do your command stuff here
+}
+
+botman
+
+--------------------------------------------------
+05/30/02 at 11:32:22  Reply by: PlasticWarrior (tigerstorm023@netscape.net)
+--------------------------------------------------
+thanks a million.
+oh, what about getting the arguments of the command?
+
+er nm foudn out its the same as client commands
+
+[modified on 05/30/02 at 11:32:22]
+--------------------------------------------------
+05/30/02 at 13:35:20  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+"foudn out its the same as client commands"
+
+Yep, except you don't get an edict_t pointer, so you can't tell who executed the command.
+
+botman
+
+--------------------------------------------------
+06/02/02 at 10:26:21  Reply by: kippie (da_matt@hotmail.com)
+--------------------------------------------------
+Well, this might sound like a stupid question but, where do you create those commands?
+cuz I have been looking for pfnAddServerCommand and haven't found it anywhere.
+
+--------------------------------------------------
+06/02/02 at 12:42:58  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+The prototype is found in engine\eiface.h
+
+You can add that g_engfuncs call anywhere you want to define the new command.  Putting it in ServerActivate() would probably be the most logical place.
+
+botman
+
+--------------------------------------------------
+06/02/02 at 15:57:43  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+Personally I am making it in GameDLLInit(). I think it's an even best place. If it is a bad idea, feel free to tell me.
+
+
+
+--------------------------------------------------
+06/03/02 at 04:15:48  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+GameDLLInit() only gets called once (the first time the DLL is loaded).  ServerActivate() gets called after each map is loaded.
+
+I'm not sure if server commands stay around forever once they are changed or if they are lost at each map change.  It should be easy enough to test, just stick something in GameDLLInit(), start a game, change to another map and try the command to see if it still works.
+
+botman
+
+--------------------------------------------------
+06/03/02 at 05:24:56  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+It works, as expected.
+
+I would have found quite illogical new server commands added by MODs get "forgotten" at map change... how could you build single player MODs like that ?
+
+
+

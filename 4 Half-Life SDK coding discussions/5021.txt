@@ -1,0 +1,142 @@
+--------------------------------------------------
+Subject: shotgun ammo regen rune
+--------------------------------------------------
+12/22/03 at 14:18:04  Posted by: Blood_Dust (di@html.com)
+--------------------------------------------------
+ok i think that the code is right i just suck lol c++ hates me.
+
+code:
+
+void CBasePlayer::RuneShotty( CBasePlayer *pPlayer )
+
+{
+extern cvar_t max_shells;
+if(m_flRuneSAmmoTime > gpGlobals->time)
+
+return;
+
+if(pPlayer->ammo_buckshot < max_shells.value)
+
+{
+pPlayer->ammo_buckshot = pPlayer->ammo_buckshot + 2.0;
+m_flRuneSAmmoTime = gpGlobals->time + 1.0;
+}
+}
+
+
+--------------------------------------------------
+12/22/03 at 20:42:18  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+I'm not sure it's safe to bind a CVAR directly at its address. You should try CVAR_GET_FLOAT("max_shells").
+
+Oh and besides, it helps when you say what you want to do first, and how you want to do it. Basically all you're doing is just posting a bunch of code and saying "it doesn't work". So what ? We're not magicians here. And we've got no f* clue of what your code is all about. And this is totally normal.
+
+
+--------------------------------------------------
+12/23/03 at 09:57:28  Reply by: Blood_Dust (di@html.com)
+--------------------------------------------------
+Sorry I thought I had already told what it was, hints the subjuct, "shotgun ammo regen rune". I want the shotgun ammo (buckshots) to slowly regenerate (give you like 2 ever 2 sec) , but only if you have the rune called RuneShotty.
+
+code:
+
+void CBasePlayer::RuneShotty( CBasePlayer *pPlayer )
+
+{
+extern cvar_t max_shells;
+if(m_flRuneSAmmoTime > gpGlobals->time)
+
+return;
+
+if(pPlayer->ammo_buckshot < max_shells.value)
+
+{
+pPlayer->ammo_buckshot = pPlayer->ammo_buckshot + 2.0;
+m_flRuneSAmmoTime = gpGlobals->time + 2.0;
+}
+}
+
+ 
+
+--------------------------------------------------
+12/23/03 at 10:27:25  Reply by: Cheesemonster!!! (cheeseh(at)rcbot(dot)net)
+--------------------------------------------------
+well what's wrong with it?
+
+--------------------------------------------------
+12/23/03 at 11:02:30  Reply by: Blood_Dust (di@html.com)
+--------------------------------------------------
+it does not give you more ammo it does not do anything.
+
+--------------------------------------------------
+12/23/03 at 12:58:01  Reply by: LazyOne (the_lazy_one_09@hotmail.com)
+--------------------------------------------------
+I'm going to give you this one, but only once...
+
+code:
+
+void CBasePlayer::DoAmmoRegeneration( )
+{
+      bool fDidSomething = false;
+
+      if ( ! this->m_pActiveItem )
+      {
+            return;
+      }
+
+      if ( FStrEq( STRING( this->m_pActiveItem->pev->classname ), "weapon_shotgun" ) )
+      {
+            if ( gpGlobals->time < this->m_flNextAmmoTime )
+            {
+                  return;
+            }
+
+            CShotgun* pShotgun = ( ( CShotgun* ) this->m_pActiveItem );
+
+            if ( ! pShotgun || FNullEnt( pShotgun->edict( ) ) )
+            {
+                  return;
+            }      
+
+            if ( this->m_rgAmmo[ pShotgun->m_iPrimaryAmmoType ] < BUCKSHOT_MAX_CARRY )
+            {
+                  fDidSomething = true;
+
+                  if ( ( this->m_rgAmmo[ pShotgun->m_iPrimaryAmmoType ] + 2 ) < BUCKSHOT_MAX_CARRY )
+                  {
+                        this->m_rgAmmo[ pShotgun->m_iPrimaryAmmoType ]+= 2;
+                  }
+                  else
+                  {
+                        this->m_rgAmmo[ pShotgun->m_iPrimaryAmmoType ]++;
+                  }
+            }
+
+            if ( fDidSomething )
+            {
+                  this->m_flNextAmmoTime = gpGlobals->time + 1.0;
+                  this->SendAmmoUpdate( );
+            }
+      }
+}
+
+
+
+It probably isn't exacly what you want but it does add more ammo to the player every second.
+
+I'm going to ask you aswell to take the time and learn c++. Once you get the hang of it you'll see why your origional function didn't need to take any parameters.
+
+Good luck on your project.
+
+[Added]
+
+You'll have to play with the code for a while since it was rushed. I did try it and it works but you never know.
+
+-- Lazy
+
+
+[modified on 12/23/03 at 12:58:01]
+--------------------------------------------------
+12/23/03 at 16:22:32  Reply by: Blood_Dust (di@html.com)
+--------------------------------------------------
+ty for the help
+

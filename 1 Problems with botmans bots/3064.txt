@@ -1,0 +1,102 @@
+--------------------------------------------------
+Subject: .wpt files & Linux dedicated server
+--------------------------------------------------
+05/02/02 at 11:06:38  Posted by: StoneCOLDCrazy (stonecoldcrazy@merlinweb.net)
+--------------------------------------------------
+Hey all, 
+
+I run a Dedicated Linux Server and I seem to be having problems getting waypoint files working.
+
+I have found a bunch of .wpt files out on the web, and I have copied them to my maps folder. 
+
+When a map loads, I see a message on the console saying that the waypoints file has been loaded successfully. 
+
+here is a copy/paste of what I see:
+
+loading waypoint file: cstrike/maps/de_dust.HPB_wpt
+loading waypoint file: cstrike/maps/de_dust.wpt
+
+HPBot loads and joins the server with no problems. 
+
+Everything seems to be working perfectly, but the bot just sit there kinda shaking left and right. After a while they just kinda wander around aimlessly etc.
+
+This behaviour is what I would expect if there were no .wpt files installed.... 
+
+Am I missing something or doing something wrong?
+
+Map tested on: de_dust
+Linux 1.4 server
+latest Metamod
+Latest HPBot
+
+
+--------------------------------------------------
+05/02/02 at 12:28:40  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+After this line...
+
+loading waypoint file: cstrike/maps/de_dust.wpt 
+
+...it should say "calculating HPB bot waypoint paths for team 1..."
+
+If you don't get that then the waypoint file wasn't actually loaded.
+
+P.S. If you are FTPing the waypoint files from a PC, make sure to FTP them in BINARY mode.
+
+botman
+
+--------------------------------------------------
+05/02/02 at 13:36:07  Reply by: StoneCOLDCrazy (stonecoldcrazy@merlinweb.net)
+--------------------------------------------------
+The only waypoint pack that I could find for download was this one: http://www.planethalflife.com/cswaypoints/
+
+I'll contact them to sort it out. Thx for the tip! :)
+
+
+--------------------------------------------------
+05/02/02 at 13:37:32  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+AFAIK there is a problem with your HPB bot Botman, on some Counter-Strike maps because of their entitie's v_angles and model angles being initialized by the game itself out of the -180/180 bounds, that would make the bot do exactly what he said, shake from left to right until something new (you) get into their field of view and force them to change their v_angle to some other arbitrary value. I solved the problem in wrapping the angles like this:
+code:
+
+   // check for wraparound of angle
+   if (angle > 360)
+      angle -= 360 * (int) (angle / 360);
+   if (angle < 0)
+      angle += 360 * ((int) (angle / 360) + 1);
+
+
+instead of your
+code:
+
+   // check for wraparound of angle
+   if (angle > 360)
+      angle -= 360;
+   if (angle < 0)
+      angle += 360;
+
+
+I have already reported this bug to you several times I think ;D
+
+
+--------------------------------------------------
+05/02/02 at 14:21:18  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+That's true.  In some maps they just won't handle the "invalid" spawn point angles.
+
+I probably won't be fixing this bug because as far as I know, it's only a Counter-Strike thing and the HPB bot doesn't officially support Counter-Strike.
+
+botman
+
+--------------------------------------------------
+05/02/02 at 16:32:16  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+QUOTE:
+I probably won't be fixing this bug
+
+
+
+OK, let the bug live, poor bugs, we are always after killing them... this one will be an exception, take care of it Botman... I hope bugs grow well, btw I wonder what does it eat ?
+
+:: me is rolling on the floor laughing my *** off :: ;D
+

@@ -1,0 +1,237 @@
+--------------------------------------------------
+Subject: Crashing and origin problems
+--------------------------------------------------
+03/16/03 at 06:23:20  Posted by: LazyOne (the_lazy_one_09@hotmail.com)
+--------------------------------------------------
+I started on making an entity mover, there are a couple of odd problems that do come up once and a while...
+
+1. Some entities will not allow their rendermode to be changed. Even without moving them it will crash (like the respawn in shutdown2).
+
+2. When I try and set the new location of an entity, it just dissappears and only returns if it is a door.
+
+Here is what little code I have done so far, any help would be greatly appreciated...
+
+code:
+
+#include <extdll.h>
+#include <meta_api.h>
+#include "sdk_util.h"
+#include "lzfx.h"
+
+#define MAX_DEADLY_ENTS 2
+
+int UserLogged[33];
+int PlayerMoving[33];
+int SaveRender[5][33];
+
+extern int laserbeam;
+
+char *DeadlyEntList[MAX_DEADLY_ENTS] = {
+      "func_water",      "worldspawn"
+};
+
+void pfnClientCommand(edict_t *pPlayer)
+{
+      int i = 0;
+      if (FStrEq(CMD_ARGV(0), "e_kill"))
+      {
+            if (CVAR_GET_FLOAT("lzfx_entmover") == 1)
+            {
+                  if (UserLogged[ENTINDEX(pPlayer)] == 1)
+                  {
+                        if (pPlayer->v.deadflag == DEAD_DEAD || pPlayer->v.deadflag == DEAD_DYING || pPlayer->v.deadflag == DEAD_RESPAWNABLE)
+                              RETURN_META (MRES_SUPERCEDE);
+
+                        TraceResult tr;
+                        Vector start, end, v_xhair_endpos;
+                        edict_t *pEnt = NULL;
+
+                        MAKE_VECTORS(pPlayer->v.v_angle);
+
+                        start = pPlayer->v.origin + pPlayer->v.view_ofs;
+                        end = pPlayer->v.origin + pPlayer->v.view_ofs + gpGlobals->v_forward * 9999;
+
+                        TRACE_LINE(start, end, dont_ignore_monsters, pPlayer, &tr);
+
+                        v_xhair_endpos = tr.vecEndPos;
+
+                        if (tr.pHit)
+                        {
+                              pEnt = tr.pHit;
+
+                              for (i = 0; i < MAX_DEADLY_ENTS; i++)
+                              {
+                                    if (FStrEq(DeadlyEntList[i], STRING(pEnt->v.classname)))
+                                          RETURN_META (MRES_SUPERCEDE);
+                              }
+
+                              REMOVE_ENTITY(pEnt);
+
+                              MESSAGE_BEGIN(MSG_BROADCAST, SVC_TEMPENTITY);
+                                    WRITE_BYTE(TE_TAREXPLOSION);
+                                    WRITE_COORD(v_xhair_endpos.x);
+                                    WRITE_COORD(v_xhair_endpos.y);
+                                    WRITE_COORD(v_xhair_endpos.z);
+                              MESSAGE_END();
+
+                              MESSAGE_BEGIN(MSG_BROADCAST, SVC_TEMPENTITY);
+                                    WRITE_BYTE(TE_BEAMPOINTS);
+                                    WRITE_COORD(pPlayer->v.origin.x);
+                                    WRITE_COORD(pPlayer->v.origin.y);
+                                    WRITE_COORD(pPlayer->v.origin.z);
+                                    WRITE_COORD(v_xhair_endpos.x);
+                                    WRITE_COORD(v_xhair_endpos.y);
+                                    WRITE_COORD(v_xhair_endpos.z);
+                                    WRITE_SHORT(laserbeam);
+                                    WRITE_BYTE(1);
+                                    WRITE_BYTE(1);
+                                    WRITE_BYTE(3);
+                                    WRITE_BYTE(15);
+                                    WRITE_BYTE(20);
+                                    WRITE_BYTE(22);
+                                    WRITE_BYTE(200);
+                                    WRITE_BYTE(23);
+                                    WRITE_BYTE(100);
+                                    WRITE_BYTE(1);
+                              MESSAGE_END();
+                        }
+                  }
+                        else
+                  {
+                        UTIL_ClientPrint(pPlayer, "[LZFX]: You are not logged in\n");
+                  }
+            }
+            else
+            {
+                  UTIL_ClientPrint(pPlayer, "[LZFX]: Entmover disabled by the server");
+            }
+      }
+      if (FStrEq(CMD_ARGV(0), "+grabent"))
+      {
+            if (CVAR_GET_FLOAT("lzfx_entmover") == 1)
+            {
+                  if (PlayerMoving[ENTINDEX(pPlayer)] != 0)
+                        RETURN_META (MRES_SUPERCEDE);
+
+                  TraceResult tr;
+                  Vector start, end;
+                  edict_t *pEnt = NULL;
+
+                  MAKE_VECTORS(pPlayer->v.v_angle);
+
+                  start = pPlayer->v.origin + pPlayer->v.view_ofs;
+                  end = pPlayer->v.origin + pPlayer->v.view_ofs + gpGlobals->v_forward * 9999;
+
+                  TRACE_LINE(start, end, dont_ignore_monsters, pPlayer, &tr);
+
+                  if (tr.pHit)
+                  {
+                        pEnt = tr.pHit;
+
+                        for (i = 0; i < MAX_DEADLY_ENTS; i++)
+                        {
+                              if (FStrEq(DeadlyEntList[i], STRING(pEnt->v.classname)))
+                                    RETURN_META (MRES_SUPERCEDE);
+                        }
+      
+                        SaveRender[0][ENTINDEX(pEnt)] =  pEnt->v.renderfx;
+                        SaveRender[1][ENTINDEX(pEnt)] =  pEnt->v.rendermode;
+                        SaveRender[2][ENTINDEX(pEnt)] =  pEnt->v.renderamt;
+                        SaveRender[3][ENTINDEX(pEnt)] =  pEnt->v.rendercolor.x;
+                        SaveRender[4][ENTINDEX(pEnt)] =  pEnt->v.rendercolor.y;
+                        SaveRender[5][ENTINDEX(pEnt)] =  pEnt->v.rendercolor.z;
+
+                        pEnt->v.renderfx = kRenderFxNone;
+                        pEnt->v.rendermode = kRenderTransColor;
+                        pEnt->v.renderamt = 200;
+                        pEnt->v.rendercolor.x = 22;
+                        pEnt->v.rendercolor.y = 200;
+                        pEnt->v.rendercolor.z = 0;
+                  
+                        PlayerMoving[ENTINDEX(pPlayer)] = ENTINDEX(pEnt);
+                  }
+            }
+      }
+      if (FStrEq(CMD_ARGV(0), "-grabent"))
+      {
+            if (CVAR_GET_FLOAT("lzfx_entmover") == 1)
+            {
+                  if (PlayerMoving[ENTINDEX(pPlayer)] != 0)
+                  {
+                        edict_t *pEnt = INDEXENT(PlayerMoving[ENTINDEX(pPlayer)]);
+
+                        pEnt->v.renderfx = SaveRender[0][ENTINDEX(pEnt)];
+                        pEnt->v.rendermode = SaveRender[1][ENTINDEX(pEnt)];
+                        pEnt->v.renderamt = SaveRender[2][ENTINDEX(pEnt)];
+                        pEnt->v.rendercolor.x = SaveRender[3][ENTINDEX(pEnt)];
+                        pEnt->v.rendercolor.y = SaveRender[4][ENTINDEX(pEnt)];
+                        pEnt->v.rendercolor.z = SaveRender[5][ENTINDEX(pEnt)];
+
+                        PlayerMoving[ENTINDEX(pPlayer)] = 0;
+                  }
+            }
+      }
+      else
+      {
+            RETURN_META (MRES_IGNORED);
+      }
+
+      RETURN_META (MRES_SUPERCEDE);
+}
+
+void pfnThink(edict_t *pPlayer)
+{
+      edict_t *pent;
+
+      if (CVAR_GET_FLOAT("lzfx_entmover") == 1)
+      {
+            for (int i = 1; i < 33; i++)
+            {
+                  pent = INDEXENT(i);
+
+                  if (PlayerMoving[ENTINDEX(pent)] != 0)
+                  {
+                        TraceResult tr;
+                        Vector start, end;
+                        edict_t *pEntity = INDEXENT(PlayerMoving[ENTINDEX(pent)]);
+
+                        MAKE_VECTORS(pent->v.v_angle);
+
+                        start = pent->v.origin + pent->v.view_ofs;
+                        end = pent->v.origin + pent->v.view_ofs + gpGlobals->v_forward * 25;
+
+                        TRACE_LINE(start, end, ignore_monsters, pent, &tr);
+
+                        SET_ORIGIN(pEntity, pent->v.view_ofs);
+                  }
+            }
+      }
+
+      RETURN_META (MRES_IGNORED);
+}
+
+
+
+Its kind of messy but I haven't slept yet :)
+
+
+
+
+
+--------------------------------------------------
+03/16/03 at 07:43:11  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+If you are trying to move brush model entities (func_wall, func_button, func_door, etc.), you should be aware that the origin for the moved entity needs to be relative to the original origin of the brush model.
+
+See this thread about cloning brush models...
+
+http://dynamic.gamespy.com/~botman/yabb/YaBB.pl?board=6&action=display&num=2687
+
+botman
+
+--------------------------------------------------
+03/16/03 at 07:50:38  Reply by: LazyOne (the_lazy_one_09@hotmail.com)
+--------------------------------------------------
+Thx for the link, I'll try that in a few minutes.
+
+

@@ -1,0 +1,277 @@
+--------------------------------------------------
+Subject: my crapmesh again
+--------------------------------------------------
+10/27/03 at 02:02:52  Posted by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Okay, I know what causes my navmesh not to work well. The cause was so simple...
+It's just that I miss all the func_wall faces.
+When the bots get on a func_wall, they are completely lost ; and if ever they need to pass on a func_wall, the pathfinder fails.
+
+I need to extract the faces of all the func_walls and test them the same way I did for the worldspawn entity.
+
+BUT
+
+and here's my problem,
+
+I know for certain that worldspawn is ALWAYS entity #0, hence dmodels[0] in the BSP file. That's why I had no problem extracting the faces for the worldspawn entity.
+
+But HOW do I know the indices in the dmodels[] array of the BSP file that belong to func_wall entities ?
+
+It's not going to be the same index than in the game, since the number of clients and the temporary entities shift it all away.
+
+It must be findable somewhere in the BSP file, but how ?
+Do you think it's the same order than the order at which the entities are declared in the entdata string at the end of the BSP file ? God I hope there's a simpler method.
+
+
+--------------------------------------------------
+10/27/03 at 05:23:39  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Just a guess, but I would assume that the "model" key (*1, *2, *3, etc.) is the number matching the dmodels index.
+
+Try checking if the "model" key value (without the '*') is the index for that dmodel.
+
+botman
+
+--------------------------------------------------
+10/27/03 at 08:50:54  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+nice one, I'll give it a go. Seems not that easy to verify though.
+Thanks.
+
+
+--------------------------------------------------
+10/27/03 at 09:58:20  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Create a simple map with one (or two) "func_wall" somewhere in there and see if the dmodel[index] min and max values match the world coordinates of the func_wall you created.
+
+botman
+
+--------------------------------------------------
+10/27/03 at 15:48:51  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+hmmm
+Looks like that would be it, although a map with just 2 or 3 entities isn't necessarily a clever choice for testing.
+
+I'm going to test it with the axial ladders in crossfire for confirmation.
+
+
+--------------------------------------------------
+11/02/03 at 13:12:45  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+code:
+
+const char *happy="x11u";
+for (int i = 0; i < 4; i++)
+   printf ("%c", happy[i] - 1);
+printf ("!\n");
+
+
+I fixed it all!!! (what? naaah, it's not the code above, read it again ;)
+
+I have now a navmesh that WORKS, and an A* pathfinder that finds paths !!! wooOO°°OOoot! (<<-- spoiler)
+
+It's just that the function that pops nodes out of the priority queue was rearranging the queue badly =)
+
+Expect some working, parallelizable and time-sliced A* pathmachine source code soon :)
+
+soon... well, yet I'm to fix one last bug. A minor one, but it's always these sort of bugs that manage to drive me nuts in most cases. The pathfinder finds paths, but it doesn't want to build them. I see the search expand correctly, I see the pathfinder reaching its goal, but when it comes to building the path out of the elements in the priority queue, it doesn't build anything at all.
+
+I'm not sure how the lists are arranged when the pathfinder reached its goal. How should I read the open list and where do I start from ? Gotta figure that out again...
+
+
+--------------------------------------------------
+11/03/03 at 07:37:35  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+good work pierre! go beat the official CS bots :D
+
+--------------------------------------------------
+11/03/03 at 14:16:50  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Thx :) and... ROGER THAT!
+Nice to see you're still updating the RealBot! Do you aim at beating the official bots too ? Sure we can. I have some very interesting ideas roaming in my head for some time and I can't wait to try them out practically. I'm pretty sure some will rock the house as much as the FOV scan graph idea rocked when the first RACC was out. BTW, did you manage to find a way to use the "navmesh-like" code Tub showed us in Amsterdam or have you completely dropped it ?
+
+
+--------------------------------------------------
+11/03/03 at 23:35:13  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+Tub, i haven't heard from him in a long time. Actually he stopped with RB (and took the whole navmesh code with him), but he does not admit it. He still supports it by letting me use his server to compile it for linux. 
+
+Its a pitty! To bad i don't know a shit about that navmesh stuff, way over my head! And even if i could make it work, i am still lost with my cpu consuming functions. Darn.
+
+--------------------------------------------------
+11/04/03 at 03:40:39  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+QUOTE:
+Its a pitty! To bad i don't know a shit about that navmesh stuff, way over my head!
+
+
+wtf ?? way over your head ? aren't you Stefan Hendriks, the creator of what once was the best bot for Counter-Strike ? will you stop looking down on you and looking up at others ??
+I did it, you can do it. "consider your point refuted". LOL!
+
+
+--------------------------------------------------
+11/04/03 at 06:59:45  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+Okay, let me rephrase:
+
+In theory i know how it works, but i can't code it. I don't know how to read/extract the bsp tree. All my atempts to understand the bsp failed so far. 
+
+Meaning that a lot of people play with my bots does not mean i am a super smart coder. I've had a lot of help from all sides, here, but also other people who code (Tub).
+
+I've never been a math guru, and i regret i did not study it further for this purpose. Yet, i am not out of ideas.. lets say i try to aproach the things how people say they cannot be done that way. :) (RealBot Waypointless Navigation anyone?)
+
+Besides the navmesh or anything, the output is the same right? You get information where you can walk, you also have information which vectors (waypoints, meshes) can reach each other. From there its a simple  A B C :)
+
+--------------------------------------------------
+11/04/03 at 09:43:53  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+EEk!!?? gargl! WTF?? uugghhh HelP I caN'T brEAthE fReeLY!??§....
+
+omg. <breathe> <breathe>
+
+Are you really of the people who believe they have been granted their abilities upon birth, but only up to a certain point ? I can't share this belief. I used to and that's a very dangerous one, for it prevents oneself to see all that he CAN accomplish, only to see what he ALLOWS HIMSELF TO. And preventing oneself to see something prevents him to even have the desire of it.
+
+Here's probably how thousands of people live happy and stupid ; they do the same dull job again and again every day, on evening they sit in front of their TV with a beer can at hand only to watch their favourite soccer team's matches and rant against the players and the coaches, and are happy only when they talk about what they know, and they know nothing but football, alcohol, blondes, and their boss. This, all their whole damn life long, and only when they're about to die they realize all that they have missed. Not as much what they could have done, than what they could have learned.
+
+Hell I have nothing against football and even less against blondes for sure, but I just can't imagine spending my life telling myself: "this is too difficult for me", or "I am unable to do that". It's a judgment of value, and it would mean that I would be somewhere less worthy that some other guy for whom it would NOT be too difficult, who would be ABLE to do the thing. On which reason I would be "less" than anyone else ? Has the other guy knew how to do what he does from his very birth ? Hell I can for sure take the time to learn and toy around with the concepts he seem to manipulate so easily, and sooner or later I'll be able to do that myself too.
+
+Eistein's brain laid the nuke, I can build a nuke too. If I want. It's just that I don't want it : no time for that, and much more interesting things to do.
+
+Luckily enough you're not yet at the football+blondes+beer point. But beware such an attitude doesn't do more damage than what it seems. What would a kid think if he was repeatedly told : "don't do that, it's too difficult for you ?" He would probably become the complete loser. It's what happens. Young kids WANT to learn everything that passes under their nose, it's just the way the grown-ups talk to them that condition how they will evolve. Because there's a big difference between saying "Hands down, it's too difficult for you" and "When you'll be older, you'll be able to do that, but before you need to learn this and that". The more they're being told, the more kids stay far from what they could learn. Eventually grown-ups call them "quiet kids", and when these kids grow up their elders realize they're complete losers in the domains they've been taught to show little interest.
+
+YET I tell you this, Stefan: FIRST, you're CERTAINLY much better at math than I am. SECOND, you're PROBABLY a better coder even. For example, do you realize I am strictly unable to understand a true C++ program with classes and such ? Have you ever wondered why I stick so angrily with C, the only language I know, and remember also that two years ago, before hacking botman's template, all that I knew about programming was if/then/gosub/return based games in BASIC ?
+
+I tell you you CAN write a navmesh, you CAN write A* machines, you CAN write metamod plugins, you CAN do all that I've heard you saying you couldn't, and you can do that EASILY. The ONLY reason that will suffice to prove I'm right is that two years ago, would I, myself, have told you I wanted to do that, you would have looked at my code, you would have knew me, you would have asked me to code something for you and you would have looked at the result, you would have know how much of a math dumbass I am, and you would have said in yourself "ah, poor guy, he's just unable to do that. He'll be like most of the others, he'll drop interest and simply give up. It's simply too difficult for him!"
+And I did it. And looking back at what I did, I can tell you it was simple. And no need to look back to assure you it was ALSO a lot of fun.
+
+So quit bitching about your inabilities and your "I'm not super smart blah blah blah" speech and get to work NOW!
+
+Wake up Neo !
+
+else I'll kick yourself awake in the middle of that big butt of yours with steel-circled boots, nuff said!
+
+
+
+[edited] nothing aggressive, eh... it's meant to help :) just know that you CAN do it. fear my boot ;)
+
+[modified on 11/04/03 at 09:43:53]
+--------------------------------------------------
+11/04/03 at 10:01:36  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+Actually to be more realistic, i don't really say i cannot do it. I just say i am not good in maths.. but thats how I think about that.. (compared to Tub).
+
+Perhaps i want to much at the same time...
+
+anyway, i am sure i can figure out this navmesh some day. The reason that i can't do that (RIGHT NOW) is that i lack severely some time. 
+
+Study asks a lot of time, friends (social life... you know it exists ;)), etc.
+
+So in time schedule, it is really hard to get on this. However, in the past year i have been figuring out how to deal with the enormous time spent and i SHOULD spend... so thats why RB is coming more and more alive. Perhaps i will be able to figure out the navmesh before 2005 ;)
+
+I don't believe in limits, but i'd rather try to stay realistic. I also don't want to put things on top of my head by saying RealBot is one of the 'most popular' bots. Most things i read about it are rants. Probably because thats what the entire CS community likes, you never hear good news, always the bad news.
+
+FYI, C++ is not hard to learn, hence i am not that far in C++ but the general idea of Classes is actually wonderfull... in theory ;)
+
+edit:
+yes i did it again... okay lemme tell ya different:
+
+Pierre, i am further in C++ and yo ucan do that aswell, just take a look at my simple RTS game (over 30.000 lines of code i guess) and you'll see it actually fits together. :D
+
+btw, to see it -> http://members.ams.chello.nl/r.hendriks3
+
+and before you start about how good it is and how i should be proud about it. It is EASY. I have written an RTS since i was 15 (completely finished when i was 17).. and that in BASIC. With complete 256 color graphics, sounds, mouse input, AI, everything. its childplay once you know how its done. However, as you probably also know, when you can code A you don't nescesarily need to be good at coding B. :)
+
+And when i see sometimes code of other bot programmers, especially of Joebot, i get confused by the 'style' of writing it, which makes me feel i am stupid because i can't understand the code... yet i am writing in C/C++ for over 4 years now.
+
+[modified on 11/04/03 at 09:58:56]
+
+[modified on 11/04/03 at 10:01:36]
+--------------------------------------------------
+11/04/03 at 12:47:15  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+btw pierre do you even check your mail?
+
+--------------------------------------------------
+11/04/03 at 13:54:24  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+:)
+Sure I do... glad to see you haven't taken my reply in the wrong way, I was a bit afraid after that
+I'll reply to your email soon, it's just that for some unexplainable reason, while it takes me 5 minutes to post something on a forum, it takes me half an hour to write an email. I have my little idea on this, but this is my own psychology: have to commit some minor changes to my internal kernel (just hope I won't need to reboot myself ;D)
+
+and btw yeah, Aspirin's code is usually like traditional chinese for the common of mortals ;D Hey Joe, do you know you can actually give your variables other names, little longer ones, bit more explicit than rgflA, uB, vecX and flY, and that there are a few other functions that could eventually deserve to be used in a C library than just cosines, square roots, exponentials and logarithmics ? ;D
+
+
+--------------------------------------------------
+11/05/03 at 03:43:05  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+I know how to interpet forum answers here , they are all to help, so i won't take them negative at all. And they are most of the time very honest.. when i am lazy you tell me that too ;)
+
+About joe, yes, it is making code more difficult, but only if you are not used to read such stuff. 
+
+code:
+
+int main()
+{
+ int iThisIsAvariable;
+ int iv;
+ int i_variable;
+ int INT_variable;
+
+ // all are possible name functions. Lately i prefer the first:
+ int iVariable=0; // example
+
+ // looks kinda 'valvish' :)
+}
+
+
+--------------------------------------------------
+11/05/03 at 09:22:30  Reply by: @$3.1415rin (johannes@_-removeifnotavirus-_lampel.net)
+--------------------------------------------------
+I admit that the variables in old joebot are not named consistently, but putting a f or a f_ in front of a variable doesnt kill you ... but most of the variables in the basic bot class are commented.
+
+anyway, there was a reason to restart my bot. I started like all here with botman's template code ( that was the #1 btw ) and started to extend it, without really having some general design about the outcome in mind. Others ( or only tobias ?! ) started the thing another way around, cause they had more experience and they had a clearer idea of how to solve problems. With most parts in old joebot it was more hacking than programming. and fixing unwanted behaviours .... all which results in pretty crappy code. but crappy code can be sucessful, there are at least some people using joebot. ( this way I don't have to say what I think about the podbot code *ROFL* )
+And because some 10000times fixed bunch of code cannot be maintained and changed really well, I decided to restart. the structure is more clear now, it is easier to extend, seems to be more stable. if stefan or pierre wanna take a look, mail me :) I hope it's better now, although the bot itself isnt yet releasable
+
+@stefan : when you sent me some A* code some time ago, it was pretty hard for me too to get into that code. so that's not always a one way problem, although I sometimes really like abbrev. variable names. and sometimes I like to put a lot of stuff into one equation.( look in CBotBase.cpp line 434 ) since I know what it means it's no problem ;) I know I should write more comments, I'm actually trying to do that now in new joebot.
+
+
+
+but maybe I have a similar problem like you stefan. somehow I dunno what to code next ... I have to work a lot for university, therefore I dont have the time to fight BSPs. Somehow I have a lack of motivation. maybe some cs1.6 specific shit like the shield would be motivating, let's see when you can play it offline ....    st..ms.x :)
+
+
+well, or we gotta meet again, to get back our motivation :D
+
+PS: i have a computer science course at university now too ... pretty easy, well, that was the reason to participate :) anyone of you coded Gofer before ? - well, that sux, but the next stuff will be about c/c++, so I have 4-6 more free hours the week *g*
+
+[modified on 11/05/03 at 09:22:30]
+--------------------------------------------------
+11/05/03 at 13:00:13  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+rofl. I know exactly what you mean about 'don't know what to code' and also about botmans framework. 
+
+The problem you get is that you are writing around a 'logic' that is not yours. If you are 100% behind that logic it won't be a problem, but it also will make your code a bit sloppy. 
+
+I bet i can remove 25% of my source... 50% can be written better. 25% remains because it needs to be that way. The stupid thing is , the bot is always 'open' for other mods, but never was really coded for that at all. I think i am going to shut down that 'door' because i am getting nuts of making extra if-lines for nothing :)
+
+The A* code i sent was actually pretty easy. But i know what you mean, you also will need to know the logic behind a specific code. If you know the logic, the code becomes way more clear.
+
+I have read a document about BSP trees now. I kinda understand them, the logic, but not in code. Not at all...
+
+I am experimenting with 'dynamic' waypoints right now. That means, there is hardly precalculations, A* runs the job, and you can add/remove waypoints on the fly. I hope it can perfom well so i can have up to 4000 'waypoints'. I keep track of every player and plot waypoints where there aren't any yet. Eventually bots should learn from humans, as that is my purpose. 
+
+I played a few hours with my RB V1.0 bots with a friend. I have seen some remarkable stuff, things i did not know they could do.. i also saw the next round very stupid things. Kinda anti-climax all the time.
+
+We should make an agreement once we are going to get serious writing on our 'unition of bots' thingy :)
+
+--------------------------------------------------
+11/05/03 at 15:23:01  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+what can I say ? I kinda agree with everything you say... both of you...
+
+just putting together RACC template #2... cool 8)
+
+
+~edited:
+@stefan: I'll teach you someday (soon) the basics about the BSP stuff. It's very simple. Forget botman's BSP viewer and hack around his BSP *SLICER* instead. You'll see.
+
+[modified on 11/05/03 at 15:23:01]

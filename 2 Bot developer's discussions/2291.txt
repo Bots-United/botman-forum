@@ -1,0 +1,194 @@
+--------------------------------------------------
+Subject: Fast Nearest Waypoint Lookup
+--------------------------------------------------
+09/21/01 at 15:22:28  Posted by: CountFloyd (countfloyd@botepidemic.com)
+--------------------------------------------------
+I know it has been adressed in this forum before but I wasn't able to find it again using the search engine.
+What's the best way of getting rid of the costly .Length() Function which involves 3 squareroot operations to get the distance between a Player and a Waypoint ? Are there ways to precalculate a lookup table to even further speed it up ? What if I don't even need the "real" distance but only want to tell Waypoint A is nearer than Waypoint B ? 
+
+--------------------------------------------------
+09/21/01 at 17:20:11  Reply by: Spyro (theoddbot@hotmail.com)
+--------------------------------------------------
+Hi,
+
+The .Length() involves 3 mulitiplies and 1 square root.
+
+However, since you are just comparing the distance to the other distances, (not using it for any mathematical operations) you can create a new .Length2() function that returns (x*x+y*y+z*z) (The length squared).
+
+good luck with cz :)
+-Spyro
+
+--------------------------------------------------
+09/22/01 at 08:06:45  Reply by: theimann (killaruna@botepidemic.com)
+--------------------------------------------------
+How many waypoints are you dealing with and how many look-ups do you need per frame(/second)? If the numbers are low you shouldn't encounter performance problems with Spyro's suggestion.
+If not, well, the fastest way to implement this kind of look-ups is using hash-tables: Use the x- and y-coordinates as input for the hash-function and define a maximal distance between waypoints. There are two possibilites for handling the look-up: 
+1. Use an overlap between the different hash-zones and insert waypoints near the borders in several buckets.
+2. Insert every waypoint only once and search certain neigbouring buckets as well.
+I've implemented number 2 for the new Parabot navigation and can use as many look-ups as I want even with several thousand waypoints.
+
+Tobias
+
+--------------------------------------------------
+09/22/01 at 17:13:17  Reply by: Scooter (rmiskovi@san.rr.com)
+--------------------------------------------------
+In some code I've worked on before, if you have the waypoints sorted by the x coordinate, there is a fast and easy algorithm to compute minimum distance.  The algorithm is fast because it can pare down the number of points you need to test.  If interested, I can send you some more info.
+
+Also, you can avoid using the sqrt by comparing to the square of the minimum distance i.e.  d-squared = ((vec1.x-vec2.x)^2 + (vec1.y-vec2.y)^2 + (vec1.y-vec2.y)^2).  (Oops, should have read Bredan's reply more carefully!).
+
+
+[modified on 09/22/01 at 17:13:17]
+--------------------------------------------------
+09/23/01 at 09:16:09  Reply by: William (william@cgf-ai.com)
+--------------------------------------------------
+QUOTE:
+
+In some code I've worked on before, if you have the waypoints sorted by the x coordinate, there is a fast and easy algorithm to compute minimum distance.
+
+
+
+
+Like the Half-Life (SP) SDK? :)
+
+There are ways to do much better than that by adding clever caching (depending on the kind of query) or hashing (as mentioned by Tobias).
+
+William
+
+--------------------------------------------------
+09/24/01 at 07:54:23  Reply by: Scooter (rmiskovish@yahoo.com)
+--------------------------------------------------
+QUOTE:
+Like the Half-Life (SP) SDK? :)
+
+
+
+No, the HL SDK routine is way too complicated.
+
+Caching is only useful to a limited extent.  Hashing may be faster, but the code would be more complex than the algorithm that I propose.
+
+BTW, this code does ~30,000 compares on ~80,000 points in 35 seconds on a P-III 550 Mhz machine and ~30,000 compares on ~150,000 points in 69 seconds.  This should be fast enough for the average user :-)
+
+[modified on 09/24/01 at 06:21:38]
+
+[modified on 09/24/01 at 07:54:23]
+--------------------------------------------------
+09/24/01 at 08:57:34  Reply by: @$3.1415rin (joebot@botepidemic.com)
+--------------------------------------------------
+hey cf, using botman's forum for getting help to write an important part of a commercial product ?
+
+--------------------------------------------------
+09/24/01 at 11:19:35  Reply by: William (william@cgf-ai.com)
+--------------------------------------------------
+Scooter,
+
+though I've been using a similar algorithm to yours (x-coord based lookup, find the nearest x-coord using binary search, do an outward search from that point until exceeding the range or finding a nearby waypoint), caching is very useful: I get hit rates of over 80%.
+
+Just remember: if a bot is near a waypoint in this time frame, what's the most likely closest waypoint in the next time-frame? And if that waypoint is close enough, why bother looking for some other waypoint?
+
+William
+
+--------------------------------------------------
+09/24/01 at 12:01:52  Reply by: Scooter (rmiskovish@yahoo.com)
+--------------------------------------------------
+William,
+
+I stand corrected.  Actually, it was more of a misunderstanding.  I should have thought more about what you meant by caching.  Do you mean that the next time you do the find nearest, you start at the waypoint the bot was last nearest to?
+
+My basic point was that a x-first sorted list could be used to easily find the nearest node without using many lines of code.  The fact that you use a method like this seems to support my point. :-)
+
+By the way, its been one of those days when I have to edit everything :-\
+
+-Scooter
+
+[modified on 09/24/01 at 12:01:52]
+--------------------------------------------------
+09/24/01 at 12:38:42  Reply by: William (william@cgf-ai.com)
+--------------------------------------------------
+When searching for the nearest waypoint close to a bot, I take a look at the 'previous nearest waypoint'. If it isn't close enough to be the nearest, I still use the distance to it as an upperlimit in searching for other waypoints.
+This trick is bason on 'locality of movement' of the bot.
+
+I also do traditional caching (circular 10 place buffer, I guess - I'm too lazy to look it up now) for non-bot location lookups. Within a single tick, one bot will often refer to some location (say, a predicted position of a threat) more than once. The cache enables the bot to reason about the location in terms of coordinates, without incurring repeated costs of looking up the waypoint, or complicating code by storing all kinds of waypoints in local variables.
+The last time I looked, the cache had a > 80% hit rate.
+This kind of caching benefits from locality in the bot's reasoning. If it thinks about a special location, it is likely to do that more often in it's think loop.
+
+William
+
+--------------------------------------------------
+09/24/01 at 13:41:21  Reply by: CountFloyd (countfloyd@botepidemic.com)
+--------------------------------------------------
+Thanks for the responses guys !
+I think the the x-sorted list would do for the moment, but I'm unsure if the number of waypoints won't increase in the future.
+Using Hash-Tables sounds good so far, but I wouldn't know how to come up with a good key out of the coordinates by now and I don't know if the resulting code wouldn't be too complex for its task.
+I came up with another idea. What about using quadtrees instead, perhaps even giving me the advantage of classifying zones of waypoints ? Anybody tried them yet ?
+
+--------------------------------------------------
+09/24/01 at 14:18:23  Reply by: William (william@cgf-ai.com)
+--------------------------------------------------
+Wrt the x-coord sorted table and large numbers of waypoints:
+- the real costs of determining the nearest waypoint is in trace lines
+- the performance of a table look up is less than linearily dependent on the number of waypoints. To find the nearest x, you do a O(log(N)) binary search. The number of waypoints now to test grows O(sqrt(N)) with N, assuming the map shape remains square/cubic. However, more and more waypoints within the proper x-coord range will be outside the search range, and you can filter them with a simple y^2 + z^2 test. 
+
+In other words, that will do.
+
+Traversing a quadtree or something similar (octree, KD-tree, ...) involves a number of plane tests. If you don't mind that, you probably could turn the same kind of decisions into a hash function :)
+
+Game Programming Gems I has sample code for octree based location/collision detection (it has 2 chapters on that topic). There should be a copy of that book (and the CD) somewhere in the Gearbox office. 
+And remind them to buy their copies of Gems II, so I get rich soon. 
+
+William
+
+--------------------------------------------------
+09/25/01 at 07:23:05  Reply by: theimann (killaruna@botepidemic.com)
+--------------------------------------------------
+QUOTE:
+I wouldn't know how to come up with a good key out of the coordinates by now 
+
+
+Maybe this will help...
+code:
+
+int PB_MapCells::getHashcode( Vector &pos )
+{
+      int ix = (((int)pos.x + 4096) & 0x007F80) >> 7;
+      int iy = (((int)pos.y + 4096) & 0x007F80) >> 1;
+      int hashcode = ix + iy;
+      assert( hashcode >= 0 );
+      assert( hashcode < 4096 );
+      return hashcode;
+}
+
+
+It works with 4096 buckets and should give well enough load-factors for any reasonable map and number of waypoints.
+
+Tobias
+
+--------------------------------------------------
+09/25/01 at 11:26:10  Reply by: William (william@cgf-ai.com)
+--------------------------------------------------
+[i]Just nitpicking:[/i]
+Tobias' hash function works better once you've adjusted the input to take into account the actual center of the map and map dimensions.
+If you do so, you actually spread the waypoints better over the buckets.
+
+[i]Question:[/i]
+How would you deal with a location with x = 0, and buckets for x=[-100,0> and [0,100>? Given a point, how many buckets would I need to inspect. Or are waypoints put into multiple buckets when close to the boundaries?
+
+William
+
+--------------------------------------------------
+09/26/01 at 10:38:14  Reply by: theimann (killaruna@botepidemic.com)
+--------------------------------------------------
+QUOTE:
+Tobias' hash function works better once you've adjusted the input to take into account the actual center of the map and map dimensions.
+If you do so, you actually spread the waypoints better over the buckets.
+
+
+That's right. But since my bot learns the map while playing and I haven't figured out the bsp-stuff yet I don't know the map dimensions in advance, so I have to take care of the worst case scenario (maximum size). If you are using pre-edited waypoint files you could store the best hash-parameters for every map and use them (although things get more complicated later on)...
+
+QUOTE:
+How would you deal with a location with x = 0, and buckets for x=[-100,0> and [0,100>? Given a point, how many buckets would I need to inspect.
+
+ 
+In this case (and ignoring the y-position) you would have to inspect the two buckets. In all cases the bucket searched first is the one determined by the hash-function. The number of neighbouring buckets that have to be searched depends on: maximum possible waypoint distance, area covered by one bucket, nearest waypoint found so far and distance from search position to bucket center(maximal in your example). In my case I search a maximum of 4 buckets to find the nearest waypoint.
+
+Tobias
+

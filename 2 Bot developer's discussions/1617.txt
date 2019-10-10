@@ -1,0 +1,88 @@
+--------------------------------------------------
+Subject: Facing Problem
+--------------------------------------------------
+05/01/01 at 02:30:27  Posted by: Pembunuh (yip_omar@hotmail.com)
+--------------------------------------------------
+well,
+
+I really need some help on this. 
+
+HOw do u make the bots to face an entity in the direction towards the entity. And do u do this periodically or only just once per BotThink
+
+I think it's using the v_angle.y (yaw) but I just dont get it how to face towards the entity.
+
+
+
+--------------------------------------------------
+05/01/01 at 05:08:56  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+If you subtract the origin of the bot from the origin of the entity this will create a vector in the direction you want to face.  You can convert this vector to angles format and set the ideal yaw to the angle that you want to face.  Look at how the BotFindEnemy() function changes the ideal_yaw to the angle toward the enemy...
+code:
+   if (pNewEnemy)
+   {
+      // face the enemy
+      Vector v_enemy = pNewEnemy->v.origin - pEdict->v.origin;
+      Vector bot_angles = UTIL_VecToAngles( v_enemy );
+
+      pEdict->v.ideal_yaw = bot_angles.y;
+
+      BotFixIdealYaw(pEdict);
+
+      // keep track of when we last saw an enemy
+      pBot->f_bot_see_enemy_time = gpGlobals->time;
+   }
+
+If you don't ever change the ideal_yaw anywhere else they you can set it once and not have to do anything else.  The BotThink() code will keep turning the bot every frame to make the bot's yaw eventually become the ideal_yaw.
+
+botman
+
+--------------------------------------------------
+05/01/01 at 05:16:19  Reply by: Pembunuh (yip_omar@hotmail.com)
+--------------------------------------------------
+Thanks botman..
+
+Well, I did that ...but actually I wanted the models to face the direction they were going...
+
+So what I did was
+<<
+pEdict->v.angles.x = pEdict->v.v_angle.x / 3;    
+                        pEdict->v.angles.y = pEdict->v.v_angle.y;    
+                        pEdict->v.angles.z = 0;
+>>
+
+...and it worked.
+
+ps: I spent the whole day reading vector stuff :)
+Thanks
+
+--------------------------------------------------
+05/01/01 at 05:18:50  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+Yes, you should adjust the body angles (v.angles) when you adjust the view angle (v.v_angle).  This will cause the bot to turn it's body in the same direction that it is aiming (viewing).
+
+botman
+
+--------------------------------------------------
+05/01/01 at 12:15:15  Reply by: wildcat_dunny (dunny_nu@hotmail.com)
+--------------------------------------------------
+I am having a problem that I believe may be related to setting my angles incorrectly. I set my angles using the following code:
+
+   Vector facingDirection;
+   // Code not included calculates the direction 
+   // for the bot to face and assigns it to facingDirection
+   pev->v_angle = facingDirection;
+   pev->angles.y = VEC_TO_YAW(pev->v_angle);
+
+I do all this and at first it seems to work fine. If I tell the bot to stand in place and spin around, it does just as I would like. However, when I tell the bot to move by passing a move-speed into pfnRunPlayerMove() the bot always moves in the same direction no matter what direction he is facing.
+
+Am I not setting something that I should be in order to make the player move in the desired direction?
+
+--------------------------------------------------
+05/01/01 at 14:20:02  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+Is "facingDirection" really a vector or an array of angles?  If it is a vector, you don't want to assign it to v_angle since the view angles are supposed to be an array of angles (0-360 degrees).
+
+If you make the pitch, yaw or roll angle greater than 360 then the pfnRunPlayerMove() does some REALLY strange things to the bot.  This may be the wierd movement behaviour you are seeing.
+
+botman
+

@@ -1,0 +1,86 @@
+--------------------------------------------------
+Subject: 3rd person view
+--------------------------------------------------
+08/09/03 at 12:55:23  Posted by: CrossFire (traci@mach1pc.com)
+--------------------------------------------------
+I have successfully implanted 3rd person view in my mod, but when in it, if I back up to a wall, I can see though the wall, how do I stop this?
+thanks
+
+--------------------------------------------------
+08/09/03 at 13:17:47  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+You'll have to move the camera around to prevent it from clipping through the walls.
+
+Not an easy thing to do.  See my post on Wavelength...
+
+http://www.thewavelength.net/forums/index.php?act=ST&f=13&t=8999&s=706d1ed8dbf14b2b59a3f9c30f2f7442
+
+botman
+
+--------------------------------------------------
+08/09/03 at 13:22:18  Reply by: CrossFire (traci@mach1pc.com)
+--------------------------------------------------
+yeah, I saw that, but I dont care how hard it is, can you help?
+please
+thankyou
+
+--------------------------------------------------
+08/09/03 at 14:40:53  Reply by: Cheesemonster!!! (cheeseh@houstondod.com)
+--------------------------------------------------
+You can get the camera postion you want by:
+
+[]getting the forward vector of the player you want to view
+[]negating the forward vector, so its looking from behind them
+[] multiply the reveresed forward vector by the amount of units you want the camera to be at distance of the playerr.
+[] Run a traceline to that position from the players point of view and see if it hits a wall
+[] if it does hit a wall set it to the origin where it hits the wall.
+
+i.e.
+
+Vector GetCameraPosition ( edict_t *pEdict, float fDistance )
+{
+Vector vCameraPosition;
+Vector vPlayerOrigin;
+Vector vPlayerForward;
+
+TraceResult tr;
+
+UTIL_MakeVectors(pEdict->v.v_angle);
+
+vPlayerForward = gpGlobals->v_forward;
+vPlayerForward = -vPlayerForward * fDistance;
+
+vPlayerOrigin = pEdict->v.origin + pEdict->v.view_ofs;
+
+vCameraPosition = vPlayerOrigin+vPlayerForward;
+
+UTIL_TraceLine(vPlayerOrigin,vCameraPosition,ignore_monsters,pEdict,&tr);
+
+if ( tr.flFraction < 1.0 ) // hit a wall
+   return tr.vecEndPos;
+
+return vCameraPosition;
+
+}
+
+edit: some stuff wrong
+
+[modified on 08/09/03 at 14:40:53]
+--------------------------------------------------
+08/09/03 at 14:25:54  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+What you want to do is continously trace a line (using UTIL_TraceLine) from the center of the player's head backwards to where the 3rd person camera would be.
+
+When this line hits a wall, you want to trace another line out a little bit from the wall and place the camera there (as long as the second traceline DOESN'T hit anything).  If the second traceline (out from the wall) hits something, you will have to pick a new spot on the wall (at random?) and try to trace a line out again to see if you don't hit anything.  Keep tracing lines out from the wall until the position for the camera is clear.
+
+Now, is the camera positioned in a spot so that the human player (client) can see above the player model that's in front of it?  No?  Start tracing more lines again until you find a position that's clear AND allows the camera to see over the player model that would normally be in the way.
+
+Also make sure that the camera angle is facing the same way that the player model is facing (so they look at the same thing).  Now trace a line out from the camera position to make sure that there isn't something (another wall, box, roof beam, etc) blocking the view from the camera to whatever the player is looking at.  What's that?  There's something in the way and the camera can't "see" the same things that the player model can see?  Start picking new locations for the camera position again, until you have found a spot where the camera isn't hitting some other world geometry, isn't blocked by the player's body and the camera's view isn't blocked by some other world geometry so that the player in 3rd person mode can actually SEE something.
+
+Like I said, this is a HARD problem and VERY difficult (and sometimes CPU intensive) to solve.
+
+It would MUCH easier just to make all the walls thick enough so a camera couldn't clip through a wall into another open area of the map (i.e. no matter where the player moves, the camera will be in the same room as them, or it will be embedded inside a solid wall.
+
+botman
+
+[modified on 08/09/03 at 14:25:54]

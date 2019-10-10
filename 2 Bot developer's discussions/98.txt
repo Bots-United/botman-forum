@@ -1,0 +1,125 @@
+--------------------------------------------------
+Subject: HOW TO IMPLEMENT CS WEAPON useage.....
+--------------------------------------------------
+09/13/00 at 12:36:50  Posted by: DarkYouth (darkyouth@thegraze.freeserve.co.uk)
+--------------------------------------------------
+I saw a post here that asked about weapon arrays or something.....
+
+Heres how my SWAT bot does its stuff.....
+
+First of all I spent an hour stripping that code from the HPB3 src.....
+
+Then I created this in the top of my bot.h file:
+
+typedef_struct
+{
+    int iId;              // Weapon ID bit
+    char *command;        // Command for select
+    int min_range;        // Min rng in units
+    int max_range;        // Max range in units
+    int firerate;         // Times /100 to fire..
+} SWGuns;
+
+The following code goes in botcombat in  the part where the bot chooses its guns:
+
+(this example will not work, but is a rough outline in simpler terms since Im away from my compiler machine)
+
+      int done = 0
+      for (x=0; x < NUM_WEAPS; x++)
+      {
+           if (distance < csguns[weapon].max_range)
+           {
+               if (distance < min_range)
+                {
+                      if (hasgun code goes here) 
+                      {
+                           if (firerate > random_long (1,100))
+                            {
+                                 done = 1;
+                                 pEdict->v.button = IN_ATTACK;
+ }}}
+
+THATS ONLY A ROUGH OUTLINE...
+
+I found that if I added code to botmans complex code It took ages...
+
+Simple is better ...... sometimes
+
+--------------------------------------------------
+09/13/00 at 12:50:26  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+Since CS doesn't have weapons with a variety of firing modes (like Half-Life or TFC), you can just set v.button to IN_ATTACK to fire (like Dark Youth) shows.
+
+The weapon selection code in the HPB bot allows for things like weapon range, whether the weapon works underwater or not, whether you have to hold the fire button down to use the weapon and whether you have to hold the button down to charge the weapon then release it to fire.
+
+Since you don't have these types of firing modes in CS, just setting v.button to IN_ATTACK is the simplest way to fire the weapon.
+
+botman
+
+--------------------------------------------------
+09/14/00 at 01:07:49  Reply by: William (william@botepidemic.com)
+--------------------------------------------------
+even though CS has weapons with little variety in usage, the actual weapon tactics are too complex to be caught in an if-statement.
+
+it helps to deal separately with:
+- selecting the best weapon for the job (pistol for close range if the other weapons suck at close range, rifles for long range, grenades for indirect close-by attacks); 
+- do not switch weapons during an actual attack unless empty, weapon ineffective (distance too large, or the need to shoot thru walls)
+
+- selecting the best mode for the weapon; in CS this is basically handling zoom. since in CS, the camera doesn't look through the eyes of a bot (unlike AQ2), you can cheat and ignore this. (exception: one of the handguns)
+
+- reload decisions; since CS has a simple reload model (you don't lose rounds by ejecting a clip), just (p)reload whenever not attacking 
+
+- handling bursts: almost all the guns lose accuracy when used on full-auto (notably the M249 Minimi/SAW); it makes sense to track when the gun starts firing, and limit the burst to a short duration, depending on the skill (higher skill = shorter bursts), and distance to target (short distance = longer bursts)
+
+- aiming accuracy (and the aiming error) should be a function of:
+- the visibility of the target (distance, bodyparts seen, any obstructions (smoke / flashbang / transparent textures), darkness)
+- the amount of time the AI has been tracking the target
+- the movement by the target
+- recent movement and turning by the AI
+- any kicks received from getting shot
+- skill
+
+I'll try to post some explanation of the architecture of my weapon handling later this day, if you think that would be of help. (It's a bit over the top for CS since AQ2 has more realistic and complex weapon handling but it works fine).
+
+William
+
+
+--------------------------------------------------
+09/14/00 at 14:46:44  Reply by: William (william@botepidemic.com)
+--------------------------------------------------
+as promised:
+
+see http://www.botepidemic.com/aid/cgf/design_weapons.shtml
+
+William
+
+--------------------------------------------------
+09/14/00 at 14:58:02  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+I like the idea about "steadying the aim" when the opponent is facing away from the bot.  This would definitely apply to CS where walking or crouching provides better aim than running.  Bots SHOULD take their time when shooting you in the back! :)
+
+botman
+
+--------------------------------------------------
+09/15/00 at 01:01:17  Reply by: William (william@botepidemic.com)
+--------------------------------------------------
+Once you get a mechanism similar to this in place (which takes some effort), it's rather easy to extend it to deal with a number of weapon specific 'smart' tricks.
+I personally love to see the AI aim a full-auto assault rifle for the feet and let muzzle climbing do the work... 
+
+There are also of couple things that still are tough to handle:
+- akimbo guns (should be treated as a single weapon, but have problematic handling in AQ2 since it really reloads clips)
+- multi-ammo weapons (the MP5 / grenade launcher as in Opfor, doable but tricky since fixed speed grenade arcs are tough to aim)
+- indirect fire weapons (the 'around-the-corner' effects of grenades and the ugly HL beam devices)
+
+William
+
+--------------------------------------------------
+09/18/00 at 12:15:17  Reply by: William (william@botepidemic.com)
+--------------------------------------------------
+updated this info:
+http://www.botepidemic.com/aid/cgf/design_weapons.shtml
+
+with extensions and complications.
+
+William
+

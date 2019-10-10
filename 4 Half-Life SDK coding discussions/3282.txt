@@ -1,0 +1,85 @@
+--------------------------------------------------
+Subject: Attempt at adding new CVar 
+--------------------------------------------------
+06/14/02 at 08:34:50  Posted by: desNotes (desTubes@tampabay.rr.com)
+--------------------------------------------------
+I am trying to create a new CVar in the skill.cfg file for use with secondary tau damage without interferring with the abilty to jump and fly using tau. I've got it working with hardcoded variables but would like to make it configurable outide of the hl.dll.
+
+Here are the things I have done but I still can't get the configurable settings into my code.
+
+In the skill.cfg I've added the CVars for each skill level, 
+
+sk_plr_tau1                  "2"
+sk_plr_tau2                  "2"
+sk_plr_tau3                  "2"
+
+Next, I added the following in skill.h inside struct skilldata_t
+
+// New player weapon variable for Gauss secondary
+float plrDmgSecGauss;
+
+Next, I added the following in gamerules.cpp (which appends the skill level to the CVar) when getting the value:
+
+gSkillData.plrDmgSecGauss = GetSkillCvar( "sk_plr_tau");
+
+Next in gauss.cpp I include the following:
+
+flDamage = gSkillData.plrDmgSecGauss;
+
+
+and this where I don't get anything...if I instead include:
+
+gSkillData.plrDmgSecGauss = 2;
+flDamage = gSkillData.plrDmgSecGauss;
+
+then it works.
+
+Am I missing something when trying to declare a CVar from skill.cfg? 
+
+Thanks for the help
+
+--------------------------------------------------
+06/14/02 at 12:16:22  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Did you add the cvar_t definitions in game.cpp for your new CVARs?...
+code:
+cvar_t  sk_plr_tau1 = {"sk_plr_tau1","0"};
+cvar_t  sk_plr_tau2 = {"sk_plr_tau2","0"};
+cvar_t  sk_plr_tau3 = {"sk_plr_tau3","0"};
+
+botman
+
+
+--------------------------------------------------
+06/14/02 at 14:57:12  Reply by: desNotes (desTubes@tampabay.rr.com)
+--------------------------------------------------
+Thanks botman...I hadn't done what you recommended but even after adding the cvar_t's I did that and still can't get the CVar to work in the code. No matter what I put for the value of my new CVars in skill.cfg, I get no 'jump' using the tau. However, if I force it by putting this piece of code in it works fine.
+
+gSkillData.plrDmgSecGauss = 2;
+
+Anything else I can verify??
+
+--------------------------------------------------
+06/14/02 at 16:19:28  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Are you CREATING those cvars?...
+
+code:
+      CVAR_REGISTER ( &sk_plr_tau1 );// {"sk_plr_tau1","0"};
+      CVAR_REGISTER ( &sk_plr_tau2 );// {"sk_plr_tau2","0"};
+      CVAR_REGISTER ( &sk_plr_tau3 );// {"sk_plr_tau3","0"};
+
+...also in the game.cpp file.
+
+botman
+
+[modified on 06/14/02 at 16:19:28]
+--------------------------------------------------
+06/15/02 at 05:23:06  Reply by: desNotes (desTubes@tampabay.rr.com)
+--------------------------------------------------
+Success!! It works. 
+
+Thanks botman once again.
+
+As soon as I tweak a couple of things I will post the code changes to lower tau player damage without affecting the jump ability of the tau.
+

@@ -1,0 +1,44 @@
+--------------------------------------------------
+Subject: The Circling Waypoint Bug?
+--------------------------------------------------
+01/28/01 at 07:04:59  Posted by: BrianL (halfkiller@hotmail.com)
+--------------------------------------------------
+I need alittle hint on how to fix this?
+
+Thanx
+
+--------------------------------------------------
+01/28/01 at 12:50:36  Reply by: Spyro (theoddbot@hotmail.com)
+--------------------------------------------------
+Man, I know your pain :)
+
+1. Bigger hit radius
+2. Make the yaw speed degrees/sec instead of degrees/frame
+
+Try that for a start.
+
+-Spyro
+
+--------------------------------------------------
+01/28/01 at 14:09:31  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+The problem that I had was that the bots constantly wanted to get close enough to the waypoint to be considered touching it.  If the distance to the waypoint was slightly larger than the touch radius in one frame and then the bot ran past the waypoint (and beyond the touch radius) in the next frame.  The bots would turn around to face the waypoint to attempt to get close to it.
+
+What I did to prevent this was to store the current distance from the waypoint in a new variable in the bot_t structure (call it "previous_distance").  When the bot calculates the distance to the next waypoint, if the distance is beyond the touch radius then store this distance in previous_distance.  The next time you calculate the distance to the waypoint check to see if the current distance is less than the previous distance.  If so then the bot is still approaching the waypoint.  If the current distance is greater than the previous distance then the bot has probably run right past the waypoint and is on the other side of the touch radius.  When this happens just set a flag to indicate that the bot actually did touch the waypoint and execute the same code you would have if the distance had been less than the touch radius.
+
+This works most of the time (99% or so) and prevents the loop-the-loop problem fairly well.
+
+botman
+
+--------------------------------------------------
+01/29/01 at 01:51:18  Reply by: William (william@botepidemic.com)
+--------------------------------------------------
+The 1% when it won't work is bots being thrown back because of a grenade blast, receiving damage, bumping into func_trains, falling forward from a ledge, etc.
+
+If you'd also store the previous position, you can use the new position, the waypoint position, and a dotproduct to figure out whether you really touched the waypoint.
+(The dotproduct of the normalized vector from the previous position to the waypoint and from the previous position to the new position should be > ~0.5, if the distance to the waypoint has increased.).
+
+There's probably still some .1% left somewhere :)
+
+William
+

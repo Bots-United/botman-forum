@@ -1,0 +1,77 @@
+--------------------------------------------------
+Subject: "meta unload monster" crashes server
+--------------------------------------------------
+06/05/02 at 12:13:47  Posted by: Maelstrom (maelstrom@halfd.org)
+--------------------------------------------------
+Minor issue - my linux server crashed when I attempted to manually unload the plugin.  I was hoping to disable the plugin completely for certain maps - it appears to eat a few precache slots.
+
+An outstanding job on this botman!  Keep 'em coming!
+
+
+--------------------------------------------------
+06/05/02 at 16:16:21  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+When you say "unload the plugin" I assume you mean using the metamod "unload" commmand, right? (not "uninstall").
+
+I havent' tried the unload stuff in metamod for the monster plugin.  I think you have to have a special metamod function exported from the plugin to make unloading work properly (I'm not doing that! ;D).
+
+I'm going to add a server CVAR to allow server operators to turn on or off the spawning of monsters (something like 'monster_spawn 1/0') in the next release.
+
+botman
+
+--------------------------------------------------
+06/06/02 at 09:05:47  Reply by: HEAD (the.head@efr-clan.de)
+--------------------------------------------------
+I got a similar problem.
+If i delete the line for the monster plugin from the metamod.ini the server will crash on the next mapchange.
+
+
+--------------------------------------------------
+06/06/02 at 11:58:57  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+I'm not sure why THAT would happen (other than coincidence).  Metamod doesn't load each plugin after each map change.  They get loaded once and stay loaded until they are manually unloaded or until the server is shut down.
+
+botman
+
+--------------------------------------------------
+06/06/02 at 12:36:04  Reply by: hullu (hullu@jussikivilinna.cjb.net)
+--------------------------------------------------
+You should change PT_ANYTIME and PT_ANYPAUSE to PT_CHANGELEVEL in 'monster_api.cpp'.
+
+Then plugin can be loaded/unloaded only on server startup/shutdown and on changelevels.
+
+[modified on 06/06/02 at 12:36:04]
+--------------------------------------------------
+06/06/02 at 13:50:10  Reply by: Maelstrom (maelstrom@halfd.org)
+--------------------------------------------------
+botman - yes i mean "meta unload" - see title of post :)
+
+I'll play with the PT_* flags and let you know if this fixes things. 
+
+--------------------------------------------------
+06/06/02 at 14:30:46  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+But in order to properly unload things, you will have to set the FL_KILLME bit in the edict_t flags variable for each existing monster entity and use "delete" to remove the allocated memory for these entities.
+
+botman
+
+--------------------------------------------------
+06/06/02 at 14:45:45  Reply by: Maelstrom (maelstrom@halfd.org)
+--------------------------------------------------
+I messed with this - setting the when loadable/unloadable flags to PT_CHANGELEVEL appears to do what I want.
+
+Since the unload can only happen at changelevel time, there shouldn't be any monster entities around to worry about(?)
+
+Would you kindly roll this change into the base for future releases? :-)
+
+OT, botman, what platform (and gcc version) do you build on?  I had to hack around several compiler warnings before I could get Monster to compile on my box.  gcc 2.95.3.
+
+--------------------------------------------------
+06/06/02 at 16:13:36  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+I will see if I can get the various flavors of the "unload" command to function properly in the next release.
+
+I am using RedHat 6.2 with 2.91.66 (egcs 1.1.2) gcc compiler.
+
+botman
+

@@ -1,0 +1,169 @@
+--------------------------------------------------
+Subject: DMC weapon IDs
+--------------------------------------------------
+12/11/01 at 19:37:24  Posted by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+Hello
+
+What are the weapon IDs for Valve's Deathmatch Classic? They seem not to be arranged like the other mods and I get problems getting my bots switch to them.
+
+(by the way, I do weapon switching like this:
+FakeClientCommand (pBot->pEdict, "Slot(n)", NULL, NULL);
+pBot->pEdict->v.button |= IN_ATTACK; // to actually select the slot
+Is this a good idea ?)
+
+
+
+--------------------------------------------------
+12/11/01 at 19:41:47  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+By the way,
+
+When I launch a game, wander around to collect some weapons, and do a "search" clientcommand, I don't get my player's weapons in the search results?
+
+What the heck? Will the bots be able to know what weapons they've got with such a behaviour?
+
+
+
+--------------------------------------------------
+12/11/01 at 20:29:04  Reply by: ReDucTor[FGW] (sjdtmv@tpg.com.au)
+--------------------------------------------------
+I suggest you read the readme for how to get he weapon ids, and the best way to change weapon is like this..
+
+code:
+
+FakeClientCommand (pBot->pEdict, "weapon_something", NULL, NULL);
+
+
+--------------------------------------------------
+12/12/01 at 04:23:30  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Nope.  DMC doesn't use weapon switching like other MODs do.  You don't just send the weapon name as a command.  You have to use the "weaponselect" field.
+
+Use the "Search" feature at the top of the page to search for "weaponselect" and you'll find the thread.
+
+botman
+
+--------------------------------------------------
+12/12/01 at 10:50:44  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+Okie dokie, great guru...
+
+grepping in sdk/SourceCode for "weaponselect": 4 entries. The most interesting I found is that:
+code:
+
+typedef struct usercmd_s
+{
+(snip)
+  byte impulse; // Impulse command issued.
+  byte weaponselect; // Current weapon id
+(snip)
+} usercmd_t;
+
+
+Now grepping for "usercmd_t *cmd", as seen in many function headers:
+HLWEAPONS.CPP
+code:
+
+// Now see if we issued a changeweapon command ( and we're not dead )
+if (cmd->weaponselect && (player.pev->deadflag != (DEAD_DISCARDBODY + 1)))
+{
+  (...)
+
+
+Okie.
+INPUT.CPP:
+code:
+
+cmd->weaponselect = g_weaponselect;
+
+
+Dokie.
+Grepping sdk for g_weaponselect:
+code:
+
+extern int g_weaponselect;
+
+
+...and that's all.
+Gasp
+I don't understand anything.
+Could someone explain me (with some detail) how to use this ?
+
+(btw, my 2nd post on this thread was a stupid question. Forget it.)
+
+Thanks in advance
+
+--------------------------------------------------
+12/12/01 at 14:05:39  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+The "weaponselect" field that you want is the first one (in the usercmd_t structure).  You set a bit in this weaponselect field to indicate the weapon that you want to switch to.  Here's how I modified the code in the HPB bot to support weapon switching in DMC...
+code:
+// in bot_combat.cpp
+
+         // select this weapon if it isn't already selected
+         if (pBot->current_weapon.iId != iId)
+         {
+            if (mod_id == DMC_DLL)
+               UTIL_SelectWeapon(pEdict, weapon_index);
+            else
+               UTIL_SelectItem(pEdict, pSelect[select_index].weapon_name);
+         }
+
+code:
+// in util.cpp I added a new function...
+
+void UTIL_SelectWeapon(edict_t *pEdict, int weapon_index)
+{
+   usercmd_t user;
+
+   user.lerp_msec = 0;
+   user.msec = 0;
+   user.viewangles = pEdict->v.v_angle;
+   user.forwardmove = 0;
+   user.sidemove = 0;
+   user.upmove = 0;
+   user.lightlevel = 127;
+   user.buttons = 0;
+   user.impulse = 0;
+   user.weaponselect = weapon_index;
+   user.impact_index = 0;
+   user.impact_position = Vector(0, 0, 0);
+
+   CmdStart(pEdict, &user, 0);
+   CmdEnd(pEdict);
+}
+
+I believe that the above is the only change you need for weapon switching.  Also the "weapon_index" from the bot_combat.cpp code will be the base2 weapon id (1,2,4,8,16,32,etc.) NOT the weapon index (1,2,3,4,5,6, etc.)
+
+There is a bug in DMC where players sometimes DO NOT spawn with the crowbar.  You can't select it to use it so you HAVE to use the shotgun.  After you pick up ANY other weapon, you'll magically have access to the crowbar at that point, but you HAVE to pick up another weapon first when this happens.  It doesn't seem to happen all the time, only about 10% or 20% of the time, but BE AWARE of this bug if you are trying to get the bots to switch between the shotgun and the crowbar.
+
+botman
+
+--------------------------------------------------
+12/12/01 at 15:27:45  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+Well, you save me whole a bunch of time !
+
+I was missing CmdStart() and CmdEnd() to pass this to the engine. Now I'm sure to get it working in five minutes ;-)
+
+By the way, does setting the other values in the structure to zero like you do not affect the bots?
+
+Huge thanks for your time and keep up the good work...
+
+
+
+
+--------------------------------------------------
+12/12/01 at 18:19:11  Reply by: ReDucTor[FGW] (sjdtmv@tpg.com.au)
+--------------------------------------------------
+Just in your CmdStart() function make a read from a global the weapon id, and change the weapon to that if its different from the current one..
+
+--------------------------------------------------
+12/13/01 at 14:15:30  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+Sorry Reductor, I am french and my english is far from perfect... I don't understand your post?? Could you explain me this with other words ?
+Thanx
+
+
+

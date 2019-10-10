@@ -1,0 +1,60 @@
+--------------------------------------------------
+Subject: How reliable are edict.v fields of clients?
+--------------------------------------------------
+11/02/03 at 09:14:17  Posted by: JZ (maizenkor@wanadoo.fr)
+--------------------------------------------------
+How reliable are the fields of edict.v, like velocity, v_angle, health etc... of all clients (bots and human player alike) at any time?
+
+For instance does pPlayer->v.v_angle really holds the current aim angles of the player, where "pPlayer" is a bot or a human.
+
+IIRC I read somewhere a long time ago that these vars where resetted or cleared by the engine sometimes and so where no reliable. Or maybe I'm confusing with something else.
+
+I just want to be sure before writing things that need my bot to look at what other players are doing. I've seen used "velocity" in a bot so I assume it's correct, but I'm not sure about "v_angles".
+
+Sorry if this has been already asked, dunno how I could search this question without being shown 100 threads to read :D
+Thanks!
+
+Edit: typos.
+[modified on 11/02/03 at 09:14:01]
+
+[modified on 11/02/03 at 09:14:17]
+--------------------------------------------------
+11/02/03 at 09:17:21  Reply by: JZ (maizenkor@wanadoo.fr)
+--------------------------------------------------
+Oh and add "buttons" to the list :D
+
+--------------------------------------------------
+11/02/03 at 11:23:02  Reply by: Cheesemonster!!! (cheeseh(at)rcbot(dot)net)
+--------------------------------------------------
+I don't see why they'd ever be unreliable...
+
+--------------------------------------------------
+11/02/03 at 11:23:53  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Everything depends if you read them on the client or on the server. If your code is meant to run on the server, the "pEdict->v" entvars are the ones the server uses indeed for storing things like velocity, buttons, model, netname, etc. In this case, it's safe to read from them (the values are exact, that is). On the other hand, if you run your code on a client, be aware that the client does not need to know all that the server knows about an entity, so only a limited number of fields may actually be used in the player's entvars. Basically, there are two rules:
+
+1. For server-side coding, avoid cluttering your code as much as you can by reading directly from the entvars;
+
+2. For client-side coding, avoid erroneous infos as much as you can by hooking network messages instead.
+
+Also, be aware that some MODs don't actually use some entvars fields for the usage they were meant to ; it's the case for Counter-Strike, which does not use the "team" field for storing the player's team, for example. You have to be experienced a little with the MOD you are coding for.
+
+
+--------------------------------------------------
+11/02/03 at 11:31:35  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+"You have to be experienced a little with the MOD you are coding for."
+
+Right, and also some of the entvars_s variables are only used on certain entities.  For example, some entities will use 'velocity' and some will not.  Sometimes you have to search through the SDK source code to see which types of standard (plain old Half-Life) entities use certain entvars_s variables and which do not.  MODs can change this in the MOD Game DLL code, but they can't change the engine behavior (what it updates in the entvars_s structure).
+
+The entvars_s structure is kind of weird becase there are fields in there that engine controls and modifies and there are fields in there that the MOD Game DLL code modifies.  There are some fields that can be modified by both the engine and the MOD Game DLL code.
+
+If you have questions about a specific entvars_s variable that isn't doing what you think it should, post a question about it and someone can probably help you out.
+
+botman
+
+--------------------------------------------------
+11/03/03 at 01:22:35  Reply by: JZ (maizenkor@wanadoo.fr)
+--------------------------------------------------
+Since the bot is on the server side I'll use the vars and if I find a problem I'll post. Thanks for the quick replies :)
+

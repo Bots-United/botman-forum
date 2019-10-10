@@ -1,0 +1,79 @@
+--------------------------------------------------
+Subject: Question about dynamic pathfinding
+--------------------------------------------------
+11/17/01 at 11:08:09  Posted by: Onslaught (None)
+--------------------------------------------------
+I've implemented Dijkstra's algorithm in my bot and got it to work. However i'm not sure if the routine is already optimized, i have a P4-1.5ghz computer so I can't tell whether the routine will still be this fast on other computers.
+
+I would like to ask, how many loops does your A* or Djikstra routine usually do?
+
+Here's my routine's stats:
+Plain old dijkstra - 30000+ loops
+Djikstra + if(current==destination) break; line - 9000+ loops
+Djikstra + if(current==destination) break; + Heuristic (can this be called A*???) - 3000+ loops 
+
+--------------------------------------------------
+11/17/01 at 12:17:23  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+The performance of your path finding algorithm will mainly be based on how many waypoints there are (more waypoints = longer to find path from A to B).
+
+If you are doing things right, you shouldn't need for each of the bots to constantly keep finding a path from their location to a goal.  Use your path finding code to work out the path to the goal, then store these intermediate waypoint locations in an array that you can access while the bot is navigating towards that goal.  If something comes along to interfere with the current task of reaching the goal (like an enemy being spotted), just clear out the array and find the path again after the bot has delt with the interruption.
+
+botman
+
+[modified on 11/17/01 at 12:17:23]
+--------------------------------------------------
+11/18/01 at 02:10:25  Reply by: Onslaught (None)
+--------------------------------------------------
+"Use your path finding code to work out the path to the goal, then store these intermediate waypoint locations in an array that you can access while the bot is navigating towards that goal"
+
+i've already done this, I would like to know if the loops above are ok or are they inefficient (300+ waypoints)
+
+--------------------------------------------------
+11/18/01 at 13:16:21  Reply by: William (william@cgf-ai.com)
+--------------------------------------------------
+The amount of iterations a Dijkstra algorithm does is primarily dependent on the number of waypoints and waypoint interconnects. Dijkstra expands the current shortest path.
+In other words, it depends on the level.
+
+The A* performance, however, is primarily determined by the amount of obstacles and de-routes between the source and destination node; in an obstacle-free environment, A* will find the shortest path without looking at other paths at all.
+The A* performance is typically determined searching and manipulating the lists of "open" and "closed" lists. Typically, the use of bitsets and priority queues implemented as heaps results in good performance of the "open" and "closed" lists.
+
+Rather than trying to improve upon Dijkstra or A* (which would yield a 10x factor in the best case), think about using pre-computed lookup tables (yielding a factor 200x to 1000x).
+
+William
+(p.s. with a P4 1.5GHz: just compute a few million paths, and measure the time required)
+
+
+--------------------------------------------------
+11/19/01 at 02:54:27  Reply by: Onslaught (None)
+--------------------------------------------------
+I already use lookup tables for my bots, but I want them to use other routes in special cases (like going around their enemies, taking a safe path, etc)
+
+--------------------------------------------------
+11/19/01 at 02:56:15  Reply by: Onslaught (None)
+--------------------------------------------------
+how is A* different from dijkstra? (other than the heuristic)
+
+--------------------------------------------------
+11/19/01 at 07:03:47  Reply by: Onslaught (None)
+--------------------------------------------------
+Well I've read a pseudocode listing on A*. It looked quite similar to the dijkstra code of my bot. I still can't determine the difference between Dijkstra+Heuristic and A*. I've read from some dijkstra sources that dijkstra+heuristic still has minor differences from A*:
+
+- A* has less memory usage
+- A* will always be faster than dijkstra
+
+Why? What are the differences of the two algorithms?
+
+--------------------------------------------------
+11/22/01 at 02:16:05  Reply by: theimann (killaruna@botepidemic.com)
+--------------------------------------------------
+QUOTE:
+I've read from some dijkstra sources that dijkstra+heuristic still has minor differences from A*
+
+
+
+Nope, it's exactly the same. At least from what I know. Maybe they were thinking of different implementations for the priority queues? But that's independent from using or not using heuristics.
+
+Tobias
+
+[modified on 11/22/01 at 02:16:05]

@@ -1,0 +1,207 @@
+--------------------------------------------------
+Subject: Damn bot dont get stuck in other PLAYERS...
+--------------------------------------------------
+11/24/01 at 12:10:08  Posted by: redlink (redlink_star@hotmail.com)
+--------------------------------------------------
+i have tryed to do every thing.....
+but the bots keep walk in each other....
+I have asked this question Befor but the stuff they helped me with diden't work... I haft to fixe this and some other bugs befor realese plz helpme...
+
+
+.........................................
+American X bot
+http://www.arsenics.com/americanxbot
+
+[modified on 11/24/01 at 12:10:08]
+--------------------------------------------------
+11/24/01 at 04:27:47  Reply by: ReDucTor[FGW] (sjdtmv@tpg.com.au)
+--------------------------------------------------
+The best method i can think of would be do a forward trace, and where you check if the trace landed on a solid object, check the body part it hit, if it was a head, leg, etc and if its nothing(generic) then its not stuck on a player
+
+
+p.s. this is untested, but just an idea i have
+
+[modified on 11/24/01 at 04:27:47]
+--------------------------------------------------
+11/24/01 at 05:14:15  Reply by: Onslaught (None)
+--------------------------------------------------
+-Do a forward trace
+  -If it hits something, trace to the right
+    -If trace didn't hit anything, strafe to the right
+    -If trace hits something, trace to the left
+       -If trace didn't hit anything, strafe to the left
+
+just to give you an idea...
+
+--------------------------------------------------
+11/24/01 at 05:16:30  Reply by: Onslaught (None)
+--------------------------------------------------
+When the bot starts finding a waypoint, make sure that the waypoint is not being used by another bot. If it is used, bypass the pathfinder and get a near "unoccupied" waypoint that is visible from the bot.
+
+--------------------------------------------------
+11/24/01 at 12:10:37  Reply by: redlink (redlink_star@hotmail.com)
+--------------------------------------------------
+Thats not the problem my bots dont use waypoints when they have found a enemy...
+
+
+.........................................
+American X bot
+http://www.arsenics.com/americanxbot
+
+[modified on 11/24/01 at 12:10:37]
+--------------------------------------------------
+11/24/01 at 12:45:00  Reply by: Ghoul (oneeyedghoul@aol.com)
+--------------------------------------------------
+This is a little peice of code I stuck into my BotShootAtEnemy() code.  It controls the speed of the bot.  There is some of it in there already, but mine makes it so the bot runs backwards if its enemy is too close.
+
+code:
+
+   if (f_distance > 512)      // run if distance to enemy is far
+      pBot->f_move_speed = pBot->f_max_speed;
+   else if (f_distance > 320)  // walk if distance is closer
+      pBot->f_move_speed = pBot->f_max_speed / 2;
+   else if (f_distance > 196 && f_distance < 320)  // don't move!
+         pBot->f_move_speed = 0.0;
+   else if (f_distance < 196)  // walk backwards if too close
+         pBot->f_move_speed = (pBot->f_max_speed / 2) * -1;
+   else                     // sanity check?
+      pBot->f_move_speed = 0.0;
+
+
+
+P.S. This is from HPB Bot template 3.
+
+--------------------------------------------------
+11/24/01 at 13:56:10  Reply by: redlink (redlink_star@hotmail.com)
+--------------------------------------------------
+ok.. Thats about the same code i use for my bot.. but it doesn't work.... I use this code for the bots to runs backwards....
+
+pBot->f_move_speed = -pBot->f_max_speed;
+
+yeah just one more question how long away is 100 Units? 
+
+
+[modified on 11/24/01 at 13:56:10]
+--------------------------------------------------
+11/24/01 at 14:12:07  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+thats about the same length as four players lined up sideways :)
+
+--------------------------------------------------
+11/25/01 at 00:37:00  Reply by: Onslaught (None)
+--------------------------------------------------
+"thats about the same length as four players lined up sideways" 
+
+I think it's more of 3...
+
+--------------------------------------------------
+11/25/01 at 00:42:54  Reply by: Onslaught (None)
+--------------------------------------------------
+"ok.. Thats about the same code i use for my bot.. but it doesn't work.... I use this code for the bots to runs backwards...."
+
+Maybe a statement in the BotThink() Function re-sets the f_move_speed to another value...
+
+Try putting this right before the pfnRunPlayerMove call (somewhere in the end of the botthink function)
+code:
+
+if (pBot->pBotEnemy)
+{
+float distance = (pBot->pBotEnemy->v.origin - pEdict->v.origin).Length();
+if (distance < 200) pBot->f_move_speed = -pBot->f_max_speed);
+}
+
+
+
+
+--------------------------------------------------
+11/25/01 at 02:31:53  Reply by: ReDucTor[FGW] (sjdtmv@tpg.com.au)
+--------------------------------------------------
+Setup some if its really close, make him knife him.. :)
+
+code:
+
+if (pBot->pBotEnemy)
+{
+float distance = (pBot->pBotEnemy->v.origin - pEdict->v.origin).Length();
+
+if(distance < 10)
+{
+  UTIL_SelectItem(pEdict, "knife"); // Make me slap dat bitch as with a knife :)
+  pBot->f_move_speed = pBot->f_max_speed; // set our speed back :)
+}
+else if(distance < 200)
+  pBot->f_move_speed = (0.5 * -pBot->f_max_speed);
+}
+
+
+--------------------------------------------------
+11/25/01 at 02:42:11  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+That should already happen if the min/max distance for the knife has been set properly and it has a higher priorty than the long range weapons ;D
+
+--------------------------------------------------
+11/25/01 at 04:30:01  Reply by: Onslaught (None)
+--------------------------------------------------
+but most bot programmers, I THINK (well at least for CS), doesn't use the weapons minimum/maximum/delay table included in botman's code.
+
+--------------------------------------------------
+11/25/01 at 05:14:41  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+I made a test bot for CS using the combat code with botmans HPB_bot template and it worked fine. Saves me having to put more stuff in and delete stuff if it's alredy there. It also saves you having to add lots of lines when there is already a weapon table telling the max/min distances instead of yourself having to put them in.
+
+[modified on 11/25/01 at 05:14:41]
+--------------------------------------------------
+11/25/01 at 09:17:42  Reply by: redlink (redlink_star@hotmail.com)
+--------------------------------------------------
+"doesn't use the weapons minimum/maximum/delay table included in botman's code. "
+
+The most bots use the old Weapon system i *think*... My bot supports 22 mods thats a problem with the bot tables it takes time to make tables for them all... I have been working on some kind of system like the one Team bot has... But i cant get it to work...
+
+.........................................
+American X bot
+http://www.arsenics.com/americanxbot
+
+
+
+
+
+--------------------------------------------------
+11/25/01 at 11:37:07  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+Still having 22 tables is better than having hundreds of lines of manual code choosing what weapon the bot should use. Where you can have the tables and as little code as you need to look through tem and change weapon from it gives the same effect and is easy to upgrade if the mod adds new weapons. The way botman implemented his weapons tables were well done because he supports lots of mods, so he stuck to using tables. He gives you enough information in the comments to allow you to understand what it does and its easy to add your own stuff in the table :)
+
+--------------------------------------------------
+11/25/01 at 11:44:19  Reply by: @$3.1415rin (joebot@botepidemic.com)
+--------------------------------------------------
+QUOTE:
+but most bot programmers, I THINK (well at least for CS), doesn't use the weapons minimum/maximum/delay table included in botman's code.
+
+
+
+
+Probably we can even say that most bot programmers don't even use the template #3, cause they began earlier and started e.g. with #1 and removed bugs and extended stuff step by step, so that there was no need to take #3 and use botman's system with this weapon fields.
+
+--------------------------------------------------
+11/26/01 at 02:44:40  Reply by: Onslaught (None)
+--------------------------------------------------
+"I made a test bot for CS using the combat code with botmans HPB_bot template and it worked fine. Saves me having to put more stuff in and delete stuff if it's alredy there. It also saves you having to add lots of lines when there is already a weapon table telling the max/min distances instead of yourself having to put them in."
+
+What I mean is that most CS bot programmers completely ignore the min/max tables because you can always just press and hold IN_ATTACK for automatic weapons and "tap" IN_ATTACK for non-automatic weapons
+
+--------------------------------------------------
+11/26/01 at 03:02:17  Reply by: jerry_stoel (jerry_stoel@hotmail.com)
+--------------------------------------------------
+I got rid of the Table and the botfireweapon function, because I like too control all the weapons seperately. So that when the bot uses a snipergun and a enemy is coming close or his snipergun is empty, he takes out his secondary gun or knife and shoot/knife the enemy. That way I can let the bot do actions which are human-like.
+
+--------------------------------------------------
+11/26/01 at 09:29:59  Reply by: redlink (redlink_star@hotmail.com)
+--------------------------------------------------
+"he takes out his secondary gun or knife and shoot/knife the enemy"
+
+The HPB_bot does that when a enemy comes to close but the thing when a enemy comes to close change to the knife, thats really easy coding even i can do a simple thing like that...
+
+.........................................
+American X bot
+http://www.arsenics.com/americanxbot
+
+

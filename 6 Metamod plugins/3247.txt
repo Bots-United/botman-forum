@@ -1,0 +1,160 @@
+--------------------------------------------------
+Subject: stripping player spawn points
+--------------------------------------------------
+06/10/02 at 03:05:33  Posted by: Jellric (jellric@yahoo.com)
+--------------------------------------------------
+I used the bsp_tool to dump the entities in lambda_bunker.bsp. One thing I noticed was that there were more spawn points used in the game than were listed using the -ent function. Also the coordinates given with -ent were slightly different to the actual location in the game.
+
+I attempted to remove a non-listed spawn point like so:
+[strip]
+{ 
+info_player_deathmatch (571 -520 660)
+}
+It didn't work. How is everyone stripping spawn points?
+
+
+--------------------------------------------------
+06/10/02 at 04:27:07  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+"bsp_tool -ent" will dump all of the spawn points.  All spawn points in Half-Life are stored in the .bsp map file.
+
+Are you dumping the entities to a file and then searching that file for the "info_player_deathmatch" entities? (i.e. "bsp_tool -ent lambda_bunker > output.txt")
+
+The origin of players is at the center of their bodies (36 units up off the floor when standing).  Usually spawn points are a few units higher (at least 40 units off the floor) to keep the player from getting stuck in the floor when spawning.
+
+You can also use the bsp_view.exe utility to display that map and fly around to see all the spawn points.  Just look for the "gina" models displayed in the map viewer.
+
+botman
+
+--------------------------------------------------
+06/10/02 at 06:35:48  Reply by: Jellric (jellric@yahoo.com)
+--------------------------------------------------
+Ok I got it to work using the coordinates from bsp_tool. And you answered what was to be my next question about sending the output to a text file. 
+
+Are you, like, psychic or what? :)
+
+--------------------------------------------------
+06/10/02 at 18:33:09  Reply by: Jellric (jellric@yahoo.com)
+--------------------------------------------------
+Well I thought it had stripped it. I had to commit suicide about a thousand times, but it did eventually spawn me at the point I thought I had stripped again!
+
+I've tried stripping it a number of different ways using the exact coordinates that bsp_tool spit out:
+
+[strip]
+classname/info_player_deathmatch (572 -520 620)
+classname/info_player_start (572 -520 620)
+{
+classname/info_player_deathmatch
+angle/183
+origin/572 -520 620
+}
+
+The one directly above is how the entity is listed in the bsp file. I would just give up on it, but I hate giving up, plus this is such a terrible place to spawn someone in the path of the baddest gun in the map.
+
+--------------------------------------------------
+06/10/02 at 21:30:47  Reply by: Jellric (jellric@yahoo.com)
+--------------------------------------------------
+What's weird is that *adding* spawn points are no problem at all in the form:
+{ 
+classname/info_player_deathmatch 
+angle/183 
+origin/572 -520 620 
+}
+
+stripping is another thing entirely.
+has anyone had success stripping spawn points?
+
+--------------------------------------------------
+06/11/02 at 04:11:13  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+You don't use the "classname" key in the [strip] section (classnames are all you can put there anyway).  Try this...
+code:
+[strip]
+info_player_deathmatch (572 -520 620)
+
+botman
+
+--------------------------------------------------
+06/11/02 at 06:09:28  Reply by: Jellric (jellric@yahoo.com)
+--------------------------------------------------
+What's weird is that there are two different spawn points listed- (572 -520 620) and (572 -519 636). The first is what bsp_tool spits out, the other is where you actually end up spawning from in the game. I've tried stripping both using the method you described in the post prior to this one. I've entered them both and individually. Nothing works. I'm stumped. 
+
+Evidently, this level was originally designed as a single-player map called, "Forget about Freeman". It also has one info_player_start location in it. Could this have anything to do with the problem? BTW, there are actually two locations in the map that won't strip.
+
+P.S.
+Im having the same problem with another map: classname/info_player_deathmatch (-2048 2868 880)//bsp tools coordinates given..
+classname/info_player_deathmatch (-2047 2868 888)//actual coordinates in the game.
+[modified on 06/11/02 at 05:48:28]
+
+[modified on 06/11/02 at 06:09:28]
+--------------------------------------------------
+06/11/02 at 09:09:08  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+"info_player_start" is only used in single player games.  Many multiplayer maps include "info_player_start" so that the mapper can load them up in single player mode.  There are various tools available in single player mode (like wireframe drawing mode) that aren't available in multiplayer mode.
+
+Here's the list of all the "info_player_deathmatch" entities in Valve's lambda_bunker.bsp file...
+code:
+Key/Value         : classname/info_player_deathmatch
+Key/Value         : origin/572 -520 620
+
+Key/Value         : classname/info_player_deathmatch
+Key/Value         : origin/-1088 -88 424
+
+Key/Value         : classname/info_player_deathmatch
+Key/Value         : origin/-2120 8 -60
+
+Key/Value         : classname/info_player_deathmatch
+Key/Value         : origin/-2280 -1848 220
+
+Key/Value         : classname/info_player_deathmatch
+Key/Value         : origin/-768 -792 616
+
+Key/Value         : classname/info_player_deathmatch
+Key/Value         : origin/-1508 432 424
+
+Key/Value         : classname/info_player_deathmatch
+Key/Value         : origin/-1904 -1148 424
+
+Key/Value         : classname/info_player_deathmatch
+Key/Value         : origin/-36 -68 612
+
+Key/Value         : classname/info_player_deathmatch
+Key/Value         : origin/-2504 -1344 -28
+
+Key/Value         : classname/info_player_deathmatch
+Key/Value         : origin/-2024 -64 464
+
+Key/Value         : classname/info_player_deathmatch
+Key/Value         : origin/-508 -516 616
+
+Key/Value         : classname/info_player_deathmatch
+Key/Value         : origin/-2744 -1076 -60
+
+Key/Value         : classname/info_player_deathmatch
+Key/Value         : origin/-2228 -888 276
+
+Key/Value         : classname/info_player_deathmatch
+Key/Value         : origin/-752 -432 472
+
+Key/Value         : classname/info_player_deathmatch
+Key/Value         : origin/-1128 -812 424
+
+Key/Value         : classname/info_player_deathmatch
+Key/Value         : origin/-2548 452 -36
+
+There is only one of them that starts with an origin of 572.
+
+Again, if you are trying to strip out entities, DON'T include the "classname/" part that appears in the [add] section.  The [strip] section just has the name of the entity (like this: info_player_deathmatch) and, optionally, the specific origin of the entity.
+
+Did you try the example that I posted above?
+
+botman
+
+--------------------------------------------------
+06/11/02 at 18:25:23  Reply by: Jellric (jellric@yahoo.com)
+--------------------------------------------------
+I took out the word "classname" and it worked fine. I thought you were referring to the angle/origin part. Yet another reason (as if I needed it) that I won't be going into programming anytime soon!!  :)
+
+I had convinced myself that the discrepencies between the spawn points were somehow related to the problem and overfocused on that. The bsp_tool gives one spawn point and the actual in-game spawn points are -slightly- different.(I used the bsp_tool one). Anyway, thanks for clueing me in, and thanks again for the great tools!! Your bots, bsp_tool and stripper2 are a big part of my upcoming server.
+
+[modified on 06/11/02 at 18:25:23]

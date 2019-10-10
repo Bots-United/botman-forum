@@ -1,0 +1,120 @@
+--------------------------------------------------
+Subject: Multipathing
+--------------------------------------------------
+03/03/02 at 06:49:00  Posted by: Extrarius (cprgmsw@rietta.com)
+--------------------------------------------------
+I've been working for a while trying to find a good algorithm to use to allow multipathing, so that the bots can take different paths instead of only the shortest one. The problem is that the bot can only be sure its going toward the destination if the distance is shorter than all others. Otherwise, it might be heading away from it.
+
+At http://cprgmsw.rietta.com/other/es_error.gif you can see an example of my problem.
+
+The yellow circles are waypoints, black represents walls, the pink/light purple lines are waypoint links, the blue square is where the bots (represented by the red and green square) are trying to get to. The black numbers on each waypoint is the distance (in waypoints) to the destination. The bots use that number to figure out if they are going toward or away from the destination. 
+
+Looking at the picture, it is obvious to a person that each bot could choose 2 possible paths, the red path or the green path (they are drawn over the pink paths and might be somewhat hard to see). However, because from the standpoint of both bots, the red path is going away from the destination (to go toward the red path would be going to a waypoint with a higher number, and thus be farther away from where they want to get to - so they think). 
+
+
+[modified on 03/03/02 at 06:49:00]
+--------------------------------------------------
+03/03/02 at 11:25:54  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+If you can find more than one path, can you then store them and choose a random path for the bot to take at the end?
+
+The multi-pathing used in good algortihms are used incase of other things that are in paths. A good algorithm will always choose the same path although if there are other things besides the cost of the path e.g. If a locked door or something was on one path, that path would be ignored so then you would find another one. I think thats what the term multi-pathing is meaning.
+
+But i'm no expert!
+
+[modified on 03/03/02 at 11:25:54]
+--------------------------------------------------
+03/03/02 at 11:24:35  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Yup, isn't navigation a bitch?  :D
+
+botman
+
+--------------------------------------------------
+03/03/02 at 11:26:25  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+upps I just modified my post again for a little more explaination. :P
+
+--------------------------------------------------
+03/03/02 at 12:39:31  Reply by: Extrarius (cprgmsw@rietta.com)
+--------------------------------------------------
+cheesemonster, its easy to find a random path. The problem is eliminating stupid things like for example, the map 2fort in TFC, if you spawn in the upper deck main area, it makes sense to go over battlements to go toward the enemy base, but if you start in the other spawn, it seems stupid to drop down to the lower deck, go to the ramp room, up the ramps, and then out the battlements (even though I have seen it done by real people before =-/ ) The two main options from the second spawn would be either out the door to the battlements or to drop down and then use either the main door or the waterway. A better (or worse) example would be to deicde that to get to the enemy base, it would be best to go from the other spawn, drop down to the lower level, go up the ramps in the ramp room, to the center area of the base, down the ramp to the flag room, up the elevator to the ramp room, down the ramp, and out the front door.
+So, basically, I need a good way to eliminate both the extremely and the only slightly stupid paths =-) It could be done manually be waypointers, but would make an already tedius task beyond bearable. Also, I plan to make a mod based of the bot code that instead of simulating players, just watches where they go, and generates waypoints from their movement, and it would be very hard to make it notice which paths are take and which are not since it doesnt know where the player is heading to and could easily confuse a player going to defend the flag as one marking a path to go toward the enemy base.
+
+Also, a good algoritm only chooses the same path if its good at something besides multipathing, cuz if its good at multipathing, its purpose is to select different paths =-) Or, maybe I'm just using the wrong term, but I mean the ability to select multiple near-equal paths such as the waterway and bridge in 2fort.
+
+I can already make it find the shortest path (either distance or # of waypoints) easily using an algorithm based vaguely on the A* algorithm (I didn't exactly understand the A* algo from the first explanation I read so I d/l a demo program and it kinda helped but not really so my 'implementation' might not be A* at all, one thing I know is different is that mine doesnt exactly search, it processes all waypoints)
+
+[modified on 03/03/02 at 12:39:31]
+--------------------------------------------------
+03/03/02 at 12:40:05  Reply by: Extrarius (cprgmsw@rietta.com)
+--------------------------------------------------
+I just re-read my previous post and realize that it might be possible that using a simple algorithm to skip to the farthest place in the path list that the bot can see and it would see the second ramp room trip from the first, and eliminate going up and back down. It might even see the front door from the 'drop-down' waypoint. But, this solution only eliminates the "extremely stupid" paths and not the "slightly stupid paths" =-/
+
+[modified on 03/03/02 at 12:40:05]
+--------------------------------------------------
+03/03/02 at 13:15:43  Reply by: bluesy (bluesy@bezeqint.net)
+--------------------------------------------------
+I`ve found some sort of a a solution to the multy-pathing problem. 
+
+You can throw in some random values that will make your pathfinding algo to an A*/Dyijkstra search (based on how much you value the heuristic/cost data).
+
+That way you could achieve paths that are both 'believeable' and somewhat different from eachother. Add some varied-costing to the whole equation and you could find what you are looking for.
+
+--------------------------------------------------
+03/03/02 at 15:05:34  Reply by: Extrarius (cprgmsw@rietta.com)
+--------------------------------------------------
+Any idea how to dynamically pick a good value to modify the weight by? Otherwise, you have to tweek it for each map and that would be impractical. I guess maybe multiply the distance from waypoint to waypoint by 0.7 to 1.3 and then add a random number from -32 to 32 or something like that (assuming you use distance between waypoints as the weight to get from one to the other).
+I've also thought about rounding distances to the nearest 128, or maybe rounding down to the nearest 128, to eliminate the 'minor differences' between path distances, but I'm not sure that either of the ideas would work because going the water route in 2fort is much farther than going over the bridge since the bridge is a straight shot but to go water u have to go down your staircase, through the water, up to the surface, under the bridge, down to the enemy waterway, and then up their staircase. Going the overland route only requires exiting your base through a door or jumping off the battlements and then running across the bridge and through the enemy door.
+
+[modified on 03/03/02 at 15:05:34]
+--------------------------------------------------
+03/03/02 at 15:27:00  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+At first I didn't know what you were trying to achieve.
+
+I thought much of the algorithm in A* is to firstly choose the waypoints that are in the open list AND closest to the goal, which should eliminate really weird paths. Of course this will still only give you the best shortest route but If you want another route you can still keep looking until you find the goal again for another route... ???
+
+
+
+--------------------------------------------------
+03/03/02 at 17:49:05  Reply by: Extrarius (cprgmsw@rietta.com)
+--------------------------------------------------
+" (I didn't exactly understand the A* algo from the first explanation I read so I d/l a demo program and it kinda helped but not really so my 'implementation' might not be A* at all, one thing I know is different is that mine doesnt exactly search, it processes all waypoints) "
+=-/ My 'modification'(totally different thing that isnt A* at all really) makes it not actually search, it finds the distance(actual path distance) from each waypoint to the goal and then uses that info to select the best one.
+
+--------------------------------------------------
+03/05/02 at 00:28:31  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+you could also build a path out of 2 paths..
+If you want to go from A TO B, but not directly, you have to find a waypoint between them, (that makes sense ofcourse). so you get A to B via C.
+
+C could be a waypoint which should not be in th e middle of the shortest path from A to B. So practicly you could:
+
+calcualte path A to B
+find middle wpt
+figure out some calculation (e.g. simple said a wpt that is xxxx units far from the middle wpt). Then store that as C
+now, recalculate path
+A to C , C to B
+
+
+
+--------------------------------------------------
+03/09/02 at 18:03:35  Reply by: Tub (tubpc@authmann.de)
+--------------------------------------------------
+Well, I didn't understand what Stefan said, although that algo he tried to explain was written by me.. I'll try to make it more clear.
+
+
+You want to go from A to B.
+
+just pick a waypoint C anywhere on the map.
+
+see if the weight A -> C -> B is much larger than A -> B , if it's too large, C is a bad waypoint, pick another.
+
+
+If you got all path weights precalculated, you can calculate the additional weights of all C waypoints and use some formula to determine if the waypoint is "good" or "bad" as a middle waypoint.
+
+Just pick one, calculate the path from A to C, then the path from C to B. Add both, removing any dumb parts (it happens that the path is like A -> ... -> D -> C -> D -> ... -> B, in that case one D and the C waypoint should be removed from the path).
+
+This does not offer truly random paths and need some tweaking to be random enough, but it's simple and effective.
+

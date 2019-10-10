@@ -1,0 +1,86 @@
+--------------------------------------------------
+Subject: Possible solution to Debug Assertion Errors
+--------------------------------------------------
+02/08/02 at 04:27:16  Posted by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+I don't know if there are any more posts like this, but I've seen a few people with posts about "Debug Assertion Failure" errors when trying to debug. I think I found why MSVC++ does this with the BOT.
+
+If you check the UTIL_BuildFileName() function, you'll need to add the directory of the MOD you are using.
+
+If you look at the function, it's pretty self explanatory just by looking at the code on how to do this for the correct MOD.
+
+Without the correct codee for the correct MOD in the function, it will return a load of garbage back to the FILE and that's where MSVC crashes.
+
+[modified on 02/08/02 at 04:27:16]
+--------------------------------------------------
+02/08/02 at 13:20:29  Reply by: CountFloyd (countfloyd@botepidemic.com)
+--------------------------------------------------
+Are you talking about Botman's template or what do you mean ? MSVC usually doesn't crash on asserts but gives you the option to debug the code instead.
+
+--------------------------------------------------
+02/08/02 at 13:44:48  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+Botmans template, it gives a debug failure when using debug DLLS.
+
+--------------------------------------------------
+02/08/02 at 13:48:38  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+Btw: This should only really apply to people debugging with the template for new MODs, i.e. MODs that wern't supported at the time of the template!
+
+--------------------------------------------------
+02/08/02 at 13:57:47  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+He's talking about this...
+code:
+void UTIL_BuildFileName(char *filename, char *arg1, char *arg2)
+{
+
+   if (mod_id == VALVE_DLL)
+#ifndef __linux__
+      strcpy(filename, "valve\\");
+#else
+      strcpy(filename, "valve/");
+#endif
+
+   else if (mod_id == TFC_DLL)
+#ifndef __linux__
+      strcpy(filename, "tfc\\");
+#else
+      strcpy(filename, "tfc/");
+#endif
+
+   else if (mod_id == CSTRIKE_DLL)
+#ifndef __linux__
+      strcpy(filename, "cstrike\\");
+#else
+      strcpy(filename, "cstrike/");
+#endif
+
+   else if (mod_id == GEARBOX_DLL)
+#ifndef __linux__
+      strcpy(filename, "gearbox\\");
+#else
+      strcpy(filename, "gearbox/");
+#endif
+
+   else if (mod_id == FRONTLINE_DLL)
+#ifndef __linux__
+      strcpy(filename, "frontline\\");
+#else
+      strcpy(filename, "frontline/");
+#endif
+
+   else
+   {
+      filename[0] = 0;
+      return;
+   }
+
+
+...in util.cpp where it will return with a null string as the filename if it doesn't know what MOD you are playing (i.e. if you add a new MOD and don't change the source code to support that MOD directory).
+
+If you use UTIL_BuildFileName() and then call fopen() without checking if the filename is null, it can crash the debugger in the ASSERT of _fopen.c from the MSVC standard library.
+
+botman
+
+

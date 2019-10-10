@@ -1,0 +1,113 @@
+--------------------------------------------------
+Subject: Waypoint Radius Idea
+--------------------------------------------------
+10/11/00 at 10:46:38  Posted by: SUCKLEAD (sucklead@btinternet.com)
+--------------------------------------------------
+I'm using a radius value for each waypoint which helps to make the waypoint following look a little less rigid.
+By doing this you get to define if a waypoint has to be hit right on the mark or if anywhere in the general area will do rather than just sticking to a value of 50 for example to say the bot is at the waypoint.
+Also I pick a point somewhere on the radius to go to rather than just always heading to the origin point of the waypoint which seems to help the bots avoid each other a little better.
+Any other ideas for having fewer waypoints but giving a broader choice of movement?
+
+--------------------------------------------------
+10/11/00 at 13:02:33  Reply by: CountFloyd (countfloyd_1999@yahoo.com)
+--------------------------------------------------
+What about placing "dynamic" waypoints in a specified radius (what you already do in some kind). This could be dangerous if it's a ladder or door waypoint, so you might want to limit this to "normal" waypoints.  Another thing could be, to check the direction to the next waypoint and if the angle is higher than a constant you define (let's say 90) add an additional sidemove (strafing) speed to your bot. This wouldn't reduce the number of waypoints but would make the movement more human-like I think...
+
+--------------------------------------------------
+10/11/00 at 14:56:12  Reply by: SUCKLEAD (sucklead@btinternet.com)
+--------------------------------------------------
+I tried stuff with dynamic waypoints for hostages and it seemed better not to use them but to instead use some other function of the existing waypoints.
+When it comes to the navigation i'm checking for valid paths first in a 90 degree view angle from the bots current heading and using a random one of those.  If there arent any within 90 degrees then I move onto all the paths within 135 degrees and pick a random one.  Last ditch effort is to use any of the paths at random.  This seems to get rid of the need to keep track of the last 5 or so visited waypoints.
+At each stage of selection, if one of the paths is the one the floyd calcs would suggest I use it 30% of the time which seems to prevent all the bots running the same way at the start.
+
+The strafing stuff I use if the bot can't move forward by checking either side of the bot at different levels to see if only one side cant move forward.  If only one side is blocked then I flip a small strafe the other way.  This stops the bots from getting stuck on the doorways when their middle can move forward but one side cant.
+
+One thing I have a problem with is getting the bots to buy weapons on de_dust.  Even though I flag them to buy weapons when they die they just don't seem to want to buy anything on this map.
+I'm fake client commanding the 'buy's and 'menuselects'.
+In which way am I being stupid here?
+
+--------------------------------------------------
+10/11/00 at 17:11:44  Reply by: CountFloyd (countfloyd_1999@yahoo.com)
+--------------------------------------------------
+Your waypoint ideas sound very interesting (this is nearly "wayzone" like. I implemented the same, but only for plain movement (no waypoint picking based on viewing degrees).
+Doesn't it slow down the Bot if you calculate all Angles to nearby waypoints ?
+Your DE_DUST problem: does this only occur on this map or are there some others ? You don't issue a buy and a menuselect right after each other, do you ? I had the same problem some weeks ago (they bought when spawned for the first time but not after one round of playing), but it wasn't limited to de_dust. It seems to me that the initialization time differs very much in different maps (and this crashes most syncronization(?) attempts). For example CS_SIEGE was a map my bots also wouldn't buy. How did you implement buying ? Through the pBot->start_action stuff or did you do an own Message Queue ? My suggestion to test this, is to pause the Bots for some secs before they actually start buying (2 secs will do). If this doesn't help, do you wait for the Buyzone Icon to appear on the HUD ? Do they buy the first time they are started, or do they never buy ? Did you look through the debug log what actually does happen ? It might be, that your initialization/buy routine is too fast and lets the Bot select things too fast...
+
+--------------------------------------------------
+10/11/00 at 17:26:22  Reply by: SUCKLEAD (sucklead@btinternet.com)
+--------------------------------------------------
+I'm using about 120 waypoints on cs_italy for example and only calc the angles for paths from a waypoint so there is no real speed problem.  The only time there are many paths is at major junctions.
+I'm flagging the need to buy in the BotSpawnInit function which works fine on cs_italy all the time.  Sounds like it may be a timing problem with de_dust then so I'll try pausing them for a while and see what happens.  Probably test it by manually updating them after I see them start to run.
+Cheers
+
+--------------------------------------------------
+10/12/00 at 00:51:47  Reply by: William (william@botepidemic.com)
+--------------------------------------------------
+if you'd just calculate the dot product between the vector representing the current direction, and the vector to the way point, you don't have to compute angles (involving the expensive cosine and sine functions).
+
+dot product > cos(90)  -> angle less than 90 away from current direction;
+dot product > cos(135)) -> angle less than 135 away ...
+
+dot product is just 3 multiplications and 2 additions (assuming you're using normalized vectors). for the case above, you'd need to normalize the vector to another way point (consuming another 3 multiplications, 2 additions, 1 divide and 1 square root). still should be a lot faster than vectortoangles stuff since cos and sin are seriously slow.
+ 
+William
+
+
+--------------------------------------------------
+10/12/00 at 10:12:12  Reply by: DarkYouth (darkyouth@thegraze.freeserve.co.uk)
+--------------------------------------------------
+Version 2e2 of my bot uses a random offset for waypoints,
+
+This offset is calculated and checked to be sure that it is still "reachable" and so forth....
+
+It de-bot's the bot.... and makes it get stuck 80% less than usual
+
+--------------------------------------------------
+10/12/00 at 12:23:39  Reply by: SUCKLEAD (sucklead@btinternet.com)
+--------------------------------------------------
+Got the buying on dust sorted by using a 2 second wait. Doh! damn impatient bots!
+Cheers
+
+--------------------------------------------------
+10/12/00 at 17:23:20  Reply by: CountFloyd (countfloyd_1999@yahoo.com)
+--------------------------------------------------
+To William or someone who knows:
+You spoke about post-processing the Paths in the waypoint thread some days ago. I'm currently doing post-processing if a Counter has got some hostages with him. I have to prevent that he takes a path, the hostages can't follow. I do it this way:
+I make a temporary copy of the FloydPath Matrix. Then going through, testing if there's a waypoint which is blocked for hostages. If that's the case I recalculate the path from the last correct waypoint to the destination (rescue) point. In addition, I store the last 3 visited (visited virtually in Pathfinding) waypoints and change the shortest Path Index in the PathMatrix to point to another connected waypoint (not to the one before and not to a no-hostage waypoint). I thought this would make the Bots not turn over again to the no-hostage-waypoint. In theory this should work, practically it doesn't, because there could be only one link from one waypoint to each other (among other things like deadends or several blocked ways). In general, how did you do this in Action Quake ?  
+
+--------------------------------------------------
+10/13/00 at 03:29:21  Reply by: William (william@botepidemic.com)
+--------------------------------------------------
+Hi Count,
+
+"in theory, this should work"
+
+Nope. Especially in theory it doesn't work.
+
+For other reasons, I've worked on 'modified' Floyd matrices that include fewer paths.
+The main problem that occurs when removing an entry is: cycles. If you change one or more 'direction signs' in the matrix to go from a to b via c (instead of straight to b), you'd create a cycle if the shortest path from c to b was via a.
+In the first three way point graphs that I removed links from, I ended up introducing cycles (some immediately obvious, some cycles what were 5 steps deep).
+
+In your case, it seems like you ignore that all neighbors not on the path you modify still reflect that the fastest way is via b, maybe from another direction towards b.
+
+Theoretically, its hard to determine how much of the matrix you'd need to recompute to reflect the removal of a connection.
+
+I couldn't think of an approach that in all cases modifies the Floyd graph without being O(N^2), which is as expensive as computing the required path on the fly.
+
+For that reason, I have a hybrid solution: Floyd for standard paths and (primarily) travel time look up between points (to reason about inter-squad distances, distance to threats, etc.).
+And A* for dynamic path computation, taking into account all kinds of dynamic constraints.
+
+In your case, just using two matrices, both precomputed from scratch, one taking into account hostage 'certified' paths, the other ignoring them, is the easiest way to go. 
+Just don't try to compute the 'hostage variant' 'on-the-fly'.
+
+William
+(AQ2 doesn't take hostages :), btw)
+
+
+--------------------------------------------------
+10/13/00 at 07:44:46  Reply by: CountFloyd (countfloyd_1999@yahoo.com)
+--------------------------------------------------
+Well, it seems you just found another flaw in my thoughts. Though, I don't have any obvious cycles I've seen. Luckily, I only have very few waypoints around the block-hostages path(in this special map). But surely there would be a map where this happens. I thought of precalculating first, but dumped it then...well I have to stick with it. The only drawback is the memory consuming. Ah hell, 640Kb ought to be enough for everyone (Bill Gates some years ago).
+BTW. are you a professional (read: game programmer of some sort), since your pathfinding is very advanced (you even measure traveltime to enemies!!) ? You don't have to answer this question if you don't want to :)
+Thanks, anyway !   
+

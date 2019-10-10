@@ -1,0 +1,119 @@
+--------------------------------------------------
+Subject: getting info from server
+--------------------------------------------------
+08/17/01 at 12:02:36  Posted by: noskill (ownz0r@hotmail.com)
+--------------------------------------------------
+ok i read server protocol.txt and made this prog:
+#include<stdio.h>
+#include<winsock.h>
+void main()
+{
+      int s;
+      WSADATA ws;
+      WSAStartup(0x0101,&ws);
+      if((s=socket(AF_INET,SOCK_DGRAM,0))==-1)
+      {
+            printf("Error creating socket!\n");
+            return;
+      }
+      sockaddr_in svr;
+      svr.sin_addr.s_addr=inet_addr("66.28.23.88");
+      svr.sin_family=AF_INET;
+      svr.sin_port=htons(27015);
+      memset(&(svr.sin_zero),0,8);
+      char buf2[100];
+      char buf[8];
+      for(int i=0;i<4;i++)
+            buf[i]=char(0xFF);
+      strcat(buf,"info");
+      char o=char(0);
+      strcat(buf,&o);
+      sendto(s,buf,8,0,(SOCKADDR*)&svr,sizeof(SOCKADDR));
+      int lol=sizeof(SOCKADDR);
+      recvfrom(s,buf2,100,0,(SOCKADDR*)&svr,&lol);
+      printf("%s\n",buf2);
+      //      close(s);
+      WSACleanup();
+}
+
+its a console app that needs to be linked with wsock32.lib.  This _should_ return the server info, but instead, i get:
+¨d¨d¨d¨d¨d¨d¨d¨d¨d¨d¨d¨d¨d¨d¨d¨d¨d¨d¨d¨d¨d¨d¨d¨d¨d¨d¨d¨d¨d¨d¨d¨d¨d¨d¨d¨d¨d¨d¨d¨d¨d¨d¨d¨d¨d¨d¨d¨d¨d¨d¨d¨d¨d¨d¨d¨d¨d¨d¨d¨d¨d¨d¨d¨d¨d¨d¨d¨d¨d¨d¨d¨d¨d¨d¨d¨d¨d¨d¨d¨d
+¨d¨d¨d¨d¨d¨d¨d¨d¨d¨d¨d¨d¨d¨d¨d¨d¨d¨d¨d¨d&#9787;info
+
+--------------------------------------------------
+08/17/01 at 12:46:12  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+Well I dunno how u use strcat, cos thats the only thing you are using to change your buf2 character i.e. the one you are outputting. I got an example of strcat, maybe you've done it incorrectly or something..!!??
+
+
+code:
+
+  ___________
+  ¦_fstrcat,Ì
+  ¦strcat   Ì                       <STRING.H>
+  ___________
+  Appends one string to another
+
+  Declaration:
+   _ char *strcat(char *dest, const char *src);
+   _ char far * far _fstrcat(char far *dest, const char far *src);
+
+  Remarks:
+ strcat appends a copy of src to the end of dest. The length of the resulting
+ string is strlen(dest) + strlen(src).
+
+ _fstrcat is the far version.
+
+  Return Value:
+ strcat returns a pointer to the concatenated strings.
+
+  Portability:
+           + DOS Ð UNIX Ð ANSI C Ð C++ Only +
+  strcat   ¦ Yes ¦  Yes ¦   Yes  ¦          ¦
+  _fstrcat ¦ Yes ¦      ¦        ¦          ¦
+           +-----¤------¤--------¤----------+
+
+  Example:
+
+  #include <string.h>
+  #include <stdio.h>
+
+  int main(void)
+  {
+     char destination[25];
+     char *blank = " ", *c = "C++", *turbo = "Turbo";
+
+     strcpy(destination, turbo);
+     strcat(destination, blank);
+     strcat(destination, c);
+
+     printf("%s\n", destination);
+     return 0;
+  }
+
+
+
+
+
+I guess you have to call your buf2 charcter as 
+
+char *buf2[100] 
+
+:)
+
+[modified on 08/17/01 at 12:46:12]
+--------------------------------------------------
+08/17/01 at 12:46:28  Reply by: noskill (ownz0r@hotmail.com)
+--------------------------------------------------
+i think i know how to use strcat, thank you.
+And the place buf2 is modified is in the recvfrom() call
+
+--------------------------------------------------
+08/17/01 at 16:37:56  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+Download the NetProbe source code.  There's two little C programs included that get the list of servers from the WON master and the details from a specific server...
+
+http://planethalflife.com/botman/netprobe.shtml
+
+botman
+

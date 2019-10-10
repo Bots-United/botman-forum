@@ -1,0 +1,150 @@
+--------------------------------------------------
+Subject: multithreaded pathfinding machine
+--------------------------------------------------
+03/19/03 at 16:56:19  Posted by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Hey hey it's all in the title. Forking the AI DLL into another process which will be an independent, general-purpose, pathfinding machine, to which you would feed the start and goal navnodes, the open and closed lists, the heuristic formula, whatever stuff, which would cook lovely paths for you and set a flag when it's done.
+
+Is it any good ?
+Anyone using it yet ?
+Objections ?
+Thoughts ?
+
+w00t w00t this lil idea teases me more and more 8)
+
+
+--------------------------------------------------
+03/19/03 at 18:24:15  Reply by: Gimli (sstephanoff@hotmail.com)
+--------------------------------------------------
+Now you know I dont have much experiance in this area but here goes my input. I think it might be nice because it would be easier to make bots engine inspecific. You just use the mod to load the bsp stuff or whatever and send it to the interpreter. Which figures out the best ideas for what mod or what engine to use. Implimenting it might be more of a hassel than a gain though because all that code could essentailly just go in the dll right? One good application is to have it so peoples games connect to a server that feeds them the ideas. This is way down the line though for much bigger bandwidth do you understand what I mean?
+
+--------------------------------------------------
+03/19/03 at 19:08:46  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Well, the only thing I understand is that you don't get my point at all ;D
+
+...by "machine" I mean a program, obviously not a machine in the hardware sense of the term. Furthermore, it has prolly nothing to do with engine independence.
+
+@$3.1415rin is in the process of implementing such a concept in his JoeBot XP already, but his pathfinding machine runs within the game frames, spreading the computation over several of them (with all the complication in coding it implies) and only one pathfinding can be processed at once.
+
+Multithreading would help a great deal, I think.
+
+
+BTW Gimli, you should read more about pathfinding and multithreading
+- About pathfinding, have you read Brian Stout's article in Gamasutra.com ? I urge you to if you want to understand finally what it's about.
+- About multithreading, just do a search in google for "what is multithreading". That should give you some rough ideas.
+Read, read. Read again. It's the only way to get a grasp of what you're talking about.
+
+
+--------------------------------------------------
+03/20/03 at 02:27:06  Reply by: @$3.1415rin (johannes@_-removeifnotavirus-_lampel.net)
+--------------------------------------------------
+well, I dont have much time now, probably i'll edit this post here again when i'm back from work.
+
+As Pierre said, JoeBOT XP uses some kind of AStarTask Manager so there is no need to worry about nonexisting paths etc. Of course this can be added later, but right now, searching such a path does not cause lacks.
+The system itself isnt very complicated. there is a list of pointers to my A* machines. an A* machine is a template class ( I think I posted somewhere here the code ), so the pointer are to the base class of that template, so I can call it without problems, but it is very flexible to be extended by different heuristics, costs, whatever. I appr. calculate 30 iterations of the A* stuff per frame, that's working fine atm, well, havnt thought much about what value to use, just filled in some appropriate value :D
+In 1 frame, I only care about 1 A* machine, cause I tought the cpu cache might not like it, when I call 12 A* machines sequentially and each wants to access different memory. I guess my approach might be faster, but I couldnt measure that yet.
+[quote]and only one pathfinding can be processed at once.[quote]so that's right for 1 frame, but since the next frame there may be another A* machine calculated, it's as pseudo parallel as all those multithreading stuff on single processor machines is now anyway. Ok, using multithreading might be better on multiprocessor systems or hyperthreading systems, but let's talk about that when a majority of gamers has such PCs and then it won't be a big problem for my system to port it :D
+
+ok, gotta go
+
+
+--------------------------------------------------
+03/20/03 at 09:44:52  Reply by: wthod (handdeath_ps@yahoo.com)
+--------------------------------------------------
+The trouble with multithreading in games is usually thread contention.  In other words, the AI decides to do work when you'd really rather something else happen (like the renderer renders), which can cause problems like rendering jitter.
+
+If you have access to a multiprocessor machine, it can be a powerful technique, but that generally isn't the case for games.  In academia, it's a different matter.
+
+Dungeon Siege is an example of a game that used multithreading (for resource streaming) and they had no end of problems with thread contention.
+
+You'll probably find that you're better off with a  per-frame AI call with a specified time cap - it's easier to manage the amount of CPU time you're spending on pathfinding.
+
+--------------------------------------------------
+03/20/03 at 12:18:38  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+QUOTE:
+The trouble with multithreading in games is usually thread contention.  In other words, the AI decides to do work when you'd really rather something else happen (like the renderer renders), which can cause problems like rendering jitter.
+
+
+
+Indeed a good point. The thread priority could be lowered, though, and I think using good context switching methods when appropriate, possibly in regard of the global frame time, could be a viable method to address this problem. Am I right ?
+
+
+--------------------------------------------------
+03/20/03 at 13:17:05  Reply by: William (william@cgf-ai.com)
+--------------------------------------------------
+Another problem is that it is inefficient:
+in my implementation, the average A* search over a short distance (up to 16 waypoints) takes about 70000 cycles, which boils down to 45 micro seconds on a 1.5GHz Athlon, thus 0.045 ms.
+
+Time slices on a Windows machine are typically in the order of 1 to 2 ms.
+
+In other words, unless you switch threads immediately, you'd have to wait longer for the result. In both cases, you lose efficiency due to the interprocess communication (reading Mutex protected flags, etc).
+Note that an immediate thread switch defeats the whole idea, since you could do a straight function call instead.
+
+I fail to see how this approach reduces the amount of code, or gets you the same paths faster.
+
+William
+
+--------------------------------------------------
+03/20/03 at 15:08:18  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+QUOTE:
+in my implementation, the average A* search over a short distance (up to 16 waypoints) takes about 70000 cycles, which boils down to 45 micro seconds on a 1.5GHz Athlon, thus 0.045 ms.
+Time slices on a Windows machine are typically in the order of 1 to 2 ms.
+
+
+
+Got it.
+I had not envisioned the problem under that angle either.
+One question though :
+On LONG range searches, assuming that a path does NOT exist, how long will it take for your A* to run before it gives up ?
+
+Once I get an answer to this question, I'll have all the arguments I need to recognize my idea was finally a bad idea. :)
+
+
+--------------------------------------------------
+03/21/03 at 02:35:37  Reply by: @$3.1415rin (johannes@_-removeifnotavirus-_lampel.net)
+--------------------------------------------------
+hmm, my post above looks sufficient, doesn't it ?
+
+to work around time slices, you could do a system like mine, but you don't call it every frame, but you put it into a nice while(1) loop and then into a seperate thread ... or you do it frame based, that's only little work, you saw that in my last email :)
+
+a bit [OT] and @william : how do you measure the cycles ? I'm currently using QueryPerformanceCounter, but that's sometimes a bit to unprecise. isnt there maybe somewhere a little nice 64bit counter being incremented each cpu cycle ? would be cool :D
+
+--------------------------------------------------
+03/21/03 at 04:52:03  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Intel's VTune can be used to do performance testing on PCs...
+
+http://www.intel.com/software/products/vtune/
+
+botman
+
+--------------------------------------------------
+03/21/03 at 09:18:07  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Okey thanks all, especially @$3.1415rin for letting me have the extremely honorific privilege of having a look on a snippet of the pathfinding machine in the so much awaited Joebot XP ;D
+
+Okay. Bad idea, change idea.
+
+
+--------------------------------------------------
+03/21/03 at 16:04:40  Reply by: William (william@cgf-ai.com)
+--------------------------------------------------
+to read the number of cycles since boot up, using MSVC:
+
+_int64 rdtsc_value;
+__asm
+{
+      rdtsc
+      mov       dword ptr [rdtsc_value],eax
+      mov       dword ptr [rdtsc_value+4],edx
+}
+
+you measure the number of cycles simply by comparing the value captured before the call with the value captured after the call. 
+note that you may run into task switches within your measurements. I filtered these out by ignoring the slowest 5% of the measurements.
+
+
+@PM: to prevent A* from really visiting all positions in a level when there's no path from A to B, you could record region ids for each collection of 'isolated waypoints'; if waypoints A and B are not in the same region, there is no path. if you store regions at 1 byte per waypoint (or less), the test does not take much time, and may save a lot of time.
+

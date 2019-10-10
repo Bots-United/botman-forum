@@ -1,0 +1,176 @@
+--------------------------------------------------
+Subject: bots pausing at startup + waypoint issues...
+--------------------------------------------------
+09/08/02 at 07:46:57  Posted by: jc (john@notdotnet.co.uk)
+--------------------------------------------------
+after a bot has spawned it seems to stand there until it take some damage. has anyone else had similar problems? anyone got any ideas? btw the bot is based on the full hpb_bot and not the template and has always done it (not the result of my hacking...)
+
+also i am trying to add some new waypoint types. in BotHeadTowardWaypoint i added
+
+index = WaypointFindNearestGoal(pEdict, pBot->curr_waypoint_index,-1, W_FL_NEW_TYPE);
+
+if (index != -1)
+ pBot->waypoint_goal = index;
+
+after
+//IF HEALTH LESS THAN CRITICAL LEV, GO FIND HEALTH
+//IF AMMO LESS THAN CRITICAL LEVEL, GO FIND AMMO
+//GO FIND WEAPONS HERE!!!
+
+doing this causes bot to crash game... what am i doing wrong?
+
+
+--------------------------------------------------
+09/08/02 at 11:50:06  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+Things that could maybe cause this to crash are:
+
+code:
+index = WaypointFindNearestGoal(pEdict, pBot->curr_waypoint_index,-1, W_FL_NEW_TYPE); 
+
+
+pEdict might be NULL (Probably Not)
+pBot->curr_waypoint_index might be -1
+
+Do a check here incase anyway
+
+code:
+
+if( pEdict && (pBot->curr_waypoint_index != -1))
+index = WaypointFindNearestGoal(pEdict, pBot->curr_waypoint_index,-1, W_FL_NEW_TYPE); 
+
+
+
+--------------------------------------------------
+09/08/02 at 16:18:58  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+No.
+
+If you are playing Counter-Strike, there's a bug I mentioned quite a time ago in botman's template.
+
+Some CS maps will initialize your player entity (there your bots), with a yaw angle being > to 180 + 360 in absolute. Your bots can't wrap it around to get it in the -180/180 bounds and they keep twitching to their ideal angle (which is out of its bounds, alternatively positive and negative due to botman's way of wrapping it). Until they get some damage, so their ideal angle gets set to another value they can reach, this time.
+
+
+--------------------------------------------------
+09/09/02 at 06:51:48  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+I think the crash only happens when he adds they lines........
+
+--------------------------------------------------
+09/09/02 at 10:26:33  Reply by: jc (john@notdotnet.co.uk)
+--------------------------------------------------
+well its not counterstrike that has the pausing problem, its dragonmodz... but that description is accurate - the bots twitch and seem to look left to right to left... is resetting the yaw to a value within -180 to 180 in the spawn function enough to fix this?
+
+--------------------------------------------------
+09/09/02 at 11:58:08  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+I'd use something like this, instead :
+code:
+
+float UTIL_WrapAngle (float angle_to_wrap)
+{
+   // use, use and abuse this one ! This is the ultimate solution for avoiding engine freezes.
+   // It checks if the angle_to_wrap is in the -180 / 180 degrees bounds, and if not, attempts
+   // to set it. The problem is that for very large values of angle_to_wrap, there seems to be
+   // no solution and this function is still unefficient (large value divided by large value
+   // gives division rounded, and the result is still a large value). The engine freezes when
+   // we feed it an angle that is out of bounds. Buggy crap, not my fault !
+
+   float angle = angle_to_wrap;
+
+   // check for wraparound of angle
+   if (angle > 180)
+      angle -= 360 * ((int) (angle / 360) + 1);
+   if (angle < -180)
+      angle += 360 * ((int) (angle / 360) + 1);
+
+   return angle;
+}
+
+
+float UTIL_EngineWrapAngle (float angle_to_wrap)
+{
+   // the same as the above, but with the engine's usual bounds, i.e. 0 to 360 degrees instead
+   // of -180 / 180. Can't understand why they couldn't have used the same method, bah.
+
+   float angle = angle_to_wrap;
+
+   // check for wraparound of angle
+   if (angle > 360)
+      angle -= 360 * (int) (angle / 360);
+   if (angle < 0)
+      angle += 360 * ((int) (angle / 360) + 1);
+
+   return angle;
+}
+
+
+Vector UTIL_WrapAngles (Vector angles_to_wrap)
+{
+   // Since angles are often packed in Vector structures, I thought there was the need for it.
+   // It checks if the angles_to_wrap are in the -180 / 180 degrees bounds, and if not, attempts
+   // to set them. The problem is that for very large values of angle_to_wrap, there seems to
+   // be no solution and this function is still unefficient (large value divided by large value
+   // gives division rounded, and the result is still a large value). The engine freezes when
+   // we feed it an angle that is out of bounds. Buggy crap, not my fault ! The .z checking is
+   // really needed, by the way, since this component is used to store the roll of a view angle.
+
+   Vector angles = angles_to_wrap;
+
+   // check for wraparound of angles
+   if (angles.x > 180)
+      angles.x -= 360 * ((int) (angles.x / 360) + 1);
+   if (angles.x < -180)
+      angles.x += 360 * ((int) (angles.x / 360) + 1);
+   if (angles.y > 180)
+      angles.y -= 360 * ((int) (angles.y / 360) + 1);
+   if (angles.y < -180)
+      angles.y += 360 * ((int) (angles.y / 360) + 1);
+   if (angles.z > 180)
+      angles.z -= 360 * ((int) (angles.z / 360) + 1);
+   if (angles.z < -180)
+      angles.z += 360 * ((int) (angles.z / 360) + 1);
+
+   return angles;
+}
+
+
+Vector UTIL_EngineWrapAngles (Vector angles_to_wrap)
+{
+   // the same as the above, but with the engine's usual bounds, i.e. 0 to 360 degrees instead
+   // of -180 / 180. As for the above, wrapping the roll is really necessary. Better prevent
+   // than repair...
+
+   Vector angles = angles_to_wrap;
+
+   // check for wraparound of angles
+   if (angles.x > 360)
+      angles.x -= 360 * (int) (angles.x / 360);
+   if (angles.x < 0)
+      angles.x += 360 * ((int) (angles.x / 360) + 1);
+   if (angles.y > 360)
+      angles.y -= 360 * (int) (angles.y / 360);
+   if (angles.y < 0)
+      angles.y += 360 * ((int) (angles.y / 360) + 1);
+   if (angles.z > 360)
+      angles.z -= 360 * (int) (angles.z / 360);
+   if (angles.z < 0)
+      angles.z += 360 * ((int) (angles.z / 360) + 1);
+
+   return angles;
+}
+
+
+these ones are from my bot code.
+
+
+--------------------------------------------------
+09/09/02 at 13:33:35  Reply by: jc (john@notdotnet.co.uk)
+--------------------------------------------------
+thx a lot guys!
+
+--------------------------------------------------
+09/10/02 at 01:50:43  Reply by: @$3.1415rin (joebot@botepidemic.com)
+--------------------------------------------------
+yes, looking at open source bots may be sometimes usefule :P
+

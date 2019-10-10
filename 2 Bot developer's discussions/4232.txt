@@ -1,0 +1,78 @@
+--------------------------------------------------
+Subject: Y.A. FakeClientCommand() problem :)
+--------------------------------------------------
+03/20/03 at 11:23:44  Posted by: GoPostal (c.williams@signal.qinetiq.com)
+--------------------------------------------------
+[I've checked and can't find this one mentioned before on the forum]
+
+I'm using the latest version of HPB-bot 2.1a, HL SDK 2.3 and VC++ 6.0
+
+I've been playing around with the HPB-bot in TFC for quite a while now, adding in extra code, links out to external software etc - no problems at all.  
+
+I've now moved on to trying to get the HPB-bot into an unsupported mod - and I'm getting a wierd problem when the bots try to send Client Commands.
+
+We've been trying to get Civilian 'monsters' and 'bots' into a Counterstrike style mod.
+
+We've created a civilian.dll metamod plugin, based on Botman's monster plugin.  Then we use AdminMod to allow us to load the HPB-bots in addition to the metamod plugins - using the localinfo command.
+
+We threw it all into TFC, just to make sure it was all ok -  and it works fine - civilians and bots - all running happily on top of meta/admin mod.
+
+We created a version of metamod which supported our new mod - and the civilian plugin works fine within the new mod.
+
+I worked through the HPB-bot readme to add in support for the mod - and that went OK - up to a point :)
+
+The bots will load into the game - all the configs are read in correctly, it finds the mod's dll - they join the game and start off as spectators (and hurl random taunts around).
+
+When I followed the instructions for handling Client Commands I found that the mod uses the following command to join the game:
+
+join_game team class      team and class are ints ranging from 1 to 3
+
+When the bots send the same command I get:
+
+FakeClientCommand=join_game 1 1
+ClientCommand: join_game 1 1
+pfnMessageBegin: edict=58b6a40 dest=1 type=77
+pfnWriteByte: 2
+pfnWriteString: Unknown command: L=млL=млL=млл=млл=млл=
+
+pfnMessageEnd:
+
+Message type 77 is TextMsg for this mod, according to pfnRegUserMsg.
+
+So for some reason the mod is claiming to recieve garbage.
+
+When players send that command it's fine, it's just the bots.
+
+I've checked pages and pages of debug and I can't see any difference between what the bots are doing and what the player is doing.
+
+
+I also tried it with the command 'disconnect' to make sure the command wasn't going straight into the engine and bypassing the mod dll, and I get exactly the same response.  
+
+No matter what command I try and send the server replies with exactly the same complaint (and the wierd chars L=I..... are always the same).  ... and the edict matches the bot that sent the command.
+
+I've tried my HPB-bot variant under TFC and it runs fine - so it's not something that I've screwed up while adding in support for the new mod.
+
+I must've missed something obvious.   I've reread the readme a couple of times, but I can't see any steps I left out.
+
+Any clues ?
+
+--------------------------------------------------
+03/20/03 at 13:33:13  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Show the code you are using to send the string to FakeClientCommand().
+
+botman
+
+--------------------------------------------------
+03/21/03 at 10:31:47  Reply by: GoPostal (c.williams@signal.qinetiq.com)
+--------------------------------------------------
+Fixed it  :)
+
+Sorry about wasting your time.
+
+Turned out the mod developers had redone some of the FakeClient code to put in a 'replay' facility.
+
+... and in doing so had broken the FakeClientCommand()
+
+All works fine now  :)
+

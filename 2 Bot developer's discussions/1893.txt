@@ -1,0 +1,76 @@
+--------------------------------------------------
+Subject: CS:recognizing begin of new round
+--------------------------------------------------
+06/29/01 at 13:35:04  Posted by: mark (mark.pfrengle@gmx.de)
+--------------------------------------------------
+hi!
+
+short and (I think) easy question to you: how can I track the beginning of a new round in CS for re-initialising my ai-routines? is there a message or something that is send once at the start of a round?
+
+thanks for a hint,
+
+mark
+
+--------------------------------------------------
+06/29/01 at 14:02:05  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+How about finding out if the time left in the round is more than 0...??
+
+--------------------------------------------------
+06/29/01 at 14:30:08  Reply by: @$3.1415rin (as3.1415rin@gmx.de)
+--------------------------------------------------
+try this :
+
+code:
+
+edict_t* pfnFindEntityByString(edict_t *pEdictStartSearchAfter, const char *pszField, const char *pszValue)
+{
+      if(!strcmp(pszValue, "info_map_parameters") && (mod_id == CSTRIKE_DLL)){
+            // set flag, that new round has started ....
+            [....]
+      }
+
+      return (*g_engfuncs.pfnFindEntityByString)(pEdictStartSearchAfter, pszField, pszValue);
+}
+
+
+--------------------------------------------------
+06/30/01 at 10:39:52  Reply by: mark (mark.pfrengle@gmx.de)
+--------------------------------------------------
+thanks!
+i'll try your suggestions...
+
+to be honest: i don't know where to look for the remaining time of the round (gpGlobals->time only gives me the time since the start of the map - as you surely know...) somewhere, the remaining time must be stored... hmmm, but where? %-)
+-> trying the second possibility
+
+btw...(if anyone is watching this thread again): where is stored - the time-left? 
+
+mark
+
+
+
+
+--------------------------------------------------
+06/30/01 at 11:32:00  Reply by: daRope (fzschocke@web.de)
+--------------------------------------------------
+I don't know. But whn you can detect the start of a round, you can determine the end of the round with
+
+float flRoundEnd = gpGlobals->time + CVAR_GET_FLOAT("mp_roundtime");
+
+You can then check for the remaining time with
+
+float flTimeleft = flRoundEnd - gpGlobals->time;
+
+But somehow CS seems to have problems with keeping the time. I have problems with determining the time left on the map. So I don't know if it works.
+
+--------------------------------------------------
+06/30/01 at 17:01:27  Reply by: mark (mark.pfrengle@gmx.de)
+--------------------------------------------------
+ok - everything works fine now...
+
+--------------------------------------------------
+07/02/01 at 23:57:05  Reply by: vpupkin (clientbot@narod.ru)
+--------------------------------------------------
+It calculates on client-side.
+Every client knows how long the round is (mp_roundtime). When the round starts, CS server sends to all the clients message "RoundTime" with SHORT value in seconds. If this value is less then  mp_roundtime, client starts to count-down freezetime, after it server sends new RoundTime hook message and new time.
+

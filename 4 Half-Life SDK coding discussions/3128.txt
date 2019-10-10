@@ -1,0 +1,177 @@
+--------------------------------------------------
+Subject: player_weaponstrip
+--------------------------------------------------
+05/22/02 at 06:22:33  Posted by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+Hi all
+
+I am making a kind of wrapper DLL (like bot DLLs are) whose function is to strip the weapons of the player when they spawn an change all the weapons of the map into a forced one (i.e. change all the weapons in Crossfire to RPGs).
+
+I've got a problem, thus. Look :
+code:
+
+int DispatchSpawn (edict_t *pent)
+{
+   if (strcmp (STRING (pent->v.classname), "worldspawn") == 0)
+   {
+      edict_t *pWeaponStripEntity = CREATE_NAMED_ENTITY (MAKE_STRING ("player_weaponstrip"));
+      DispatchSpawn (pWeaponStripEntity);
+      SET_ORIGIN (pWeaponStripEntity, Vector (0, 0, 0));
+      pWeaponStripEntity->v.targetname = MAKE_STRING ("weaponstripentity");
+   }
+
+   else if (strcmp (STRING (pent->v.classname), "info_player_deathmatch") == 0)
+   {
+      edict_t *pTriggerMultipleEntity = CREATE_NAMED_ENTITY (MAKE_STRING ("trigger_multiple"));
+      DispatchSpawn (pTriggerMultipleEntity);
+      SET_ORIGIN (pTriggerMultipleEntity, pent->v.origin);
+      pTriggerMultipleEntity->v.target = MAKE_STRING ("weaponstripentity");
+   }
+
+   return (*other_gFunctionTable.pfnSpawn) (pent);
+}
+
+
+This works well when player spawn. They touch the trigger_multiple entity, which activates the player_weaponstrip entity for them. Okay. But the problem is that, once a player has spawned, if he eventually walks over a spawn point while wandering, all his weapons will be stripped once more, and I don't want that. I only want his weapons to be stripped once, at spawn time (not for him to spawn with the crowbar and the glock).
+
+Do you have an idea on how I can do this ?
+
+I'm sure botman has one ;D ...
+
+--------------------------------------------------
+05/22/02 at 07:32:53  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+That's going to be tricky.  You could intercept the DispatchTouch() to know when a player is about to touch a "player_weaponstrip" entity and either pass this along or return to the engine (based on whether you want the player to touch it or not).  Then you have to figure out when you want the player to touch it.  If a player is respawning, their health would previously have been zero (or less).  If they touch a player_weaponstrip sometime VERY soon after their health changes from zero (or negative) to non-zero then you probably want them to actually touch it and pass the DispatchTouch along to the game DLL.  Otherwise, if a player touches a player_weaponstrip then just ignore it an return to the engine (don't let the game DLL know about it).
+
+botman
+
+--------------------------------------------------
+05/22/02 at 08:22:46  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+hmm just a question regarding your reply...
+I was believing the entity actually touched was the "trigger_multiple" entity, since it has a bounding box and triggers the "player_weaponstrip" entity, which has no size and is located elsewhere on the map... but you tell me that's the contrary ? Are you certain of that (not that I doubt your talent, General Botman, but one can be mistaken sometimes...) ?
+
+The reason of my post is that I had almost the same idea but when I started to stuff the DispatchTouch(), none of the targets in "trigger_multiple" and "player_weaponstrip" were hooked, as if the player_weaponstrip entity was triggered by another mean than the Touch() way...
+
+???
+
+
+
+--------------------------------------------------
+05/22/02 at 10:15:47  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+Okay, fixed.
+
+Replying to myself.
+The entity touched is the "trigger_multiple", which triggers the "player_weaponstrip", not the contrary. The "player_weaponstrip" does not need to be touched and is never, it can be placed outside the map.
+
+Here's what I did.
+code:
+
+// dll.cpp
+
+bool playerwillrespawn[33]; // because player indexes start from 1 to 32
+
+[...]
+
+int DispatchSpawn (edict_t *pent)
+{
+   if (strcmp (STRING (pent->v.classname), "worldspawn") == 0)
+   {
+      edict_t *pWeaponStripEntity = CREATE_NAMED_ENTITY (MAKE_STRING ("player_weaponstrip"));
+      DispatchSpawn (pWeaponStripEntity);
+      SET_ORIGIN (pWeaponStripEntity, Vector (0, 0, 0));
+      pWeaponStripEntity->v.targetname = MAKE_STRING ("weaponstripentity");
+   }
+
+   else if (strcmp (STRING (pent->v.classname), "info_player_deathmatch") == 0)
+   {
+      edict_t *pTriggerMultipleEntity = CREATE_NAMED_ENTITY (MAKE_STRING ("trigger_multiple"));
+      DispatchSpawn (pTriggerMultipleEntity);
+      SET_ORIGIN (pTriggerMultipleEntity, pent->v.origin);
+      pTriggerMultipleEntity->v.target = MAKE_STRING ("weaponstripentity");
+   }
+
+   return (*other_gFunctionTable.pfnSpawn) (pent);
+}
+
+[...]
+
+void DispatchTouch (edict_t *pentTouched, edict_t *pentOther)
+{
+   if (strcmp (STRING (pentTouched->v.classname), "trigger_multiple") == 0)
+   {
+      if (playerwillrespawn[ENTINDEX (pentOther)])
+         playerwillrespawn[ENTINDEX (pentOther)] = FALSE;
+      else
+         return;
+   }
+
+   (*other_gFunctionTable.pfnTouch) (pentTouched, pentOther);
+}
+
+[...]
+
+void StartFrame (void)
+{
+   for (int index = 1; index <= gpGlobals->maxClients; index++)
+   {
+      edict_t *pPlayer = INDEXENT (index);
+
+      if (!pPlayer  pPlayer->free)
+         continue;
+
+      if (pPlayer->v.health <= 0)
+         playerwillrespawn[index] = TRUE;
+   }
+
+   (*other_gFunctionTable.pfnStartFrame) ();
+}
+
+
+
+Later for another tale ;)
+
+
+[modified on 05/22/02 at 10:15:47]
+--------------------------------------------------
+05/22/02 at 10:28:26  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+What you have is correct.  The player will touch the trigger_multiple (not the player_weaponstrip).  The only thing I'm not sure of is whether the code will work if a player goes from observer mode and spawns as a player.  The health is probably never 0 (or less).  If I remember correctly, TFC players in observer mode have a health of 1 (but have DAMAGE_NO set so they can't be hurt).  You might have to set your "playerwillrespawn" flag to TRUE when the player joins the server (in ClientPutInServer).
+
+botman
+
+--------------------------------------------------
+05/22/02 at 10:51:19  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+I already tested it, I used to think the case may happen when a player spawned for the first time. Anyway that's not needed, because when the engine creates a player, his health is initially 0, it is set to "maxhealth" (or "1" for spectators in TFC...) after the creation, and in the meanwhile the StartFrame() has done its job. So it's OK.
+
+BTW, completely offtopic remark, but I noticed you keep using double-backslashes "\\" in your code when you strcat() filenames and paths for the Win32 platform. You know, you don't need all this #ifdef stuff, the Windows compilers understand the "/" directory separator as well, and it will clean up your code a bit ;)
+
+BTW (bis), you really should hack your YaBB Perl to make it display logical OR's (the double vertical bars) inside the [ code ] brackets, it's really a pain ;D
+
+[modified on 05/22/02 at 10:51:19]
+--------------------------------------------------
+05/22/02 at 18:40:18  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+Correction :
+code:
+
+void DispatchTouch (edict_t *pentTouched, edict_t *pentOther)
+{
+  if ((strcmp (STRING (pentTouched->v.classname), "trigger_multiple") == 0)
+      && (strcmp (STRING (pentTouched->v.target), "weaponstripentity") == 0))
+  {
+     if (playerwillrespawn[ENTINDEX (pentOther)])
+        playerwillrespawn[ENTINDEX (pentOther)] = FALSE;
+     else
+        return;
+  }
+
+  (*other_gFunctionTable.pfnTouch) (pentTouched, pentOther);
+}
+
+
+I was wondering why I could not activate the bunker in Crossfire... DOH !!! :D
+
+[modified on 05/22/02 at 18:40:18]

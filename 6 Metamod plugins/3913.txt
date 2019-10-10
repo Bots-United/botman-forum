@@ -1,0 +1,96 @@
+--------------------------------------------------
+Subject: creating items on the fly - like stripper2
+--------------------------------------------------
+12/10/02 at 08:41:51  Posted by: AustinBotServer (AustinBotServer@MindSpring)
+--------------------------------------------------
+This pertains to Counter Strike
+I am trying to add items likes guns and grenades on the fly to maps. I have mirriored the code from Stripper2 in my metamod dll and everything complies and runs fine, but the items do not show up in the maps.  Do these items have to be created at a certain time? I am trying to create them "as I walk around in the map"
+Here is the code. 
+
+                              edict_t      *pent;
+
+                              if (FNullEnt(pent = GameCreateEntity("armoury_entity")))
+                              {
+                                    UTIL_printf ("ERROR: error creating entity.");
+                                    return 1;
+                              }
+
+                              nullname[0] = 0;
+
+                              sprintf(strOrigin, "%0.0f %0.0f %0.0f", origin.x, origin.y, origin.z);
+
+                              GameKeyValue(pent, nullname, "classname", "armoury_entity");
+
+                              GameKeyValue(pent, "armoury_entity", "count", "2");
+                              GameKeyValue(pent, "armoury_entity", "item", item);
+                              GameKeyValue(pent, "armoury_entity", "angle", "0");
+                              GameKeyValue(pent, "armoury_entity", "origin", strOrigin);
+
+                              Spawn( pent );
+
+Thanks again.
+
+--------------------------------------------------
+12/10/02 at 09:09:31  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+You should be able to spawn entities on the fly (much like the Monster plugin does) as long as those entities have been precached at map load time (before any players enter the game).
+
+If you try to create something that hasn't been precached first, the engine should complain with an error message.
+
+botman
+
+--------------------------------------------------
+12/11/02 at 12:34:26  Reply by: AustinBotServer (AustinBotServer@MindSpring)
+--------------------------------------------------
+I was calling my local hooked Metamod Spawn() function instead of the real engine Spawn()
+Changed this
+Spawn(pent);
+To this
+gpGamedllFuncs->dllapi_table->pfnSpawn(pent);
+
+Now everything works great!  Thanks for the example code in stripper2. This would have taken me a lot longer than 1 hour to do if I didn’t have your code to start with, thanks!
+
+I do have some questions about PRECACHE_MODEL();
+
+1)How do I know what entities are precached?
+
+2)I tried putting precache calls in Meta_Attach() and the engine displayed something like "PRECACHE is only allowed in Spawn() functions". In striper2 you use PRECACHE_MODEL() in ServerActivate(). Is ServerActivate() the best place to precache items?
+
+3)I put PRECACHE_MODEL("models/barney.mdl"); in my ServerActivate() and I get no errors but when I try to use the model I get: HOST_ERROR no precache  "models/barney.mdl"
+
+
+This works:
+===========
+Spawn()
+{
+   SET_MODEL(pent, "models/player/urban/urban.mdl");
+…
+
+
+This doesn’t
+============= 
+ServerActivate()
+{
+   PRECACHE_MODEL("models/barney.mdl");
+…
+
+Spawn()
+{
+   SET_MODEL(pent, “models/barney.mdl");
+…
+
+Why?
+Thanks!
+
+
+--------------------------------------------------
+12/11/02 at 13:13:37  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+1) It doesn't matter.  Models/sounds/sprites will only get precached once by the engine.  If you (or the MOD) precached them 10 times, the engine only caches one of them, so just make sure you precache everything you want to use and don't worry if it's already been precached before.
+
+2) When precaching, you can't do it too early (before the map itself is loaded) and you can't do it too late (after clients have joined the server).  The best place I found to do this is ServerActivate() which happens after the last entites from the map file have been created, but before any players are allowed to connect.
+
+3) Not sure.  Make SURE all the files you need are there.  For example, the barney.mdl file also needs barneyt.mdl to load properly (you can see this by copying the models you are trying to use to a separate directory and using a model viewer on them to display them).  If you have problems with a specific model, try using other models to determine if the problem is model related or coding related.
+
+botman
+

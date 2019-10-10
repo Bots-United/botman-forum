@@ -1,0 +1,43 @@
+--------------------------------------------------
+Subject: DoD WeaponList Bugfix
+--------------------------------------------------
+07/13/01 at 07:37:46  Posted by: Zneaker (zneaker@botepidemic.com)
+--------------------------------------------------
+Hi
+Wow,that was a LOT of work,but i finally figured it out.If you have trouble with the DoD weaponlist,don't link the Valve_weaponlist,just copy and modify it.
+Here is the modification:
+
+else if (state == 7)
+{
+        
+         state++;
+         bot_weapon.iId = *(int *)p; // weapon ID
+}
+else if (state == 8) //modification start
+{
+                state++; 
+      bot_weapon.iFlags = *(int *)p;                                   
+}
+else if (state == 9)//modification end
+{
+  //if you want,read in a 9th property here
+weapon_defs[bot_weapon.iId] = bot_weapon;      
+  state = 0;
+}
+
+DoD sends a 9th weapon property.Cs sends only 8,what means after a few funktion calls a weapon might have the flag (or even the name)of another weapon as its own id,what inevitably leads to a crash (weapon_defs is an array of an index of max 31).
+What the above code does is it simply reads the weapon's flag in the 8th position and then increases the state by one.Next time (state == 9) another weapon property is send (no idea what,that's why there is no code to set somwething equal to p)and then and not earlier you can set the weapon_defs.
+
+Hope this helps.
+
+
+--------------------------------------------------
+07/13/01 at 07:49:34  Reply by: Zneaker (zneaker@botepidemic.com)
+--------------------------------------------------
+Hahah....seems,like @$3.1415rin and i figured it out at about the same time.
+
+--------------------------------------------------
+07/13/01 at 08:44:59  Reply by: @$3.1415rin (as3.1415rin@gmx.de)
+--------------------------------------------------
+I think the 9th property is the size of the clip, btw
+

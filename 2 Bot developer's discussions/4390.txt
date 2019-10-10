@@ -1,0 +1,56 @@
+--------------------------------------------------
+Subject: Bot doesn't respawn, even if i force them to...
+--------------------------------------------------
+05/07/03 at 14:17:52  Posted by: Akira (akira666@btinternet.com)
+--------------------------------------------------
+This is the code as it is at the moment:
+
+if (!IsAlive (pBot->pEdict))
+   {
+      BotReset (pBot);                                                   if (pBot->pKillerEntity != NULL)
+                                                  {
+                                                       if (RANDOM_LONG (1, 100) <= (56 - 2 * gpGlobals->maxClients))
+                                                       {
+                                                            pBot->BotChat.b_saytext_killed = TRUE;
+                                                            pBot->f_bot_saytext_time = gpGlobals->time + RANDOM_FLOAT (5.0, 10.0);
+                                                       }
+                                                  }
+         pBot->pEdict->v.button = IN_ATTACK;
+      
+      g_engfuncs.pfnRunPlayerMove (pBot->pEdict, Vector (0, 0, 0), 0, 0, 0, pBot->pEdict->v.button, 0, pBot->msecval);
+      return;
+   };
+
+Respawning for Bots is dealt with exactly the same way as regular players right? I.e. clicking the mouse would respawn you, but i don't understand why the just don't respawn, even when i enable Force Respawn...could there be a problem with the map? then again i don't seem to have problems respawning on the map :\
+
+Ak.
+
+--------------------------------------------------
+05/07/03 at 14:35:40  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+This part...
+code:
+pBot->pEdict->v.button = IN_ATTACK; 
+
+g_engfuncs.pfnRunPlayerMove (pBot->pEdict, Vector (0, 0, 0), 0, 0, 0, pBot->pEdict->v.button, 0, pBot->msecval);
+
+...constantly keeps the FIRE button pressed (just like holding the mouse button down all the time).
+
+You will probably need to press AND RELEASE the mouse button for the MOD to respawn the player.  Try something like this instead...
+code:
+if (RANDOM_LONG(1,100) < 50)
+   pBot->pEdict->v.button = IN_ATTACK;
+else
+   pBot->pEdict->v.button = 0;
+      
+g_engfuncs.pfnRunPlayerMove (pBot->pEdict, Vector (0, 0, 0), 0, 0, 0, pBot->pEdict->v.button, 0, pBot->msecval);
+
+botman
+
+--------------------------------------------------
+05/07/03 at 14:47:43  Reply by: Akira (akira666@btinternet.com)
+--------------------------------------------------
+Excellent Botman!! Thanks it works :D
+
+Ak.
+

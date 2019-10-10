@@ -1,0 +1,120 @@
+--------------------------------------------------
+Subject: open idea -- autowaypointing
+--------------------------------------------------
+04/09/01 at 11:56:23  Posted by: jldailey (jldailey@uchicago.edu)
+--------------------------------------------------
+ok,  this is a post that is meant to raise one of my primary gripes about my understanding of lots of bot implementations (including mine, which is perhaps the worst).  the creator has to place too many hints in a level. i know that discussions like this have come many many times to land on the work done w/ CGF and the pre calculating tactical value stuff, very excellent.  But a kind of second order problem from what i am thinking about.
+
+i think that a bot should be able to learn a map using a (perhaps expensive) routine for auto waypointing a room... i talked about this before in reference to a kind of waypoint 'ping' that floods through a room marking all accessible spots as waypoints... 
+but this is only part of the solution as it does very poorly at actually mapping fairly dynamic rooms (cs_assault's interior is amazingly complex for a bot to navigate, and just pushing waypoints in every corner doesnt necessarily help)
+
+so, here's a counterpart to my idea... before you can map all the homogenous open spaces in a level is the tricky stuff that counts.  and i think i have actually come up with a fairly neat way to chracterize 'tricky stuff' (hardly all of it but some).  so here's the basic algorithm i was thinking of:
+scan horizontally across the room with tracelines.
+store the normal to the previous plane you struck.
+if the previous normal and the current normal form a convex corner, then place a waypoint like so:
+
+         * <- waypoint
+     A^ /
+      |/
+------+-->
+  WALL|  B
+   BOX|
+   ETC|
+      |
+------+-->
+      |\
+      | \
+     \/  *
+A = normal to one surface
+B = normal to the other
+waypoint lands at A + B.
+
+
+since A and B are bot unit vectors the resulting waypoint will be sqrt(2) away from every corner, and if you can do this enough times you can add waypoints on all corners, basically tracking waypoints smoothly around weird objects like boxes and crates and cars and such in a scene.
+
+it allows you to produce all the 'safe' (near to cover) points in a room as well, since you are garaunteed that any waypoint will have some kind of corner to move around...
+
+of course this will only track edges so for waypointing open spaces after this is done you can still do the ping style of waypointing since homogenous spaces get homogenous waypoints... 
+
+okay, so tell me why it sucks? ideas dont pass the test by staying in the same person's head...
+
+
+
+--------------------------------------------------
+04/09/01 at 13:19:47  Reply by: William (william@botepidemic.com)
+--------------------------------------------------
+note:
+the corners you mark are not guaranteed to be reachable by the bot;
+
+'near cover' has to do with travel time, not necessarily with euclidean distance (vertor length)
+
+William
+
+--------------------------------------------------
+04/10/01 at 05:09:26  Reply by: Clean (botmans@divinegods.net)
+--------------------------------------------------
+You might also want to read:
+
+http://dynamic.gamespy.com/~botman/yabb/YaBB.pl?board=2&action=display&num=1401
+
+I wrote this some weeks ago. It should still serve you some good ideas.
+
+--------------------------------------------------
+04/11/01 at 11:57:09  Reply by: jldailey (jldailey@uchicago.edu)
+--------------------------------------------------
+QUOTE:
+note:
+the corners you mark are not guaranteed to be reachable by the bot;
+
+
+
+
+there are going to be exceptions with terribly complex intersections (random stacks of boxes where a point matching the above criteria lands in the middle for instance) but for the most part they will be reachable...
+
+for several reasons we are pretty likely to have it be accessible. first we have to be able to see both edges of the corner, ruling out lots of potential bad spots. second, we checked to see if it was a convex corner, which mean a corner protruding into the room, and one could even specify a simple threshold on the dotproduct between the two angles so you dont consider spiky corners and only more regular ones.
+
+you can even check to make sure that a waypoint would have at least one valid neighbor before it gets allowed to be added to the final waypoint list (you may even filter on this in a post scan clean up run or check while you are adding).
+
+QUOTE:
+
+'near cover' has to do with travel time, not necessarily with euclidean distance (vertor length)
+
+
+
+
+and its not a subsitute for actually determining whether some spot is worth more or less cover, i only meant that in general paths that run along walls are more likely to be safe than ones in the open.
+
+
+
+--------------------------------------------------
+04/11/01 at 12:24:18  Reply by: William (william@botepidemic.com)
+--------------------------------------------------
+QUOTE:
+
+but for the most part they will be reachable...
+
+
+
+
+the corner problem in general occurs with ornaments and decorative ledges at waist level and higher, near ceilings.
+
+since the potential access to higher spots (ledges, top of crate, rooftop) cannot be determined until:
+- you've covered all possible spots with nodes, and
+- you have done a reachability check
+you will have lots of unreachable nodes around (that you later have to cull).
+
+just consider the CS map de_nuke...
+
+the reason I bother to warn you is:
+a. I've seen a couple awfully creative things level designers do:
+- abusing ladder textures to enable players to mount steep rocks
+- doors that protude 2 meters through the floor
+- and other things that defied every assumption I made in my semi-automatic waypoint placement method
+
+b. MrElusive explained me how much time he needed to develop the Q3A bsp parsing (and why), and how much time he spent 'improving' the Q3TA maps.
+
+Though auto-waypointing is something to strive for, it may take more of your time than you care for.
+
+William
+
+

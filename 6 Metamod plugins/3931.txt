@@ -1,0 +1,195 @@
+--------------------------------------------------
+Subject: Admin Mod plug-in Request to use with Monster
+--------------------------------------------------
+12/17/02 at 09:31:17  Posted by: 417 (asseater417@yahoo.com)
+--------------------------------------------------
+Just fishing for a plug-in writer with lots of time on their hands that would be willing to write a plug-in for nothing (yea right).
+
+Here is what I am kicking around...
+
+We utilize the Monster plug-in on our public server and need to be able to have our clan members who DO NOT have rcon access but have admin_kick access through admin mod to be able to stop the monsters from spawning if they want.
+
+After thinking about it some I went a step further and thought it would be cool for Admin Mod to present a vote to the players on the server every so often and ask them if they want the monsters to stay on the server for the duration of the map. And then if the players voted for them to stop spawning (executing the rcon command: rcon monster_spawn 0) then it would stop them for the duration of that map. 
+
+It would have to check the monsters status of course to know weather or not to ininiate a vote, 
+and if it wasn't running monsters then present the vote to turn them back on and then turn them on if enough people voted for them.
+
+Currently there is one admin mod plug-in that I know of that is available that allows players with certain admin access to spawn monsters after players. However, we don't want to cache any monsters due to limted server resources so we choose not to use that option.
+
+If there are any admin-mod plug writiers out there that would be willing to write a plug-in for this type of thing please e-mail me to correspond about it at: gamingserveradmin@asseaterclan.recongamer.com
+
+Thanks :-)
+
+--------------------------------------------------
+12/17/02 at 09:36:33  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Did you see this thread (found by searching this forum group for "AdminMOD monster")?...
+
+http://dynamic.gamespy.com/~botman/yabb/YaBB.pl?board=6&action=display&num=3592
+
+...which links to...
+
+http://www.ozforums.com/showthread.php?s=&threadid=36409&highlight=monster
+
+botman
+
+--------------------------------------------------
+12/17/02 at 12:00:13  Reply by: buzzkill (buzzkill@digitalwidget.net)
+--------------------------------------------------
+As far as a vote goes, I run something similar on my server. At the end of every expiring map (t minus 2 minutes) it presents "Gates of Hell" vote, which, you can imagine, spawns monsters on a winning vote.
+
+I'm not sure if you realize this, but that's really nothing more than a standard adminmod vote with a winning vote setting the cvar monster_spawn to 1 (or losing to 0, though that's redundant in my case). Were you thinking there was more to it, or did you just want someone to write the amx?
+
+- Buzz
+
+--------------------------------------------------
+12/17/02 at 12:03:32  Reply by: buzzkill (buzzkill@digitalwidget.net)
+--------------------------------------------------
+Here's the relevant portion I added to my plug_hldsld_mapvote.sma...
+
+
+public admin_vote_hell(HLCommand,HLData,HLUserName,UserIndex) {
+      new Command[MAX_COMMAND_LENGTH];
+      new Data[MAX_DATA_LENGTH];
+      new User[MAX_NAME_LENGTH];
+      new Map[MAX_TEXT_LENGTH];
+      
+      
+      if (vote_allowed()!=1) {
+            selfmessage( "Vote not allowed at this time.");
+            return PLUGIN_HANDLED;
+      }
+      
+      currentmap(Map,MAX_TEXT_LENGTH);
+      if (strcmp("2fort",Map)!=0) {
+            selfmessage( "Hellspawn is not supported in this map.");
+            return PLUGIN_HANDLED;
+      }      
+      
+
+      convert_string(HLCommand,Command,MAX_COMMAND_LENGTH);
+      convert_string(HLData,Data,MAX_DATA_LENGTH);
+      convert_string(HLUserName,User,MAX_NAME_LENGTH);
+      say_command(User,Command,Data);            
+      HellVote();
+      return PLUGIN_HANDLED;
+}
+
+public HellVote() {
+
+      new strDummy[10];
+      
+      if (HELLVOTE != 0) {
+            exec("monster_spawn 0");
+            //kill_timer(HellAmbTimer);
+            //HellAmbTimer = 0;      
+            vote("Open the Gates of Hell?", "Yes", "No", "HandleHellVote",strDummy);
+      }
+}
+
+public HandleHellVote(WinningOption,HLData,VoteCount,UserCount) {
+      //new Text[MAX_TEXT_LENGTH];
+      //new strNumber[MAX_NUMBER_LENGTH];
+      //new Ratio = MD_VOTE_RATIO;
+      new strData[MAX_DATA_LENGTH];
+      convert_string(HLData, strData,MAX_DATA_LENGTH);
+      
+      //if (VoteCount >= Ratio*UserCount/100) {      
+      if (WinningOption==1) {
+            centersay("Vote over. The Gates of Hell are opening....",18,249,244,0);
+            exec("monster_spawn 1");
+            //HellAmbTimer = set_timer("HellAmbience", 20, 9999); 
+            PlaySoundToAll("ambience/the_horror1");
+            
+            
+      } else {
+            
+            centersay("Vote over. The Gates of Hell shall remain closed.",18,63,187,239);
+      }
+      
+
+}
+
+[modified on 12/17/02 at 12:03:32]
+--------------------------------------------------
+12/18/02 at 07:44:20  Reply by: 417 (asseater417@yahoo.com)
+--------------------------------------------------
+botman - Thanks for the reply. I did read the thread [ http://dynamic.gamespy.com/~botman/yabb/YaBB.pl?board=6&action=display&num=3592  ] which leads to the Admin Mod Forums [ http://www.ozforums.com/showthread.php?s=&threadid=36409&highlight=monster ], downloaded the admin mod plug-in, and reviewed it. We are looking for more functionability than what that plug-in offers. We don't want to pre-cache or spawn any monsters on our server and that is all that this plug-in does.
+
+buzzKill - Thanks for insight on how you have monsters spawning on your server at the end of the map. I didn't know it was as simple running a adminmod vote to change the cvar to 1 (or 0) depending on the vote. I appreciate you showing me what your code added to your you map vote plug-in, it gave me some insight on how it works. I was actually looking to have someone write the "plugin_VoteMonster.amx" for us due to the fact that I am a complete N00B when it comes to coding plug-ins and such for Half Life. To better show the scope of what we would like to see I need to define it better. 
+
+Here is what functions we need the plug-in to do:
+
+1) It needs to check the cvar status "monster_spawn #" every 10 minutes (this should be a changeable variable within the plugin) and act accordingly depending on what it finds:
+
+      If it is set to 1 - Then it needs to present a "YES/NO" vote to the players on the server asking if they would like the monsters on the server to no longer respawn once they have been killed. Then if that vote passes it needs to change the cvar to "monster_spawn 0", if the vote doesn't pass then it needs to do nothing until the next time it checks. There also should be a variable in regards to this vote to set the percentage of players required to vote to pass it (which is standard with any vote process).
+
+      If it is set to 0 - Then it needs to present a "YES/NO" vote to the players on the server asking them if they would like to have monsters spawning on the server. Then if that vote passes it needs to change the cvar to "monster_spawn 1" , if the vote doesn't pass then it needs to do nothing until the next time it checks. There also should be a variable in regards to this vote to set the percentage of players required to vote to pass it (which is standard with any vote process).
+
+      Then depending on what the plug-in does it needs to make an annoucement on the server via a admin_csay message stating:
+            If it just set it to 1 - Monsters are now on this server, BEWARE!
+            If it just set it to 0 - The Monsters will no longer re-spawn on this server!
+            If it does nothing it says nothing ecept maybe that the Monster vote failed via a normal text message (which I think is a basic function of the vote process)!
+
+
+2) It needs to be able to let an admin with access level 256 (admin_ban privledges) [this should be a changeable variable within the plugin] type a simple console command to stop the monsters from spawning (thus running "monster_spawn 0") or start the monsters (thus running "monster_spawn 1").
+
+3) Since there already is a plug-in written (plugin_cheek_monster_v1.zip) to allow people with a certain level of access to spawn monsters then that plug-in could also be incorperated into this new plug-in to add complete functionability, although we are not wanting to use that function for our purposes.
+
+If I am understanding how it works right then the plug-in must use rcon to change the cvar "monster_spawn #" variable so that must also be incorparated into the plugin (which should be a variable that can be changed). Also any tex that the plug-in presents to the the public needs to be a changeable variable within the plug-in so it can be customized by it's users.
+
+I hope that better explains what we are wanting. Unfortuneatly no one in our clan knows how to write plug-ins nor has the funds to pay someone to do it. Thus why I have posted a request for someone to possibly write one for us.
+
+[modified on 12/18/02 at 07:44:20]
+--------------------------------------------------
+12/18/02 at 23:26:19  Reply by: buzzkill (buzzkill@digitalwidget.net)
+--------------------------------------------------
+Wow... these are better specs than I usually get at work.  :)
+
+Simple enough. Keep an eye open here. I'll post back in a day or two.
+
+- Buzz
+
+--------------------------------------------------
+12/19/02 at 06:52:05  Reply by: buzzkill (buzzkill@digitalwidget.net)
+--------------------------------------------------
+Finished and sent to your email addr. Let me know how it works. I tested it for several seconds, at least.  :-)
+
+- Buzz
+
+--------------------------------------------------
+12/20/02 at 14:05:57  Reply by: 417 (asseater417@yahoo.com)
+--------------------------------------------------
+BuzzKill:
+
+Thanks for the plug-in dude! Check your e-mail for my response. It looks great and I can't wait to test it out.
+
+Thanks again and I'll be in touch with you via e-mail again in a few days.
+
+[AE]ASSEATER 417
+Gaming Server Admin
+
+[AE] ASSEATER Clan
+www.asseater.NET
+
+--------------------------------------------------
+12/20/02 at 17:53:49  Reply by: LunaticWithCandy (candyranger@hotmail.com)
+--------------------------------------------------
+You think you could post a link? Or email it to me: lunaticwithcandy@planethalflife.com
+
+--------------------------------------------------
+12/21/02 at 02:29:45  Reply by: buzzkill (buzzkill@digitalwidget.net)
+--------------------------------------------------
+http://bloodbath.hopto.org:27000/dl/plugin_buzz_mstrmgr.zip
+
+Enjoy.
+
+--------------------------------------------------
+12/30/02 at 05:42:42  Reply by: buzzkill (buzzkill@digitalwidget.net)
+--------------------------------------------------
+Just an FYI that a support forum for this and some other plugins of mine is now available at..
+
+http://100acrebbath.proboards12.com
+
+- Buzz
+

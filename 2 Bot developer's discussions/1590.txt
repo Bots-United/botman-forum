@@ -1,0 +1,101 @@
+--------------------------------------------------
+Subject: Need 'Idle' waypoint-navigation help!
+--------------------------------------------------
+04/26/01 at 11:16:40  Posted by: Dobbs (stephen.dobbs@btinternet.com)
+--------------------------------------------------
+I can get my bot to go to specific waypoints like the flag on TFC, but when my bot has no 'objective' (no specific waypoint it wants to go to), it has to use this crappy navigation system which I ripped from BobaBot which goes to the nearest waypoint unless it's been to that waypoint in the previous five waypoints. It's OK for going in straight lines and simple 'maze' style maps, but on more complicated maps, they just hang around the same area. This system doesn't use the path feature of the waypoints.
+
+I was hoping someone could help me create an 'idle' waypoint navigation system which is better than the one below. I would like the bot to use the paths to follow rather than just go to the nearest waypoint. Is this possible? 
+
+Perhaps some bot developers can hint at what they do for 'idle' waypoint navigation?
+
+oh, here's my 'idle' navigation code :
+
+
+bool BotFindWaypoint( bot_t *pBot )
+{
+   int team; 
+   int dest;
+   int temp1;
+edict_t *pEdict = pBot->pEdict;
+team = UTIL_GetTeam(pEdict);
+int i, wpt_index[3], select_index;
+float distance, min_distance[3];
+   Vector v_src, v_dest;
+   TraceResult tr;
+
+// Here would normally be my 'special' code to make the bot
+// look for an objective (flag, sniper place etc)
+// If the bot cant for some reason, it uses the
+// 'idle' system below. Its crap. Please help!
+
+   for (i=0; i < 3; i++)
+   {
+      wpt_index[i] = -1;
+      min_distance[i] = 9999.0;
+   }
+
+   for (i=0; i < num_waypoints; i++)
+   {
+      // ignore current waypoint and previous recent waypoints...
+      if ((i == pBot->curr_waypoint_index) ||
+          (i == pBot->prev_waypoint_index[0]) ||
+          (i == pBot->prev_waypoint_index[1]) ||
+          (i == pBot->prev_waypoint_index[2]) ||
+          (i == pBot->prev_waypoint_index[3]) ||
+          (i == pBot->prev_waypoint_index[4]))
+         continue;
+
+      if ( WaypointReachable(pEdict->v.origin, waypoints[i].origin, pEdict) )
+      {
+         distance = (waypoints[i].origin - pEdict->v.origin).Length();
+
+         if (distance < min_distance[0])
+         {
+            wpt_index[0] = i;
+            min_distance[0] = distance;
+         }
+         else if (distance < min_distance[1])
+         {
+            wpt_index[1] = i;
+            min_distance[1] = distance;
+         }
+         else if (distance < min_distance[2])
+         {
+            wpt_index[2] = i;
+            min_distance[2] = distance;
+         }
+      }
+   }
+
+   select_index = -1;
+
+       select_index = wpt_index[0];
+
+   if (select_index != -1)  // was a waypoint selected?
+   {
+      pBot->prev_waypoint_index[4] = pBot->prev_waypoint_index[3];
+      pBot->prev_waypoint_index[3] = pBot->prev_waypoint_index[2];
+      pBot->prev_waypoint_index[2] = pBot->prev_waypoint_index[1];
+      pBot->prev_waypoint_index[1] = pBot->prev_waypoint_index[0];
+      pBot->prev_waypoint_index[0] = pBot->curr_waypoint_index;
+
+      pBot->curr_waypoint_index = select_index;
+      pBot->waypoint_origin = waypoints[select_index].origin;
+
+      return TRUE;
+   }
+
+   return FALSE;  // couldn't find a waypoint
+}
+
+--------------------------------------------------
+04/28/01 at 02:56:37  Reply by: Dobbs (stephen.dobbs@btinternet.com)
+--------------------------------------------------
+Don't worry anymore, I've sorted the problem. I now use the WaypointFindPath function.
+
+--------------------------------------------------
+04/28/01 at 12:30:36  Reply by: bigjesus (holybigjesus@hotmail.com)
+--------------------------------------------------
+:) 
+

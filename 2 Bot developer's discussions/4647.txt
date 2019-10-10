@@ -1,0 +1,80 @@
+--------------------------------------------------
+Subject: can bots push boxes?
+--------------------------------------------------
+07/15/03 at 09:57:13  Posted by: Halfer (duckeris@hotmail.com)
+--------------------------------------------------
+I'm creating bots by modifying HPB bots source code. Is it posible (if yes, then how?) to make that bot push useable objects, such like moveing box or chair?
+
+--------------------------------------------------
+07/15/03 at 11:23:57  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Yes, the same was a player would.
+
+Set the pev->buttons IN_USE bit to have the bot pressing the USE key when near a moveable box.  The bot will then drag the box as long as the move key is being held down (i.e. the bit is constantly set).
+
+You can push moveable boxes just by running up against them (just like players can).
+
+botman
+
+--------------------------------------------------
+07/15/03 at 12:04:02  Reply by: Halfer (duckeris@hotmail.com)
+--------------------------------------------------
+Is it posible to know is there any movable objects near the bot?If yes, than how?
+
+--------------------------------------------------
+07/15/03 at 13:22:18  Reply by: Cheesemonster!!! (cheeseh@houstondod.com)
+--------------------------------------------------
+use a function like this :P
+
+code:
+
+edict_t *pNearestPushableToBot ( bot_t *pBot )
+{
+
+edict_t *pPushable = NULL;
+
+float fNearestPushDistance = 0;
+edict_t *pNearestPushable = NULL;
+
+entvars_t *pEdict = pBot->pEdict;
+
+Vector vBotOrigin = GetGunPosition(pEdict);
+Vector vPushableOrigin;
+
+float fDistance;
+
+while ( (pPushable = UTIL_FindEntityByClassname(pPushable,"func_pushable")) != NULL )
+{
+  vPushableOrigin = VecBModelOrigin(pPushable);
+
+  if ( !FInViewCone(&vPushableOrigin,pEdict) )
+    continue;
+
+  if ( !FVisible(vPushableOrigin,pEdict) )
+    continue;
+ 
+  fDistance = (vPushableOrigin - vBotOrigin).Length();
+
+  if ( (pNearestPushable == NULL) || 
+       (fDistance < fNearestPushDistance) )
+  {
+    pNearestPushable = pPushable;
+    fNearestPushDistance = fDistance;
+  }
+}
+
+//pNearestPsuable now should hold an edict_t pointer to the nearest pushable
+//it may be NULL if it can't find any.
+
+  return pNearestPushable;
+}
+
+
+
+note ,i haven;'t tested it and you may need to change some stuff for it to work with your code.
+
+--------------------------------------------------
+07/15/03 at 13:34:20  Reply by: Halfer (duckeris@hotmail.com)
+--------------------------------------------------
+thanks
+

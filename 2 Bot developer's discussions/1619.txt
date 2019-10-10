@@ -1,0 +1,85 @@
+--------------------------------------------------
+Subject: touching entities
+--------------------------------------------------
+05/01/01 at 11:15:02  Posted by: ssood (imbadsobad@hotmail.com)
+--------------------------------------------------
+I have implemented a vision schema that traces lines out infront of the bot and returns an integer value of how much room it has infront of it.  I would like to extend this by having the ability to know what the traced lines are touching.  Is there a built in utility that will tell me what type of object (e.g., other player, wall, box, etc) the traced line is touching?  Optimally, I would like to make a 2-d array to store the distance and the item the line is touching -- any ideas? 
+
+--------------------------------------------------
+05/01/01 at 11:57:14  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+When you trace a line you will get back a TraceResult structure.  You can find the TraceResult structure in the engine\eiface.h file.
+
+Here's what it looks like...
+code:
+// Returned by TraceLine
+typedef struct
+{
+   int     fAllSolid;    // if true, plane is not valid
+   int     fStartSolid;  // if true, the initial point was in a solid area
+   int     fInOpen;
+   int     fInWater;
+   float   flFraction;   // time completed, 1.0 = didn't hit anything
+   vec3_t  vecEndPos;    // final position
+   float   flPlaneDist;
+   vec3_t  vecPlaneNormal; // surface normal at impact
+   edict_t *pHit;        // entity the surface is on
+   int     iHitgroup;    // 0 == generic, non zero is specific body part
+} TraceResult;
+
+flFraction is the fraction of the distance that the trace went from start to end.  For example, if the distance between the starting point and the ending point is 100 units and the UTIL_TraceLine() hit something 75 units from the starting point the flFraction would be 0.75.  You can multiply the flFraction times the distance from start to end "(end-start).Length();" to find out how far the trace went before hitting something.
+
+You can find out what was hit by looking at the pHit edict.  For example STRING(tr.pHit->classname) will give you the class name of the entity that was hit.
+
+The vecPlaneNormal vector will give you the Normal vector to the surface that was hit (for "worldspawn" entities).  The Normal vector is perpendicular (right angle) to the surface.
+
+iHitgroup can be used to determine what hitgroup on the body was hit if the entity is a player (i.e. has a classname of "player").
+
+botman
+
+
+--------------------------------------------------
+05/02/01 at 08:33:20  Reply by: William (william@botepidemic.com)
+--------------------------------------------------
+Just curious:
+
+Q2 also returns the surface/texture info of the plane hit, so you can detect ladders (a texture flag in Q2), transparency, and the actual texture.
+Alternatively, you could use a PointContents function to get more info on the hit location.
+
+Does HL offer something similar?
+
+William 
+
+--------------------------------------------------
+05/02/01 at 11:05:12  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+There is an engine function called pfnTraceTexture()...
+code:
+const char *(*pfnTraceTexture)(edict_t *pTextureEntity,
+                               const float *v1, const float *v2 );
+
+...where you pass it an entity and a starting and ending vector to trace.  This returns a pointer to a string with the texture name.  This function can be found in the player.cpp file in the CBasePlayer::UpdateStepSound() function (to determine what type of sound to play based on what texture the player is standing on).
+
+There is a pfnPointContents() engine function where you can pass in an origin and the engine will return the point contents as one of...
+code:
+#define CONTENTS_EMPTY          -1
+#define CONTENTS_SOLID          -2
+#define CONTENTS_WATER          -3
+#define CONTENTS_SLIME          -4
+#define CONTENTS_LAVA           -5
+#define CONTENTS_SKY            -6
+#define CONTENTS_ORIGIN         -7              // removed at csg time
+#define CONTENTS_CLIP           -8              // changed to contents_solid
+#define CONTENTS_CURRENT_0              -9
+#define CONTENTS_CURRENT_90             -10
+#define CONTENTS_CURRENT_180    -11
+#define CONTENTS_CURRENT_270    -12
+#define CONTENTS_CURRENT_UP             -13
+#define CONTENTS_CURRENT_DOWN   -14
+#define CONTENTS_TRANSLUCENT    -15
+#define CONTENTS_LADDER         -16
+
+...so I asuume a ladder would be CONTENTS_LADDER.  :)
+
+botman
+

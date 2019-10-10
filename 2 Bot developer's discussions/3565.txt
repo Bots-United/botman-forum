@@ -1,0 +1,81 @@
+--------------------------------------------------
+Subject: Floyd Algorithm
+--------------------------------------------------
+08/11/02 at 09:43:05  Posted by: mattkimbo (mattkimbo@yahoo.co.uk)
+--------------------------------------------------
+I've been working on my bot for ages now, and I finally have an algorithm that works (Thanks for sticking floyd.c in your latest release of the HPB Bot source Botman!!!!!!)
+
+I've created my bot from scratch in the HL SDK and Im making it for DMC too, Now that you guys know where I stand:
+
+My problem is that, as I stand, I call a function to generate the shortest path array once the level starts, 1st problem here is that I need to do trace line calls so I need to be carefull at which stage of the loading process for each level I call this (the containing entity in the UTIL_TraceLine())
+
+after this is done, a set a flag stating that the floyd algorithm needs to be re-run.
+
+Here is the problem, I have boot_camp fully waypointed and running the algorithm takes ages! (900 nodes in total on the level)
+
+Normally I wouldn't mind but it means clients get dropped from the server because it takes so long for the server to send out a packet.
+
+So, I have the following questions,
+
+1) How big are we talking, if I added all the shortest_path array and from_to array stuff at the end of a waypoint file?
+
+2)Is there another less time consuming way of calling the floyd algorithm for a level?
+
+3) How does the HPB Bot deal with this? (Im guessing the biggest TFC level is casbah, and Im also guessing the waypoint total is no where near 900!)
+
+-Thanks!
+
+[modified on 08/11/02 at 09:43:05]
+--------------------------------------------------
+08/11/02 at 13:38:46  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+1. Both arrays will be NxN in size.  So for 900 nodes this would be 900x900 = 810,000 elements in the array.  If the array is an array of short ints (to represent the waypoint index), this would be 1.6 megabytes of memory and disk space (if stored in the waypoint file).
+
+2. You could break the Floyd algorithm down into running one outer loop of the 3 "for" statements per 1/10th of a second and spread out the time required to calculate the Floyd matrix.  Of course during this time the bots wouldn't be able to use the Floyd algorithm because the table would be incomplete.  For 900 nodes, it would take 90 seconds to generate the table (assuming 1/10 second per outer "for" loop pass).
+
+3. The HPB bot keeps the Floyd matrix as a separate file.  Each team will have it's own matrix (since paths reachable by one team will not necessarily be reachable by another team, i.e. team specific doors, etc.).  The .wpt file is just the waypoint node information and the paths between nodes.  This is fairly small (around 5k or 10k in size for hundreds of waypoints).  The HPB bot code calculates the Floyd matrix the first time that .wpt waypoint file is loaded and creates a .wp1, .wp2, .wp3, or .wp4 file for the Floyd matrix data (which is usually several hundred kilobytes in size).  .wp1 is team #1 Floyd matrix, .wp2 is team #2 Floyd matrix, etc.
+
+All of this is shown in the HPB bot 2.1 source code.  See the WaypointLoad() function in waypoint.cpp for details.
+
+botman
+
+--------------------------------------------------
+08/12/02 at 23:53:11  Reply by: Extrarius (cprgmsw@rietta.com)
+--------------------------------------------------
+I would recommend that you use a different algorithm instead. The A* algorithm might be better suited to your purpose, and it allows more versatility because you can add and remove waypoints dynamically while still being able to pathfind without much extra processing. You can also modify it slightly to make the bots use different paths sometimes (to make them more realistic, since people dont always use exactly the same paths).
+
+--------------------------------------------------
+08/13/02 at 02:41:16  Reply by: @$3.1415rin (joebot@botepidemic.com)
+--------------------------------------------------
+A* isnt always better. the advantage of the floyd table is that it's really fast, that you can easily see if two waypoints are somehow connected. "Multipathing" with floyd tables isnt a problem neither.
+A* might be more useful if you also want the pathfinding be based on dynamic data, i.e. with a autowaypointing system, with visibility graphs etc.
+
+--------------------------------------------------
+08/13/02 at 06:18:30  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+...and there are many other path finding algorithms as well.  Each have advantages and disadvantages.  Implementing A* can be somewhat difficult if you don't have much experience in writing code.  You can find out information about other path finding algorithms by using www.google.com to search for "path finding algorithm" or something similar.  Also see the AI section of my planethalflife.com/botman/links.shtmlLinks page for some URLs of AI web sites.
+
+botman
+
+--------------------------------------------------
+08/13/02 at 12:54:55  Reply by: mattkimbo (mattkimbo@yahoo.co.uk)
+--------------------------------------------------
+Thanks for the help! I've taken to generating files containing the matrix too now, I'm just puzzled as to why we have to store the shortest path matrix? It seems that the checks I do are real quick, so i there was a way around saving that off, I'd like to here it, but Im happy at the moment.
+
+@$3.1415rin -Is damn right! The floyd table is really great, I was suprised at just how quick it really is to work a path out for boot_camp, I'd have never have thought of the from_to matrix either :)
+
+Does any body know where I can find what the floyd matrix does pseudo code form? I have no idea how the algorithm works! For a start is it breadth first or what? :)
+
+Thanks for your help (As always!)
+
+--------------------------------------------------
+08/13/02 at 15:11:26  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+google, man, google...
+
+http://www.google.com/search?sourceid=navclient&q=floyd%27s+algorithm
+
+Read, Read, Read.  It's the best way to learn something.
+
+botman
+

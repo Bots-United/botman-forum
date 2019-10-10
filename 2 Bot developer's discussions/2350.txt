@@ -1,0 +1,233 @@
+--------------------------------------------------
+Subject: More chatting
+--------------------------------------------------
+10/03/01 at 13:10:06  Posted by: laextr (laextr@icqmail.com)
+--------------------------------------------------
+Hi,
+I've finally got the enemy's name displayed when a bot attacks his prey, but now I have a new problem. I have implemented a bot_chat_percent var. in my bot, how can I make the bot (with the percentage var.) make it display an attacking message at random without it repeating like every 2 secs.
+I have already made it display the chatting messages but just need to know when to display it correctly.
+
+Thanks a bunch!
+
+
+--------------------------------------------------
+10/03/01 at 13:28:19  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+If you store the messages in an array, you can create a "companion" array that keeps track of which ones have been used.  Pick one at random from the list and mark that one as having been used.  Each time you pick one, decrement the number of available messages, then the next time pick one at random between 1 and N (where N is the number of unmarked messages).  When N reaches zero then clear out the "marked" array to indicate that they are all available again and reset N back to the total number of messages.
+
+botman
+
+--------------------------------------------------
+10/03/01 at 13:38:40  Reply by: laextr (laextr@icqmail.com)
+--------------------------------------------------
+I've already did something like that, wait here's the code to get a better understanding:
+
+[bot.cpp]
+
+if (( pBot->pBotEnemy != NULL ) && ( RANDOM_LONG( 0, 100 ) <= default_chat_percent ) )
+   {
+      int attack_index;
+      char msg[120];
+      int recent_count;
+      bool used;
+      int i;
+
+      recent_count = 0;
+      while (recent_count < 5)
+      {
+                attack_index = RANDOM_LONG(0, attack_count-1);
+
+      used = FALSE;
+
+      for (i=0; i < 5; i++)
+      {
+         if (recent_bot_attack[i] == attack_index)
+         used = TRUE;
+      }
+
+      if (used)
+            recent_count++;
+      else
+            break;
+   }
+
+   for (i=4; i > 0; i--)
+      recent_bot_attack[i] = recent_bot_attack[i-1];
+
+      recent_bot_attack[0] = attack_index;
+
+      if (strstr(bot_attack[attack_index], "%s") != NULL)  // is "%s" in attack text?
+       sprintf(msg, bot_attack[attack_index], STRING(pBot->pBotEnemy->v.netname));
+      else
+          sprintf(msg, bot_attack[attack_index]);
+
+      UTIL_HostSay(pEdict, 0, msg);
+}
+
+{Sorry for the mis-alignment}
+Well, this displays everything correctly, but the timing is like, it displays everything every second. Can I use the gpGlobals->time to remove this problem? If so, how can I use it to do it?
+
+--------------------------------------------------
+10/03/01 at 14:24:09  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+from what i understand, you keep getting to many messages when a bot sees an enemy. 
+
+You could put this code when the bot just encountered the enemy (move code into the bot_combat.cpp, at pNewEnemy stuff). Or, you could add a timer, so the bot does repeat saying taunts, but not every 2 secs, but at a random time.
+
+Since this part is called every frame , the percent of 'chat' is not really secure to use. Like, when you have 70fps you have
+
+70xchance of % to say a chat sentence
+
+while you probably want the bot to think about chatting only once a second.
+
+So:
+- Try adding a timer
+or:
+- move code into bot_combat.cpp
+
+depends on what you want. I hope this helps a bit :)
+
+--------------------------------------------------
+10/03/01 at 14:46:00  Reply by: laextr (laextr@icqmail.com)
+--------------------------------------------------
+I suppose that there could be an easier way, but I could add timer.h and use the clock func. to find the amount of "clicks" since the process started.
+
+Do you think that it might work?
+
+--------------------------------------------------
+10/04/01 at 07:20:36  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+for the HPB Bot, or Half-Life you do not need to do a timer using ticks or something.
+
+Simply do this:
+
+-> add a var (float) timer in the bot_t structure
+-> set this in SpawnInit (IMPORTANT , else it will crash)
+-> now check for every second
+-> when one second passed, reset timer again after your function
+
+so its in general
+pBot->f_taunt_timer;
+reset it with:
+pBot->f_taunt_timer = gpGlobals->time;
+
+Check for 1 second:
+if (pBot->f_taunt_timer + 1.0 < gpGlobals->time)
+{
+
+   // Do here your stuff
+
+   // And reset timer 
+   pBot->f_taunt_timer = gpGlobals->time;
+}
+
+Be sure this if block is in your bot_think
+
+--------------------------------------------------
+10/04/01 at 14:01:59  Reply by: laextr (laextr@icqmail.com)
+--------------------------------------------------
+B.T.W. how does the gpGlobals->time work? Well, I know how it workds but when does it start counting?
+
+--------------------------------------------------
+10/04/01 at 14:54:03  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+gpGlobals->time is reset to 0.0 when a map loads.  Everytime a new map loads, the time is reset to 0.0 seconds.
+
+botman
+
+--------------------------------------------------
+10/05/01 at 15:27:31  Reply by: laextr (laextr@icqmail.com)
+--------------------------------------------------
+I've inserted the code like you said, the bots didn't even chat! Then I tried to move it to botthink, still nothing, then I tried a few other things, like chainging the time of the gpGlobals->time value, still nothing! 
+
+Man, I just hate when it happens!
+
+Thanks again guys!
+
+
+--------------------------------------------------
+10/06/01 at 13:00:40  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+
+QUOTE:
+I've inserted the code like you said, the bots didn't even chat! Then I tried to move it to botthink, still nothing, then I tried a few other things, like chainging the time of the gpGlobals->time value, still nothing! 
+
+Man, I just hate when it happens!
+
+Thanks again guys!
+
+
+
+
+
+Ok, i have copied your code from the forum, and pasted here and added some code to it which COULD work. Be sure you add the new variable f_chat_time into your bot_t and let it be initialized in your SpawnInit()!
+
+// New code:
+if (pBot->f_chat_time + 10 < gpGlobals->time)
+{ // New bracket
+
+if (( pBot->pBotEnemy != NULL ) && ( RANDOM_LONG( 0, 100 ) <= default_chat_percent ) ) 
+  { 
+     int attack_index; 
+     char msg[120]; 
+     int recent_count; 
+     bool used; 
+     int i; 
+
+     recent_count = 0; 
+     while (recent_count < 5) 
+     { 
+              attack_index = RANDOM_LONG(0, attack_count-1); 
+
+     used = FALSE; 
+
+     for (i=0; i < 5; i++) 
+     { 
+        if (recent_bot_attack[i] == attack_index) 
+        used = TRUE; 
+     } 
+
+     if (used) 
+           recent_count++; 
+     else 
+           break; 
+  } 
+
+  for (i=4; i > 0; i--) 
+     recent_bot_attack[i] = recent_bot_attack[i-1]; 
+
+     recent_bot_attack[0] = attack_index; 
+
+     if (strstr(bot_attack[attack_index], "%s") != NULL)  // is "%s" in attack text? 
+      sprintf(msg, bot_attack[attack_index], STRING(pBot->pBotEnemy->v.netname)); 
+     else 
+         sprintf(msg, bot_attack[attack_index]); 
+
+     UTIL_HostSay(pEdict, 0, msg); 
+
+// NEW CODE: Bot said something, reset timer
+pBot->f_chat_time = gpGlobals->time;
+} 
+
+
+} // New close bracked
+
+
+
+What it does:
+
+Simple: When it has not said a thing for 10 seconds, then it will go into your routine as usual. When it said something it resetted the timer so the bot has to wait 10 more seconds to say something. You can change this '10' into any number of second you want.
+
+Hopefully this helps
+
+
+--------------------------------------------------
+10/06/01 at 15:10:53  Reply by: laextr (laextr@icqmail.com)
+--------------------------------------------------
+Thanks! I'll post another reply if it doesn't work.
+
+--------------------------------------------------
+10/06/01 at 15:10:55  Reply by: laextr (laextr@icqmail.com)
+--------------------------------------------------
+Thanks! I'll post another reply if it doesn't work.
+

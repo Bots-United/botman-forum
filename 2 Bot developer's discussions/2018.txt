@@ -1,0 +1,90 @@
+--------------------------------------------------
+Subject: "memory dump"?
+--------------------------------------------------
+07/22/01 at 13:41:29  Posted by: noskill (ownz0r@hotmail.com)
+--------------------------------------------------
+What is this.  Botman told someone to do this to get PrivateData, but im not sure what he means.  How would i extract the loaction of the variable that controls # of TKs if i know how many times someone has TKed(via death messages)?
+
+--------------------------------------------------
+07/22/01 at 14:52:40  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+Private Data as you can see in edict_t is a void function variable "pvPrivateData", I think!!!
+
+QUOTE:
+<b>botman:</b>
+It is a pointer to void (i.e. it doesn't point to anything specific except to some address in memory).
+
+Just do a memory dump starting at that address for some number of bytes. 
+
+
+
+
+IMHO It's meant to update the DLL of variable changes i think, so it doesn't return anything and is used entirley for an output in my opinion...
+
+The comment give to it is "Alloced and freed by engine, used by DLLs" although I don't know exactly what it means!!! :)
+
+However here is a particualr use of it in the client.cpp of the SDK
+
+code:
+
+
+// Is the client spawned yet?
+      if ( !pEntity->pvPrivateData )
+            return;
+
+
+
+
+so its actually in pEdict->pvPrivatedata and not in entity variables entvars_t !
+
+[modified on 07/22/01 at 14:52:40]
+--------------------------------------------------
+07/22/01 at 17:47:50  Reply by: noskill (ownz0r@hotmail.com)
+--------------------------------------------------
+umm, i know, im asking how to find a variable that is in pvPrivateData
+
+--------------------------------------------------
+07/23/01 at 03:16:36  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+you need to find the memory location it is at, using &variablename I believe in C im not sure, then youll have to somehow get the data in the next few memory locations after that somehow :-/
+
+--------------------------------------------------
+07/23/01 at 04:43:41  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+The pvPrivateData points the the C++ class that was allocated by the engine when an entity is created.  The only person that knows what the member variables are in this C++ class is the person that wrote the source code to the MOD.  Since you don't have the source code to the MOD, you can't find out what the member variables are (unless the MOD author is willing to e-mail you the .h files used by the MOD).
+
+What you want to do is dump (print out) X number of bytes in memory starting at where pvPrivateData points to.  This will give you a bunch of bytes of data.  Then you want to do something to cause some of this data to change (i.e. kill someone, pick up something, buy something, jump off a roof and hurt yourself, etc.).  Then go dump the same area of memory again to see which bytes changed.  You will probably notice that more than one byte has changed.  Your next task is to figure out which of these bytes correspond to the item that you are trying to monitor.  After much trial and error you should be able to identify which bytes of the private data point to specific member variables in that class.
+
+There's no other way to do this (other than e-mailing the MOD author and getting the .h files).
+
+botman
+
+--------------------------------------------------
+07/23/01 at 09:24:41  Reply by: noskill (ownz0r@hotmail.com)
+--------------------------------------------------
+ok, if i were to get the source to his CBasePlayer class, how would i do it then.  I have helped the author with some bugs and i dont think that if he just gave me the player class that it would be a big deal.
+
+And if i cant get it, how do i do it?
+would this be correct:
+ofstream o("firearms/msgs.txt");
+void *p=pEntity->pvPrivateData;
+for(int i=0;i<(not sure about this);i++;)
+{
+   o<<*p;
+   p++;
+}
+
+Im not used to doing stuff with pointer arithmetic, so im not sure if my method is correct.
+
+--------------------------------------------------
+07/24/01 at 05:28:49  Reply by: daRope (fzschocke@web.de)
+--------------------------------------------------
+Just a second, is this pointer what I think it might be? A pointer to the _private_data_ of an instance of a class?
+
+--------------------------------------------------
+07/24/01 at 06:48:45  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+Yes, it is a pointer to the C++ class's member variables as they would be laid out in memory by the C++ compiler.
+
+botman
+

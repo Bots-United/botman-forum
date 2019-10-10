@@ -1,0 +1,69 @@
+--------------------------------------------------
+Subject: question to bot coders using waypoint hashtables
+--------------------------------------------------
+10/23/03 at 04:22:51  Posted by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Hi all,
+
+Was wondering, those of you who use a waypoint/navmesh hashtable, I wanted to make a sorta poll to know :
+- How many buckets do you use ? (if dynamic number, give an average)
+- How many waypoints/walkfaces in these buckets in average ?
+
+Me: ~15 parallels * ~15 meridians = about 15 * 15 buckets, with 5 or 6 walkfaces in average in each (but same walkfaces can be found in different buckets)
+
+
+[modified on 10/23/03 at 04:22:51]
+--------------------------------------------------
+10/23/03 at 10:16:36  Reply by: Cheesemonster!!! (cheeseh(at)rcbot(dot)net)
+--------------------------------------------------
+okay I actually do this, but I dont sotre the waypoints in a hash table because I will find it hard to insert waypoints etc, since I'd need to re-write a lot. Instead I hold a seperate hash table which stores which waypoint indexes are stored in whatever area in the hash table.
+
+I store them in a 32x32 matrix
+
+giving me a (8192/32) = 256 squared bucket
+
+The reson for this is I am finsing the right bucket through x and y axis of the waypoint.
+
+Good enough since it fits it's a decent range, to get nearest wpt etc though you need to search the buckets surrounding it too, I know youshould probably know that since you did that with your BSP thing ;) But you can also tidy it up by using two for loops instead of if statements everywhere hehe.
+
+I know this might not or might help you a bit since you are doing navmesh's, im just doing waypoint indexes.
+
+I use a class for it, which holds.
+
+#define MAX_WPT_LOCATIONS 32
+
+dataStack<int> m_iLocations[MAX_WPT_LOCATIONS][MAX_WPT_LOCATIONS];
+
+(dataStack being my own stack type)
+
+I find the bucket position similarly like your BSP hash-table (Type thing ;))
+
+      int i = abs((int)((int)(fOrigin[0] + 4096.0) / 256));
+      int j = abs((int)((int)(fOrigin[1] + 4096.0) / 256));
+
+need to add 4096 to it as origins range from -4096 to 4096, i.e. make it 0 to 8192...
+
+that help a little? :P
+
+
+Oh, how many on average: That depends on the amount of waypoints in a particular area and depends on the map of course becuase it depens on X,Y Co-ords
+
+[modified on 10/23/03 at 10:16:36]
+--------------------------------------------------
+10/23/03 at 13:28:44  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+I also did an experimental bot project with 32x32 'buckets' as cheesemonster describes.
+
+Finding the bucket any entity/player is in is not hard as you can 'translate' the origin into your matrix. 
+
+I never really worked it out due lack of time and interest. It also would be much easier to stick to waypoints.
+
+--------------------------------------------------
+10/23/03 at 13:50:00  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Yes Cheesy, I see we've had pretty much the same idea, that's exactly what I do with my parallels & meridians. I have a global list of walkfaces in the form of an array, and I have *also* the map.topology[MAX_MAP_PARALLELS][MAX_MAP_MERIDIANS] array, which holds pointers to the actual faces in the global walkfaces array.
+My buckets are squares that range from 200 (minimum) to 8192/MAX_MAP_PARALLELS (maximum) also. We're using much the same thing, except that you fill it with waypoints, and I fill it with walkfaces :P
+
+Good to know that, I'm in the average then. Anyone else ?
+
+

@@ -1,0 +1,294 @@
+--------------------------------------------------
+Subject: I need your help
+--------------------------------------------------
+03/19/02 at 09:17:29  Posted by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+Since I ain't got no audio stuff to test HL's voice system, I need one's help.
+
+I would like to know which networks packets are exchanged between the server and a client when a client 'talks'.
+
+I want to know this to make the little yellow loudspeaker appear over the head of my bots when they emit a sound.
+
+Could someone send me a botman's "bot.txt-style" log ? Just turn debug_engine on with your bot and say hello to the microphone...
+
+Thanks for the one who'll do it for me !
+
+
+P.S. Or even better, if you know how to make this loudspeaker appear, I'll take all hints!
+
+--------------------------------------------------
+03/19/02 at 11:21:01  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+I don't believe that the server DLL gets any kind of notification when a player speaks.  These network packets are internal between the client and the Half-Life engine (much like the custom spray logo packets).  The server DLL doesn't have access to them.
+
+There is a function on the client (in cdll_int.cpp) that will get called by the engine when a client begins speaking...
+code:
+/*
+==========================
+HUD_VoiceStatus
+
+Called when a player starts or stops talking.
+==========================
+*/
+
+void DLLEXPORT HUD_VoiceStatus(int entindex, qboolean bTalking)
+{
+      GetClientVoiceMgr()->UpdateSpeakerStatus(entindex, bTalking);
+}
+
+...but again, this is only on the client (not the server).  Since bots are server side add-ons they will not be able to determine when a player is speaking and when they are not speaking.
+
+botman
+
+--------------------------------------------------
+03/19/02 at 14:07:32  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+Thanks for the reply, botman. Okay, I'll do it the hard way then.
+
+BTW, how can I display a .tga sprite somewhere in a map ?
+
+
+--------------------------------------------------
+03/19/02 at 14:20:55  Reply by: CountFloyd (countfloyd@botepidemic.com)
+--------------------------------------------------
+If the Voice Icon is a Sprite wouldn't it be possible to check for the creation of it, let's say by comparing the name ?
+Sorry I don't know about the tga sprite.  
+
+--------------------------------------------------
+03/19/02 at 14:50:46  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+"how can I display a .tga sprite somewhere in a map?"
+
+I'm not sure there is such a thing as a .tga sprite.  Sprites in Half-Life are .spr files.  You need to run SprWiz (from Wavelength) or a similar tool to take bitmap images (usually .bmp file format) and convert them to Half-Life sprite file format.
+
+There are many examples of using sprites in the Half-Life SDK.  Just search the SDK source code files for "sprite" and you'll see them used all over the place.
+
+botman
+
+--------------------------------------------------
+03/19/02 at 17:21:12  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+QUOTE:
+If the Voice Icon is a Sprite wouldn't it be possible to check for the creation of it, let's say by comparing the name ?
+
+
+
+No, no, no, you didn't understand what I want.
+I don't want to monitor voice usage by clients, I want to DISPLAY that small loudspeaker icon over the head of my bots when I make them emit a sound. Currently they emit wav sound samples but I'd like to FAKE them sending voice messages.
+
+Hope you understand...
+
+
+--------------------------------------------------
+03/19/02 at 17:36:13  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+QUOTE:
+I'm not sure there is such a thing as a .tga sprite.
+
+
+Yes, TGA sprites exist. Look in gfx/vgui/icntlk_*.tga for HL-voice-related sprites.
+
+QUOTE:
+Sprites in Half-Life are .spr files.  You need to run SprWiz (from Wavelength)
+
+
+such a tool exist in the full SDK...
+
+QUOTE:
+There are many examples of using sprites in the Half-Life SDK.  Just search the SDK source code files for "sprite" and you'll see them used all over the place.
+
+
+I already saw that, but they all deal with HUD sprites (like the radar, the weapon list, etc.) I want to display that tiny loudspeaker over my bots, just like it is done when you hear people through the HLvoice over the internet. That means, a sprite that will slide on the screen following the player's movement, and that will grow/shrink depending how far the bot will be. Not that fixed/static HUD stuff at all.
+
+
+--------------------------------------------------
+03/20/02 at 04:19:51  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Some sprites are not HUD sprites.  For example. the bullsquid in single player shoots acid at you using a sprite.  Do something similar to that.
+
+botman
+
+--------------------------------------------------
+03/20/02 at 06:23:51  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+Might I have missed that ? Possible...
+Thanks, I'll have a look at it.
+
+
+--------------------------------------------------
+03/26/02 at 00:32:45  Reply by: CountFloyd (countfloyd@botepidemic.com)
+--------------------------------------------------
+Putting a sprite over their head is quite straightforward if you already precached the sprite it's a TE_PLAYERATTACHMENT. Here's a short snippet of code which does the radio icon stuff:
+code:
+
+MESSAGE_BEGIN ( MSG_ONE, SVC_TEMPENTITY, NULL, pPlayer->pev );
+WRITE_BYTE( TE_PLAYERATTACHMENT );
+WRITE_BYTE(  ENTINDEX( edict ) )  );            // byte      (entity index of player)
+WRITE_COORD( 35 );                                          // coord (vertical offset) ( attachment origin.z = player origin.z + vertical offset)
+WRITE_SHORT( g_sModelIndexRadio );                  // short (model index) of tempent
+WRITE_SHORT( 15 );                                          // short (life * 10 ) e.g. 40 = 4 seconds
+MESSAGE_END();
+
+
+
+[modified on 03/26/02 at 00:32:45]
+--------------------------------------------------
+03/26/02 at 02:57:36  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+TE_PLAYERATTACHMENT!! Here's the answer! Thanks Count Floyd but tell me, where did you find it ?
+
+
+
+--------------------------------------------------
+03/26/02 at 11:13:52  Reply by: theimann (killaruna@botepidemic.com)
+--------------------------------------------------
+In common/const.h you can find all temporary entity messages to the engine. Among them there's this one:
+
+#define TE_PLAYERATTACHMENT                  124 // attaches a TENT to a player (this is a high-priority tent)
+// byte (entity index of player)
+// coord (vertical offset) ( attachment origin.z = player origin.z + vertical offset )
+// short (model index)
+// short (life * 10 );
+
+But there are some pretty useful other messages as well that you can use for displaying waypoints, paths or whatever you want...
+
+Tobias
+
+--------------------------------------------------
+03/26/02 at 20:06:13  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+I didn't even suspect the existence of this one. Anyway thank you, it (almost) works now. I can successfully display the speaker
+sprite for each of my bots. The last problem is that it is displayed opaque, e.g. with a black square as the sprite background.
+Do you know a way to get a pointer to this TempEnt's edict_t so I can change the display parameters ?
+
+
+(btw: i'm not sure to display it with the right size. if someone has screenshots with voice-icons appearing over players, i'd like him
+to send them to me... or do you know an URL with pictures where it appears ?)
+
+[modified on 03/26/02 at 20:06:13]
+--------------------------------------------------
+03/27/02 at 04:33:05  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+The last index in the color pallette (index 255) is used to set the color of sprites (if you have a monochrome colored sprite).  Edit the pallette of your image and check what color index 255 is.  If you want the sprite to be partially transparent, set this index to pure blue (r=0, g=0, b=255) and set the areas you want to be transparent to pure blue also.
+
+botman
+
+--------------------------------------------------
+03/27/02 at 23:34:54  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+what tool do you use to edit .spr files ?
+
+
+--------------------------------------------------
+03/28/02 at 02:40:03  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+theres a sprite tool called wally you can download (i think) from www.valve-erc.com... If not , there are definetly other sprite tools there.
+
+--------------------------------------------------
+03/28/02 at 02:42:14  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+Wally can't seem to cope with .spr files! It says: unknown file format...
+
+:-(
+
+--------------------------------------------------
+03/28/02 at 04:19:14  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+You need the Sprite Wizard.  See the news on Wavlength for June 08...
+
+http://www.planethalflife.com/wavelength/2dart/news.html
+
+botman
+
+--------------------------------------------------
+03/29/02 at 14:30:46  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+Hmmm according to the HLVoice.doc from the SDK :
+QUOTE:
+
+CVoiceStatus makes use of several resources for the HUD display if they exist:
+- Sprites/voiceicon.spr : This icon is placed over a player's head when they are speaking.
+- Scripts/voicemodel.txt : This file just contains a number telling how high voiceicon.spr should be above a player's head.
+- gfx/vgui/icntlk_pl.tga : This icon is shown in the lower-right corner of the screen when a player has started speaking and sending data to the server.
+- gfx/vgui/icntlk_sv.tga : This icon is shown in the lower-right corner of the screen when the server confirms that it is receiving the local player's voice data.
+
+
+
+That's just what I want to do, place sprites over player's head when they are talking. I am using the SAME sprite as the real one: sprites/voiceicon.spr.
+
+So WHY when I display my sprite its size is twice too big, and its background is black (and not transparent) ??? Have I missed something ? How can I resize this sprite and toggle its transparency ?
+
+Btw, I tried with sprites I knew to be transparent, and the transparency seems not to work with TE_PLAYERATTACHMENTS. I guess it has to be set somewhere in the tempentity's vars... where ? How ?
+???
+
+[modified on 03/29/02 at 14:30:46]
+--------------------------------------------------
+03/29/02 at 18:26:19  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+Forget about the transparency problem, it was just a palette messup. Btw, botman, it seems you can't set palette index #255 to any color you want for transparency as you said, but only to 0xFF00FF (pink).
+
+I have still problems with sprite resizing... Ideas ? ???
+
+Another question, while I'm here. As I said, I can't test HL voice system, and I would like to know a few things:
+-When a player of a given team speaks, can he be heard by *ALL* players, or only by teammates ?
+-When a player of a given team speaks, does the yellow loudspeaker over his head appears for *ALL* players, or is it only visible by teammates ?
+
+I need to know that for my HL-voice-for-bots emulation system to be complete.
+
+Another thing, if I want to play a sound in game that will be heard by ONLY ONE player, is it the best way to do like this:
+code:
+
+EMIT_SOUND_DYN2 (pPlayer, CHAN_BODY, sound_path, 0.5, 9999, 0, 100);
+
+
+...meaning "emitting the sound at EXACT position of player (so CHAN_BODY), with MAXIMAL attenuation (9999) so only the player will be able to hear it at normal volume".
+
+Have you got better ideas ? :-)
+
+
+[modified on 03/29/02 at 18:26:19]
+--------------------------------------------------
+03/30/02 at 04:47:25  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+"When a player of a given team speaks, can he be heard by *ALL* players, or only by teammates ?"
+
+That depends on the MOD.  The MOD DLL code has control over this.  See these functions in engine\eiface.h...
+
+code:
+// For voice communications, set which clients hear eachother.
+// NOTE: these functions take player entity indices (starting at 1).
+qboolean (*pfnVoice_GetClientListening)(int iReceiver, int iSender);
+qboolean (*pfnVoice_SetClientListening)(int iReceiver, int iSender, qboolean bListen);
+
+
+"When a player of a given team speaks, does the yellow loudspeaker over his head appears for *ALL* players, or is it only visible by teammates ?"
+
+Again, that's MOD depedant and contolled by the MOD DLL code.
+
+"Another thing, if I want to play a sound in game that will be heard by ONLY ONE player"
+
+Use 'CLIENT_COMMAND(pEdict, "play filename.wav\n")' to play a file in the sound directory to a single client.  Using EMIT_SOUND_DYN() can cause the sound to be heard by anyone else near the player you are sending the sound to.  The "play" command only plays it on that one client.
+
+botman
+
+[modified on 03/30/02 at 04:47:25]
+--------------------------------------------------
+03/30/02 at 08:07:36  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+QUOTE:
+Use 'CLIENT_COMMAND(pEdict, "play filename.wav\n")' to play a file in the sound directory to a single client.  Using EMIT_SOUND_DYN() can cause the sound to be heard by anyone else near the player you are sending the sound to.  The "play" command only plays it on that one client.
+
+
+
+Thank You Botman! That's just what I needed... :D
+
+
+
+
+--------------------------------------------------
+03/31/02 at 21:21:25  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+hmm no in fact... I can't set the volume neither change the pitch... I'll go on with my EMIT_SOUND_DYNs with maximal attenuation...
+
+
+

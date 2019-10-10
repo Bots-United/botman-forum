@@ -1,0 +1,70 @@
+--------------------------------------------------
+Subject: crashing on memory allocation ?!
+--------------------------------------------------
+02/18/02 at 04:52:18  Posted by: @$3.1415rin (joebot@botepidemic.com)
+--------------------------------------------------
+code:
+
+NTDLL! 778cb375()
+_heap_alloc_base(unsigned int 4144) line 161
+_heap_alloc_dbg(unsigned int 4096, int 2, const char * 0x0c26a2a8 `string', int 59) line 367 + 9 bytes
+_nh_malloc_dbg(unsigned int 4096, int 0, int 2, const char * 0x0c26a2a8 `string', int 59) line 242 + 21 bytes
+_malloc_dbg(unsigned int 4096, int 2, const char * 0x0c26a2a8 `string', int 59) line 163 + 27 bytes
+_getbuf(_iobuf * 0x0c2739f8) line 59 + 19 bytes
+_filbuf(_iobuf * 0x0c2739f8) line 123 + 9 bytes
+fgetc(_iobuf * 0x0c2739f8) line 44 + 65 bytes
+ProcessBotCfgFile() line 2277 + 12 bytes
+StartFrame() line 1734
+HW! 05160a14()
+HW! 05113331()
+HL! 0040f0b3()
+
+
+
+This is the stack of my bot after it crashed ( it crashes always at the moment :( ). Well, I see that fgetc is called and that some function called afterwards from this function tries to allocate some memory. But why does it crash somewhere in there ? Never had programs crashing on memory allocation, normally one should have quite an amount of virtual memory these days on one's computer, but my task monitor doesn't show anything which looks like a memory leak.
+
+so does anybody know why this happens ?!
+
+thx
+
+--------------------------------------------------
+02/18/02 at 05:54:24  Reply by: Spikeles (spikeles_@hotmail.com)
+--------------------------------------------------
+The only possible thing i can think of is that the file being passed to fgetc ( (_iobuf * 0x0c2739f8) wasn't opened correctly. Otherwise i have no idea...sorry m8.
+
+Try using other file input functions on the same file ptr and see if they crash as well. 
+
+In fact.. try using fgets and reading the entire line instead of one charcter and parsing the buffer for your character. ( probably faster than reding char by char)
+
+--------------------------------------------------
+02/18/02 at 06:33:25  Reply by: @$3.1415rin (joebot@botepidemic.com)
+--------------------------------------------------
+well, that fgetc is one of the few lines that are left over from botman's template code :)
+
+If I comment all that stuff out I get a similar crash somewhere else ... here when i add a bot :
+
+code:
+
+NTDLL! 778cb9b1()
+NTDLL! 778cbe27()
+NTDLL! 778cbd6c()
+JOEBOT! _heap_alloc + 75 bytes
+JOEBOT! _nh_malloc + 16 bytes
+JOEBOT! operator new(unsigned int) + 11 bytes
+BotCreate(edict_s * 0x0c190cee, const char * 0x01687d2c, const char * 0x05348b90, const char * 0x05348b90, const char * 0x05348b90) line 270 + 10 bytes
+bc_addbot(edict_s * 0x01687d2c, int 1, const char * 0x05348b90, const char * 0x05348b90, const char * 0x05348b90, const char * 0x05348b90) line 16
+CCommands::Exec(CCommands * const 0x00910091, edict_s * 0x0c19880f, int 23625004, const char * 0x00000001, const char * 0x01579778, const char * 0x05348b90, const char * 0x05348b90, const char * 0x05348b90) line 102 + 37 bytes
+ClientCommand(edict_s * 0x051644d4) line 1116 + 26 bytes
+HW! 051644d4()
+HW! 0515871d()
+
+
+
+it's still always crashing when i want to allocate memory, in this case i wanted to allocate memory for a new instance of the bot class.
+
+[modified on 02/18/02 at 06:33:25]
+--------------------------------------------------
+02/18/02 at 11:33:48  Reply by: @$3.1415rin (joebot@botepidemic.com)
+--------------------------------------------------
+sorry bothering you, these errors were obviously provoqued by allocating a 4 byte to small bit array ... stupid me !
+

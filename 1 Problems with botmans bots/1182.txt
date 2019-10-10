@@ -1,0 +1,333 @@
+--------------------------------------------------
+Subject: adding bots and *_bot.cfg files
+--------------------------------------------------
+02/05/01 at 09:16:19  Posted by: BAStumm (bs@bs-linux.com)
+--------------------------------------------------
+Here's a question.
+
+I use the *_bot.cfg files (ie 2fort_bot.cfg) to add bots to my server. When I first start the server it's always 2fort first. When starting up the server no bots get added to the first map (2fort) but if I changelevel to 2fort right away bots get added. Why don't they get added on the very first map? What can I do to get them added?
+
+Not a huge problem, just more of an inconvenience than anything.
+
+--------------------------------------------------
+02/05/01 at 12:38:54  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+Make sure you don't have a bot.cfg since it won't check for a map specific bot.cfg file on the first map if a bot.cfg file exists (in the tfc folder).  If the tfc\bot.cfg file doesn't exist it should use the map specific bot.cfg file for the first map and each map thereafter.
+
+botman
+
+--------------------------------------------------
+02/05/01 at 12:47:36  Reply by: BAStumm (bs@bs-linux.com)
+--------------------------------------------------
+Your kidding, all i need to do is delete that file. Sheesh, I shoulda asked a while ago. I even tried playing with putting some stuff in the other config files for half life but ended up with a perpetuating thing where the first map had 4 bots, second had 8 etc etc. :o(
+
+--------------------------------------------------
+02/05/01 at 13:53:40  Reply by: BAStumm (bs@bs-linux.com)
+--------------------------------------------------
+# wait for 3 seconds
+pause 3   
+
+Whats that for in the bot.cfg? What does that command do? Do I need that in every map_bot.cfg file?
+
+Does this command set a delay before bots enter server? If so whats the max value? As it stands now it oftens occurs that bots have capped a flag before the internet players can get in the game. Would be nice to delay their joining the server for a couple minutes.
+
+--------------------------------------------------
+02/05/01 at 19:07:50  Reply by: BeaverMon (BJDobson1@aol.com)
+--------------------------------------------------
+That command tells the server how many seconds untill the bots are loaded... I think. Or maybe it's how long till each server command is issued.
+
+--------------------------------------------------
+02/06/01 at 04:50:13  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+Yes, the "pause" command will wait X number of seconds before executing other commands in the bot.cfg (or map specific bot.cfg file).  There is no maximum limit to the "pause" command.
+
+If you wanted to use it to wait 30 seconds before adding bots to a server you would do this in the bot.cfg or map specific bot.cfg file...
+
+pause 30
+addbot
+addbot
+addbot
+addbot
+addbot
+addbot
+
+botman  <-- that's a sig, not a bot command!
+
+--------------------------------------------------
+02/06/01 at 10:44:12  Reply by: BAStumm (bs@bs-linux.com)
+--------------------------------------------------
+
+QUOTE:
+
+botman  <-- that's a sig, not a bot command!
+
+
+
+
+Phew, good thing you said that. ;)
+
+--------------------------------------------------
+02/20/01 at 11:10:12  Reply by: BAStumm (bs@bs-linux.com)
+--------------------------------------------------
+I finally got round to testing this and it isn't working. Deleted the bot.cfg file but no go. Any idea what I am doing wrong?
+
+I deleted the file /hlds_l/tfc/bot.cfg
+
+--------------------------------------------------
+02/20/01 at 13:39:08  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+You deleted the bot.cfg file in the TFC directory and have a tfc\maps\2fort_bot.cfg file with "addbot" commands in it (or max_bots with a non-zero parameter), correct?
+
+When the server starts up do you get any output saying "Executing bot.cfg" or "Executing 2fort_bot.cfg"?  You should be getting at least one of these if the bot.cfg or map specific bot.cfg file exists.
+
+botman
+
+--------------------------------------------------
+02/21/01 at 09:26:02  Reply by: BAStumm (bs@bs-linux.com)
+--------------------------------------------------
+I removed the bot.cfg file from hlds_l/tfc and have map specific cfg file for all maps in /hlds_l/tfc/maps (ie 2fort_bot.cfg). 
+
+I'm not finding any bot.cfg files loading in my logs but I know they are. The reason I know is the bots have different names/classes in each map and they are joining the game as name/class I assign in the mapspecific_bot.cfg files. 
+
+Where in the logs should I look. In hlds_l.log I can find loading waypoints but not bot configs. Using pico I did a search too and it didn't find any bot.cfg files loading for any map. What exactly does it say when it loads the config file? If I knew the exact wording of that log line I might be able to do a better search. I also looked through a few of the map specific log files, ie L0220001.log, that are found in /hlds_l/tfc/logs
+
+This is strange. How do the bots know who to be if the cfg file isn't loading? 
+
+--------------------------------------------------
+02/22/01 at 05:18:11  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+I ran hlds_l and redirected the output to a file.  Here's the hlds_l command I'm using...
+
+./hlds_run -dev -game tfc +maxplayers 16 +map 2fort -nomaster +sv_lan 1 >tfc.txt
+
+I'm on a LAN hence the "nomaster" and "sv_lan".  Here's the output from the tfc.txt file...
+code:
+Host_Init
+Added packfile /usr/hlds_l/valve/pak0.pak (996 files)
+Added packfile /usr/hlds_l/tfc/pak0.pak (277 files)
+Protocol version 43
+Exe version 3.1.0.4
+Exe build: 16:52:23 Oct 23 2000 (1460)
+Auth Server
+PackFile: /usr/hlds_l/tfc/pak0.pak : valve.rc
+execing valve.rc
+couldn't exec language.cfg
+execing autoexec.cfg
+execing skill.cfg
+
+Adding:  tfc/dlls/HPB_bot_i486.so
+Dll loaded for mod Team Fortress Classic
+Server IP address xxx.xxx.xxx.xxx:27015
+Spawn Server 2fort
+Clearing memory
+Using WAD File: /usr/hlds_l/tfc/tfc.wad
+Using WAD File: valve/halflife.wad
+Using WAD File: valve/liquids.wad
+Texture load:  265.5ms
+Building PAS...
+Average leaves visible / audible / total: 76 / 245 / 2289
+loading waypoint file: tfc/maps/2fort.wpt
+loading HPB bot waypoint paths for team 1
+loading HPB bot waypoint paths for team 2
+PackFile: /usr/hlds_l/valve/pak0.pak : sprites/lgtning.spr
+Cvar_Set: variable room_type not found
+PackFile: /usr/hlds_l/tfc/pak0.pak : sound/sentences.txt
+PackFile: /usr/hlds_l/valve/pak0.pak : models/grenade.mdl
+PackFile: /usr/hlds_l/tfc/pak0.pak : models/v_tfc_12gauge.mdl
+PackFile: /usr/hlds_l/valve/pak0.pak : models/p_shotgun.mdl
+PackFile: /usr/hlds_l/valve/pak0.pak : models/shotgunshell.mdl
+
+<...snip a BUNCH of model precaching junk...>
+
+PackFile: /usr/hlds_l/valve/pak0.pak : models/hgibs.mdl
+PackFile: /usr/hlds_l/valve/pak0.pak : models/agibs.mdl
+PackFile: /usr/hlds_l/valve/pak0.pak : sprites/xflare1.spr
+Cvar_Set: variable v_dark not found
+Executing dedicated server config file
+execing server.cfg
+PackFile: /usr/hlds_l/valve/pak0.pak : sprites/flare1.spr
+PackFile: /usr/hlds_l/tfc/pak0.pak : models/flag.mdl
+PackFile: /usr/hlds_l/valve/pak0.pak : models/miniturret.mdl
+PackFile: /usr/hlds_l/tfc/pak0.pak : models/r_armor.mdl
+PackFile: /usr/hlds_l/valve/pak0.pak : models/w_medkit.mdl
+0 entities inhibited
+Executing tfc/maps/2fort_bot.cfg
+PackFile: /usr/hlds_l/valve/pak0.pak : sound/weapons/xbow_hit1.wav
+PackFile: /usr/hlds_l/valve/pak0.pak : sound/weapons/mine_activate.wav
+PackFile: /usr/hlds_l/valve/pak0.pak : sound/common/wpn_hudoff.wav
+
+<...snip some more precaching junk...>
+
+PackFile: /usr/hlds_l/valve/pak0.pak : models/player.mdl
+PackFile: /usr/hlds_l/valve/pak0.pak : models/player.mdl
+16 player server started
+Sys_InitializeGameDLL called twice, skipping second call
+hostname:  Team Fortress 1.5
+version :  43/3.1.0.4 1460
+tcp/ip  :  xxx.xxx.xxx.xxx:27015
+map     :  2fort at: 0 x, 0 y, 0 z
+players: 0 active (16 max)
+
+
+...You can see in the middle where it says "Executing tfc/maps/2fort_bot.cfg".  You should be getting this when your server starts up.
+
+I'm not sure if this stuff gets sent to the log file if you have logging enabled so that might be why you aren't seeing anything.
+
+botman
+
+--------------------------------------------------
+02/22/01 at 08:57:21  Reply by: BAStumm (bs@bs-linux.com)
+--------------------------------------------------
+Well I do have "fullserverinfo" enabled so I thought it might be in one of the logs (hlds_l.log or one of the L02022001.log files) but I guess not. I will have to check it out more. Problem is the server is always active and I get a dozen e-mails if I merely restart the server. If I take it offline for an hour for testing my mailbox might overflow. I'll look into this though and get back to you. Might take a few days to reply.
+
+Thanks for the help.
+
+
+btw, whats the liquid.wad for and why do you have a skill.cfg file?
+
+
+--------------------------------------------------
+02/22/01 at 09:25:04  Reply by: kh138 (kh138@starpower.net)
+--------------------------------------------------
+.wad files are texture files, the liquid has most of the liqiud textures, though i think there may be one or two liqiud textures in the half life wad as well.
+
+--------------------------------------------------
+02/22/01 at 11:10:20  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+I don't actually have a autoexec.cfg or skill.cfg.  The dedicated server tries to execute them whether they exist or not.  Don't ask me what's supposed to go in them.
+
+Like Monkey said, the liquids.wad is required by 2fort (the water under the bridge uses the textures in liquids.wad).  Right after spawning the server ("Spawn Server 2fort") it loads and precaches any .wad files that are required by that particular map.
+
+botman
+
+--------------------------------------------------
+02/22/01 at 12:41:03  Reply by: BAStumm (bs@bs-linux.com)
+--------------------------------------------------
+Ok, I did some testing. I cut and paste your syntax and used to start server. In that case I did get the server to exec the 2fort_bot.cfg file. When I start it the normal way (./hlds_ld tfc &) I do not get the server to exec bot config files. 
+
+In my server manager program (hlds_ld) I use:
+
+args=+exec autoexec.cfg 
+
+In my autoexec.cfg I have the following:
+
+//put log on in here so logging is always on.
+//(don't put it in server/listenserver cfg files)
+//uncomment the following line to enable logging
+fullserverinfo
+log on
+maxplayers 12
+map 2fort
+bind 1 slot1
+bind 2 slot2
+bind 3 slot3
+bind 4 slot4
+bind 5 slot5
+bind 6 slot6
+bind 7 slot7
+bind 8 slot8
+bind 9 slot9
+bind 0 slot10                    
+
+In my 2fort_bot.cfg file I use:
+
+# addbot (team 1 or 2) (class 1 - 9) (name) (skill level 1 best - 5 worst)
+# Team 1 = Blue Team 2 = Red
+# 1=scout 2=sniper 3=soldier 4=Demo  5=medic
+# 6=HWGuy 7=Pyro 8=Spy  9=Engineer
+
+bot_whine_percent 35
+
+addbot 1 6 GrepMaster(SPO) 1
+addbot 2 6 -=Ace=-(SPO) 1
+addbot 1 5 Mozilla(SPO) 1
+addbot 2 5 Botman(SPO) 1        
+
+I am thinking perhaps I could just add to the args +exec 2fort_bot.cfg to correct the problem but I am concerned as to why it doesn't work as is. What is calling this file in the first place?
+
+--------------------------------------------------
+02/22/01 at 14:37:32  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+Is hlds_ld the server manager thing available from...
+
+http://linuxhlds.halflife.org ?
+
+If so, I don't think it is compatable with the HPB bot.  Were you always using hlds_ld or did you just start using it recently?
+
+botman
+
+--------------------------------------------------
+02/23/01 at 09:23:42  Reply by: BAStumm (bs@bs-linux.com)
+--------------------------------------------------
+I have been using hlds_ld since before I got the hpb_bot. I have been using the hpb_bot for a while now, what maybe 6 months ???? Yes its the same program you linked too, maelstrom made it. I think he uses your bots too (he uses bots). Check http://brewpub.dyndns.org:8000 he has tons of stuff running in conjunction on his tfc server. bots, hlds_ld program with all the bells and whistles installed, roger wilco, game server bandwidth monitoring, AEstats, and more. I'll head off now to see if I can get Maelstroms attn somewhere and ask what bots he uses and if he did anything special. Betting he uses yours and lives with the no bots on startup like me. Really thats the only problem I have had with it. Other than one time when upgrading versions of hlds_ld. I found that I must install hlds_ld first then hpb_bot.  
+
+--------------------------------------------------
+02/23/01 at 09:43:54  Reply by: BAStumm (bs@bs-linux.com)
+--------------------------------------------------
+I guess I am assuming Maelstrom uses your bot because he runs a linux server. As far as I know there is only one other tfc bot for linux, the odd_bot - am I correct?
+
+--------------------------------------------------
+02/23/01 at 15:13:31  Reply by: BAStumm (bs@bs-linux.com)
+--------------------------------------------------
+Well I dunno if I will ever hear from Maelstrom. Many moons ago I had a problem with hpb_bot and hlds_ld. You (botman) helped me fix it even though I posted to your board and his. Turned out to be related to the order of install, I have to install hlds_ld first then hpb_bot. I am still waiting for a reply to that problem on his forum. :(
+
+I e-mailed him directly this time, maybe that will get his attn. I just wanna know what bots he uses. Sure look like yours though, the way they say stuff when they die. 
+
+--------------------------------------------------
+02/23/01 at 17:36:06  Reply by: BAStumm (bs@bs-linux.com)
+--------------------------------------------------
+Wanted to add a little here. In a  dynamic.gamespy.com/~botman/yabb/YaBB.pl?board=1&action=display&num=802thread a while back you said:
+
+QUOTE:
+"I am wondering if some of the files that are updated from each program interfere with each other." 
+
+That's why I asked if it worked without hlds_ld.  hlds_ld and HPB bot both probably take over the liblist.gam file and only 1 DLL would be loaded (I'm surprised the bots even worked at all if hlds_ld is installed after the HPB bot). 
+
+Alfred's ADMIN MOD allows you to set up a list of DLL to load instead of just the MOD DLL.  I don't know if hlds_ld has the same feature or not.  If not, you won't be able to run both hlds_ld and HPB bot. 
+
+botman 
+
+
+
+Which got me thinking. I don't think there is a dll for hlds_ld, at least I can't find one anywhere that looks like it goes with that program. 
+
+--------------------------------------------------
+02/24/01 at 05:35:27  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+I've never looked at hlds_ld.  I know that it is an admin tool, but I wasn't sure how it worked (I assumed it was similar to Admin MOD which uses an Add-On DLL like the HPB bot does.
+
+If things run fine using the command line above (hlds_run) but don't work properly using hlds_ld then you'll either have to live with the little problems associated with using both or just use one or the other.  I can't tell you why somebody else's program would interfere with the HPB bot code unless the source code to their application is available for me to look at.
+
+Maelstrom may be having the same problems that you are having with the bots on his server.  I'm not sure there's much else I can do for you.  Sorry.
+
+botman
+
+--------------------------------------------------
+02/24/01 at 14:10:10  Reply by: BAStumm (bs@bs-linux.com)
+--------------------------------------------------
+Maestrom uses HPB_bot too! :)
+
+Here's the e-mail I received:
+
+QUOTE:
+I use HPB bot - seems to work for me. You might try the latest beta
+which includes support for displaying the bot info correctly:
+
+http://brewpub.dyndns.org:8000/hlds_ld.tar.gz
+
+enjoy
+
+
+
+
+Also hlds_ld is open source. 
+
+From here I will try to quiz Maelstrom some more to see if he has that little quirk with the bots not joining til first map switch after starting server. I can live with the problem but if there is a workaround or fix I would like to use it. 
+
+I bet Maelstrom can answer the question, considering his server uses the same add ons as mine.
+
+btw, I do use lastest versions of both hpb_bot and hlds_ld. 
+
+Thanks again for your help botman.
+
+

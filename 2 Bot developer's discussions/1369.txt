@@ -1,0 +1,86 @@
+--------------------------------------------------
+Subject: more compiling errors! can any1 spot them!!!!
+--------------------------------------------------
+03/16/01 at 05:11:05  Posted by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+I keep getting these errors while compiling with borland, I think everything that i know of is ok because i basically copied and pasted and modified many things.
+
+Error E2451 bot_navigate.cpp 327: Undefined symbol 'pEntity' in function BotHead
+TowardWaypoint(bot_t *)
+Error E2285 bot_navigate.cpp 327: Could not find a match for 'UTIL_FindEntityInS
+phere(edict_s *,undefined,float)' in function BotHeadTowardWaypoint(bot_t *)
+*** 2 errors in Compile ***
+
+code:
+bot_navigate.cpp
+
+bool BotHeadTowardWaypoint( bot_t *pBot )
+{  
+   edict_t *pEdict = pBot->pEdict;
+   edict_t *pent = NULL;
+   float radius = 40;
+   char item_name[64];  
+   int i;
+
+   // You could do other stuff here if you needed to.
+
+   // This would probably be a good place to check to see how close to a
+   // the current waypoint the bot is, and if the bot is close enough to
+   // the desired waypoint then call BotFindWaypoint to find the next one.
+ 
+ 
+// find the number index of the nearest waypoint
+
+ i = WaypointFindNearest(pEdict, REACHABLE_RANGE, pBot->bot_team); 
+  
+
+ //If the waypoint is less than max bot dist between wpts then change direction
+
+/*
+ if (waypoints[i].flags & W_FL_INIVEHICLE)
+ { 
+ BotFindVehicleControls(pBot);
+ }
+*/
+
+
+ if ( (waypoints[i].origin - pEdict->v.origin).Length()<BOTWPT_DIST)
+ {
+  if (waypoints[i].flags & W_FL_VEHICLE)
+  {
+         //clear use button flag
+       pBot->b_use_button = FALSE;
+           BotDriveVehicle(pBot); 
+  }
+ }
+ else
+ { 
+   while ((pent = UTIL_FindEntityInSphere( pent, pEntity->v.origin, radius )) != NULL)
+   {
+   strcpy(item_name, STRING(pent->v.classname));
+   if ((strcmp("func_vehicle", item_name) == 0) && (pBot->b_use_button = FALSE))   
+     BotDriveVehicle(pBot);
+    else
+     return FALSE;
+   }
+ }
+}
+
+
+
+
+I'm not sure where im supposed some of these things that i want to string compare the closest entity.
+
+also i think u know what im trying to do with the bot ;)
+
+--------------------------------------------------
+03/16/01 at 05:21:47  Reply by: @$3.1415rin (as3.1415rin@gmx.de)
+--------------------------------------------------
+first u did "edict_t *pEdict = pBot->pEdict;" therefore u cannot use pEntity , u have to use pEdict ( i guess u copied it from somewhere like dll.cpp-clientcommand ) instead of pEntity.
+The other error ... i don't know. Check ur inlcuded files ! probably 
+
+--------------------------------------------------
+03/16/01 at 06:19:30  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+thats ok now, i just had to change pEntity to pEdict and the other error is now eliminated as well :) cheers
+

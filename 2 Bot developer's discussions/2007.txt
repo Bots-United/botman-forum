@@ -1,0 +1,277 @@
+--------------------------------------------------
+Subject: Getting stuck in loops again !!!
+--------------------------------------------------
+07/21/01 at 04:43:27  Posted by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+I'm making CS Buying code, but whenever the bot executes it, CS hangs, i.e. it's stuck in a loop somewhere (If it was a NULL pointer it would crash to desktop) and I know the buying code is the prob becuase I commmented it out and the bot worked ok but obviously didn't attempt to buy anything. If you can help me spot where the bot might get stuck in a loop... Please :-)
+
+code:
+
+void BotBuy( bot_t *pBot)
+{
+
+  int choice = 0;
+  int maxcost = 0;
+  bool found_gun = FALSE;
+  char menu_select1;
+  char menu_select2;
+  int select_index;
+  edict_t *pEdict = pBot->pEdict;
+
+  buy_weapon_t *pSelectBuy = NULL;
+  
+  pSelectBuy = &cs_buy_weapons[0];    
+
+  //Find a weapon to buy
+
+  if(pSelectBuy)
+  {
+
+     select_index = 0;
+
+     while (pSelectBuy[select_index].cost != 0)
+     {
+         // does the bot have enough cash?
+
+         if ((pBot->bot_weapons & (1<<pSelectBuy[select_index].iId)))   // Does the bot already have this weapon?
+         {  
+           select_index++;                                    // Skip to next weapon
+           continue;            
+         }
+         if( pBot->bot_money < pSelectBuy[select_index].cost )             // Can the bot afford this weapon ???
+         {  
+           select_index++;                                    // Skip to next weapon
+           continue;            
+         }
+
+         if ( pSelectBuy[select_index].cost == 0 )             // Does this weapon have a cost ? (i.e. is it valid?)
+         {
+           select_index++;                                    // Skip to next weapon
+           continue;      
+         }
+
+         else if( ( pSelectBuy[select_index].weapon_type == CS_TYPE_ARMOR ) && (pBot->bought_armor = TRUE) )
+         {
+           select_index++;                                    // Skip to next weapon
+           continue;      
+         }
+         else if( (pSelectBuy[select_index].weapon_type == CS_TYPE_SECONDARY ) && (pBot->bought_sec_gun = TRUE) )
+         {
+           select_index++;                                    // Skip to next weapon
+           continue;      
+         }
+         else if( (pSelectBuy[select_index].weapon_type == CS_TYPE_PRIMARY ) && (pBot->bought_prim_gun = TRUE) )
+         {
+           select_index++;                                    // Skip to next weapon
+           continue;      
+         }
+
+         if( map_goal == MAP_AS )
+         {
+           if( pBot->cs_team == 1 )                        // If CT
+           {
+           if( !pSelectBuy[select_index].CT_can_buy_on_vip_map ) // If CT's cant buy this weapon on AS Map
+             {   
+               select_index++;                              // Skip to next weapon
+               continue;            
+             }
+           }
+           else if( pBot->cs_team == 0 )                        // Must be terrorist
+           {
+             if( !pSelectBuy[select_index].T_can_buy_on_vip_map ) // If T's cant buy this weapon on AS Map
+             {   
+               select_index++;                              // Skip to next weapon
+               continue;            
+             }
+           }
+           else
+          continue;                                           // Must be VIP, VIP can't buying anything!
+         }                                                       // Must be a CS, DE or ES Map
+         else                                     
+         {
+         if( pBot->cs_team == 1 )                              // If CT
+           {
+           if( !pSelectBuy[select_index].CT_can_buy )       // If CT's cant buy this weapon on AS Map
+             {   
+               select_index++;                              // Skip to next weapon
+               continue;            
+             }
+           }
+           else                                                // Must be terrorist
+           {
+             if( !pSelectBuy[select_index].T_can_buy )        // If T's cant buy this weapon on AS Map
+             {   
+               select_index++;                              // Skip to next weapon
+               continue;
+             }
+           }
+         }
+
+         // Terminator found, find best weapon to buy i.e. most expensive weapon !!!
+
+         if ( pSelectBuy[select_index].cost > maxcost )
+         {
+           maxcost = pSelectBuy[select_index].cost;
+           choice = select_index;
+           found_gun = TRUE;
+         }
+    }
+
+    if( found_gun )
+    {
+      if (pSelectBuy[choice].menu_category == 1)
+        strcpy(menu_select1, "1");
+      else if (pSelectBuy[choice].menu_category == 2)
+        strcpy(menu_select1, "2");
+      else if (pSelectBuy[choice].menu_category == 3)
+        strcpy(menu_select1, "3");
+      else if (pSelectBuy[choice].menu_category == 4)
+        strcpy(menu_select1, "4");
+      else if (pSelectBuy[choice].menu_category == 5) // Convert these integers to char
+        strcpy(menu_select1, "5");
+      else if (pSelectBuy[choice].menu_category == 6)
+        strcpy(menu_select1, "6");
+      else if (pSelectBuy[choice].menu_category == 7)
+        strcpy(menu_select1, "7");
+      else if (pSelectBuy[choice].menu_category == 8)
+        strcpy(menu_select1, "8");
+      else
+        return;                               // Something strange happened here so we can't buy anything!
+
+      if (pSelectBuy[choice].menu_selection == 1)
+        strcpy(menu_select2, "1");
+      else if (pSelectBuy[choice].menu_selection == 2)
+        strcpy(menu_select2, "2");
+      else if (pSelectBuy[choice].menu_selection == 3)
+        strcpy(menu_select2, "3");
+      else if (pSelectBuy[choice].menu_selection == 4)
+        strcpy(menu_select2, "4");
+      else if (pSelectBuy[choice].menu_selection == 5)
+        strcpy(menu_select2, "5");
+      else if (pSelectBuy[choice].menu_selection == 6)
+        strcpy(menu_select2, "6");
+      else if (pSelectBuy[choice].menu_selection == 7)
+        strcpy(menu_select2, "7");
+      else if (pSelectBuy[choice].menu_selection == 8)
+        strcpy(menu_select2, "8");
+      else
+        return;                               // Something strange happened here so we can't buy anything!
+
+
+
+
+       FakeClientCommand(pEdict, "buy", NULL, NULL);
+       FakeClientCommand(pEdict, "menuselect", menu_select1, NULL);
+
+       if(pSelectBuy[choice].menu_selection != 0)
+         FakeClientCommand(pEdict, "menuselect", menu_select2, NULL);
+
+       if( pSelectBuy[choice].weapon_type == CS_TYPE_GRENADE)
+       {
+         pBot->bought_gren = TRUE;
+       }
+       else if( pSelectBuy[choice].weapon_type == CS_TYPE_ARMOR )
+       {
+         pBot->bought_armor = TRUE;
+       }
+       else if( (pSelectBuy[choice].iId == DEFUSE_KIT) )
+       {  
+         pBot->bot_has_defusekit = TRUE;
+       }
+       else if( pSelectBuy[choice].weapon_type == CS_TYPE_SECONDARY )
+       {
+         pBot->bought_sec_gun = TRUE;
+         FakeClientCommand(pEdict, "buy", NULL, NULL);
+         FakeClientCommand(pEdict, "menuselect", "7", NULL); // Buy Ammo
+       }
+       else if( pSelectBuy[choice].weapon_type == CS_TYPE_PRIMARY )
+       {
+         pBot->bought_prim_gun = TRUE;
+         FakeClientCommand(pEdict, "buy", NULL, NULL);
+         FakeClientCommand(pEdict, "menuselect", "6", NULL); // Buy Ammo
+       }
+      
+       if( (pBot->bought_sec_gun) || (pBot->bought_prim_gun) || (pBot->bot_money < 75) )
+        pBot->bot_has_bought = TRUE;
+ 
+    }
+  }
+}
+
+
+
+
+--------------------------------------------------
+07/21/01 at 05:13:31  Reply by: @$3.1415rin (as3.1415rin@gmx.de)
+--------------------------------------------------
+hey, did you compile that piece of code ? I think it shouldn't work, cause it's "strcpy(char *,const char *)" and therefore u won't be able write the numbers to a data element which is only char. 
+
+Another thing is, why do u use this here :
+
+code:
+
+if (pSelectBuy[choice].menu_category == 1)
+       strcpy(menu_select1, "1");
+     else if (pSelectBuy[choice].menu_category == 2)
+       strcpy(menu_select1, "2");
+     else if (pSelectBuy[choice].menu_category == 3)
+       strcpy(menu_select1, "3");
+     else if (pSelectBuy[choice].menu_category == 4)
+       strcpy(menu_select1, "4");
+     else if (pSelectBuy[choice].menu_category == 5) // Convert these integers to char
+       strcpy(menu_select1, "5");
+     else if (pSelectBuy[choice].menu_category == 6)
+       strcpy(menu_select1, "6");
+     else if (pSelectBuy[choice].menu_category == 7)
+       strcpy(menu_select1, "7");
+     else if (pSelectBuy[choice].menu_category == 8)
+       strcpy(menu_select1, "8");
+
+
+
+u could just replace it with 
+code:
+
+sprintf(menu_select1,"%i",pSelectBuy[choice].menu_category)
+
+
+
+( when menu_select1 is a char field )
+
+, but i know that botman used something similar somewhere in his template code too. OK, before u use my code u have still to test if it's a correct number, but i think that's a lot shorter.
+
+--------------------------------------------------
+07/21/01 at 08:42:07  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+integers cannot be used as arguments with the FakeClientCommand.
+
+That's why I had to do that, and why botman had to do that!
+
+It has been compiled, it compiled fine! :)
+
+The main thing I gotta work out is why CS hangs when the function is executed, I beilieve the whil loop has something to do with it :(
+
+--------------------------------------------------
+07/22/01 at 01:15:02  Reply by: @$3.1415rin (as3.1415rin@gmx.de)
+--------------------------------------------------
+code:
+
+char menu_select1;
+strcpy(menu_select1, "1"); 
+
+
+
+First of all, my compiler does not want this !
+
+explanation : The argument of strcpy has to be a pointer to an array of chars. If u want toset a char variable to a value u can just do menu_select1 ='5';. strcpy copies a string ( the 2nd parameter) to the destination ( 1. parameter ). A so called sz - string as used here has always a 0 at his end. therefore a string containing a "5" for example has the size : sizeof(char) * 2. That's the other reason why ur code above cannot really be clean when u want to write 2 char into one char variable.
+
+And about not being able to pass integers to fakeclientcommand : that's why i converted the integer to a string by this function called sprintf. u might know printf for the screen, this is just the aequivalent for the memory.
+
+--------------------------------------------------
+07/22/01 at 03:54:49  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+Ah oh yeah!!! I forgot about the single quotes meaning just ONE character. I try that, thanks!
+
+I use the MinG compiler... cos my borland compiler doesn't seem to work anymore :(
+
+[modified on 07/22/01 at 03:54:49]

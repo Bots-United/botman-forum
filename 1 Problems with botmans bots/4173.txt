@@ -1,0 +1,101 @@
+--------------------------------------------------
+Subject: waypoints capital letters linux
+--------------------------------------------------
+02/24/03 at 23:06:20  Posted by: BAStumm (bs@bs-linux.com)
+--------------------------------------------------
+I'm having some issues getting some waypoints to work. The maps giving me headaches are:
+
+cablesTFC
+Vidar2
+Torch2
+
+Each of these maps has caps in the name. Is there an issue with linux and .bsp files with caps? No other maps have this prob. Lets look at Vidar2 for example. Here is my maps directory for Vidars files.
+
+[bs@BS-Game maps]$ ls Vidar*
+Vidar2.bsp          
+Vidar2.HPB_wpt     
+Vidar2.res  
+Vidar2.wpt
+Vidar2_HPB_bot.cfg  
+Vidar2_readme.txt  
+Vidar2.txt
+
+But it won't create wp1 and wp2 files...
+
+
+
+
+
+--------------------------------------------------
+02/25/03 at 06:12:54  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+I'm not sure if the Half-Life engine converts the map names to lowercase internally, but you will need to use whatever format the engine uses internally for the map name (i.e. it might be "vidar" even if the map filename is "Vidar").
+
+I'm not sure if the Win32 server uses the exact same upper/lower case for the map name as the Linux server, but you can try a couple of things.
+
+1) Try loading the map on your Win32 machine (using a listen server), add 1 waypoint and do a "waypoint save".  Look in the maps folder to see what the .wpt filename is ("Vidar.wpt" or "vidar.wpt").  This will tell you whether the map name gets converted to lower case internally by the engine (since the bot code asks the engine what the map name is).
+
+2) Load the map up on your Linux server and use 'status' to see what the map name is.  This may or may not show you the internal representation of the map name, but it might show it converted to all lowercase.
+
+My gut feeling is that the engine probably converts all map names to lowercase so that filenames will be easily transported between Win32 (which isn't case sensitive) and Linux (which is case sensitive).
+
+If you haven't tried just storing the .wpt filename as all lowercase (regardless of what the map filename is), I'd definitely try that first.
+
+As a last resort, you could always load the map name in a file editor that handles binary files and change any references of the filename internally in the .bsp file to all lowercase, then save that file using an all lowercase filename.
+
+botman
+
+--------------------------------------------------
+02/25/03 at 08:50:51  Reply by: BAStumm (bs@bs-linux.com)
+--------------------------------------------------
+well I ended up putting the waypoint file on a win machine and ran listen server. I copied the waypoint to vidar2.HPB_wpt and Vidar2.HPB_wpt and ran for a while. When I exited there where new files, vidar2.HPB_wp1 and vidar2.HPB_wp2 so I assume it wants lowercase. So I copied vidar2.* to linux box and still nothing. Bots run around like idiots. But on my win machine they worked fine. 
+
+--------------------------------------------------
+02/25/03 at 09:27:04  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Try renaming the map to "vidar2.bsp" on the Linux box (since I don't think there is anything inside the file with the map name) and see if that works okay.
+
+botman
+
+--------------------------------------------------
+02/25/03 at 09:33:55  Reply by: BAStumm (bs@bs-linux.com)
+--------------------------------------------------
+Here is what logs report as being loaded:
+
+loading waypoint file: tfc/maps/Vidar2.HPB_wpt
+loading waypoint file: tfc/maps/Vidar2.wpt
+
+in this case both of these files existed. When only the HPB_wpt version exists it says:
+
+loading waypoint file: tfc/maps/Vidar2.HPB_wpt
+
+running strings on the .bsp file and greping finds no instances of Vidar, vidar or bsp. Running strings on the .wpt file finds one instance of "vidar2" (no caps). The other map names with capitals have lowercase names in the wpt files too. 
+
+--------------------------------------------------
+02/25/03 at 09:34:56  Reply by: BAStumm (bs@bs-linux.com)
+--------------------------------------------------
+
+QUOTE:
+Try renaming the map to "vidar2.bsp" on the Linux box (since I don't think there is anything inside the file with the map name) and see if that works okay.
+
+botman
+
+
+
+
+I thought vidar2.bsp and Vidar2.bsp were different maps and clients will need to re-download them. And what about the res file... It refers to Vidar2.bsp
+
+--------------------------------------------------
+02/25/03 at 10:02:02  Reply by: BAStumm (bs@bs-linux.com)
+--------------------------------------------------
+scratch that, changing all Vidar2 files to vidar2 works fine. Bots now have waypoints and clients dont have to re-download map.
+
+--------------------------------------------------
+02/25/03 at 10:47:37  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Okay, good.
+
+I know that you can't have both 'Vidar2.bsp' and 'vidar2.bsp' on Win32 systems because the Half-Life engine isn't case sensitive for file names (and Windows explorer won't let you create 'vidar2.bsp' if 'Vidar2.bsp' already exists).
+
+botman
+

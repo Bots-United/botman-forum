@@ -1,0 +1,96 @@
+--------------------------------------------------
+Subject: entity creation keys and pvPrivateData
+--------------------------------------------------
+07/24/01 at 19:54:54  Posted by: PlasticWarrior (tigerstorm023@netscape.net)
+--------------------------------------------------
+I am having the worst time setting keyvalues for entities that i create. Here is my chicken spawning code (this is written for metamod): 
+
+void spawnChicken(edict_t *pPlayer, char* tsc_command) 
+{ 
+float chickenoffsetx; 
+float chickenoffsety; 
+float chickenoffsetz; 
+chickenoffsetx = RANDOM_FLOAT ( 0 , 100 ); 
+chickenoffsety = RANDOM_FLOAT ( 0 , 100 ); 
+chickenoffsetz = RANDOM_FLOAT ( 0 , 50 ); 
+
+edict_t *pEnt = NULL; 
+CBreakable *pEntity = NULL; 
+pEnt = CREATE_NAMED_ENTITY(MAKE_STRING("func_breakable")); 
+ENTITY_SET_KEYVALUE( pEnt, "classname", "func_breakable"); 
+ENTITY_SET_KEYVALUE( pEnt, "model", "*28"); 
+ENTITY_SET_KEYVALUE( pEnt, "explodemagnitude", "150"); 
+ENTITY_SET_KEYVALUE( pEnt, "gibmodel", "models/metalplategibs_green.mdl"); 
+ENTITY_SET_KEYVALUE( pEnt, "material", "2"); 
+ENTITY_SET_KEYVALUE( pEnt, "health", "1"); 
+ENTITY_SET_KEYVALUE( pEnt, "rendercolor", "0 0 0"); 
+ENTITY_SET_KEYVALUE( pEnt, "targetname", "targetb"); 
+ENTITY_SET_KEYVALUE( pEnt, "spawnflags", "1"); 
+
+pEntity = (CBreakable *)GET_PRIVATE(pEnt); 
+SET_MODEL(pEnt, "models/chick.mdl"); 
+pEntity->pev->origin.x = pPlayer->v.origin.x + 40 + chickenoffsetx; 
+pEntity->pev->origin.y = pPlayer->v.origin.y + 40 + chickenoffsety; 
+pEntity->pev->origin.z = pPlayer->v.origin.z + 10 + chickenoffsetz; 
+pEntity->pev->angles.x = pPlayer->v.angles.x; 
+pEntity->pev->angles.y = pPlayer->v.angles.y; 
+pEntity->pev->angles.z = pPlayer->v.angles.z; 
+UTIL_LogPrintf("Player spawned chicken stage zero\n"); 
+pEntity->pev->solid = SOLID_BBOX; 
+pEntity->pev->movetype = MOVETYPE_TOSS; 
+pEntity->pev->takedamage = DAMAGE_AIM; 
+UTIL_LogPrintf("Player spawned chicken stage one half\n"); 
+pEntity->pev->gravity = .25; 
+pEntity->pev->angles.y = 0; 
+pEntity->pev->framerate = 1; 
+UTIL_LogPrintf("Player spawned chicken set variables one\n"); 
+
+pEntity->pev->ltime = gpGlobals->time; 
+pEntity->pev->nextthink = gpGlobals->time; 
+pEntity->pev->frame = 0; 
+pEntity->pev->flags = 0; 
+UTIL_LogPrintf("Player spawned chicken set variables two\n"); 
+
+
+Vector vec(pPlayer->v.origin.x + 40 + chickenoffsetx,pPlayer->v.origin.y + 40 + chickenoffsety, pPlayer->v.origin.z + 10 + chickenoffsetz); 
+Vector vecMax(10,10,10); 
+Vector vecMin(-10,-10,-10); 
+
+SET_ORIGIN(pEnt, vec); 
+SET_SIZE( pEnt, vecMin, vecMax ); 
+} 
+
+
+When i spawn the chickens, they animate alright, and are affected by physics. I can also break them adn clip with them normally untill the round (cs) is over. Then it seems they are reinitialized. However, i cannot set anything that requires pvPrivateData to be moddified or keys to be set (i.e. gibmodel, deadmodel, material, etc) these are the things i'd REALLY REALLY REALLY like to be able to set. If you can see that i'm doing somehting wrong that is keeping the key values from being set i'd really appreciate the help. I have a monitoring routine for KeyValue() which would log the key change when it happens, and i am sure they are net being set.
+
+
+
+--------------------------------------------------
+07/25/01 at 04:08:33  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+See this thread...
+
+http://dynamic.gamespy.com/~botman/yabb/YaBB.pl?board=2&action=display&num=1984
+
+botman
+
+--------------------------------------------------
+07/25/01 at 10:12:51  Reply by: PlasticWarrior (tigerstorm023@netscape.net)
+--------------------------------------------------
+it looks promising, but it just causes invalid page faults... maybe i need to put it somewhere else?
+
+--------------------------------------------------
+07/25/01 at 10:22:38  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+it could be causing a null pointer assignment, check to see if pPlayer is not empty or any other pointers your using in it.
+
+--------------------------------------------------
+07/25/01 at 18:43:09  Reply by: PlasticWarrior (tigerstorm023@netscape.net)
+--------------------------------------------------
+Ok, i'm not sure but i think in metamod i have to use (gpGamedllFuncs->dllapi_table->pfnKeyValue)(pEntity->edict(), &pkvd); instead of the gengfunct's. Unfortunatly, when i do this, neither DisaptchSpawn nor DispatchKeyValue is being called, nor do the entities properties change. help, please?
+
+--------------------------------------------------
+07/26/01 at 13:22:46  Reply by: PlasticWarrior (tigerstorm023@netscape.net)
+--------------------------------------------------
+ok ok i figgured it out
+

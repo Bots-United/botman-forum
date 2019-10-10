@@ -1,0 +1,69 @@
+--------------------------------------------------
+Subject: Need to play sound to 1 client at a time...
+--------------------------------------------------
+06/12/01 at 11:43:51  Posted by: I_Luv_Bots! (robotix2000@hotmail.com)
+--------------------------------------------------
+... and EMIT_SOUND_DYN2 is not fitting the bill so far.  I've tried CHAN_STATIC, CHAN_AUTO, CHAN_... everything and the sound always is overheard by other clients.  The flags don't seem to change whether others can hear too.  I thought about trying EMIT_AMBIENT_SOUND where there are flags to set the radius, but it wants an origin, and i've got the feeling that when i set the origin and someone's moving they will basically leave the sound behind them playing.  Anyone have any ideas how to make a sound play to a client (like when the flag is capped, or time remaining in dustbowl) and have only that client hear it?  Starting to think this is a clientside function only.  TIA
+
+
+--------------------------------------------------
+06/12/01 at 13:19:33  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+I believe that CHAN_VOICE is the same channel used by the HEV suit when you get it.  You are the only one that hears messages sent to the CHAN_VOICE audio channel.
+
+botman
+
+--------------------------------------------------
+06/12/01 at 14:56:11  Reply by: I_Luv_Bots! (robotix2000@hotmail.com)
+--------------------------------------------------
+I thought that as well, but guess what... doesn't work =(  Certain other channels get overridden when used so I resorted to AUTO which I assume just picks an available channel and uses it and if that channel is needed it then switches the AUTO samples to another channel, etc.  But, CHAN_VOICE is still overheard by other clients.  Any other ideas or functions to try?  I've tried EMIT_AMBIENT_SOUND and it too is overheard by other clients.  Looking at the other functions dealing with sound like those in the sound.cpp just end up using EMIT_SOUND_DYN which itself ends up using EMIT_SOUND_DYN2.  I tried tracing the flags too to see if any flags were being messed with and only one function dealing with tripmines set the flag to 1. When I tried that you could still overhear it.  So I'm at a loss at this point as to how to prevent others from hearing sounds using serverside function.  Only way I can think of is to use the standard sound functions of windows from within the clientdll which of course defeats the whole purpose because I don't want people to have to DL and install a clientdll just for this...
+
+--------------------------------------------------
+06/13/01 at 05:12:13  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+Okay, I went back and looked at the code.  When you get the HEV suit, it uses EMIT_SOUND_SUIT() to player the suit login stuff.  EMIT_SOUND_SUIT() is found in the sound.cpp file.  It uses CHAN_STATIC.  I'm pretty sure that the suit sound is only heard by the person that picks up the suit and not by anyone else.
+
+botman
+
+--------------------------------------------------
+06/16/01 at 13:26:31  Reply by: I_Luv_Bots! (robotix2000@hotmail.com)
+--------------------------------------------------
+EMIT_SOUND_SUIT still goes via EMIT_SOUND_DYN which then uses EMIT_SOUND_DYN2 which I tried every combination for and still is audible to other clients within a radius.  You know the jumpsuit in bounce?  I had thought that when you pick that up (during my deathmatch days) that it played to only you, but then I had a friend go pick it up while I stood next to it and I could STILL hear the womans voice.  Also, just so I could try it, is how would I add the EMIT_SOUND_SUIT to the linkfunc.cpp without having to include every single header file in the compile that sound.cpp wants?  I started to add sound.cpp but then it wants this header and that header and.... ugh.  And THEN i had to go and turn off functions in the linkfunc.cpp because they were being redefined (like EMIT_SOUND_DYN2 etc).  I'm assuming the sound.cpp has been compiled into the TFC.dll, how can I call libraries that are already compiled in other DLLs like the engine, etc like you have done, botman, without having to inflate the bot dll?  TIA
+
+--------------------------------------------------
+06/16/01 at 14:10:32  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+EMIT_SOUND_SUIT uses this...
+code:
+EMIT_SOUND_DYN(entity, CHAN_STATIC, sample, fvol, ATTN_NORM, 0, pitch);
+
+...so all you need is the EMIT_SOUND_DYN function (ignore the other stuff in EMIT_SOUND_SUIT, it isn't needed).  "entity" is the pointer to an edict_t structure and "sample" is the name of the .wav file.
+
+EMIT_SOUND_DYN (also in sound.cpp) calls EMIT_SOUND_DYN2 (which is defined in enginecallback.h as pfnEmitSound).  All you need to do is call pfnEmitSound() with the same paramters that EMIT_SOUND_DYN or EMIT_SOUND_DYN2 gets (you can also just use the EMIT_SOUND_DYN2 macro which is already used in the waypoint.cpp file included with the HPB bot template code).
+
+For example this should play the sound using CHAN_STATIC...
+code:
+   EMIT_SOUND_DYN2(pEntity, CHAN_STATIC, "weapons/xbow_hit1.wav", 1.0,
+                   ATTN_NORM, 0, 100);
+
+botman
+
+--------------------------------------------------
+06/16/01 at 14:42:21  Reply by: I_Luv_Bots! (robotix2000@hotmail.com)
+--------------------------------------------------
+hi, botman I appreciate you taking the time on this, it's very frustrating.  As I said in my first post CHAN_STATIC does not do it.  I just went back and tested it again with a friend after reading your last post to make sure I didn't miss something, and you can still overhear it.  I wrote het3@valvesoftware.com with the question because I found that in an SDK readme but I don't know if that's the place for general questions (well actually more specific as this one is) about functions in the SDK.  Do you know of any addresses for specific SDK function questions like this?  TIA
+
+--------------------------------------------------
+06/17/01 at 05:16:40  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+Harry (het) will get your question to the person at Valve that can answer it.  Also I would suggest that you subscribe to the hlcoders e-mail list at www.topica.com.  You can ask fairly technical questions there and usually get a correct answer in a few hours.  It's much better than the Half-Life coding forums (like Wavelength) where anybody who has completed a coding tutorial considers themselves an expert in Half-Life coding.
+
+botman
+
+--------------------------------------------------
+06/17/01 at 15:22:56  Reply by: I_Luv_Bots! (robotix2000@hotmail.com)
+--------------------------------------------------
+Great, thanks much for the info, Botman.
+ILB
+
+

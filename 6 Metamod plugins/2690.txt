@@ -1,0 +1,43 @@
+--------------------------------------------------
+Subject: best way to remove grenades during game?
+--------------------------------------------------
+02/04/02 at 12:55:17  Posted by: Tomt (tom_taylor@btinternet.com)
+--------------------------------------------------
+Just wondering what you think the best way is to remove all the grenades which are thrown during the game (this is for counter-strike I need to remove the smoke grens cos they crash the server). 
+
+Dispatch spawn is obviously not called by them (as they arnt removed during gameplay). Is there a function which is? 
+
+Are all the functions (such as think) in the gFunctionTable called everytime an entity performs it, so adding findentityinsphere() isnt such a good idea as the think() function as it could add some performance hit.
+
+Any recommendations would be greatly appreciated
+
+--tom
+
+--------------------------------------------------
+02/04/02 at 13:43:52  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+stripper 1 might do this :p
+
+--------------------------------------------------
+02/04/02 at 14:25:33  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Neither Stripper or Stripper2 will allow you to do this.
+
+Grenades are created internally in the MOD code (source code that you don't have access to and can't easily modify without hacking the DLL).
+
+The cleanest way to prevent grenades from being throw is to prevent the player from getting them (or stripping them from the player if the MOD supports that).
+
+For games like Counter-Strike, you don't have weapon_grenade entities spawning into the world waiting for someone to come along and pick them up so that they can throw them.  You can't strip these out since they don't exist in the BSP map file (which is the only thing Stripper or Stripper2 can effect).
+
+Something that you do have access to is the Half-Life engine functions used to create the grenade.  When Counter-Strike wants to create a grenade, it MUST call the engine function pfnCreateEntity() or pfnCreateNamedEntity() (more than likely using pfnCreateNamedEntity).  If you have an Add-On or plugin running between the game DLL and the engine, you can intercept these functions and do something with this.
+
+pfnCreateNamedEntity() is easy to handle since the classname of the entity ("grenade"?) will be passed as a parameter when the MOD creates this entity.  You can do one of two things, you can let the engine create this entity and then remove it after some brief period of time, or you can simply return to the game DLL code without letting the engine process this request.
+
+The latter of these choices will probably cause problems when the rest of the game DLL code thinks that the engine has returned a good pointer to an edict and the game DLL code continues merrily on its way attempting to store things at this "edict" address.  Needless to say, returning a NULL pointer in this case is sure to cause heartburn (and a crash).  You might be able to pre-allocate a "fake" edict and return that to the game DLL instead of letting the engine allocate an edict.  Then you can "remove" this fake edict during the next frame since you didn't want it around anymore anyway.
+
+I suspect that the simplest and cleanest solution is to go ahead an let the engine allocate an edict, store this returned edict pointer off in memory somewhere (an array to handle multiple grenades at once?) and set up a time in the near future in which you will automatically remove the grenade.
+
+TFC has a nice "func_nogrenades" entity that you can create in the map at locations where you don't want grenades to be throw.  When the player throws a grenade inside of one of these func_nogrenade areas the grenades are magically removed as soon as they are thrown (probably using a method similar to the above).
+
+botman
+

@@ -1,0 +1,102 @@
+--------------------------------------------------
+Subject: New Problem
+--------------------------------------------------
+12/14/01 at 12:07:41  Posted by: xdeviantx (godspeed300@hotmail.com)
+--------------------------------------------------
+Okay this is not an entirely new problem, but may be a solution to my old one. Does anyone happen to have the dod weapon ID numbers for the bot_weapon.h, or know how i can find them???
+
+DeViAnT
+
+--------------------------------------------------
+12/14/01 at 14:34:53  Reply by: xdeviantx (godspeed300@hotmail.com)
+--------------------------------------------------
+k, ive found another thing. You know how most mods have 8 data fields in the weaponlist thingy, well dod has 9...how do i find out what the last one is??
+
+DeViAnT
+
+--------------------------------------------------
+12/14/01 at 15:35:32  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+for weapon ID numbers, enable debug_engine and look in the bot.txt file that will be created when you start a game. Weapon ID numbers are sent to clients when they join with the WeaponList message, and we can catch them on the fly.
+
+
+
+--------------------------------------------------
+12/14/01 at 15:40:46  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+In reply to your 2nd post.
+
+I don't know if it's what you are talking about, but for DMC (as an example), where weapon IDs are not sequential but bit-shifted (1, 2, 4, 8, 16, 32,64 and 128), I noticed that the MSB part of the integer where the weapon bitmask is stored changes sometimes, so I mask it with 0xFF00 when I want to check the bitmap.
+
+Hope this helps.
+
+
+--------------------------------------------------
+12/15/01 at 05:04:36  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Here's the weapon IDs I used for DMC...
+code:
+// weapon ID values for Valve's DMC
+#define DMC_WEAPON_AXE            1
+#define DMC_WEAPON_SHOTGUN        2
+#define DMC_WEAPON_DOUBLESHOTGUN  4
+#define DMC_WEAPON_NAILGUN        8
+#define DMC_WEAPON_SUPERNAIL     16
+#define DMC_WEAPON_GRENADE1      32
+#define DMC_WEAPON_ROCKET1       64
+#define DMC_WEAPON_LIGHTNING    128
+
+botman
+
+--------------------------------------------------
+12/15/01 at 05:11:26  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+i think xdeviantx was talking about the Day of Defeat mod, not DMC.
+
+
+--------------------------------------------------
+12/15/01 at 06:54:17  Reply by: xdeviantx (godspeed300@hotmail.com)
+--------------------------------------------------
+k, im not sure i made the problem clear...
+
+the weaponlist network packet for valve handgun looks like this
+
+pfnMessageBegin: edict=1e01e40 dest=1 type=76
+pfnWriteString: weapon_9mmhandgun   // state = 0
+pfnWriteByte: 2                     // state = 1
+pfnWriteByte: 250                   // state = 2
+pfnWriteByte: -1                    // state = 3
+pfnWriteByte: -1                    // state = 4
+pfnWriteByte: 1                     // state = 5
+pfnWriteByte: 0                     // state = 6
+pfnWriteByte: 2                     // state = 7
+pfnWriteByte: 0                     // state = 8
+pfnMessageEnd:
+
+whereas the weaponlist network packet for dod luger looks like this
+
+pfnMessageBegin: edict=1de6594 dest=1 type=76
+pfnWriteString: weapon_luger      // state = 0
+pfnWriteByte: 4                  // state = 1
+pfnWriteByte: 24            // state = 2
+pfnWriteByte: -1            // state = 3
+pfnWriteByte: -1            // state = 4
+pfnWriteByte: 1                  // state = 5
+pfnWriteByte: 1                  // state = 6
+pfnWriteByte: 4                  // state = 7
+pfnWriteByte: 64            // state = 8
+pfnWriteByte: 8                  // state = *-> 9 <-* ??
+pfnMessageEnd:
+
+look! there are 8 lines in the valve one but ->9<- in the DoD one...do i need to declare this extra line in the typedef struc bot_weapon_t in bot_weapons.h??
+
+DeViAnT
+
+--------------------------------------------------
+12/15/01 at 17:32:08  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+You have to figure out which information is passed by this new state, then decide if it has to be put in the structure for later use, or not.
+You have also to add a new state to your BotClient_Dod_WeaponList() function that will grab this data for you from the network packet. Current BotClient_*_WeaponList() has 8 states, just add another one.
+This extra state might not be of great use for the game, but you never know. Currently I see no way to figure out what's related with this one. Log it to a file when playing and see if it matches some in-game weapon behaviour.
+
+

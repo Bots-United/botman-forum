@@ -1,0 +1,141 @@
+--------------------------------------------------
+Subject: Help with angles.
+--------------------------------------------------
+12/14/01 at 17:29:13  Posted by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+Okay this is a part of the code from my CS player logger... I am trying to write a log file and print messages to the console when a player turns more than a certain angle. 
+
+Currently I'm getting confused as it keeps saying that I turned more than 350 odd degrees. I know why (because I turned fully in a circle and after 359 is 0 which means the difference is now 359 degrees) I'm trying to keep this a value between 0 and 360 but I'm getting problems.
+
+code:
+
+            v_new = pPlayer->v.angles;
+            v_last = player->v_prev_angles;
+                  
+                  if( ( v_new.y - v_last.y ) > 20 ) &&
+                        ( (360 - (v_new.y - v_last.y)) > 20 ) )
+            {
+                  ALERT( at_console, "In-human TURN by (%0.2f degrees) by %s, possibly LAG or AIMBOT\n", (v_new.y - v_last.y),STRING(pPlayer->v.netname));
+                  fp=fopen("log.txt","a"); 
+                  fprintf(fp,"In-human TURN by (%0.2f degrees) by %s, possibly LAG or AIMBOT\n", (v_new.y - v_last.y),STRING(pPlayer->v.netname)); 
+                  fclose(fp);
+            }
+
+
+
+at the moment, after each frame, the players previous angles are stored as the players v.angles...
+
+I hope you can see what I am trying to achieve here. ;D
+
+I know its a bit off to say that a player has an Aimbot if they turn awkwardly but I'm just logging it, not kicking anyone!
+
+[modified on 12/14/01 at 17:29:13]
+--------------------------------------------------
+12/14/01 at 17:47:06  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+Hmm I just chaged the If statement a bit to look like this and I (Think) its okay but if its not tell me :)
+
+code:
+
+                  if( ( (v_new.y - v_last.y) > 45 ) &&
+                        ( (v_new.y - v_last.y) < (360 - 45) ) )
+
+
+--------------------------------------------------
+12/14/01 at 18:44:33  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+check for wraparound of angle
+code:
+
+while (angle > 180)
+  angle -= 360;
+while (angle < -179)
+  angle += 360;
+
+
+
+
+
+
+--------------------------------------------------
+12/14/01 at 19:03:41  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+i forgot,
+code:
+
+int angle = (v_new.y - v_last.y)
+
+
+
+but I'm sure you had understood
+
+
+
+--------------------------------------------------
+12/15/01 at 03:09:43  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+yeah although you wont need a while statement since I'm calling this everyframe and might slow down the server....
+
+I'll try it with the angle 'wrap' code with If's ;-)
+
+--------------------------------------------------
+12/15/01 at 05:06:23  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+You really should let this as is. The while statment ensures that your angle will always be in range. It does not take more time CPU.
+
+The Half-Life engine sometimes does strange stuff with angles ; I often saw them > 500 degrees. For example, in CS de_dust, when a player spawns its angle is > 180 + 360 degrees, that's why the 'if' statment isn't enough to wrap it correctly. This was resulting in my bots getting stuck at their first spawn, until something new in their environment made them change their ideal_yaw.
+
+Botman does not do this in the HPB template ; that's why his bots get stuck when spawning on some CS maps.
+
+In short, if you don't do it with a 'while', you will experience problems.
+
+
+--------------------------------------------------
+12/15/01 at 06:06:47  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+I guess so, because everytime I check these angles I only want to do it for each indiviudal frame so a while may be better. Although I only get angles from 0 to 360 degrees all the time and mostly the only problem is that fact the when I turn LEFT from 0 degrees then the new angle will now become 359 or less so it will think the angle between the new and last angles is 350 ish so it will display the ALERT message. It still seems to do it and it gets annoying :(
+
+--------------------------------------------------
+12/15/01 at 11:25:21  Reply by: ReDucTor[FGW] (sjdtmv@tpg.com.au)
+--------------------------------------------------
+code:
+
+float change = v_new.y - v_last.y;
+if(change < 0)
+change += 360;
+
+if(change > 20)
+ALERT( at_console, "In-human TURN by (%0.2f degrees) by %s, possibly LAG or AIMBOT\n", change,STRING(pPlayer->v.netname));
+
+
+--------------------------------------------------
+12/15/01 at 11:33:05  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+thx, I actually did something this and I think its working now.
+
+code:
+
+      v_new = pPlayer->v.angles;
+      v_last = player->v_prev_angles;
+      
+      float angles = 0; 
+      
+      if( v_new.y >= v_last.y )
+            angles = v_new.y - v_last.y;
+      else if( v_new.y < v_last.y )
+            angles = v_last.y - v_new.y;
+      
+      if( angles > 180 )
+            angles = 360 - angles;
+      if ( angles < -180)
+            angles = angles + 360;
+      
+      if( angles < 0 )
+            angles = 0 - angles;
+        if( angles > MAX_IDLE_DEGREES )
+        {
+          ...
+
+
+
+[modified on 12/15/01 at 11:33:05]

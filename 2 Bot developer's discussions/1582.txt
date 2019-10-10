@@ -1,0 +1,177 @@
+--------------------------------------------------
+Subject: Looking through the eyes of the bot
+--------------------------------------------------
+04/25/01 at 11:46:06  Posted by: Pembunuh (yip_omar@hotmail.com)
+--------------------------------------------------
+Hi..
+
+How do you actually set your view to one of the bots? I know this is possible because I think
+android bot did that..
+
+Any one more thing, how can u fly around the map
+while editing the waypoints? Is it by a clip or
+noclip command?
+
+
+
+--------------------------------------------------
+04/25/01 at 12:32:01  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+See the "botcam" code in my Bot Number 10 source...
+
+http://planethalflife.com/botman/bot10.shtml
+
+...a better method would be to make the camera client side (less lag).  There is a TFC spectator tutorial by Robin Walker (of Valve) on one of the HL coding sites if you want to go look for it.
+
+botman
+
+--------------------------------------------------
+04/25/01 at 12:34:55  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+"how can u fly around the map while editing the waypoints?"
+
+I don't think you would want to set waypoints while flying around in the map since bots can't fly around in the map when they are playing.  They'd never be able to get to a waypoint that was suspended in the air.  You should only set waypoints in places where a human player can get to.  Just bind a key to set a waypoint (like: bind x "waypoint add") and press that key as you are running and/or jumping off of surfaces to set them in mid air.
+
+botman
+
+--------------------------------------------------
+04/25/01 at 14:32:28  Reply by: kevone (kevone@gmx.net)
+--------------------------------------------------
+hi...
+the thing with fly/noclip makes sense... at least if ya develope a firearms bot (like Pembunuh and i do;)... i (we) need it to place parachute waypoints in mid-air. (in firearms you sometimes drop into the map with a parachute)
+so it will be useful... any ideas?
+
+--------------------------------------------------
+04/25/01 at 17:05:51  Reply by: Pembunuh (yip_omar@hotmail.com)
+--------------------------------------------------
+hi Kevin
+
+I have emailed u the clip and noclip thing. It works for me :)
+
+--------------------------------------------------
+04/26/01 at 09:18:23  Reply by: CountFloyd (countfloyd_1999@yahoo.com)
+--------------------------------------------------
+About the noclip thing:
+Just constantly (e.a. in StartFrame) set the Entities movetype to the one you'd like to have, in your case:
+pEntity->v.movetype = MOVETYPE_NOCLIP;
+
+"How do you actually set your view to one of the bots? I know this is possible because I think
+android bot did that"
+
+If you want to have some kind of spectator mode then the way Botman suggests would work. However if you're speaking about the 'becomebot' command in Android I think he lets the Bot AI takeover the Entity of the Player. I've got it partly to work in my Bot, just the v_angle doesn't seem to be adjusted (never) but this could be a Server Prediction thing. If anybody knows more or has got it to work perfectly, I really would like to hear how...
+
+
+
+
+--------------------------------------------------
+04/26/01 at 09:56:02  Reply by: Pembunuh (yip_omar@hotmail.com)
+--------------------------------------------------
+Wow,
+
+Thanks...Anyway I got the clip and the noclip working. I set sth in ClientCommand to set the player(us) to movetype_clip.
+
+
+
+--------------------------------------------------
+04/26/01 at 10:33:02  Reply by: theimann (killaruna@botepidemic.com)
+--------------------------------------------------
+> If anybody knows more or has got it to work perfectly, I really would like to hear how...
+
+That's only a matter of setting the correct flags: If the camera should take the v_angle you write into the edict, you have got to set the FL_FREEZE flag each frame to stop the player controls. For the Parabot Cam-Mode I am setting the FL_FREEZE- and the FL_OBSERVER-flag and I don't have any problems with the v_angle.
+
+Tobias
+
+--------------------------------------------------
+04/26/01 at 11:58:10  Reply by: CountFloyd (countfloyd_1999@yahoo.com)
+--------------------------------------------------
+"That's only a matter of setting the correct flags: If the [b]camera[/b] should take the v_angle"
+
+I believe we're talking about different things here. I didn't write a camera class like Botman, instead I hand my Entity over to the Bot AI (without actually creating a new Fakeclient) to let him control my player (instead of having my invisible Player Entity following the Bot). And I did try nearly every possible combination of flags with it to make it work. I think it must be a nasty bug somewhere else in my code which causes the bug. 
+
+
+
+
+
+--------------------------------------------------
+04/27/01 at 06:28:43  Reply by: theimann (killaruna@botepidemic.com)
+--------------------------------------------------
+> I didn't write a camera class like Botman, instead I hand my Entity over to the Bot AI
+
+That's nearly the same what I do for my botcam, I don't have any camera-class either... The only differences I see is that I am using observer-mode, no-clipping and that stuff and that I haven't tried it in CS. Btw, it's FL_FROZEN not FL_FREEZE (but you probably figured out that as well...)
+
+Tobias
+
+--------------------------------------------------
+04/27/01 at 07:11:53  Reply by: DarkYouth (darkyouth@thegraze.freeserve.co.uk)
+--------------------------------------------------
+I **did** have this in SWAT v4 (the old one with learning) but I cant get it working under the new HPB code for some reason.
+
+I remember having to set fixangle too. Countfloyd, try setting your entities fixangle value and see what that does. I did that and it worked very well for me as I recall.
+
+
+
+--------------------------------------------------
+04/27/01 at 08:51:07  Reply by: CountFloyd (countfloyd_1999@yahoo.com)
+--------------------------------------------------
+Even more funny:
+It used to work with CS 1.0 but now fails with 1.1
+So either I did some odd changes in my code which affected it, or there's again something new in CS which prevents it. I also tried the fixangle stuff long ago, it didn't help me with that problem.
+At the moment it is this way:
+a) Bot takes over the entity without any problems
+b) Bot does all 'start-of-the-round' things properly
+c) Bot starts to move without bugs
+d) Bot has a movement pause every once in a while and the viewing angle isn't changed (not for me spectating and odd enough not for the Bot)
+
+Even more weird, when the Bot stops in movement it looks like a serious lag in a normal game meaning the Bot still moves his legs (thus he must recieve all the speed commands) but he doesn't actually change position for a second or two. I believe you're right, it definitely seems to be some flag thing. However I really tried every possible combination (also the frozen flag) but it didn't change much. You see I'm puzzled ;)
+What I'm especially unsure about is what Entity to use for the Bot or even knowing the difference between the 'real' Player Entity and the one contained in the Entity (you know the pev->pContainingEntity). I tried both without a difference. Also what do you do about the client flags ? I do this in my create function (there are some more flags I change but I think these are the relevant. Both, pPlayer and pEdict are ptrs to my own Player Edict):
+
+code:
+
+pBot->pEdict->v.flags |= FL_FAKECLIENT;
+pBot->pEdict->v.spawnflags |= FL_FAKECLIENT;
+pPlayer->v.flags &= ~FL_CLIENT;
+pPlayer->v.spawnflags &= ~FL_CLIENT;
+
+
+
+Again I tried weird combos without a difference. Any suggestions ? *crying like a baby now*
+
+--------------------------------------------------
+04/27/01 at 09:01:55  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+"pPlayer->v.flags &= ~FL_CLIENT;"
+
+I don't think you EVER want to remove the FL_CLIENT bit from a player.  I'm sure the engine uses this to identify this entity as a player (as opposed to a scientist/grunt/monster or other non-player entity).
+
+The bots pev->flags should be "FL_CLIENT | FL_FAKECLIENT".
+
+Players pev->flags should be just "FL_CLIENT".
+
+botman
+
+--------------------------------------------------
+04/27/01 at 14:35:32  Reply by: CountFloyd (countfloyd_1999@yahoo.com)
+--------------------------------------------------
+"I don't think you EVER want to remove the FL_CLIENT bit from a player"
+
+Yes I know, I tried it out as some sort of last resort because the last idea I had was that the Engine might get confused by the network messages send to my Entity (which now is a Fakeclient). It's actually commented out in my current function.
+Good news:
+I almost got it working today. Setting the pEdict->v.fixangle to 1 seemed to fix a lot for me (thanks DarkYouth). Now the Bot & me are turning correctly, I don't experience those movement pauses anymore and basically it works. However there's still a strange thing happening. It seems that there are random breaks in some of the frames. For example only half of the button presses get through. When the Bot needs to hold a button (and I know it normally works) like when planting the Bomb, or holding the duck key there is a random clearing of the button value (so when ducking he does little bunny hops) and the same applies to the general movement. It's like as if 10 of 50 frames are somehow forgotten or dropped. So I believe there still is some interference going on between the Bot & me. Also even now when I disable the Player Controls, I can still use all the attack buttons (but not the movement keys, or the mouse itself). I did mess around with some of the client prediction variables but didn't get nowhere, couldn't even turn on Weapon Animations again. I will call it one of these days ;) 
+
+
+--------------------------------------------------
+04/29/01 at 13:37:57  Reply by: DarkYouth (darkyouth@thegraze.freeserve.co.uk)
+--------------------------------------------------
+CS1.1 is annoying me, withouit a doubt some stupid changes have cost me many hours of work thanks to Goosemans fiddling.
+
+
+--------------------------------------------------
+04/30/01 at 07:00:20  Reply by: Superman (shannonwongx@yahoo.com)
+--------------------------------------------------
+Count Floyd.....I didn`t know you were here...epecially since you have your own site.....
+
+--------------------------------------------------
+04/30/01 at 07:00:54  Reply by: Superman (shannonwongx@yahoo.com)
+--------------------------------------------------
+Count Floyd.....I didn`t know you were here...epecially since you have your own site.....
+

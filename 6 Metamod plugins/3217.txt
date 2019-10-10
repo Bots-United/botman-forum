@@ -1,0 +1,110 @@
+--------------------------------------------------
+Subject: Monsters getting double damaged!
+--------------------------------------------------
+06/07/02 at 00:59:10  Posted by: hullu (hullu@jussikivilinna.cjb.net)
+--------------------------------------------------
+I noticed that monsters were getting double damaged.. first by GameDLL.. then by MonsterMM
+
+here's fixed check_monster_hurt function:
+code:
+
+void check_monster_hurt(edict_t *pAttacker)
+{
+   bool IsPlayer=UTIL_IsPlayer(pAttacker);
+   int dmgFlags=0;
+                  
+   dmgFlags|=DMG_BULLET;
+      
+   int index;
+
+   for (index = 0; index < monster_ents_used; index++)
+   {
+      if (monsters[index].monster_index)
+      {
+         edict_t *pent = (*g_engfuncs.pfnPEntityOfEntIndex)(monsters[index].monster_index);
+
+         if (pent)
+         {
+            if (pent->v.health < pent->v.fuser4)
+            {
+               if (pent->v.takedamage != DAMAGE_NO)
+               {
+                  TraceResult tr;
+                  Vector vecSrc, vecSpot;
+                  float distance, damage;
+
+                  // location of attacker and location of enemy...
+                  vecSrc = pAttacker->v.origin + pAttacker->v.view_ofs;
+                  vecSpot = pent->v.origin;
+
+                  // distance the blood can travel from the body...
+                  distance = (vecSpot - vecSrc).Length() + 100.0f;
+
+                  // use aiming angles of attacker to trace blood splatter...
+                  UTIL_MakeVectors(pAttacker->v.v_angle);
+
+                  // start just beyond the attacker's body...
+                  vecSrc = vecSrc + gpGlobals->v_forward * 20;
+                  vecSpot = vecSrc + gpGlobals->v_forward * distance;
+
+                  // trace a line ignoring enemies body...
+                  UTIL_TraceLine ( vecSrc, vecSpot, dont_ignore_monsters, pent, &tr );
+
+              //Get Damage
+                  damage = pent->v.fuser4 - pent->v.health;
+                  
+                  if (!strcmp(STRING(pent->v.model), "models/big_mom.mdl"))
+                {
+                      //Make bigmomma take damage
+                        tr.iHitgroup=1;
+                        
+                        //Reduced direct hit damage
+                        if(IsPlayer)
+                        {
+                              damage /= 2.0f;
+                        }
+                  }
+                  else if(!strcmp(STRING(pent->v.model), "models/garg.mdl"))
+                  {
+                        //Reduced direct hit damage
+                        if(IsPlayer)
+                        {
+                              damage /= 2.0f;
+                        }
+                        
+                        //Make garg take damage
+                        dmgFlags|=GARG_DAMAGE;
+                  }
+
+                  //EHEM! .. ApplyMultiDamage causes more damage on monsters!
+                  //If we dont set this here ..monsters get double damaged!
+                  if (0<pent->v.health) pent->v.health = pent->v.fuser4;
+
+                  ClearMultiDamage( );
+                  monsters[index].pMonster->TraceAttack( VARS(pAttacker), damage, (tr.vecEndPos - vecSrc).Normalize( ), &tr, dmgFlags );
+                  ApplyMultiDamage( VARS(pAttacker), VARS(pAttacker) );
+               }
+
+               // save the new current health as previous health...
+               pent->v.fuser4 = pent->v.health;
+            }
+            else if (pent->v.health > pent->v.fuser4)
+            {
+                // monster is healed .. update previous health
+                pent->v.fuser4 = pent->v.health;
+            }
+         }
+         else
+         {
+            // the entity no longer exists and we didn't catch it dying
+            FreeMonsterIndex(index);
+         }
+      }
+   }
+}
+
+
+
+It has special handling for bigmomma and gargantua because without these they would reject all gamedll damage. (see garg::TraceAttack and bigmomma::TraceAttack why)
+
+

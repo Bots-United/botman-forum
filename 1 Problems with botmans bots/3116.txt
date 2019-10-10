@@ -1,0 +1,86 @@
+--------------------------------------------------
+Subject: min_bots, max_bots ignored
+--------------------------------------------------
+05/18/02 at 04:14:34  Posted by: al-Samarqandi (hsamarqa@abutalib.indysla.iupui.edu)
+--------------------------------------------------
+Gang:
+
+My Linux box is like the Hotel California when it comes to getting the min_bots, max_bots settings to work. The stuff running:
+
+HLDS 3.1.0.9c
+Admin Mod 2.50.26
+HalfD 2.18
+HBPBot 2.0
+
++maxplayers 16
+
+min_bots 1
+max_bots 2
+
+for testing. Two bots running around a hunted map. I join. They stay. It's my understanding that with the settings above, one of the little buggers should check out. But he doesn't. Am I misunderstanding how this is supposed to work?
+
+"Insane" Husayn
+
+--------------------------------------------------
+05/18/02 at 04:33:00  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+One of them should get kicked when you join.
+
+The "min_bots" setting is the smallest number of bots you want to have running on the server regardless of how many players (bot + humans) there are.  In your example there should always be 1 bot in the game.
+
+The "max_bots" setting is the total number of players (bots + humans) you want in the game.  In your example there should be a maximum of 2 bots in the game.  When a human player joins, one of them should get kicked.  When another human joins, the remaining bot should stay in the game since you've now reached the "min_bots" setting.  If both human players leave the game, a bot should automatically get added back in the game about 30 seconds later (this gives time for another human to join the game before a bot gets added then immediately kicked again).
+
+Where are you setting the min_bots and max_bots values?  If you have map specific bot .cfg files (i.e. maps\2fort_HPB_bot.cfg), I would recommend setting the "min_bots" and "max_bots" in these files (this way you can vary the number of bots in each map).  If you aren't using any map specific bot .cfg files, you should have these commands in the HPB_bot.cfg file (in the tfc directory).  I haven't tested having the "min_bots" and "max_bots" stuff in any of the other server .cfg files (i.e. autoexec.cfg, server.cfg, 2fort.cfg, etc) so they might not work properly if they are in those.
+
+botman
+
+--------------------------------------------------
+05/19/02 at 12:20:05  Reply by: al-Samarqandi (hsamarqa@abutalib.indysla.iupui.edu)
+--------------------------------------------------
+Well, it was/is working after all. I had done a:
+
+min_bots 1
+max_bots 3
+
+on a hunted map and joined the server. I counted two bots but three players (other than myself) were listed in the display. I switched to Spectator and did a overall view to see where all the "players" were. Indeed the bot had left when I joined but left his name behind. Curious. . .but not a big problem.
+
+Thanks!
+
+
+
+--------------------------------------------------
+05/20/02 at 03:58:16  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Yep, this is an old bug with bots in TFC.  I believe the bot has to be kicked twice to actually "leave" the server.  I'm not sure why.  I never bothered to fix this problem.  Maybe one day I'll get around to changing this.  :D
+
+botman
+
+--------------------------------------------------
+05/26/02 at 10:40:31  Reply by: maquor (countercrab@comcast.net)
+--------------------------------------------------
+
+Botman,
+
+you said earlier:
+
+The "max_bots" setting is the total number of players (bots + humans) you want in the game.  In your example there should be a maximum of 2 bots in the game
+
+I always thought the max_bots setting only applied to the number of bots, not the number of bots + players.  Should this be set equal to the maxplayers variable?  In the HPB_bot.cfg file it describes max_bots as the maximum number of bots on the server.  Which is correct?
+
+
+
+--------------------------------------------------
+05/26/02 at 13:27:00  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+If there are no other players on the server then the number of bots on the server will be max_bots.
+
+You should never set max_bots equal to maxplayers otherwise human players could never join your server (since there would never be an empty slot).
+
+You should set max_bots to the maximum number of bots you ever want to have on the server.  Bots will automatically be added on an empty server up to this value.  Once humans start to join the game, bots will get kicked until there are "min_bots" number of bots on the server (and then no more will be kicked).
+
+If you set "min_bots" to 1 and "max_bots" to 2 (as in my example above), you will never have more than 2 bots on the server.  When you start the server, it's empty.  Bots will be added until there are 2 bots on the server.  If a human player joins the game (3 players total), the total number of players is greater than "max_bots" so one of the bots will get kicked (now there's 2 players).  If another human joins the game (3 players again), the bot code checks to see if another bot needs to get kicked (there's still 1 bot left).  Since "min_bots" is one, the bot will NOT get kicked and there will still be 3 players on the server.  If another human joins, there will be 4.  If 2 humans leave the server (now there's 2 players, 1 bot, 1 human), the total of players is still not less than "max_bots", so a bot will not be added.  If a human player leaves the server (now only 1 player and it's a bot), the total number of players is less than "max_bots" and a new bot will be added to the server (bringing the total number of players back up to 2, which is what max_bots is set to).
+
+Therefore, you will never have more than "max_bots" number of bots on the server (even if there are no humans) and you will never have less than "min_bots" on the server.  Also you should never set "max_bots" equal to maxplayers otherwise the server will be full of bots and they will never leave causing no free slots for humans to join the server.
+
+botman
+

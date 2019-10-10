@@ -1,0 +1,142 @@
+--------------------------------------------------
+Subject: A handy fix, courtesy of Mark Ligas
+--------------------------------------------------
+05/22/03 at 09:20:19  Posted by: PM (pm@racc-ai.com)
+--------------------------------------------------
+The new HLDS has yet one more bug.
+code:
+
+void GetGameDir (char *game_dir)
+{
+   // Courtesy of Mark Ligas <austinbotserver@mindspring.com>.
+   // This function fixes the erratic behaviour caused by the use of the GET_GAME_DIR engine
+   // macro, which returns either an absolute directory path, or a relative one, depending on
+   // whether the game server is run standalone or not. This one always return a RELATIVE path.
+
+   unsigned char i, j, length;
+
+   GET_GAME_DIR (game_dir); // call the engine macro
+   length = strlen (game_dir); // get the length of the returned string
+
+   // shift back to the last directory separator, if one exists
+   for (i = length - 1; i >= 0; i--)
+      if ((game_dir[i] == '\\') || (game_dir[i] == '/'))
+         break; // stop when one is found
+
+   if ((game_dir[i] == '\\') || (game_dir[i] == '/'))
+      i++; // skip the eventual separator
+
+   j = i; // remember the position in the string where the last directory starts
+   for (i; i < length; i++)
+      game_dir[i - j] = game_dir[i]; // write it back to the start of the string
+   game_dir[i - j] = 0; // and terminate the string
+
+   return;
+}
+
+
+
+
+--------------------------------------------------
+05/27/03 at 07:17:06  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+There's a scary thing about this function ;) Actually it doesn't initialise the game_dir string. It could be null, or overwriting parts of memory or operating system! That's if GET_GAME_DIR doesn't set up the memory needed for the string. Probably better using an array of characters like botman does hehe. :)
+
+--------------------------------------------------
+05/27/03 at 10:05:13  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Indeed, you're right. But since I've often seen GET_GAME_DIR called on uninitialized pointers, and that it seems to work this way, I suppose it's OK.
+
+
+--------------------------------------------------
+06/01/03 at 16:43:03  Reply by: RobGP (rob@planetfortress.com)
+--------------------------------------------------
+youre probably supposed to pass it a pointer to memory youve allocated yourself, not just a pointer pointing to anywhere. I don't see the problem.
+
+--------------------------------------------------
+06/01/03 at 17:28:31  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Actually I have rewritten the function better, so that it can handle almost any type of path string as input ; it will always find correctly the relative path. The previous one could not handle strings such as "C:\HLServer\valve\" (notice the trailing backslash)
+code:
+
+void GetGameDir (char *game_dir)
+{
+   // This function fixes the erratic behaviour caused by the use of the GET_GAME_DIR engine
+   // macro, which returns either an absolute directory path, or a relative one, depending on
+   // whether the game server is run standalone or not. This one always return a RELATIVE path.
+
+   unsigned char length, fieldstart, fieldstop;
+
+   GET_GAME_DIR (game_dir); // call the engine macro and let it mallocate for the char pointer
+
+   length = strlen (game_dir); // get the length of the returned string
+   length--; // ignore the trailing string terminator
+
+   // format the returned string to get the last directory name
+   fieldstop = length;
+   while (((game_dir[fieldstop] == '\\')  (game_dir[fieldstop] == '/')) && (fieldstop > 0))
+      fieldstop--; // shift back any trailing separator
+
+   fieldstart = fieldstop;
+   while ((game_dir[fieldstart] != '\\') && (game_dir[fieldstart] != '/') && (fieldstart > 0))
+      fieldstart--; // shift back to the start of the last subdirectory name
+
+   if ((game_dir[fieldstart] == '\\')  (game_dir[fieldstart] == '/'))
+      fieldstart++; // if we reached a separator, step over it
+
+   // now copy the formatted string back onto itself character per character
+   for (length = fieldstart; length <= fieldstop; length++)
+      game_dir[length - fieldstart] = game_dir[length];
+   game_dir[length - fieldstart] = 0; // terminate the string
+
+   return;
+}
+
+
+Here it is.
+
+[edit: botman, you know, it's really *REALLY* a PITA not to be able to post OR's in the code without the YaBB code to eat them. Can't you really do nothing about it??]
+
+[modified on 06/01/03 at 17:28:31]
+--------------------------------------------------
+06/02/03 at 05:42:40  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+YaBB uses them as field separators in the thread data file.
+
+The strange thing is, that they appear fine in your first post in this thread.  They don't appear in your third post.  I'm not sure what the difference is between the two of them.
+
+botman
+
+[modified on 06/02/03 at 05:42:40]
+--------------------------------------------------
+06/02/03 at 06:16:34  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Indeed, that's curious!?
+The only difference between these two is that the second one was modified after the initial post.
+
+
+--------------------------------------------------
+06/02/03 at 16:02:04  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+Actually I tohught that was the problem with the 'Pipe' symbols. ;D
+
+There are two pipes, I've noticed, while using British or American keyboard layout, I seem to get different pipe symbols... 
+
+Botman, maybe with your l33t skills you can change the thread adding options so you do stuff like html, i.e. make a pipe = "&pipe" when someone inputs a '|' (if its shown in those quotes!!!) and in the viewing options tanslate it to a pipe symbol... of course youd need a thing for ampersand such as &amp, like html, as someone might want to say '&pipe' sometime or another!!!
+
+If you catch my drift!
+
+--------------------------------------------------
+06/02/03 at 17:37:54  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+You should be able to enter any ASCII character using the HTML code for it...
+
+http://www.asciitable.com/
+
+Testing, '|' <- is that a vertical bar (pipe)?
+
+EDIT: No, YaBB replaces "&" with "&amp;", so "&#" becomes "&amp;#" instead.  Stupid YaBB!  :)
+
+botman
+
+[modified on 06/02/03 at 17:37:54]

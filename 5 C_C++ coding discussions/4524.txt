@@ -1,0 +1,72 @@
+--------------------------------------------------
+Subject: New game mode to change takedamage
+--------------------------------------------------
+06/13/03 at 00:46:25  Posted by: corbin_mike (corbin_mike@hotmail.com)
+--------------------------------------------------
+I am doing a mod with new gamemodes for DMC. In one of the gamemodes I need to change this whole file ---> quake_player.cpp
+
+Basicly from :
+
+int CBasePlayer::TakeDamage( entvars_t *pevInflictor, entvars_t *pevAttacker, float flDamage, int bitsDamageType )
+
+All the way down, which is pretty much the whole file..
+
+My question is what C++ commands or what should I do so that the compiler will read my new file ONLY for this gamemode, and not quake_player.cpp ?
+
+quake_player.cpp does not have a header file, im pretty sure everything in it is taken from player.h
+
+Basicly I want the changes I make to quake_player.cpp only to be seen in my new game mode. So I cant change any code in that file.
+
+Thanks very much
+
+
+
+
+
+
+[modified on 06/13/03 at 00:45:39]
+
+[modified on 06/13/03 at 00:46:25]
+--------------------------------------------------
+06/13/03 at 05:59:50  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+That depends on how you implement your game mode.
+
+If you have a global variable set somewhere you can just check it...
+code:
+if (g_gamemode == 3)  // super power mode?
+{
+   // do super power stuff here
+} else if (g_gamemode == 2)  // super weakling mode?
+{
+   // do super weakling stuff here
+}
+else  // normal gameplay mode...
+{
+   // do normal stuff here
+}
+
+If you store the gameplay mode in CVAR, you can just check the CVAR value...
+code:
+if (CVAR_GET_FLOAT("mp_mygamemode") == 1)
+{
+   // do gamemode 1 stuff here
+}
+else
+{
+   // do gamemode 0 stuff here
+}
+
+If you want to make a new gameplay C++ class (like CHalfLifeMultiplay, CHalfLifeTeamplay, etc.) you should inherit from CHalfLifeMultiplay and then modify gamerules.cpp to return your new gamerules class when InstallGameRules is called in world.cpp.  Call the g_pGameRules::TakeDamage() function (which you will have to create) to do damage for each gamerule type.
+
+In my opinion, creating the C++ gamerules class is the MUCH more complicated solution.  If all you want to modify is the damage amounts, just create a CVAR that specifies which mode you want.  If you want to change a whole BUNCH of aspects about gameplay (who can do what, which teams can pick up which weapons, etc), then making a new C++ gamerules class probably makes more sense.
+
+botman
+
+--------------------------------------------------
+06/14/03 at 03:34:10  Reply by: corbin_mike (corbin_mike@hotmail.com)
+--------------------------------------------------
+Thanks Botman, That was so easy don't know why I didn't see it..
+
+Thanks Very Much
+

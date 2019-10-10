@@ -1,0 +1,910 @@
+--------------------------------------------------
+Subject: ---> ConsoleMessage() <---
+--------------------------------------------------
+03/30/03 at 13:11:03  Posted by: Deacon (Deacon@mail.dk)
+--------------------------------------------------
+code:
+int ConsoleMessage(char *string,...)
+{
+      WSADATA wsaData;
+      char cmd[1024];
+      char sendstr[1024];
+      
+      if ((WSAStartup( MAKEWORD(1,1), &wsaData )) == SOCKET_ERROR)
+      {
+            return 1;
+      }
+
+      int sock;
+
+      if((sock=socket(AF_INET,SOCK_DGRAM,0))==INVALID_SOCKET)
+      {
+            return 1;
+      }
+
+      sockaddr_in sa;
+      sa.sin_family=AF_INET;
+      sa.sin_addr.s_addr=inet_addr("127.0.0.1");
+      sa.sin_port=htons(27005);
+      memset(&(sa.sin_zero),'\0',8);
+      //strcpy(cmd,"echo hi there :S");
+      strcpy(cmd,string);
+      
+      sprintf(sendstr,"\xff\xff\xff\xffl%s\x00", cmd);
+      //sprintf(sendstr,"ÿÿÿÿ%s\x00", cmd);
+      sendto(sock,sendstr,strlen(sendstr),0,(SOCKADDR*)&sa,sizeof(SOCKADDR));
+      closesocket(sock);
+      WSACleanup();
+      return 0;
+}
+
+
+Have fun! :)
+
+[modified on 03/30/03 at 13:09:24]
+
+[modified on 03/30/03 at 13:11:03]
+--------------------------------------------------
+03/30/03 at 13:33:49  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Hmmm yes, but I'm sorry to tell you that you didn't discover anything since everybody knows that already ;D
+
+For those who don't get it, it is possible to write to the console of a HL server from an external application by sending raw socket data to the port 27005, provided it is prefixed by the 0xFFFFFFFF value.
+
+I too, can post funny code, see :
+code:
+
+// ************************
+// * Half-Life IRC Plugin *
+// ************************
+// version 1.0
+// by Pierre-Marie Baty <pm@racc-ai.com>
+
+
+#include <extdll.h>
+#include <dllapi.h>
+#include <h_export.h>
+#include <meta_api.h>
+#include <process.h>
+#include <winsock2.h>
+
+// multithreading definitions
+#ifndef _MT
+#define _MT
+#endif
+
+
+// IRC bot orders
+#define IRCBOT_ORDER_NOORDER 0
+#define IRCBOT_ORDER_CONNECT 1
+#define IRCBOT_ORDER_DISCONNECT 2
+#define IRCBOT_ORDER_TERMINATETHREAD 3
+
+// IRC bot errors
+#define IRCBOT_ERROR_NOERROR 0
+#define IRCBOT_ERROR_CANTCREATESOCKET 1
+#define IRCBOT_ERROR_CANTCONNECTTOSERVER 2
+
+
+typedef struct
+{
+   sockaddr_in sockaddr; // IRC server socket address
+   hostent *hostinfo; // IRC server host info
+} ircserver_t;
+
+
+typedef struct
+{
+   int order; // current order given to this player's IRC bot
+   int error; // current error reported by this player's IRC bot
+   bool thread_active; // set to TRUE if this player's IRC bot thread is currently running
+   bool connected_to_server; // set to TRUE if this player is connected to the IRC server
+   bool connected_to_channel; // set to TRUE if this player is currently member of the IRC channel
+   float connection_idle_delay; // increasing sleep delay between disconnections and reconnections
+   char irc_name[32]; // IRC nickname of the player in all characters
+   char irc_to_game[1024]; // chat string from an IRC member to be displayed on the player's HUDs
+   bool new_irc_to_game; // set to TRUE when the previous string holds new (unprocessed) content
+   char game_to_irc[1024]; // chat string from an IRC member to be displayed on the player's HUDs
+   bool new_game_to_irc; // set to TRUE when the previous string holds new (unprocessed) content
+   WSADATA wsaData; // WinSock data setup for the IRC bot client
+   unsigned int irc_socket; // network socket ID of this player's IRC bot client
+   char tx_buffer[1024]; // chat string to be sent to the IRC channel by the player's IRC bot
+   char rx_buffer[1024]; // chat string received from the IRC channel by the player's IRC bot
+} ircbot_t;
+
+
+enginefuncs_t g_engfuncs;
+globalvars_t  *gpGlobals;
+DLL_FUNCTIONS gFunctionTable;
+cvar_t irc_server = {"irc_server", "localhost", FCVAR_EXTDLL};
+cvar_t irc_channel = {"irc_channel", "#hlserver", FCVAR_EXTDLL};
+cvar_t irc_name = {"irc_name", "HLServer", FCVAR_EXTDLL};
+ircserver_t ircserver;
+ircbot_t ircbot;
+bool send_this_message = FALSE;
+
+void WINAPI GiveFnptrsToDll (enginefuncs_t* pengfuncsFromEngine, globalvars_t *pGlobals);
+void ServerActivate (edict_t *pEdictList, int edictCount, int clientMax);
+void ServerDeactivate (void);
+void StartFrame (void);
+void MessageBegin (int msg_dest, int msg_type, const float *pOrigin, edict_t *ed);
+void WriteString (const char *sz);
+void SendIRCToGame (const char *text);
+void SendGameToIRC (const char *text);
+// multithreaded functions
+void StartMultithreadedIRCBot (void *thread_id);
+void IRCBot_Connect (void);
+void IRCBot_Disconnect (void);
+void IRCBot_Talk (void);
+void IRCBot_Listen (void);
+void IRCBot_Think (void);
+const char *GetWord (const char *string, int word_number);
+int GetNextWordStartOffset (const char *string, int word_number);
+
+
+// START of Metamod stuff
+
+enginefuncs_t meta_engfuncs;
+gamedll_funcs_t *gpGamedllFuncs;
+mutil_funcs_t *gpMetaUtilFuncs;
+meta_globals_t *gpMetaGlobals;
+
+META_FUNCTIONS gMetaFunctionTable =
+{
+   NULL, // pfnGetEntityAPI()
+   NULL, // pfnGetEntityAPI_Post()
+   GetEntityAPI2, // pfnGetEntityAPI2()
+   NULL, // pfnGetEntityAPI2_Post()
+   NULL, // pfnGetNewDLLFunctions()
+   NULL, // pfnGetNewDLLFunctions_Post()
+   GetEngineFunctions, // pfnGetEngineFunctions()
+   NULL, // pfnGetEngineFunctions_Post()
+};
+
+plugin_info_t Plugin_info = {
+   META_INTERFACE_VERSION, // interface version
+   "Half-Life IRC", // plugin name
+   "1.0", // plugin version
+   "15/03/2003", // date of creation
+   "Pierre-Marie Baty <pm@racc-ai.com>", // plugin author
+   "http://www.racc-ai.com", // plugin URL
+   "hlirc", // plugin logtag
+   PT_ANYTIME, // when loadable
+   PT_ANYTIME, // when unloadable
+};
+
+
+C_DLLEXPORT int Meta_Query (char *ifvers, plugin_info_t **pPlugInfo, mutil_funcs_t *pMetaUtilFuncs)
+{
+   // this function is the first function ever called by metamod in the plugin DLL. Its purpose
+   // is for metamod to retrieve basic information about the plugin, such as its meta-interface
+   // version, for ensuring compatibility with the current version of the running metamod.
+
+   // keep track of the pointers to metamod function tables metamod gives us
+   gpMetaUtilFuncs = pMetaUtilFuncs;
+   *pPlugInfo = &Plugin_info;
+
+   // check for interface version compatibility
+   if (strcmp (ifvers, Plugin_info.ifvers) != 0)
+   {
+      int mmajor = 0, mminor = 0, pmajor = 0, pminor = 0;
+
+      LOG_CONSOLE (PLID, "WARNING: meta-interface version mismatch; requested=%s ours=%s", Plugin_info.logtag, ifvers);
+      LOG_MESSAGE (PLID, "WARNING: meta-interface version mismatch; requested=%s ours=%s", Plugin_info.logtag, ifvers);
+
+      // if plugin has later interface version, it's incompatible (update metamod)
+      sscanf (ifvers, "%d:%d", &mmajor, &mminor);
+      sscanf (META_INTERFACE_VERSION, "%d:%d", &pmajor, &pminor);
+
+      if ((pmajor > mmajor) [OR] ((pmajor == mmajor) && (pminor > mminor)))
+      {
+         LOG_CONSOLE (PLID, "metamod version is too old for this plugin; update metamod");
+         LOG_ERROR (PLID, "metamod version is too old for this plugin; update metamod");
+         return (FALSE);
+      }
+
+      // if plugin has older major interface version, it's incompatible (update plugin)
+      else if (pmajor < mmajor)
+      {
+         LOG_CONSOLE (PLID, "metamod version is incompatible with this plugin; please find a newer version of this plugin");
+         LOG_ERROR (PLID, "metamod version is incompatible with this plugin; please find a newer version of this plugin");
+         return (FALSE);
+      }
+   }
+
+   return (TRUE); // tell metamod this plugin looks safe
+}
+
+
+C_DLLEXPORT int Meta_Attach (PLUG_LOADTIME now, META_FUNCTIONS *pFunctionTable, meta_globals_t *pMGlobals, gamedll_funcs_t *pGamedllFuncs)
+{
+   // this function is called when metamod attempts to load the plugin. Since it's the place
+   // where we can tell if the plugin will be allowed to run or not, we wait until here to make
+   // our initialization stuff, like registering CVARs and dedicated server commands.
+
+   // are we allowed to load this plugin now ?
+   if (now > Plugin_info.loadable)
+   {
+      LOG_CONSOLE (PLID, "Can't load plugin right now");
+      LOG_ERROR (PLID, "Can't load plugin right now");
+      return (FALSE); // returning FALSE prevents metamod from attaching this plugin
+   }
+
+   // initialize Windows TCP stack (Winsock)
+   if (WSAStartup (0x0101, &ircbot.wsaData) != 0)
+   {
+      LOG_CONSOLE (PLID, "HLIRC failed to initialize Winsock");
+      LOG_ERROR (PLID, "HLIRC failed to initialize Winsock");
+      return (FALSE); // returning FALSE prevents metamod from attaching this plugin
+   }
+
+   // keep track of the pointers to engine function tables metamod gives us
+   gpMetaGlobals = pMGlobals;
+   memcpy (pFunctionTable, &gMetaFunctionTable, sizeof (META_FUNCTIONS));
+   gpGamedllFuncs = pGamedllFuncs;
+
+   // ask the engine to register the CVARs this plugin uses
+   CVAR_REGISTER (&irc_server);
+   CVAR_REGISTER (&irc_channel);
+   CVAR_REGISTER (&irc_name);
+
+   return (TRUE); // returning TRUE enables metamod to attach this plugin
+}
+
+
+C_DLLEXPORT int Meta_Detach (PLUG_LOADTIME now, PL_UNLOAD_REASON reason)
+{
+   // this function is called when metamod unloads the plugin. A basic check is made in order
+   // to prevent unloading the plugin if its processing should not be interrupted.
+
+   // is metamod allowed to unload the plugin ?
+   if ((now > Plugin_info.unloadable) && (reason != PNL_CMD_FORCED))
+   {
+      LOG_CONSOLE (PLID, "Can't unload plugin right now");
+      LOG_ERROR (PLID, "Can't unload plugin right now");
+      return (FALSE); // returning FALSE prevents metamod from unloading this plugin
+   }
+
+   // terminate the IRC bot thread
+   ircbot.order = IRCBOT_ORDER_TERMINATETHREAD; // order the IRC bot to suicide
+
+   return (TRUE); // returning TRUE enables metamod to unload this plugin
+}
+
+
+C_DLLEXPORT int GetEntityAPI2 (DLL_FUNCTIONS *pFunctionTable, int *interfaceVersion)
+{
+   // this is one of the initialization functions hooked by metamod in the gamedll API
+
+   // keep track of pointers to the functions we use in the gamedll API
+   gFunctionTable.pfnServerActivate = ServerActivate;
+   gFunctionTable.pfnServerDeactivate = ServerDeactivate;
+   gFunctionTable.pfnStartFrame = StartFrame;
+
+   // copy the whole table for metamod to know which functions we are using here
+   memcpy (pFunctionTable, &gFunctionTable, sizeof (DLL_FUNCTIONS));
+   return (TRUE); // alright
+}
+
+
+C_DLLEXPORT int GetEngineFunctions (enginefuncs_t *pengfuncsFromEngine, int *interfaceVersion)
+{
+   // this is one of the initialization functions hooked by metamod in the engine API
+
+   // keep track of pointers to the functions we use in the engine API
+   meta_engfuncs.pfnMessageBegin = MessageBegin;
+   meta_engfuncs.pfnWriteString = WriteString;
+
+   // copy the whole table for metamod to know which functions we are using here
+   memcpy (pengfuncsFromEngine, &meta_engfuncs, sizeof (enginefuncs_t));
+   return (TRUE); // alright
+}
+
+// END of Metamod stuff
+
+
+
+
+#ifdef _WIN32
+BOOL WINAPI DllMain (HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved)
+{
+   // required Win32 DLL entry point. Good place for freeing stuff upon DLL unloading (in case
+   // fdwReason would be DLL_PROCESS_DETACH) if needed. The same for Linux would be implemented
+   // in an optional _fini() function.
+
+   return (TRUE); // nothing to do here
+}
+#endif
+
+
+void WINAPI GiveFnptrsToDll (enginefuncs_t* pengfuncsFromEngine, globalvars_t *pGlobals)
+{
+   // this function is called by the engine to tell the MOD DLL (hence the plugins too) the
+   // address of its function table and its server global variables structure.
+
+   // keep track of the engine functions and the server globals for our own use
+   memcpy (&g_engfuncs, pengfuncsFromEngine, sizeof (enginefuncs_t));
+   gpGlobals = pGlobals;
+}
+
+
+void ServerActivate (edict_t *pEdictList, int edictCount, int clientMax)
+{
+   // this function is called when the server has fully loaded and is about to manifest itself
+   // on the network as such. Since a mapchange is actually a server shutdown followed by a
+   // restart, this function is also called when a new map is being loaded. Once this function
+   // has been called, the server can be considered as "running". Here we start a new thread for
+   // the IRC bot that will act as a proxy between the IRC chat and the game chat channels.
+
+   // reset the server socket structure
+   memset (&ircserver.sockaddr, 0, sizeof (ircserver.sockaddr));
+
+   // get the server hostinfo structure by resolving its name
+   ircserver.hostinfo = gethostbyname (CVAR_GET_STRING ("irc_server"));
+
+   // if there is a failure in the name resolution, don't run the IRC bot
+   if (ircserver.hostinfo == NULL)
+   {
+      LOG_CONSOLE (PLID, "HLIRC invalid servername: %s", CVAR_GET_STRING ("irc_server"));
+      LOG_ERROR (PLID, "HLIRC invalid servername: %s", CVAR_GET_STRING ("irc_server"));
+   }
+
+   // fill in the sockaddr server structure with the server hostinfo data
+   ircserver.sockaddr.sin_family = ircserver.hostinfo->h_addrtype;
+   ircserver.sockaddr.sin_port = htons (atoi ("6667"));
+   memcpy ((char *) &ircserver.sockaddr.sin_addr, ircserver.hostinfo->h_addr, ircserver.hostinfo->h_length);
+
+   // if the IRC bot thread doesn't exist yet, then start one
+   if (!ircbot.thread_active)
+   {
+      // reset the IRC bot structure, launch the thread and wait for it to start
+      memset (&ircbot, 0, sizeof (ircbot));
+      _beginthread (StartMultithreadedIRCBot, 0, NULL); // launch the thread
+      while (!ircbot.thread_active) _sleep (0); // wait for thread to start
+   }
+
+   RETURN_META (MRES_IGNORED);
+}
+
+
+void ServerDeactivate (void)
+{
+   // this function is called whenever the server goes down, either because of a normal shutdown
+   // or because of a mapchange. Once this function has been called, the server can be considered
+   // as offline. Here we kill the IRC bot thread in order to have a fresh start for the next
+   // eventual ServerActivate() call.
+
+   // terminate the IRC bot thread
+   ircbot.order = IRCBOT_ORDER_TERMINATETHREAD; // order the IRC bot to suicide
+
+   RETURN_META (MRES_IGNORED);
+}
+
+
+void StartFrame (void)
+{
+   // this function starts a video frame. It is called once per video frame by the engine. If
+   // you run Half-Life at 90 fps, this function will then be called 90 times per second. By
+   // placing a hook on it, we have a good place to do things that should be done continuously
+   // during the game, for instance keeping an eye on the IRC bot.
+
+   // is the IRC bot complaining about something ?
+   if (ircbot.error == IRCBOT_ERROR_CANTCREATESOCKET)
+   {
+      LOG_CONSOLE (PLID, "IRC bot can't create socket"); // daaaaah
+      LOG_ERROR (PLID, "IRC bot can't create socket"); // mommyyy
+   }
+   else if (ircbot.error == IRCBOT_ERROR_CANTCONNECTTOSERVER)
+   {
+      LOG_CONSOLE (PLID, "IRC bot can't create socket"); // daaaaah
+      LOG_ERROR (PLID, "IRC bot can't connect to server"); // mommyyy
+   }
+
+   // do we have some new chat either in IRC or in game ?
+   if (ircbot.new_irc_to_game)
+   {
+      SendIRCToGame (ircbot.irc_to_game); // send the IRC chat to the players' HUDs
+      ircbot.new_irc_to_game = FALSE; // clear the flag now we've processed it
+   }
+   if (ircbot.new_game_to_irc)
+   {
+      SendGameToIRC (ircbot.game_to_irc); // send the game chat to the IRC channel
+      ircbot.new_game_to_irc = FALSE; // clear the flag now we've processed it
+   }
+
+   RETURN_META (MRES_IGNORED);
+}
+
+
+void MessageBegin (int msg_dest, int msg_type, const float *pOrigin, edict_t *ed)
+{
+   // this function is called whenever the Half-Life engine starts sending a network message
+   // to its clients. It tells the type of message to be sent and its destination.
+
+   // i.e is this message for a real client AND this is a "SayText" type message (chat message) ?
+   if (!FNullEnt (ed) && (ed->v.flags & (FL_CLIENT [OR] FL_FAKECLIENT))
+       && (msg_type == GET_USER_MSG_ID (PLID, "SayText", NULL)))
+      send_this_message = TRUE; // then remember to send the next STRING packet through the IRC bot
+
+   RETURN_META (MRES_IGNORED);
+}
+
+
+void WriteString (const char *sz)
+{
+   // if this packet is part of a SayText message, then it contains some player chat and we need
+   // to send it to the IRC server through the IRC bot
+
+   // are we supposed to send this message ?
+   if (send_this_message)
+   {
+      send_this_message = FALSE; // clear the flag that indicated us this
+
+      // there are actually SayText messages that are not player chat strings. Since player
+      // chat strings begin with a special character, we can discard those who are irrelevant
+      if ((char) sz[0] == 0x02);
+      {
+        sprintf (ircbot.game_to_irc, &sz[1]); // copy chat string, skip the special character
+        ircbot.new_game_to_irc = TRUE; // tell the IRC bot it has a new message to send
+      }
+   }
+
+   RETURN_META (MRES_IGNORED);
+}
+
+
+void SendIRCToGame (const char *text)
+{
+   // this function loops through all clients and displays the specified text string in the game
+   // chat area of their Head Up Display (HUD). The text is sent as is, without formatting and
+   // without colors.
+
+   int client_index;
+   edict_t *pClient;
+
+   // if the "SayText" message has not been registered yet...
+   if (GET_USER_MSG_ID (PLID, "SayText", NULL) <= 0)
+      REG_USER_MSG ("SayText", -1); // register it by the engine
+
+   // now loop through all clients
+   for (client_index = 1; client_index <= gpGlobals->maxClients; client_index++)
+   {
+      pClient = INDEXENT (client_index); // get a pointer to this client's entity
+
+      if (FNullEnt (pClient) [OR] !(pClient->v.flags & (FL_CLIENT [OR] FL_FAKECLIENT)))
+         continue; // if the pointer is invalid or doesn't point to a client, skip this one
+
+      // send the message for display on this client's HUD
+      MESSAGE_BEGIN (MSG_ONE_UNRELIABLE, GET_USER_MSG_ID (PLID, "SayText", NULL), NULL, pClient);
+      WRITE_BYTE (ENTINDEX (pClient));
+      WRITE_STRING (text);
+      MESSAGE_END ();
+   }
+
+   return; // done
+}
+
+
+void SendGameToIRC (const char *text)
+{
+   // this function sends the specified game chat text to the IRC channel through the IRC bot
+
+   if (!ircbot.connected_to_server [OR] !ircbot.connected_to_channel)
+      return; // reliability check; don't send anything if bot is not connected
+
+   sprintf (ircbot.tx_buffer, "PRIVMSG %s :%s\n", CVAR_GET_STRING ("irc_channel"), ircbot.game_to_irc); // retry to enter
+   IRCBot_Talk (); // send the chat string to the IRC server
+
+   return; // done
+}
+
+
+///////////////////////////////////////////////////////////////////////////////////////////////
+// Everything above runs on the main game thread
+///////////////////////////////////////////////////////////////////////////////////////////////
+// Everything below runs on a different thread
+///////////////////////////////////////////////////////////////////////////////////////////////
+
+
+void StartMultithreadedIRCBot (void *thread_id)
+{
+   // this function starts a new thread in which the IRC bot will run
+
+   // first off, the thread has successfully started, so give the signal back to the parent
+   ircbot.thread_active = TRUE;
+
+   // loop endlessly while we're not asked to quit
+   while (ircbot.order != IRCBOT_ORDER_TERMINATETHREAD)
+   {
+      // has this player's IRC bot be given an order ?
+      if (ircbot.order == IRCBOT_ORDER_CONNECT)
+         IRCBot_Connect (); // we have been asked to connect
+      else if (ircbot.order == IRCBOT_ORDER_DISCONNECT)
+         IRCBot_Disconnect (); // we have been asked to disconnect
+
+      // else if we are connected...
+      else if (ircbot.connected_to_server)
+      {
+         IRCBot_Listen (); // listen to IRC...
+         IRCBot_Think (); // ...and formulate a reply when needed
+      }
+
+      // else we are NOT connected yet, or we have been disconnected...
+      else
+      {
+         _sleep (ircbot.connection_idle_delay * 1000); // so wait for the common idle time
+         ircbot.connection_idle_delay = ircbot.connection_idle_delay * 1.2; // increase delay by 20%
+         IRCBot_Connect (); // and try to connect by ourselves
+      }
+
+      _sleep (0); // allow context switching if necessary (thanks botman!)
+   }
+
+   // if we reach there, then the thread is about to end
+   IRCBot_Disconnect (); // so disconnect from the server if needed
+   ircbot.thread_active = FALSE; // give the death signal back to the parent
+   _endthread (); // and suicide :)
+
+   return;
+}
+
+
+void IRCBot_Connect (void)
+{
+   // this function connects a bot on the IRC server and attributes this bot to the player
+   // whose index is player_index
+
+   int nick_length, irc_nick_length, index;
+
+   // initialise some variables
+   ircbot.connected_to_server = FALSE;
+   ircbot.connected_to_channel = FALSE;
+   ircbot.connection_idle_delay = 3.0;
+   ircbot.irc_socket = NULL;
+   ircbot.error = IRCBOT_ERROR_NOERROR;
+
+   // what's this bot's name, again ?
+   nick_length = strlen (CVAR_GET_STRING ("irc_name"));
+
+   // can we use directly this name as an IRC nickname ?
+   if (nick_length < 30)
+      irc_nick_length = nick_length; // this nickname fits for an IRC nickname
+   else
+      irc_nick_length = 30; // IRC nicknames are maximum 30 characters long, looks like
+
+   // build the bot's IRC name
+   strncpy (ircbot.irc_name, CVAR_GET_STRING ("irc_name"), irc_nick_length);
+   for (index = 0; index < irc_nick_length; index++)
+      if (ircbot.irc_name[index] == ' ')
+         ircbot.irc_name[index] = '_'; // convert spaces to underscores
+   ircbot.irc_name[irc_nick_length] = 0; // terminate the string
+
+   // create a socket for the IRC bot
+   ircbot.irc_socket = socket (AF_INET, SOCK_STREAM, 0);
+   if (ircbot.irc_socket == -1)
+   {
+      ircbot.error = IRCBOT_ERROR_CANTCREATESOCKET; // set the error level
+      return; // break on error
+   }
+
+   // connect the bot to the IRC server using that socket
+   if (connect (ircbot.irc_socket, (sockaddr *) &ircserver.sockaddr, sizeof (ircserver.sockaddr)) == -1)
+   {
+      ircbot.error = IRCBOT_ERROR_CANTCONNECTTOSERVER; // set the error level
+      return; // break on error
+   }
+
+   // at this point, the bot has established a socket connection to the IRC server
+   ircbot.connected_to_server = TRUE; // so mark it as connected
+
+   // register the user on the IRC server
+   sprintf (ircbot.tx_buffer, "USER %s 0 * : \n", ircbot.irc_name);
+   IRCBot_Talk (); // login step 1: USER
+
+   sprintf (ircbot.tx_buffer, "NICK %s\n", ircbot.irc_name);
+   IRCBot_Talk (); // login step 2: NICKname
+
+   ircbot.order = IRCBOT_ORDER_NOORDER; // we successfully handled the order
+   return; // so return
+}
+
+
+void IRCBot_Disconnect (void)
+{
+   // this function disconnects the IRC bot from the IRC server
+
+   if (!ircbot.connected_to_server)
+      return; // reliability check, don't disconnect if the IRC bot is not connected
+
+   // send the QUIT command with the reason for it
+   sprintf (ircbot.tx_buffer, "QUIT :Server mapchange or shutdown\n");
+   IRCBot_Talk (); // logout
+   closesocket (ircbot.irc_socket); // close the IRC bot socket
+   ircbot.connected_to_channel = FALSE; // mark us as no longer member of the IRC channel
+   ircbot.connected_to_server = FALSE; // and mark us as disconnected from the IRC server
+
+   ircbot.order = IRCBOT_ORDER_NOORDER; // we successfully handled the order
+
+   return; // so return
+}
+
+
+void IRCBot_Talk (void)
+{
+   // this function makes the IRC bot send its transmission buffer to the IRC server
+
+   if (!ircbot.connected_to_server)
+      return; // reliability check, don't send anything if the IRC bot is not connected
+
+   // write the transmission buffer to the IRC client socket in direction of the IRC server
+   send (ircbot.irc_socket, ircbot.tx_buffer, strlen (ircbot.tx_buffer), 0);
+   ircbot.tx_buffer[0] = 0; // reset the tx buffer now that it has been sent
+
+   return; // and return
+}
+
+
+void IRCBot_Listen (void)
+{
+   // this function makes the IRC bot listen to the data sent by the IRC server and fill in
+   // its reception buffer accordingly
+
+   int count = 0;
+   static char buffer[256];
+
+   if (!ircbot.connected_to_server)
+      return; // reliability check, don't listen to anything if the IRC bot is not connected
+
+   // as long as we don't get a carriage return (13) or we don't reach 256 packets of data...
+   while ((buffer[0] != 13) && (count < 256))
+   {
+      // listen to the socket and stuff the temporary buffer with what we get
+      recv (ircbot.irc_socket, buffer, 1, 0);
+      strcat (ircbot.rx_buffer, buffer); // concatenate the data in the rx buffer
+      count++; // we have processed one packet more
+
+      _sleep (0); // allow context switching if necessary (thanks botman!)
+   }
+   recv (ircbot.irc_socket, buffer, 1, 0); // handle the terminator packet
+
+   return; // and return
+}
+
+
+void IRCBot_Think (void)
+{
+   // this function examines the reception buffer of the IRC bot and formulate an automatic
+   // reply to the IRC server when needed
+
+   static char words[16][256];
+   static int index;
+
+   if (!ircbot.connected_to_server)
+      return; // reliability check, don't examine anything if the IRC bot is not connected
+
+   if (ircbot.rx_buffer[0] == 0)
+      return; // reliability check, don't examine anything if nothing in the reception buffer
+
+   // is the data received typical from an unexpected disconnection ?
+   if ((strncmp (ircbot.rx_buffer, "\n\n\n\n\n", 5) == 0)
+       [OR] (strncmp (ircbot.rx_buffer, "     ", 5) == 0))
+   {
+      ircbot.connected_to_channel = FALSE; // bot has been kicked from the IRC channel
+      ircbot.connected_to_server = FALSE; // and is no longer connected to the IRC server
+      ircbot.rx_buffer[0] = 0; // reset the reception buffer
+      return; // don't go any further
+   }
+
+   // else we are still connected and we need to examine word by word what the server sends us
+
+   // parse the server words and fill our array
+   for (index = 0; index < 16; index++)
+      strcpy (words[index], GetWord (ircbot.rx_buffer, index)); // store each word
+
+   // is it a "nick already in use" error ?
+   if (strcmp ("433", words[1]) == 0)
+   {
+      strcat (ircbot.irc_name, "_"); // append an underscore to his IRC nickname
+      sprintf (ircbot.tx_buffer, "NICK %s\n", ircbot.irc_name);
+      IRCBot_Talk (); // retry login step 2: NICKname
+   }
+
+   // else is it a PING request ?
+   else if (strcmp ("PING", words[0]) == 0)
+   {
+      sprintf (ircbot.tx_buffer, "PONG %s\n", words[1]);
+      IRCBot_Talk (); // send PONG
+   }
+
+   // else are we asked for our IRC client version ?
+   else if ((strcmp ("PRIVMSG", words[2]) == 0) && (strcmp ("VERSION", words[4]) == 0))
+   {
+      sprintf (ircbot.tx_buffer, "NOTICE %s :%cVERSION %s version %s by %s%c\n", words[0], 0x01, Plugin_info.name, Plugin_info.version, Plugin_info.author, 0x01);
+      IRCBot_Talk (); // send VERSION name
+   }
+
+   // else are we asked for our IRC client ping ?
+   else if ((strcmp ("PRIVMSG", words[2]) == 0) && (strcmp ("PING", words[4]) == 0))
+   {
+      sprintf (ircbot.tx_buffer, "NOTICE %s :%cPING %s%c\n", words[0], 0x01, words[5], 0x01);
+      IRCBot_Talk (); // send PING
+   }
+
+   // else are we asked for our IRC client info ?
+   else if ((strcmp ("PRIVMSG", words[2]) == 0) && (strcmp ("CLIENTINFO", words[4]) == 0))
+   {
+      sprintf (ircbot.tx_buffer, "NOTICE %s :%cCLIENTINFO Another metamod plugin by some anonymous weirdo%c\n", words[0], 0x01, 0x01);
+      IRCBot_Talk (); // send CLIENTINFO
+   }
+
+   // else are we asked for our IRC user info ?
+   else if ((strcmp ("PRIVMSG", words[2]) == 0) && (strcmp ("USERINFO", words[4]) == 0))
+   {
+      sprintf (ircbot.tx_buffer, "NOTICE %s :%cUSERINFO Mind your own business!%c\n", words[0], 0x01, 0x01);
+      IRCBot_Talk (); // send CLIENTINFO
+   }
+
+   // else are we asked for our IRC client local time ?
+   else if ((strcmp ("PRIVMSG", words[2]) == 0) && (strcmp ("TIME", words[4]) == 0))
+   {
+      sprintf (ircbot.tx_buffer, "NOTICE %s :%cTIME Uptime on server: %.1f seconds%c\n", words[0], 0x01, gpGlobals->time, 0x01);
+      IRCBot_Talk (); // send CLIENTINFO
+   }
+
+   // else is it a MOTD notice ?
+   else if ((strcmp ("376", words[1]) == 0) [OR] (strcmp ("422", words[1]) == 0))
+   {
+      sprintf (ircbot.tx_buffer, "JOIN %s\n", CVAR_GET_STRING ("irc_channel"));
+      IRCBot_Talk (); // request to join the specified channel
+   }
+
+   // else is it a NAMES list ? (such a list is sent when we have joined a channel)
+   else if (strcmp ("366", words[1]) == 0)
+      ircbot.connected_to_channel = TRUE; // bot is now a member of the channel
+
+   // else is it a notification that we have been kicked out of the channel ?
+   else if (strcmp ("KICK", words[2]) == 0)
+   {
+      ircbot.connected_to_channel = FALSE; // bot is no more a member of the channel
+      sprintf (ircbot.tx_buffer, "JOIN %s\n", CVAR_GET_STRING ("irc_channel")); // retry to enter
+      IRCBot_Talk (); // request to join the specified channel again
+   }
+
+   // else is it someone's chat in the main channel ?
+   else if ((strcmp ("PRIVMSG", words[2]) == 0) && (strcmp (CVAR_GET_STRING ("irc_channel"), words[3]) == 0))
+   {
+      // build the string to be displayed on the players' HUDs
+      sprintf (ircbot.irc_to_game, "%s :    %s", words[0], &ircbot.rx_buffer[GetNextWordStartOffset (ircbot.rx_buffer, 3)]);
+
+      // remove trailing carriage returns and line feeds from the IRC server
+      while (((index = strlen (ircbot.irc_to_game) - 1) >= 0)
+             && ((ircbot.irc_to_game[index] == 0x0D) [OR] (ircbot.irc_to_game[index] == 0x0A)))
+         ircbot.irc_to_game[index] = 0; // shorten the string
+
+      strcat (ircbot.irc_to_game, "\n"); // terminate the string with a standard line feed
+      ircbot.new_irc_to_game = TRUE; // notify the main thread that there is a new IRC chat message
+   }
+
+   // that's all we can do, so reset the reception buffer
+   ircbot.rx_buffer[0] = 0;
+   return; // and return
+}
+
+
+const char *GetWord (const char *string, int word_number)
+{
+   // this function returns the wanted word in a string
+
+   static char word_returned[256];
+   int length, i, index = 0, word_count = 0, fieldstart, fieldstop;
+
+   word_returned[0] = 0; // clear the character string that will hold the word to be returned
+   length = strlen (string); // get the length of the original string
+
+   // while we have not reached the end of the string
+   while ((index < length) && (word_count <= word_number))
+   {
+      while ((index < length) && ((string[index] == ' ')
+                                  [OR] (string[index] == ':')
+                                  [OR] (string[index] == '!')
+                                  [OR] (string[index] == '~')
+                                  [OR] (string[index] == 0x01)
+                                  [OR] (string[index] == 0x0D)
+                                  [OR] (string[index] == 0x0A)))
+         index++; // ignore spaces, smileys, separators, carriage returns and end of lines
+
+      fieldstart = index; // save field start position
+      while ((index < length) && (string[index] != ' ') 
+                              && (string[index] != ':')
+                              && (string[index] != '!')
+                              && (string[index] != '~')
+                              && (string[index] != 0x01)
+                              && (string[index] != 0x0D)
+                              && (string[index] != 0x0A))
+         index++; // reach end of field
+      fieldstop = index - 1; // save field stop position
+
+      // is this word we just processed the wanted one ?
+      if (word_count == word_number)
+      {
+         for (i = fieldstart; i <= fieldstop; i++)
+            word_returned[i - fieldstart] = string[i]; // store the field value in a string
+         word_returned[i - fieldstart] = 0; // terminate the string
+         break; // and exit the while loop
+      }
+
+      word_count++; // we have processed one argument more
+   }
+
+   return (&word_returned[0]); // return a pointer to the wanted word
+}
+
+
+int GetNextWordStartOffset (const char *string, int word_number)
+{
+   // this function returns the position in the character string of the beginning of the word
+   // that is immediately after the wanted word
+
+   int length, index = 0, word_count = 0, fieldstart, fieldstop;
+
+   length = strlen (string); // get length of string
+
+   // while we have not reached the end of the string
+   while ((index < length) && (word_count <= word_number))
+   {
+      while ((index < length) && ((string[index] == ' ')
+                                  [OR] (string[index] == ':')
+                                  [OR] (string[index] == '!')
+                                  [OR] (string[index] == '~')
+                                  [OR] (string[index] == 0x01)
+                                  [OR] (string[index] == 0x0D)
+                                  [OR] (string[index] == 0x0A)))
+         index++; // ignore spaces, smileys, separators, carriage returns and end of lines
+
+      fieldstart = index; // save field start position
+      while ((index < length) && (string[index] != ' ') 
+                              && (string[index] != ':')
+                              && (string[index] != '!')
+                              && (string[index] != '~')
+                              && (string[index] != 0x01)
+                              && (string[index] != 0x0D)
+                              && (string[index] != 0x0A))
+         index++; // reach end of field
+      fieldstop = index - 1; // save field stop position
+
+      // is this word we just processed the wanted one ?
+      if (word_count == word_number)
+      {
+         while ((index < length) && ((string[index] == ' ') [OR] (string[index] == ':')))
+            index++; // skip the spaces and the ':' after the word
+         return (index); // return the offset at which the next word begins
+      }
+
+      word_count++; // we have processed one argument more
+   }
+
+   return (strlen (string)); // word not found, return the \0 index at the end of the string
+}
+
+
+"have fun"
+
+...and in mine, there are comments ;)
+
+
+--------------------------------------------------
+03/31/03 at 04:03:33  Reply by: Deacon (Deacon@mail.dk)
+--------------------------------------------------
+Roger! Or you can just use the ogc irc_client source! :)
+
+--------------------------------------------------
+04/01/03 at 15:24:06  Reply by: RobGP (rob@planetfortress.com)
+--------------------------------------------------
+l337 c0d3r competition?
+
+--------------------------------------------------
+04/01/03 at 18:47:05  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+haha no, this is no l33t code, well for the least I don't think it is. If you want l33t code, ask guys from the demo scene, for example, *that* is l33t.
+ 
+

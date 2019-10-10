@@ -1,0 +1,229 @@
+--------------------------------------------------
+Subject: daaaaaah <-@
+--------------------------------------------------
+12/13/02 at 10:09:22  Posted by: PM (pm@racc-ai.com)
+--------------------------------------------------
+O Grand-Guru, might Thou lend me a misericordious hand and enlighten my
+incommensurable stupidity ? about C coding...
+
+// I have an array of characters
+char g_dentdata[MAX_MAP_ENTSTRING];
+// Its size is :
+int g_entdatasize;
+
+// I initialize a token search on it...
+char *block; *blockstart, *blockend;
+block = strtok (g_dentdata, "info_player_start");
+
+// Now block is supposed to point to the first occurence of
+"info_player_start" in g_dentdata, right ?
+
+// I initialize pointers for the start and the end of a certain substring to
+this location first...
+blockstart = block;
+blockend = block;
+
+// ...and now I look for that substring's delimiters.
+while (blockstart[0] != '{')
+   blockstart--; // backwards for starting open brace
+while (blockend[0] != '}')
+   blockend++; // forwards for ending closed brace
+blockend++; // bypass the closed brace
+
+// until now, I am doing things right, ain't I ? blockstart is supposed to
+point to the start of the "block" (substring I am looking for) in the array;
+and blockend is supposed to point after the end of that block...
+
+// what I want to do now is to delete that block from the string. So I want
+the characters that are beyond that block to be shuffled back by "blocksize"
+elements. The idea is OK, isn't it ?
+
+strcpy (blockstart, blockend); // daaaaaah, mommyyyyy, edazentwooooork !!!!
+
+Could you write some neat and dumbass-readable code sample for me that would
+do this ?
+I've tried very odd things, and despite many screams and fist shots on the
+keyboard, all it does is that the puter obviously wants to drive me out of
+my nerves, sdzlifgtreziauqoNZOCAIUOZBCXNDmnit !
+
+You understand what I want, strip out all the blocks that deal with player
+spawn points from the string that holds the entity data of the map.
+
+Is there a charitable soul overhere ?
+
+
+--------------------------------------------------
+12/13/02 at 12:52:56  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+instead of using strtok, use strstr (I havent heard of strtok so I dont know if its any better)
+
+You'd want to set strstr return value into a temp character and check it because it could be NULL.
+
+code:
+
+block = strstr ( g_dentdata, "info_player_start" );
+
+if ( block == NULL )
+{
+  ALERT(at_console,"info_player_start not found in g_dentdata!!!");
+}
+else
+{
+  // do stuff
+}
+
+
+
+strcpy isn't the best thing to use when copying blocks, all its going to do here is copy the string characters continuing after "blockend" until a string terminator is found into blockstart, which is not what you want I dont think. 
+
+I am guessing you want to store the string inside the { and }'s, (i.e. from blockstart to blockend) to do this store it in a WHOLE new string. :D
+
+You are better to use strncpy for this. Make a new string (cannot be a pointer string because you want to null terminate it at the position of blockend without editing g_dentdata right?)
+
+code:
+
+char new_string[MAX_MAP_ENTSTRING];
+
+strncpy (new_string,blockstart,(size_t)((int)blockend - (int)blockstart));
+
+// null terminate (strncpy is great :), however dodgy and doesnt do this)
+new_string[ (int)((int)blockend - (int)blockstart) ] = 0;
+
+
+what this is going to do is COPY the string starting from the point block start into the new string until the number of characters copied equal the amount that lead up to the last (blockend) character.
+
+Try it! since I don't know if this works but it should :P
+
+
+
+
+[modified on 12/13/02 at 12:05:52]
+
+[modified on 12/13/02 at 12:52:56]
+--------------------------------------------------
+12/13/02 at 12:28:35  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+It's ALWAYS a bad idea to strcpy() a string on top of itself.  Depending on whether the C runtime library starts copying at the beginning of the string (and works forwards) or starts copying at the end of the string (and works backwards), you might have things come out correctly like you expect, you might not have anything at all happen to the string, or you might create an infinite loop (depending on where the source and dest positions are within the string itself).
+
+It always best to copy the parts of the string you want to save to another temporary buffer (which is I think what Cheesy was saying)...
+
+strncpy(new_string, &old_string[start_pos], length);
+
+...then strcat() the rest of the string onto the end...
+
+strcat(new_string, &old_string[end_pos+1], strlen(old_string) - (start_pos + length));
+
+...then copy the new_string into the original string...
+
+strcpy(old_string, new_string);
+
+botman
+
+--------------------------------------------------
+12/13/02 at 13:02:15  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+here's a little program I made, which works, a little sketchy though, no comments but works :D 
+
+it will fill a string with random letters (and some annoying characters !) put '{' 's and '}' 's in random places and put the block of characters between them into a new string and print it!
+
+code:
+
+#include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
+#include <conio.h>
+
+#define STR_LEN 80
+
+#define RAND_ONE (float)((float)rand()/RAND_MAX)
+#define RAND(x,y) x + (int)(RAND_ONE*(y - x))
+
+void main()
+{
+      char test[STR_LEN];
+      char new_string[STR_LEN];
+      int i;
+
+      for ( i = 0; i < STR_LEN; i ++ )
+      {
+            test[i] = RAND('A','z');
+      }
+
+      test[RAND(0,STR_LEN-70)] ='{'; // put at '{' in the first 10 characters
+
+      test[RAND(STR_LEN - 11,STR_LEN-1)] ='}'; // put a '}' in the last ten characters (last character is null and needed) 
+                                               //this is just needed so I really know that '{' comes before the '}'
+
+      printf("%s\n",test);
+
+      char *start = strstr(test,"{");
+
+      i = 0;
+
+      while ( ( i < STR_LEN ) && ( test[i] != '}' ) )
+            i ++;
+
+      if ( i < STR_LEN )
+      {
+            i--; // test[i] is currently on a curly bracket and i don't want to print that !
+
+
+            long length = (int)(&test[i]) - (int)((int)start);
+
+            strncpy(new_string,start+1,length);
+
+            new_string[length] = 0;
+
+            printf("\n%s\n",new_string);
+
+            getch();
+      }
+}
+
+
+
+[modified on 12/13/02 at 13:02:15]
+--------------------------------------------------
+12/13/02 at 13:40:35  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Great thanks both of you, but I just want the contrary ! i.e, strip the block between {}'s and rebuild the original string...
+
+I know how to do what you're explaining in your example, Cheesy, but thanks anyway :)
+
+
+--------------------------------------------------
+12/14/02 at 01:03:36  Reply by: Zipster (skyork99@juno.com)
+--------------------------------------------------
+Did you even look at the documentation for strtok before you decided to use it?  Becase what I see is blatent misuse of the function.
+
+Anyway, so you wanna remove all the info_player_start entities...  you have the right idea searching for "info_player_start" string, and Cheese was right that you should be using strstr instead, but his example program is a bit sketchy.  Also, if you only use strstr once, then you will only remove one occurance of the entity.  In the case of "info_player_start", there should only be one anyway, but if you are trying to design code that basically removes an entity based on it's classname, then you should make it general enough to fit that goal.  This means that you would have to loop with strstr until the return value is zero.  That way, large changes don't need to be made if you decided that some other entity needed removal.
+
+Once you find the block and identify the curly braces, you can use a simple shortcut to avoid copying any memory at all.  The entity data is read into the engine using a scripting engine much like the one that comes with compile tool code.  It is meant to work with text data, and thus will be aware of newlines.  It, of course, will skip these newlines (or anything <= 0x20) whenever it's looking for a new block or keyvalue to parse.  We can use this to our advantage.  Instead of moving memory, fill the block with the value 0x0A, which is the newline character.  This will simply trick the parsing code into skipping over these "blank lines".  If you were to try and open the BSP in Wordpad to see these blank lines, you would get a bunch of squares, but don't worry.  This is simply because Windows interprets new lines differently than how the code interprets new lines.  The squares are good in this case.
+
+--------------------------------------------------
+12/14/02 at 04:21:01  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Thanks Skyler, I understand now I was using strtok incorrectly. I have very few C documentation here at home, I guess that's in part why :) ...
+
+Your idea about filling the entity block with newlines if good, but I also want to have a clean entity data string in return, since I also plan to add new blocks on the fly. What if its size exceeds MAX_MAP_ENTDATA then ?
+
+Anyway I'm gonna look for strtok and strstr usage. Do you know any web site from which you could download some C reference help files ? a PDF, a HTML or even a bunch of man pages ? If I would have all these on my puter, it would certainly save me a lot of PITA.
+
+
+--------------------------------------------------
+12/14/02 at 10:52:18  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+use MSDN ;D
+
+function -> http://msdn.microsoft.com/library/en-us/wcecrt/htm/_wcecrt_functions.asp
+
+strtok -> http://msdn.microsoft.com/library/en-us/wcecrt/htm/_wcecrt_strtok_wcstok.asp
+
+strstr -> http://msdn.microsoft.com/library/en-us/wcecrt/htm/_wcecrt_strstr_wcsstr.asp
+--------------------------------------------------
+12/14/02 at 10:58:34  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Yeah, but I often don't decide when, and how long, I can connect to the net. So a local reference would be pretty useful.
+
+BTW. I think I got my problem work. Thanks Cheesy, I use strstr. And thanks botman, I separate source and dest ;)
+

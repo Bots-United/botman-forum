@@ -1,0 +1,174 @@
+--------------------------------------------------
+Subject: Another question!
+--------------------------------------------------
+12/28/01 at 06:05:31  Posted by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+another question :)
+
+Can I find out if a player actually pressed the attack button and actually shot? Because usually when the attack button is pressed a shot is not always made. i.e. could be out of ammo or rate of fire is longer etc.
+
+I tried doing this with checking ammo left after each frame but it would only update once the player reloaded.
+
+Is there no way to find if a player made a shot in real time?
+
+--------------------------------------------------
+12/28/01 at 08:10:25  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+it is:
+
+make an array:
+int player_ammo[32];
+
+store each frame the ammo (total ammo, or clip, doesnt really matter). 
+
+Now, when you do your 'button press' check, you should check the next frame if ammo is reduced. So, you should also have some extra check like "checknextframe = false" or something. With this, you do in short:
+
+startframe()
+{
+ checks
+ {
+  pressed button
+  if (checkflag == false)
+   - set checkflag
+  else
+  {
+   if (ammo[player_nr] > currentammofplayer)
+    // ammo reduced
+  }
+  
+ }
+
+}
+
+i hope this helps! :)
+
+--------------------------------------------------
+12/28/01 at 12:38:12  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+From my bot code:
+
+code:
+
+      // else if no enemy, check if a teammate is firing in some direction
+      else
+      {
+         char i;
+         edict_t *pClient = NULL;
+
+         // cycle all clients
+         for (i = 1; i <= gpGlobals->maxClients; i++)
+         {
+            pClient = INDEXENT (i);
+
+            // reliability check: is this slot unregistered?
+            if (pClient == NULL)
+               continue;
+
+            int bot_team = UTIL_GetTeam (pBot->pEdict);
+            int client_team = UTIL_GetTeam (pClient);
+            Vector v_client = pClient->v.origin - pBot->pEdict->v.origin;
+
+            // is this one teammate AND alive AND visible AND relatively close ?
+            if ((client_team == bot_team) && IsAlive (pClient)
+                && FVisible (pClient->v.origin + pClient->v.view_ofs, pBot->pEdict)
+                && (v_client.Length () < 300))
+            {
+               // if this client is attacking something
+               if (((pClient->v.button & IN_ATTACK) == IN_ATTACK)
+                   || ((pClient->v.button & IN_ATTACK2) == IN_ATTACK2))
+               {
+                  // face where he is looking
+
+
+
+I don't think the check you want to make is a good idea, because you won't notice knife kills if you check for ammo.
+
+
+--------------------------------------------------
+12/28/01 at 15:16:10  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+I don't want to take into account either knife/he grenade shots though, because im using this for accuracy.
+
+This is my temporary solution atm... its not even 100% perfect yet either :)
+
+code:
+
+      if( pPlayer->v.button & IN_ATTACK )
+      {
+            
+            // If this is NOT during freezetime
+            
+            // Start - Update Shots Fired
+            
+            if( (player->f_spawn_time + freezetime) <= gpGlobals->time )
+            {
+                  if ( UpdateShotsFired(player) )
+                  {
+                        // Do stuff in here when a player fires a shot
+                        player->shoot_time = gpGlobals->time;
+                        player->shots_fired ++;
+                  }
+            }
+...
+...
+
+
+
+code:
+
+bool UpdateShotsFired( PLAYER_T *player )
+{
+      if( player->shoot_time == 0 )
+            player->shoot_time = gpGlobals->time;
+      
+      bool update_shots = TRUE;
+      
+      // Because pistols, grenades and sniping rifles don't automatically fire when attack is held in.
+      // We will only update the shots fired when the player just presses attack and lets go.
+      
+      if( mod_id == CSTRIKE_DLL )
+      {
+
+      if( ( player->current_weapon.iId == CS_WEAPON_P228 ) 
+            ( player->current_weapon.iId == CS_WEAPON_ELITE ) 
+            ( player->current_weapon.iId == CS_WEAPON_DEAGLE ) 
+            ( player->current_weapon.iId == CS_WEAPON_USP ) 
+            ( player->current_weapon.iId == CS_WEAPON_GLOCK18 ) 
+            ( player->current_weapon.iId == CS_WEAPON_FIVESEVEN ) 
+            ( player->current_weapon.iId == CS_WEAPON_AWP ) 
+            ( player->current_weapon.iId == CS_WEAPON_HEGRENADE ) 
+            ( player->current_weapon.iId == CS_WEAPON_SCOUT ) )
+      {
+            // If on the last frame the player did not hold in the attack button
+            if( player->last_buttons & IN_ATTACK )
+                  update_shots = FALSE;
+      }
+      
+      // Don't update shots for knifes as we dont want to check knife accuracy!
+      // Also flashbangs/smokegrenades do no damage so theres no point check accuracy with them
+      
+      if( ( player->current_weapon.iId == CS_WEAPON_KNIFE ) 
+            ( player->current_weapon.iId == CS_WEAPON_FLASHBANG ) 
+            ( player->current_weapon.iId == CS_WEAPON_SMOKEGRENADE ) )
+            update_shots = FALSE;
+      
+      }
+      else
+            update_shots = TRUE;
+      // If we want to update the shots fired and the last time we shot was 0.1 seconds ago then
+      // increment shots fired by 1
+      
+      if( (update_shots) && (player->shoot_time + 0.1) <= gpGlobals->time )
+      {
+            return TRUE;
+            //ALERT(at_console,"Shot Fired! USING %d ID WEAPON\n",player->current_weapon.iId);
+      }
+      
+      return FALSE;
+}
+
+
+
+PS Ubb code still isnt showing they pipes for the OR's at the weapon check.. doh.
+
+[modified on 12/28/01 at 15:16:10]

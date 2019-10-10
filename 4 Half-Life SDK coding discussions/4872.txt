@@ -1,0 +1,228 @@
+--------------------------------------------------
+Subject: server command
+--------------------------------------------------
+10/03/03 at 01:34:56  Posted by: corbin_mike (corbin_mike@hotmail.com)
+--------------------------------------------------
+I want server to "do something" with one command..
+
+EX> 
+
+If "teamplay" is typed in server console then the server will execute mp_teamplay "1"...
+
+Here is whats in default code :
+
+cvar_t      teamplay      = {"mp_teamplay","0", FCVAR_SERVER };
+
+But its dependent on 0-false or 1-true..
+
+I dont want that I just want 1 command = change now..
+
+Like a clientcommand()..if ( FStrEq(pcmd, "blahblah" ) )
+
+Thanks !
+
+[modified on 10/03/03 at 01:34:56]
+--------------------------------------------------
+10/03/03 at 04:28:42  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+if (FStrEq (pcmd, "changeteamplay"))
+   if (CVAR_GET_FLOAT ("mp_teamplay") == 0)
+      CVAR_SET_FLOAT ("mp_teamplay", 1);
+   else
+      CVAR_SET_FLOAT ("mp_teamplay", 0);
+
+
+--------------------------------------------------
+10/03/03 at 22:28:07  Reply by: corbin_mike (corbin_mike@hotmail.com)
+--------------------------------------------------
+ahh, CVAR_SET_FLOAT...
+
+Thanks !
+
+Ok, this doesn't do what I expected...
+
+Where are server commands defined ? Like "reload" which restarts the server...Think i'll try something there..
+
+I need to make server commands not cvars..I have cvars that may be implemented in some way..
+
+Here is some of my code :
+
+//CODE
+//GAME.CPP
+
+cvar_t      gamemode      = {"gamemode","ffa", FCVAR_SERVER };
+
+//GAMERULES
+
+//THIS EXECUTES MY GAMEMODE CFG FILES-->
+
+char buf[64];
+      *buf=NULL;
+      sprintf(buf, "exec modes/%s/%s.cfg\n",gamemode.string,gamemode.string);
+      SERVER_COMMAND( buf );
+      SERVER_EXECUTE( );
+
+//AND MY GAMERULE STUFF
+if(FStrEq(gamemode.string, "ffa"))
+            {
+                  //FFA
+                  return new CHalfLifeMultiplay( ); 
+            }
+
+else if(FStrEq(gamemode.string, "team"))
+            {
+                  //TeamDM
+                  return new CHalfLifeTeamplay( );
+            }
+
+//END CODE
+
+All throughout my modified DMC code I use : if(FStrEq(gamemode.string, "ffa")) or if(FStrEq(gamemode.string, "duel")) to determine how my gamemodes work...
+
+I think I need my cvar "gamemode" to equal a numeric value ? Bottom line I just want a server only (not client) command like this : 
+
+"ffa"   -- changes to ffa
+"team"  -- changes to team
+"duel"  -- changes to duel
+etc. etc.
+
+Any help or suggestions is appreciated (prefer "hints")
+
+Thanks!
+
+
+[modified on 10/03/03 at 22:28:07]
+--------------------------------------------------
+10/03/03 at 21:59:44  Reply by: botmeister (meister@telus.net)
+--------------------------------------------------
+For setting cvars, i'd do as PMB suggests, but in case you do not know, you can also execute any valid server command using pfnServerCommand(char* str) 
+
+You can use this function to set cvars. For example, pfnServerCommand{"mp_teamplay 0\n") will set your cvar to "0".
+
+
+
+
+--------------------------------------------------
+10/03/03 at 22:36:06  Reply by: corbin_mike (corbin_mike@hotmail.com)
+--------------------------------------------------
+Thanks Botmeister,
+
+I know about SERVER_COMMAND but have not tried it for this..
+
+Just experimenting I tried this in clientcommand()
+
+//CODE
+
+else if (FStrEq (pcmd, "ffa")) 
+      {
+             if  (!FStrEq(gamemode.string, "ffa")) 
+
+                  SERVER_COMMAND( "gamemode ffa" );
+                  SERVER_EXECUTE( );
+                  SERVER_COMMAND( "exec modes/ffa/ffa.cfg" );
+                  SERVER_EXECUTE( );
+                  SERVER_COMMAND( "changelevel dmc_dm3" );
+                  SERVER_EXECUTE( );
+      }
+
+//END CODE
+
+But when client types "ffa",  the server console returns "Error, bad server command gamemode ffa"
+
+??
+
+--------------------------------------------------
+10/03/03 at 22:51:40  Reply by: corbin_mike (corbin_mike@hotmail.com)
+--------------------------------------------------
+OK, Im getting closer :)
+
+This works --->
+
+//CODE
+//CLIENTCOMMAND()
+
+else if (FStrEq (pcmd, "ffa")) 
+      {
+            char szText [256];
+             if  (!FStrEq(gamemode.string, "ffa")) 
+
+                  sprintf (szText, "gamemode ffa\n");
+                              SERVER_COMMAND (szText);                        
+                              SERVER_COMMAND("reload\n");
+      }
+//END CODE
+
+But I dont want clients to be able to execute the command, only the server...Cant seem to find where server commands are stored..Like "reload" or "restart"
+
+Thanks !
+
+
+
+--------------------------------------------------
+10/04/03 at 03:22:09  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Use a static char buffer, one that doesn't get destroyed once the function exits.
+
+
+--------------------------------------------------
+10/04/03 at 03:30:17  Reply by: Cheesemonster!!! (cheeseh(at)rcbot(dot)net)
+--------------------------------------------------
+QUOTE:
+But I dont want clients to be able to execute the command, only the server...Cant seem to find where server commands are stored..Like "reload" or "restart"
+
+
+
+
+g_engfuncs.pfnServerCommand ???
+
+I mean.. can you set up a hook to this func?
+
+
+
+[modified on 10/04/03 at 03:30:17]
+--------------------------------------------------
+10/04/03 at 18:14:25  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+If this is a question, sure you can.
+
+You have though to realize that the SERVER_COMMAND macro calls g_engfuncs.pfnServerCommand directly, which is the real engine function, without passing through your hook of it in engine.cpp. Hence if you want your server command hook to hook also your own code, pay attention to calling pfnServerCommand explicitly, and *not* SERVER_COMMAND.
+
+
+--------------------------------------------------
+10/04/03 at 22:06:26  Reply by: corbin_mike (corbin_mike@hotmail.com)
+--------------------------------------------------
+I apologize for my uninformative or misdirected questions....Im very new to coding, but I did get it figured out --->
+
+//CODE
+void LaunchFFA(void)
+{      
+      char szText [256];
+
+      if  (!FStrEq(gamemode.string, "ffa")) 
+            
+            sprintf (szText, "gamemode ffa\n");
+            SERVER_COMMAND (szText);                        
+            SERVER_COMMAND("reload\n");      
+             
+}
+
+void ServerActivate( edict_t *pEdictList, int edictCount, int clientMax )
+{
+      int                        i;
+      CBaseEntity            *pClass;      
+
+g_engfuncs.pfnAddServerCommand("ffa", LaunchFFA);
+
+.
+.
+.
+}
+
+
+g_engfuncs.pfnAddServerCommand <--Thats what I needed all along :)
+
+Thanks to everyone for the help !
+
+(actually thanks to Botman for explaining this command in a previous post somewhere)
+
+

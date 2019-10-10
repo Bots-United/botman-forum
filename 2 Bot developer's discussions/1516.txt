@@ -1,0 +1,121 @@
+--------------------------------------------------
+Subject: DamageBits
+--------------------------------------------------
+04/12/01 at 06:45:31  Posted by: theimann (killaruna@botepidemic.com)
+--------------------------------------------------
+Did anybody realize that the damage_bits in the damage messages are always zero? Therefore the line
+
+if (damage_bits & DAMAGE_IGNORE) return;
+
+doesn't really work. What you can do instead is comparing the damage_origin to (0,0,0) - I've checked that for fall damage and it works fine for that, I assume that all the other nasty damage forms (like drowning, freezing, burning etc) have zero-origins as well.
+And yes - if the bot gets attacked by another player the origin will always be nonzero, so you are on the safe side.
+
+Tobias
+
+--------------------------------------------------
+04/12/01 at 07:47:34  Reply by: Clean (botmans@divinegods.net)
+--------------------------------------------------
+For me, I retrieve the entity at the origin of damage using FindEntityInSphere with radius being 0 (since while in StartFrame all entities are guaranteed frozen), make sure entity is not NULL (due to player disconnecting before damage message is sent), and then see if entity->v.netname == 0. It pretty much works for me.
+
+--------------------------------------------------
+04/12/01 at 08:44:56  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+"Did anybody realize that the damage_bits in the damage messages are always zero?"
+
+Which MOD are you talking about?  In TFC they aren't always zero.  I had to add specific bits to ignore damage from gas grenades so that bot's didn't think they should turn towards grenades and attack them.  Also drowning damage was causing the bots to spin in place because the damage origin was the same as the bot's origin and they kept trying to turn to face the "enemy" that was doing them damage (i.e. the water).
+
+botman
+
+--------------------------------------------------
+04/12/01 at 09:02:42  Reply by: CountFloyd (countfloyd_1999@yahoo.com)
+--------------------------------------------------
+I can only speak for CounterStrike here, but CS also doesn't set the correct damage bits. I'm especially checking the ptr to the dmg_inflictor to get the player who caused the damage like this:
+code:
+ 
+edict_t *pEnt=pBot->pEdict->v.dmg_inflictor;
+if(pEnt!=NULL)
+{
+if(strcmp("player",STRING(pEnt->v.classname))==0)
+{
+// Do whatever you want here
+}
+}
+
+
+--------------------------------------------------
+04/12/01 at 10:46:10  Reply by: theimann (killaruna@botepidemic.com)
+--------------------------------------------------
+> Which MOD are you talking about?
+
+No MOD, normal HLDM (where you would expect things to work)...
+
+> For me, I retrieve the entity at the origin of damage using FindEntityInSphere with radius being 0 
+
+Don't know for which MOD you are programming that but it doesn't work for HLDM, several reasons for several weapons:
+1) When grenades are the origin of damage, they don't have any netname.
+2) You'll find these grenades only if you take a search radius bigger than 0 because sometimes there's quite a distance between damage_origin and grenade->v.origin
+3) Some of them like rpg_rockets don't even have the owner field set (which you could use for getting the real damage inflictor)
+4) The damage_origin of crossbow shots has an offset from the player->v.origin as well (???)
+
+Very confusing all this damage stuff - but it's nice to hear that in some MODs at least some things seem to work better :-)
+
+Tobias
+
+
+
+--------------------------------------------------
+04/12/01 at 12:14:13  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+This is in CBasePlayer::UpdateClientData() in the player.cpp file...
+code:
+      // only send down damage type that have hud art
+      int visibleDamageBits = m_bitsDamageType & DMG_SHOWNHUD;
+
+      MESSAGE_BEGIN( MSG_ONE, gmsgDamage, NULL, pev );
+         WRITE_BYTE( pev->dmg_save );
+         WRITE_BYTE( pev->dmg_take );
+         WRITE_LONG( visibleDamageBits );
+         WRITE_COORD( damageOrigin.x );
+         WRITE_COORD( damageOrigin.y );
+         WRITE_COORD( damageOrigin.z );
+      MESSAGE_END();
+
+...DMG_SHOWNHUD is defined as...
+code:
+#define DMG_SHOWNHUD (DMG_POISON | DMG_ACID | DMG_FREEZE | DMG_SLOWFREEZE | DMG_DROWN | DMG_BURN | DMG_SLOWBURN | DMG_NERVEGAS | DMG_RADIATION | DMG_SHOCK)
+
+...so the only damage bits that will get set are the ones in DMG_SHOWNHUD.  None of the others (like DMG_CRUSH, DMG_BLAST, DMG_SONIC, DMG_BULLET) will get sent in the gmsgDamage network message for Standard Half-Life deathmatch (they get masked off before the network message is sent).
+
+botman
+
+
+--------------------------------------------------
+04/14/01 at 17:31:03  Reply by: theimann (killaruna@botepidemic.com)
+--------------------------------------------------
+Yeah, that explains it... Thanks, botman! Anyway, hope that this thread helped some people with their damage detection. Thanks for the tip with the dmg_inflictor, CF! I'll try that for HLDM as well.
+
+Tobias
+
+--------------------------------------------------
+04/16/01 at 06:03:06  Reply by: BrianL (halfkiller@hotmail.com)
+--------------------------------------------------
+Which MOD are you talking about?  In TFC they aren't always zero.  I had to add specific bits to ignore damage from gas grenades so that bot's didn't think they should turn towards grenades and attack them.  Also drowning damage was causing the bots to spin in place because the damage origin was the same as the bot's origin and they kept trying to turn to face the "enemy" that was doing them damage (i.e. the water).
+
+I need alittle help with this?
+I can't get them to stop spinning in the water and going after gas grenades also?
+
+--------------------------------------------------
+04/16/01 at 13:34:28  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+I modified the INGORE_DAMAGE thingy in bot_client.cpp to be this for the HPB bot...
+code:
+#define IGNORE_DAMAGE (DMG_CRUSH | DMG_FREEZE | DMG_FALL | DMG_SHOCK | \
+                       DMG_DROWN | DMG_NERVEGAS | DMG_RADIATION | \
+                       DMG_DROWNRECOVER | DMG_ACID | DMG_SLOWBURN | \
+                       DMG_SLOWFREEZE | 0xFF000000)
+
+...the 0xFF000000 sets bits to ignore damage from DMG_xxx types that I don't know what they are (one of the them is DMG_GASGRENADE.  The DMG_DROWN should be the one caused by drowning damage and, like I said above, the origin of the drowning damage will be the bot's origin.  Just ignore any damage bits in the upper byte (the 0xff000000 thing) and ignore the other bits in IGNORE_DAMAGE and they bots should continue merrily along their way even if they are receiving damage from any of these types of entities.
+
+botman
+
+

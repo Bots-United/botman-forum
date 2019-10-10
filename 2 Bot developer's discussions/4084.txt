@@ -1,0 +1,166 @@
+--------------------------------------------------
+Subject: Understanding Weapon Tables Better
+--------------------------------------------------
+01/28/03 at 05:24:21  Posted by: Phreak (dead_sexy_simon@hotmail.com)
+--------------------------------------------------
+Hello everyone,
+
+Quick question, could someone walk me through step by step the weapons tables for the bots?
+
+I just think i can make my bot better by 'tweaking' this to make the delay times more 'human-like'
+
+code:
+
+bot_fire_delay_t cs_fire_delay[] = {
+   {CS_WEAPON_KNIFE,
+    0.3, {0.0, 0.2, 0.3, 0.4, 0.6}, {0.1, 0.3, 0.5, 0.7, 1.0},
+    0.0, {0.0, 0.0, 0.0, 0.0, 0.0}, {0.0, 0.0, 0.0, 0.0, 0.0}},
+   {CS_WEAPON_USP,
+    0.1, {0.0, 0.1, 0.2, 0.3, 0.4}, {0.1, 0.2, 0.3, 0.4, 0.5},
+    0.2, {0.0, 0.0, 0.1, 0.1, 0.2}, {0.1, 0.1, 0.2, 0.2, 0.4}},
+   {CS_WEAPON_GLOCK18,
+    0.3, {0.0, 0.1, 0.2, 0.3, 0.4}, {0.1, 0.2, 0.3, 0.4, 0.5},
+    0.2, {0.0, 0.0, 0.1, 0.1, 0.2}, {0.1, 0.1, 0.2, 0.2, 0.4}},
+   /* terminator */
+   {0, 0.0, {0.0, 0.0, 0.0, 0.0, 0.0}, {0.0, 0.0, 0.0, 0.0, 0.0},
+       0.0, {0.0, 0.0, 0.0, 0.0, 0.0}, {0.0, 0.0, 0.0, 0.0, 0.0}}
+};
+
+
+
+Can you walk me through that step by step?
+
+Thanks in advance
+
+Phreak
+
+--------------------------------------------------
+01/28/03 at 07:19:27  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+This table means:
+
+- For each weapon declared (for example, CS_WEAPON_USP)
+  - When the bot wants to use the primary attack, don't press the attack key for a random delay computed between the base delay (here 0.1 second) PLUS one of the five numbers following which are arranged by skill (ie, for skill 1 -very good bot-, take 0.0 ; for skill 5 -very bad bot- take 0.4) AND the base delay (0.1 second) PLUS one of the five numbers at the end which are also arranged by skill (ie, for skill 1 -very good bot-, take 0.1 ; for skill 5 -very bad bot- take 0.5).
+  - When the bot wants to use the secondary attack, don't press the attack key for a random delay computed between the base delay (here 0.2 second) PLUS one of the five numbers following which are arranged by skill (ie, for skill 1 -very good bot-, take 0.0 ; for skill 5 -very bad bot- take 0.2) AND the base delay (0.2 second) PLUS one of the five numbers at the end which are also arranged by skill (ie, for skill 1 -very good bot-, take 0.1 ; for skill 5 -very bad bot- take 0.4).
+
+In this example, the reaction time for a skill 3 bot using the USP in primary attack will be a random number choosen between (0.1 + 0.2) and (0.1 + 0.3), i.e between 0.3 and 0.4 seconds.
+
+
+Because in Counter-Strike, weapons have no secondary fire, in my very first bot I had simplified this array. I'm giving it here as an example.
+code:
+
+typedef struct
+{
+   int   iId; // the weapon ID value
+   char  weapon_name[64]; // name of the weapon when selecting it
+   int   skill_level; // bot skill must at least equal this value for bot to use this weapon
+   float primary_min_distance; // 0 = no minimum
+   float primary_max_distance; // 9999 = no maximum
+   bool  can_use_underwater; // can use this weapon underwater
+   int   min_primary_ammo; // minimum ammout of primary ammo needed to fire
+   bool  primary_fire_hold; // hold down primary fire button to use?
+   bool  primary_fire_burst; // use burst fire?
+   float primary_burst_delay; // time to charge weapon
+} bot_weapon_select_t;
+
+typedef struct
+{
+   int iId;
+   float primary_base_delay;
+   float primary_min_delay[5];
+   float primary_max_delay[5];
+} bot_fire_delay_t;
+
+
+// set grenades at the top of the array so they are the first weapon used
+bot_weapon_select_t cs_weapon_select[] = {
+   {CS_WEAPON_HEGRENADE, "weapon_hegrenade", 3, 300, 800, FALSE, 1, FALSE, FALSE, 0.0},
+   {CS_WEAPON_FLASHBANG, "weapon_flashbang", 3, 200, 850, FALSE, 1, FALSE, FALSE, 0.0},
+   {CS_WEAPON_SMOKEGRENADE, "weapon_smokegrenade", 3, 500, 1050, FALSE, 1, FALSE, FALSE, 0.0},
+   {CS_WEAPON_M249, "weapon_m249", 1, 5.0, 9999.0, TRUE, 1, TRUE, TRUE, 0.1},
+   {CS_WEAPON_MP5NAVY, "weapon_mp5navy", 1, 5.0, 9999.0, TRUE, 1, TRUE, TRUE, 0.1},
+   {CS_WEAPON_TMP, "weapon_tmp", 1, 5.0, 9999.0, TRUE, 1, TRUE, TRUE, 0.2},
+   {CS_WEAPON_P90, "weapon_p90", 1, 5.0, 9999.0, TRUE, 1, TRUE, TRUE, 0.2},
+   {CS_WEAPON_MAC10, "weapon_mac10", 1, 5.0, 9999.0, TRUE, 1, TRUE, TRUE, 0.2},
+   {CS_WEAPON_UMP45, "weapon_ump45", 1, 5.0, 9999.0, TRUE, 1, TRUE, TRUE, 0.2},
+   {CS_WEAPON_SCOUT, "weapon_scout", 1, 5.0, 9999.0, TRUE, 1, FALSE, FALSE, 0.0},
+   {CS_WEAPON_AWP, "weapon_awp", 1, 5.0, 9999.0, TRUE, 1, FALSE, FALSE, 0.0},
+   {CS_WEAPON_G3SG1, "weapon_g3sg1", 1, 5.0, 9999.0, TRUE, 1, TRUE, TRUE, 0.1},
+   {CS_WEAPON_SG550, "weapon_sg550", 1, 5.0, 9999.0, TRUE, 1, TRUE, TRUE, 0.1},
+   {CS_WEAPON_AK47, "weapon_ak47", 1, 5.0, 9999.0, TRUE, 1, TRUE, TRUE, 0.1},
+   {CS_WEAPON_SG552, "weapon_sg552", 1, 5.0, 9999.0, TRUE, 1, TRUE, TRUE, 0.2},
+   {CS_WEAPON_M4A1, "weapon_m4a1", 1, 5.0, 9999.0, TRUE, 1, TRUE, TRUE, 0.2},
+   {CS_WEAPON_AUG, "weapon_aug", 1, 5.0, 9999.0, TRUE, 1, TRUE, TRUE, 0.2},
+   {CS_WEAPON_M3, "weapon_m3", 1, 5.0, 9999.0, TRUE, 1, FALSE, FALSE, 0.0},
+   {CS_WEAPON_XM1014, "weapon_xm1014", 1, 5.0, 9999.0, TRUE, 1, FALSE, FALSE, 0.0},
+   {CS_WEAPON_KNIFE, "weapon_knife", 1, 0.0, 50.0, TRUE, 0, TRUE, FALSE, 0.0},
+   {CS_WEAPON_USP, "weapon_usp", 1, 0.0, 9999.0, TRUE, 1, FALSE, FALSE, 0.0},
+   {CS_WEAPON_GLOCK18, "weapon_glock18", 1, 0.0, 9999.0, TRUE, 1, FALSE, FALSE, 0.0}, 
+   {CS_WEAPON_DEAGLE, "weapon_deagle", 1, 0.0, 9999.0, TRUE, 1, FALSE, FALSE, 0.0},
+   {CS_WEAPON_P228, "weapon_p228", 1, 0.0, 9999.0, TRUE, 1, FALSE, FALSE, 0.0},
+   {CS_WEAPON_ELITE, "weapon_elite", 1, 0.0, 9999.0, TRUE, 1, FALSE, FALSE, 0.0},
+   {CS_WEAPON_FIVESEVEN, "weapon_fiveseven", 1, 0.0, 9999.0, TRUE, 1, FALSE, FALSE, 0.0},
+   /* terminator */
+   {0, "", 0, 0.0, 0.0, TRUE, 1, FALSE, FALSE, 0.0}
+};
+
+
+// weapon firing delay based on skill (min and max delay for each weapon)
+// THESE MUST MATCH THE SAME ORDER AS THE WEAPON SELECT ARRAY!!!
+bot_fire_delay_t cs_fire_delay[] = {
+   {CS_WEAPON_HEGRENADE, 0.3, {0.4, 0.3, 0.2, 0.1, 0.0}, {0.5, 0.4, 0.3, 0.2, 0.1}},
+   {CS_WEAPON_FLASHBANG, 0.3, {0.4, 0.3, 0.2, 0.1, 0.0}, {0.5, 0.4, 0.3, 0.2, 0.1}},
+   {CS_WEAPON_SMOKEGRENADE, 0.3, {0.4, 0.3, 0.2, 0.1, 0.0}, {0.5, 0.4, 0.3, 0.2, 0.1}},
+   {CS_WEAPON_M249, 0.3, {0.4, 0.3, 0.2, 0.1, 0.0}, {0.5, 0.4, 0.3, 0.2, 0.1}},
+   {CS_WEAPON_MP5NAVY, 0.3, {0.4, 0.3, 0.2, 0.1, 0.0}, {0.5, 0.4, 0.3, 0.2, 0.1}},
+   {CS_WEAPON_TMP, 0.3, {0.4, 0.3, 0.2, 0.1, 0.0}, {0.5, 0.4, 0.3, 0.2, 0.1}},
+   {CS_WEAPON_P90, 0.3, {0.4, 0.3, 0.2, 0.1, 0.0}, {0.5, 0.4, 0.3, 0.2, 0.1}},
+   {CS_WEAPON_MAC10, 0.3, {0.4, 0.3, 0.2, 0.1, 0.0}, {0.5, 0.4, 0.3, 0.2, 0.1}},
+   {CS_WEAPON_UMP45, 0.3, {0.4, 0.3, 0.2, 0.1, 0.0}, {0.5, 0.4, 0.3, 0.2, 0.1}},
+   {CS_WEAPON_SCOUT, 0.5, {0.4, 0.3, 0.2, 0.1, 0.0}, {0.5, 0.4, 0.3, 0.2, 0.1}},
+   {CS_WEAPON_AWP, 0.5, {0.4, 0.3, 0.2, 0.1, 0.0}, {0.5, 0.4, 0.3, 0.2, 0.1}},
+   {CS_WEAPON_G3SG1, 0.3, {0.4, 0.3, 0.2, 0.1, 0.0}, {0.5, 0.4, 0.3, 0.2, 0.1}},
+   {CS_WEAPON_SG550, 0.3, {0.4, 0.3, 0.2, 0.1, 0.0}, {0.5, 0.4, 0.3, 0.2, 0.1}},
+   {CS_WEAPON_AK47, 0.3, {0.4, 0.3, 0.2, 0.1, 0.0}, {0.5, 0.4, 0.3, 0.2, 0.1}},
+   {CS_WEAPON_SG552, 0.3, {0.4, 0.3, 0.2, 0.1, 0.0}, {0.5, 0.4, 0.3, 0.2, 0.1}},
+   {CS_WEAPON_M4A1, 0.3, {0.4, 0.3, 0.2, 0.1, 0.0}, {0.5, 0.4, 0.3, 0.2, 0.1}},
+   {CS_WEAPON_AUG, 0.3, {0.4, 0.3, 0.2, 0.1, 0.0}, {0.5, 0.4, 0.3, 0.2, 0.1}},
+   {CS_WEAPON_M3, 0.3, {0.4, 0.3, 0.2, 0.1, 0.0}, {0.5, 0.4, 0.3, 0.2, 0.1}},
+   {CS_WEAPON_XM1014, 0.3, {0.4, 0.3, 0.2, 0.1, 0.0}, {0.5, 0.4, 0.3, 0.2, 0.1}},
+   {CS_WEAPON_KNIFE, 0.1, {0.4, 0.3, 0.2, 0.1, 0.0}, {0.5, 0.4, 0.3, 0.2, 0.1}},
+   {CS_WEAPON_USP, 0.1, {0.2, 0.2, 0.1, 0.1, 0.0}, {0.3, 0.2, 0.2, 0.1, 0.1}},
+   {CS_WEAPON_GLOCK18, 0.1, {0.2, 0.2, 0.1, 0.1, 0.0}, {0.3, 0.2, 0.2, 0.1, 0.1}},
+   {CS_WEAPON_DEAGLE, 0.1, {0.2, 0.2, 0.1, 0.1, 0.0}, {0.3, 0.2, 0.2, 0.1, 0.1}},
+   {CS_WEAPON_P228, 0.1, {0.2, 0.2, 0.1, 0.1, 0.0}, {0.3, 0.2, 0.2, 0.1, 0.1}},
+   {CS_WEAPON_ELITE, 0.1, {0.2, 0.2, 0.1, 0.1, 0.0}, {0.3, 0.2, 0.2, 0.1, 0.1}},
+   {CS_WEAPON_FIVESEVEN, 0.1, {0.2, 0.2, 0.1, 0.1, 0.0}, {0.3, 0.2, 0.2, 0.1, 0.1}},
+   /* terminator */
+   {0, 0.0, {0.0, 0.0, 0.0, 0.0, 0.0}, {0.0, 0.0, 0.0, 0.0, 0.0}}
+};
+
+
+These values used to be quite convincing.
+
+
+--------------------------------------------------
+01/29/03 at 12:08:54  Reply by: Phreak (dead_sexy_simon@hotmail.com)
+--------------------------------------------------
+
+
+Thanks Pierre, just confused me a bit thats all :)
+
+--------------------------------------------------
+01/29/03 at 12:20:31  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Also notice that PM is using the opposite order for skill level (i.e. skill=0 is worst skilled, skill=4 is best skilled, since the delay times are shorter for the higher skill settings).
+
+botman
+
+--------------------------------------------------
+01/29/03 at 13:01:15  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+I think you'll need PMs word on that one botman ;D
+
+
+The delay times may be larger for better skills to reduce the recoil and newbiw bots might just hold in the attack button, making the recoil worse! :P
+

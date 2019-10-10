@@ -1,0 +1,78 @@
+--------------------------------------------------
+Subject: Now what?
+--------------------------------------------------
+10/09/00 at 21:39:48  Posted by: pekkaka (icecoldgames@hotmail.com)
+--------------------------------------------------
+Hi,
+
+In short, what if i would like to make my bot support other mods so i need to modify engine.cpp?
+bot_client.cpp and all the others too, i would like to extend the support for some other mods out there too..like FireArms. :)
+
+Hey, does this search for spefic entity on mods
+maps, or something on mods DLL and if it dont find
+it will exit Half-life?. What would be the most important thing i need to add so it can start the MOD?. Ok, have to study the sources, the truth is in there. 
+
+Thanks!
+ 
+
+--------------------------------------------------
+10/10/00 at 05:36:43  Reply by: pekkaka (icecoldgames@hotmail.com)
+--------------------------------------------------
+Hmm. i found h_export exports the right DLL for mods by parsing directory name. And, now i have added bunch of items, weapons to linkfunc.cpp..
+Im only trying to get it working, without bots yet. 
+
+I compiled the sources and tested , i get Long list of "cant init" messages, and tons of "error: cant find info_team1_start", Im doing something wrong, or im not doing anything because i think im missing something, somewhere. A dll.cpp??
+What a..Hmm. Any ideas what i havent done?
+
+1. Added items & weapons to Linkfunc.cpp (read these from fgd file!)
+2. Added one line to h_export.cpp 
+3. Few lines on engine.cpp
+
+I know, im missing the lines to bot.cpp. I have no idea why it cant init, why it dont find that start place.. but maybe..Oh well, any ideas? anyone? 
+
+--------------------------------------------------
+10/10/00 at 05:30:57  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+You will need to modify linkfunc.cpp to add the map entities required by a MOD.  I use Microsoft's dumpbin to dump the exported functions from a DLL to find the list of entities.
+
+You will then have to figure out what messages are sent between the server and the client for that MOD (each MOD is different).  Use the "debug_engine" command to enable engine debugging.  This will log engine and DLL calls to a file called "bot.txt" in the Half-Life directory.
+
+botman
+
+--------------------------------------------------
+10/10/00 at 10:41:24  Reply by: pekkaka (icecoldgames@hotmail.com)
+--------------------------------------------------
+Hi,
+
+Thanks!. Well i dont have DumpBin but i have 
+(seems to be delphi program!) PeBrowse, does the same thing. Aargghh. I have the weapons, items and ammo entities just like on the dll, exactly the same order, any ideas why it says, "cant init"
+
+Update
+-------
+oh, i do have everything there. All items, All weapons and All ammo entitys for them, but the only weapon that works, is AK47 & Aug! because its already defined on cstrikes guns, items.
+
+Now thats not wierd, but this is: When i export the info from the DLL i compiled, it dont display these new things i have added to linkfunc, only the old ones.. Wierd. Im using Mingw32, i hope its not compiler problem. 
+
+
+--------------------------------------------------
+10/10/00 at 08:45:09  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+The LINK_ENTITY_TO_FUNC macro creates a function with a name matching the first parameter (and it exports this function so the Half-Life engine can see it).  The second parameter is the name of the MOD DLL's function that was originally exported (i.e. it's what the engine would have called if the HPB bot code hadn't been between the two).
+
+The names need to be exactly the same, the first as a function name, the second as a string.
+
+Did you just put this ONE entity in linkfunc.cpp or did you put ALL the entities in linkfunc.cpp?  If you haven't added them all yet, DO THAT FIRST.  The weapon can be trying to allocate other stuff (like ammo, etc.).  If you don't have EVERYTHING in there then things will fail.
+
+botman
+
+
+--------------------------------------------------
+10/10/00 at 13:32:22  Reply by: pekkaka (icecoldgames@hotmail.com)
+--------------------------------------------------
+Yeaah!
+
+It works now, by the way it was the compiler (and me!) who caused the problem. The new linked things, on linkfunc.cpp never were exported! because i had the old definition file! Argh!
+
+At least it works! only 3 weapon_ things to fix.
+Groovy!
+

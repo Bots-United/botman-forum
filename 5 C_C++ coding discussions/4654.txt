@@ -1,0 +1,115 @@
+--------------------------------------------------
+Subject: bytes from string?
+--------------------------------------------------
+07/18/03 at 07:50:59  Posted by: LazyOne (the_lazy_one_09@hotmail.com)
+--------------------------------------------------
+I can't figure this out, the received string is never the same as the sent one. Any help is appreciated...
+
+code:
+
+int Send( const char *psz )
+{      
+      byte *bySend = new byte[ strlen( psz ) + 4 ];
+      register unsigned int i = 4;
+
+      try
+      {
+            
+            bySend[ 0 ] = 255;
+            bySend[ 1 ] = 255;
+            bySend[ 2 ] = 255;
+            bySend[ 3 ] = 255;
+            
+            for ( ; i < strlen( psz ); i++ )
+            {
+                  bySend[ i ] = ( byte ) psz[ i ];
+            }
+
+            sendto( soClient, ( const char * ) bySend, strlen( psz ), 0, ( sockaddr * ) & saClient, sizeof( saClient ) );
+
+            delete[ ] bySend;
+      }
+      catch( void )
+      {
+            /*      TODO: Exception handling      */
+      }
+
+      return 0;
+}
+
+
+
+
+--------------------------------------------------
+07/18/03 at 09:10:51  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+You're just showing the sendto(), where's your recvfrom()?
+
+botman
+
+--------------------------------------------------
+07/18/03 at 09:13:46  Reply by: LazyOne (the_lazy_one_09@hotmail.com)
+--------------------------------------------------
+The reciever is the half-life client so I can't give any source to that. What I'm trying to do is send IRC messages to the half-life console by sending it as a log. I've gotten it to work in C# but since I'm learning C++ now I wanted to do it this way.
+
+
+--------------------------------------------------
+07/18/03 at 09:58:45  Reply by: RobGP (rob@planetfortress.com)
+--------------------------------------------------
+then how do you know its not recieving properly?
+
+--------------------------------------------------
+07/18/03 at 10:05:46  Reply by: LazyOne (the_lazy_one_09@hotmail.com)
+--------------------------------------------------
+In my C# console app I type in l Hello there! and it comes up perfectly in my HL console.
+
+In my c++ app which I changed it does wierd things like screws up on spaces, ect.. And I still haven't found a proper way to convert a string to bytes.
+
+
+--------------------------------------------------
+07/18/03 at 11:13:31  Reply by: LazyOne (the_lazy_one_09@hotmail.com)
+--------------------------------------------------
+Ok, its half-working except every space counts as a new line for some reason. I did a loop to remove and '\n's but it still had the same result.
+
+Example:
+
+Console:lHello There!
+HL Console:Hello
+HL Console:T
+HL Console: Unknown Command
+
+code:
+
+int Send( const char *psz )
+{
+      BYTE *bySend = new BYTE[ strlen( psz ) + 4 ];
+      register int i, a;
+
+      for ( i = 0; i < 4; i++ )
+      {
+            bySend[ i ] = 255;
+      }
+
+      for ( a = 4; a < strlen( psz ) + 4; a++ )
+      {
+            bySend[ a ] = ( BYTE ) psz[ a - 4 ];
+      }
+
+      sendto( soClient, ( const char * ) bySend, strlen( psz ) + 4, 0, ( sockaddr * ) & saClient, sizeof( saClient ) );
+
+      return 1;
+}
+
+
+
+
+--------------------------------------------------
+07/18/03 at 13:00:15  Reply by: LazyOne (the_lazy_one_09@hotmail.com)
+--------------------------------------------------
+New lesson learned, do not program anything late at night...
+
+It turns out I was getting the text with cin >> instead of cin.getline.
+
+Thanks for all your help anyways.
+
+

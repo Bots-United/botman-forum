@@ -1,0 +1,262 @@
+--------------------------------------------------
+Subject: Include file conumdrums
+--------------------------------------------------
+07/25/03 at 23:45:08  Posted by: Raven (bena2@geobind.net)
+--------------------------------------------------
+I am almost embarrassed to ask this question for several reason....it just
+seems like I am missing something really easy...because I have been coding
+so long in c/c++ I think I should understand this...anyway here goes...
+                                                                                                
+I am having problems understanding what is happening when one compiles
+just object code.
+                                                                                                
+Let me explain:
+                                                                                                
+  I understand the basic idea of how #include files work.  I understand
+the use of #ifndef and #define ...blah blah blah
+                                                                                                
+However I think I am running into two different problems.
+                                                                                                
+First I am not sure I am fully aware of how compiling to single object
+code is different then coding to a binary (obviously you are going to
+object code in a binary also but just going further).  I am talking about
+how the interaction between the pieces changes.  In the past I could
+always count on a central function that would tie everything together
+(i.e. Main).
+                                                                                                
+Second:  I guess this problem is directly related to the first.  How does
+the object file(s) the use functions from the SDK that are already in
+object form.  I imagine the is some function lookup table...??   Anyway
+this question isn't to important to my problem.
+                                                                                                
+                                                                                                
+I guess these questions my be summed up in a general way by asking how
+does dll's work ...on both sides of the equation.
+                                                                                                
+                                                                                                
+I pretty much looking for a fairly technical answer even if in gets into
+mapping functions to memory locations (which I assume it does).
+                                                                                                =====================================
+                                                                                                
+So now that I got all of that out of the way I will touch on my actual
+problem that is causing these questions.
+                                                                                                
+I have created a class that handles all the persistent player data that
+the SDK doesn't keep track of or I don't know how to get.  I not sure if
+your aware of Brian's (Big Cat Daddy) project but that is what I am
+working on.  Anyway I use several data structures from the game (edict_t
+for example).  This file is also included in the HPB_bot code (dll.cpp and
+extern elsewhere).  This is all part of a general stats collection project
+for tfc specifically.  So we can do “realtime” display of player
+location on maps and blah blah blah...
+                                                                                                
+However when I do a “make clean” then run “make” I will get
+complaints about unresolved symbols and usually runs into syntax errors.
+This is normally not a problem it  just means that it doesn't know what a
+edict_t is.  This appears to be the case.  So I included those files.
+Then the compiler complains that there is some redefinitions of x,y,z
+functions in one of the files I included.
+                                                                                                
+The two files I #included are “extdll.h” (for edict_t ...I believe)
+and “util.h” for the ->v.time
+                                                                                                
+So the curious thing is that if I go back and forth uncommenting // and
+commenting these #include statements I eventually get it to compile.  I
+assume it doesn't matter because as long and the .o of the linked file is
+“structured” the way my .o thinks it is everything is fine.  However
+going back and forth commenting and uncommenting include statements every
+time I change a file is not a good thing.  Plus it just seems a little
+hacked.
+                                                                                                
+Anyway this is long enough I will expand further after I get some
+comments.  That way maybe I could see where my problem/explanations are
+not coming across.
+                                                                                                
+Thanks in advance
+
+Ben Anderson
+
+
+--------------------------------------------------
+07/26/03 at 06:13:25  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+DLL stands for Dynamic Link Library.  A library is a collection of functions that your application can call.  A dynamic link library is a library of functions that you can load dynamicly when you need them (instead of linking them into your application like static libraries would be).  DLLs export a list of functions that they provide.  These functions can be exported by name or by an integer index value ("call function #46", etc.).  Obviously if you are using function names, you have to know the name of the function to call ("MyReallyCoolFunction()", etc.), and if you are using indexes, you have to know the index number that corresponds to the function you want.
+
+The Half-Life engine uses function names to call functions within the MOD DLL game code (i.e. "spawn_shotgun()", etc.).  The maps that you compile reference these functions via the names of entities that get created.
+
+When you are compiling and linking a DLL, you can have a collection of object files (binary data) that each contain a function (or several functions).  The linker will combine all of these functions into a single DLL file (Half-Life won't load multiple DLL game files).
+
+If you are having problems with include files, it sounds like the problems you are having is related to the ORDER that you are including these include files.  Order IS IMPORTANT!
+
+A good way to determine the correct order for include files that come with the SDK is to look at the C++ source code (.cpp files) that come with the SDK.  You will notice a pattern in the order in which include files are included (because it matters).
+
+Also, you probably shouldn't be changing anything inside the include files unless you know what you are doing.
+
+botman
+
+--------------------------------------------------
+07/26/03 at 08:07:53  Reply by: Raven (bena2@geobind.net)
+--------------------------------------------------
+Sorry, the first time this was posted incomplete.
+
+botman thanks for the quick reply.
+
+I am not doing a vary good job of explaining my problem.  Pretty much everything you said I already understand (at least at the level you explained it).
+
+I have NOT changed anything in the SDK #include files .  
+Obviously I changed stuff in your #include files and my #include files.  
+
+Also I am only #including two files and they are in the same order as you have them in pretty much any of your code. (extdll.h and util.h).
+
+I understand the order has to be there if #include file1 is needed for #include file2.
+But this would just result in the same errors of undifined symbols...
+
+Hmmm
+
+In thinking some more I might have just realized what my problem is....if it is it what I think it is I am an idiot.
+
+I will write back later either way.
+
+thanks again
+
+Ben Anderson
+
+[modified on 07/26/03 at 08:07:53]
+--------------------------------------------------
+07/26/03 at 09:39:19  Reply by: Raven (bena2@geobind.net)
+--------------------------------------------------
+Ok found out the problem.
+                                                                                                
+It is because util.h does NOT have protection from being #included more than once.
+                                                                                                
+It should have a
+                                                                                                
+#ifndef UTIL_H_ //or something similar
+#define UTIL_H_
+...
+                                                                                                
+#endif
+                                                                                                
+                                                                                                
+So the reason HPB_bot code never runs into the problem is that you never have a .h file
+that needs util.h (it is always in .cpp) therefore when you #include the file the
+redundant “#include   util.h”   does not show up.
+                                                                                                
+The problem is that in cpp the header file needs util.h especially if any methods require
+util.h.
+                                                                                                
+Which come to think of it none should....extdll.h maybe but I believe that there is no
+data types defined in util.h.  So if I move all the #define util.h to the .cpp I think it
+will work.
+                                                                                                
+I should have realized from the beginning what the problem was and checked util.h (I even
+remember thinking about it but then got distracted).  I just never ran into this problem
+before.  I knew that that is what #ifndef/#defines are for but.....
+                                                                                                
+anyway it looks like the problem was just having to do with how plan old #includes
+work....I have never coded a dll (.so) before (i.e. I think I want a library that does x
+and then coded it).  So as usually I suspected what I least understood first...
+                                                                                                
+thanks again for your help...at least providing me a way to think out my problem.
+                                                                                                
+Ben Anderson
+
+
+--------------------------------------------------
+07/26/03 at 10:13:36  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+In general, it's usually a bad idea to have include files include other include files (but it IS often much easier to do this and many lazy programmers will take this approach).
+
+There's nothing technically wrong with it and "wrappers" can help prevent the problem you mentioned, but it's usually "cleaner" to explicitly specify which include files are needed in the source .c or .cpp file.
+
+botman
+
+--------------------------------------------------
+07/26/03 at 11:49:04  Reply by: Raven (bena2@geobind.net)
+--------------------------------------------------
+I am not sure I agree...
+                                                                                                
+This is not how I learned how to program.
+                                                                                                
+That said I don't have any professional programing experience so it might be the case that
+I don't know what I am talking about.
+                                                                                                
+Also in the case of my above stated problem it was the fact that I needlessly included
+util.h in my .h file.  I assumed that there was a data structure that I needed in my .h
+file in that util.h file.
+                                                                                                
+In c++ the case (especially in large projects) is that you may have to include many files
+in header files.  If one does anything with derived classes, polymorphism ...etc one has
+to #include files in  header files constantly.  Linked list is a excellent example of
+this.
+                                                                                                
+Also it is impossible if I have a return type of edict_t in a function definition not to
+#include the extdll.h file in my .h file.
+                                                                                                
+In “The C++ Programing Language” by Bjarne Stroustrup he talks about this subject on d by
+page 216.
+                                                                                                
+        ...“Viewed from the program as a whole, many of the declarations needed to make
+each logical module complete are redundant.  For larger programs, such redundancy can lead
+to errors,  as a header containing class definition or inline functions gets #included
+twice in the same compilation unit.”
+                                                                                                
+he goes on to say that we have two different choices which are:
+                                                                                                
+1: To reorganize our program to remove the redundancy.
+2: Find a way to allow repeated inclusion of headers.
+
+On the first approach he says
+                                                                                                
+        “The first approach....is tedious and impractical for realistically-sized
+programs.  We also need the redundancy to make the individual parts of the program
+comprehensible in isolation.” 
+
+
+On the second approach he says
+                                                                                                
+        “The benefits of an analysis or redundant #includes and the resulting
+simplification of the program can be significant both from a logical point of view and by
+reducing compile times.  However it can rarely be complete, so some method of allowing
+redundant #includes must be applied.  Preferably, it must be applied systematically, since
+there is no way of knowing how through an analysis a user  will find worthwhile”
+                                                                                                
+He then goes on to explain how #ifndef/#define/#endif work.
+                                                                                                
+And obviously later on he talks about not #including files you do not need.
+                                                                                                
+                                                                                                
+Maybe I didn't understand exactly what you where saying but I think one has to #include
+file in other .h files a lot of the time in C++.
+                                                                                                
+So the only poor programing practice is when you #include files you don't need.  Which  y
+much to my chagrin is what I did.
+                                                                                                
+The way you put it makes it sound like I am trying some devious trick programing not
+something that is commonplace (at least in c++).
+                                                                                                
+Anyway I would appreciate your thoughts on this even if you think I am wrong.  Plus if you
+have some reasoning as to why or how to avoid this that I am not seeing.
+                                                                                                
+Also to further explain myself.  The reason I am responding to the previous post is that I
+am honestly trying to understand your post.  Like I have said I have programmed for awhile
+(not near as long as you) and I realize often that I don't know that much (i.e. I am
+always learning/relearning something new).   About 99% of my code is for fun.  I do it
+because I love to program. However this sometimes leads to unorthodox ways of programing.
+I realize the open source code is not always the best example.  However one can't learn at
+all from closed source code so.....
+
+Thanks once again
+                                                                                                
+Ben Anderson
+                                                                                                
+
+
+--------------------------------------------------
+07/28/03 at 10:32:15  Reply by: BAStumm (bs@bs-linux.com)
+--------------------------------------------------
+ya ben stop being a lazy programmer ;)
+
+Now get back to work...
+
+[modified on 07/28/03 at 10:32:15]

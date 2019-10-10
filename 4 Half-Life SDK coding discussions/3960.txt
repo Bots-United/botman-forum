@@ -1,0 +1,63 @@
+--------------------------------------------------
+Subject: CBasePlayer from TRIGGERS.CPP
+--------------------------------------------------
+12/30/02 at 09:10:34  Posted by: mefi_hl (ravaging@go2.pl)
+--------------------------------------------------
+In file triggers.cpp :
+
+
+void CBaseTrigger :: MultiTouch( CBaseEntity *pOther )
+{
+      entvars_t      *pevToucher;
+
+      pevToucher = pOther->pev;
+
+///new
+edict_t *pentPlayer = FIND_CLIENT_IN_PVS(edict());
+CBasePlayer *pPlayer = NULL;
+
+pPlayer = GetClassPtr( (CBasePlayer *)VARS(pentPlayer));
+      
+if       (pPlayer->HasWeapons()==TRUE))   
+{
+      UTIL_ClientPrintAll( HUD_PRINTCENTER, "YES");
+}
+else
+{
+  UTIL_ClientPrintAll( HUD_PRINTCENTER, "NO");
+}
+///new
+
+
+
+Why always display  "NO" ?
+
+--------------------------------------------------
+12/30/02 at 09:29:00  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+Why use FIND_CLIENT_IN_PVS? Are you trying to retieve the player that touched the trigger? In this case it would be pOther/pevToucher and you haven't used it in the function.
+
+--------------------------------------------------
+12/30/02 at 10:40:31  Reply by: mefi_hl (ravaging@go2.pl)
+--------------------------------------------------
+How this made that this work ?
+
+--------------------------------------------------
+12/30/02 at 11:11:42  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+what does FindClientInPVS do anyway? Do you know where I can find reference (even little) on it ?
+
+
+--------------------------------------------------
+12/30/02 at 11:58:31  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Find's clients in the entities Potential Visible Set.  The PVS would be any clients that are potentially visible (based on the VIS information from the map file).
+
+You can search through the SDK source code for places where FIND_CLIENT_IN_PVS() is used (mostly for monster AI).
+
+There's also an engine function for finding entities in the PVS (pfnEntitiesInPVS) which can be called via UTIL_EntitiesInPVS() if you want to find entities other than clients.
+
+Rafph, like cheesemonster said, if you are trying to do something with the player who touched a trigger, just use the pevToucher in your GetClassPtr() function to get the CBasePlayer class of the player who touched this trigger.  Using "edict()" with FIND_CLIENT_IN_PVS() would use the edict of the trigger which probably doesn't even HAVE a potentially visible set.
+
+botman
+

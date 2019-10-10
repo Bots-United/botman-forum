@@ -1,0 +1,88 @@
+--------------------------------------------------
+Subject: spectator and teams 
+--------------------------------------------------
+11/04/03 at 08:03:20  Posted by: dodgy (andreas.blomqvist@gamefederation.com)
+--------------------------------------------------
+This is a question concerning cs.
+
+I have made a match automation mod for cs. The problem is I use the clientCommand "chooseTeam" to change to players teams at halftime, and sometimes the commad never gets issued by the hl engine due to players spamming buy/switch weapon commands. 
+I worte a function to sort out most of the spam, but some commands like menuselect i cant sort out as they can be for the team and model selection. 
+
+The question:
+Is there anyway I can changeTeam for a player or just put the in the spectator team wihtout issueing the "chooseteam" command?
+I was thinking that if I put them as spectators while they await sorting they cant spam so much.
+
+Does anyone know how the autoTeamBalance code works? 
+
+Also, I havent been able to select a model for the players, just the team. I tried different variations of 
+        ("menuselect 2;menuselect 2;slot 10);
+etc.
+
+
+Thanks.
+dodgy
+
+
+
+
+--------------------------------------------------
+11/22/03 at 17:13:01  Reply by: nightstrike (nightstrike9809@hotmail.com)
+--------------------------------------------------
+try 
+"menuselect 2;menuselect 2..."
+
+--------------------------------------------------
+11/23/03 at 07:06:28  Reply by: FierceRecon (infected2506@hotmail.com)
+--------------------------------------------------
+File: hlsdk/multiplayer source/teamplay_gamerules.cpp
+
+void CHalfLifeTeamplay::ChangePlayerTeam( CBasePlayer *pPlayer, const char *pTeamName, BOOL bKill, BOOL bGib )
+{
+      int damageFlags = DMG_GENERIC;
+      int clientIndex = pPlayer->entindex();
+
+      if ( !bGib )
+      {
+            damageFlags |= DMG_NEVERGIB;
+      }
+      else
+      {
+            damageFlags |= DMG_ALWAYSGIB;
+      }
+
+      if ( bKill )
+      {
+            // kill the player,  remove a death,  and let them start on the new team
+            m_DisableDeathMessages = TRUE;
+            m_DisableDeathPenalty = TRUE;
+
+            entvars_t *pevWorld = VARS( INDEXENT(0) );
+            pPlayer->TakeDamage( pevWorld, pevWorld, 900, damageFlags );
+
+            m_DisableDeathMessages = FALSE;
+            m_DisableDeathPenalty = FALSE;
+      }
+
+      // copy out the team name from the model
+      strncpy( pPlayer->m_szTeamName, pTeamName, TEAM_NAME_LENGTH );
+
+      g_engfuncs.pfnSetClientKeyValue( clientIndex, g_engfuncs.pfnGetInfoKeyBuffer( pPlayer->edict() ), "model", pPlayer->m_szTeamName );
+      g_engfuncs.pfnSetClientKeyValue( clientIndex, g_engfuncs.pfnGetInfoKeyBuffer( pPlayer->edict() ), "team", pPlayer->m_szTeamName );
+
+      // notify everyone's HUD of the team change
+      MESSAGE_BEGIN( MSG_ALL, gmsgTeamInfo );
+            WRITE_BYTE( clientIndex );
+            WRITE_STRING( pPlayer->m_szTeamName );
+      MESSAGE_END();
+
+      MESSAGE_BEGIN( MSG_ALL, gmsgScoreInfo );
+            WRITE_BYTE( clientIndex );
+            WRITE_SHORT( pPlayer->pev->frags );
+            WRITE_SHORT( pPlayer->m_iDeaths );
+            WRITE_SHORT( 0 );
+            WRITE_SHORT( g_pGameRules->GetTeamIndex( pPlayer->m_szTeamName ) + 1 );
+      MESSAGE_END();
+}
+
+this help?
+

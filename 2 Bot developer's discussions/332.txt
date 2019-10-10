@@ -1,0 +1,174 @@
+--------------------------------------------------
+Subject: Botman?
+--------------------------------------------------
+10/18/00 at 15:03:36  Posted by: BrianL (halfkiller@hotmail.com)
+--------------------------------------------------
+I need alittle help with this:
+g_engfuncs.pfnRunPlayerMove( pEdict, pEdict->v.v_angle, pBot->f_move_speed, 0, 0, pEdict->v.button, 0, pBot->msecval);
+
+Is there a way to use that to get the bot to strafe?
+
+Just a thought?
+
+--------------------------------------------------
+10/18/00 at 15:07:23  Reply by: BrianL (halfkiller@hotmail.com)
+--------------------------------------------------
+Nevermind I found it :)
+(Forgot I could've checked all the source files :))
+
+
+--------------------------------------------------
+10/18/00 at 15:09:21  Reply by: CountFloyd (countfloyd_1999@yahoo.com)
+--------------------------------------------------
+Did you even bother to have a look at pfnRunPlayerMove in engine.cpp ?
+Well, here it is:
+void pfnRunPlayerMove(edict_t *fakeclient, const float *viewangles, float forwardmove, float sidemove, float upmove, unsigned short buttons, byte impulse, byte msec )
+
+Where sidemove is the strafing speed... (negative values to the left, positive the opposite). 
+
+--------------------------------------------------
+10/19/00 at 05:42:29  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+By the way, the upmove doesn't seem to do anything.  I thought that was what you had to use on ladders, but it turns out you just need to do exactly what the player does, look up and press the forward key (IN_FORWARD).
+
+botman
+
+--------------------------------------------------
+10/19/00 at 06:19:04  Reply by: CountFloyd (countfloyd_1999@yahoo.com)
+--------------------------------------------------
+And sadly the direction keys are bypassed by the movement speed (unless you're on a ladder). This confused me at the beginning, when I thought I just could place a IN_FORWARD in v.buttons to make him move that way. I had an idea last night to make the movement more human-like. It goes like that:
+By now all Bots I know of, do set the sidemove/movement speed on calculated values, right ? What if you simulate Keys being pressed by the Bot ? For example the Bot just starts to press IN_FORWARD. Directly before you call
+pfnRunPlayerMove you check how long this key has been pressed and set the movement speed depending on how long that key was pressed down. If it's the first time, movement speed will be low, otherwise the Bots speed will slowly go up. This wouldn't make the movement that static, or am I wrong ?
+
+--------------------------------------------------
+10/19/00 at 15:52:19  Reply by: Shagwana (Shagwana@btinternet.com)
+--------------------------------------------------
+A better way to simulate the speed increase would be with a current, ideal and accelerate/brake value!. Then a little be of simple logic like;
+
+if current_speed<ideal_speed 
+     // not fast enought then increase speed
+     current_speed+accelerate
+     if current_speed>ideal_speed
+         current_speed=ideal_speed
+else 
+     //to fast decrease speed
+     current_speed-brake
+     if current_speed<ideal_speed
+         current_speed=ideal_speed
+
+All u would have to do is set ideal_speed to what ever speed you would like the bot to travel!. And the code would handle the accelerating feel of keyboard pressing ;)
+
+But then why stop there, you could add it to rotational movement control as well (current_yaw, ideal_yaw and turn_speed). The only problem you have to worry about when doing it to the rotational is checking for the -180 to 180 degree jump ;)
+
+my pusedo code (dont know if that was spelt right!);
+
+//turn correct way (valid range.... -180 to 180)
+if ideal_yaw>0
+    //check to see if we are within 180 range of ideal!
+    if current_yaw>(ideal_yaw-180) 
+        current_yaw+turn_speed
+    else 
+        current_yaw-turn_speed
+else
+    //check to see if we are 180 above instead    
+    if current_yaw<(ideal_yaw+180)
+        current_yaw+turn_speed
+    else 
+        current_yaw-turn_speed
+
+Anyway, this brings me to my question!..., has anyone ever seen the models run backwards or is it just me that thinks that when they run backwards, its still playing the forward leg animation? (as if its running forward). Hope i made that clear enought!.
+
+
+
+
+
+
+--------------------------------------------------
+10/20/00 at 14:25:26  Reply by: CountFloyd (countfloyd_1999@yahoo.com)
+--------------------------------------------------
+Shagwana:
+You're probably right if you want to smoothly reach (and hold) a constant speed. But that's not exactly what I'm trying to achieve. Let's imagine this scenario:
+A wounded veteran bot walks full of fear through a tunnel with a lot of corners and ambush points. He suspects a lot of enemies, so he wants to stop, walk slowly, walk fullspeed, then stop...etc. By using an ideal_speed he would walk slowly but wouldn't do a full stop (unless you signal it through ideal_speed), then go (I want to decrease speed, everytime a key is NOT pressed, if pressed, the speed value will go up). Although you can do this with an ideal_speed, doesn't a constant or even changing ideal_speed mean somehow static movement again ? Wouldn't it be easier to analyse/simulate keys instead of doing an ideal_speed for strafing movement, too ? Hmm...I'm not sure for myself. I believe there was a Q2 Bot which did all his movement through simulated keystrokes, but can't remember quite well.
+
+And yes, you're right all Cs Models seem to be stuck in the eighties with Moonwalk and such :)
+I don't know if this is also that way in the original Halflife. Maybe we can't blame Gooseman for that...
+
+--------------------------------------------------
+10/21/00 at 03:36:17  Reply by: Shagwana (Shagwana@btinternet.com)
+--------------------------------------------------
+Ever notice that when you run (hold down the forward key) then let go if it, you slow down  bit by bit then stop completly, thats the inertia effect that I recreate in code above.
+
+The ideal_speed is the key to making this run smoothly, when you want the bot to stop, set it to zero. When you want it to walk set it to your walk speed. Like wise for running speed. The code will handle the inertia effect of changing speeds, and give you a far less static method of movement then the run to stop stright in 1 frame!. 
+
+U see you detect what keys that the user is pushing (stop, walk, run / forwards or backwards)then set the ideal_speed to them. The code will handle the inertia effect of speed changes, as long as you have set the accelerate/brake value to a smaller value then your top speed. The smaller these two vlaues the slower they will reach the ideal_speed!.
+
+So... from standing still, with a ideal_speed value of zero. The bots not going any place!. Then u detect that the run key is pressed you set the ideal_speed higher and it will speed up to that speed and not exceed it. When the key is NOT pressed you set ideal_speed to zero, to stop the bot with a inertia type of effect!
+
+To handle strafe you would have to have a inertia effect on the sidestep/strafe and forward/backward. Then chop up you ideal_speed between them. eg forward at top speed is 100% forward speed and 0%side step. 45 degree angle would be 50% each and just to side step as fast as possible would be 0% forward and 100% side step
+
+I forgot to say that backwards and forward could be handled with the same code just by setting the ideal_speed to a negative value for backwards and posative for forward speed!. Like wise for the left/right strafe.
+
+Whew, right im gona go bed now. night night all!
+
+
+
+
+
+--------------------------------------------------
+10/21/00 at 12:43:51  Reply by: CountFloyd (countfloyd_1999@yahoo.com)
+--------------------------------------------------
+It seems like we don't get each others point quite right. I fully understand your accelerate/brake thingie, everybody who did a game at sometime, has used it and it's deadly simple so no need to explain. Yes, you're right you can make the Bot stop, strafe, whatever. But you seem to believe that I want to set the ideal_speed if a key is pressed. That's not what I'm trying to do ! In pseudo code I want to do this (only Forward in example):
+
+void SomeActionHere()
+{
+ ...
+ // Bot chooses to tap forward key
+ Button.BitField=IN_FORWARD;
+}
+
+int main()
+{
+  SomeActionHere();
+  // If Forward Button pressed, accelerate
+  if(Button.BitField & IN_FORWARD)
+    f_movespeed+=20;
+
+ // don't go faster than that
+  if(f_movespeed>f_maxspeed)
+    f_movespeed=f_maxspeed;
+  else if(f_movespeed<f_minspeed)
+    f_movespeed=f_minspeed;
+RunPlayerMove(f_movespeed);
+// slowly decrease speed
+f_movespeed-=10;
+}
+
+Notice, I don't want to hold/reach an ideal_speed with this (speed will be decreased don't caring if a key is pressed or not). So when a Bot is not holding the forward key it won't move. If he taps the Key from time to time he will walk slowly. All this can be of course achieved with your ideal_speed aswell, but I would have to set the ideal_speed condition-based right. For example I want the Bot to stop, in your version I would set ideal_speed to zero, right ? In my Version, I simply don't press the Forward key for a limited time (it's also based on conditions, but I believe it's easier).
+BTW. I don't think a slowly accelerating yaw would look human-like. It's ok for me, how Botman limited the turning speed to 20 degrees. Jumbot (HL Bot) used an amount of 25 and it looked okay. Did someone btw. try out the Bots of SOF Gold, which were done Rich Whitehouse ? I think they feel and move like Jumbot :)
+
+--------------------------------------------------
+10/21/00 at 13:58:52  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+Speaking of yaw, I think that TFC should have made the players max yaw speed vary based on the class.  Players with heavy weapons (i.e. HWguy) should turn more slowly than players with light weapons.  The heavy weapons have a LOT of intertia and it takes energy to get them going AND it takes energy to get them to stop.
+
+By the way, the bots do have a velocity, just like players.  When you press the key to run, it takes a little bit for you to reach top speed.  It also takes a little bit for you to come to a stop when releasing the key.  The bots do the same thing.  When you tell the engine "run at 270", it doesn't achieve that speed instantaneously.  It takes a few tenths of a second to get up to that speed.  The engine physics take care of this for all players (humans and bots).  The same for slowing down.  The engine gradually decreases your velocity when you aren't telling it to move forward any more (otherwise the bots would be able to stop on a dime, which they can't).
+
+botman
+
+--------------------------------------------------
+10/21/00 at 16:12:50  Reply by: CountFloyd (countfloyd_1999@yahoo.com)
+--------------------------------------------------
+I fully agree to the yaw problem. It's the same in Cs where you aren't slowed down (in turning speed) even if you carry a Big Para. We could implement this in our Bots by checking the Weapon they use, but where's the point ?
+I also noticed the velocity increase/decrease. If it wouldn't, all camp points would be perfectly reached which is in fact not the case...
+It's only that you can still tell by looking at a players movement if it's a bot or not. A human player varies its speed, a bot seldom does. I already do pause the Bots from time to time, but it's not the same...I think that key emulation or Shagwanas ideas could improve this a bit...
+
+--------------------------------------------------
+10/21/00 at 18:46:41  Reply by: theimann (theimann@stud.fh-heilbronn.de)
+--------------------------------------------------
+When I am playing and passing a level I don't vary speed - always keep running :-) Nevertheless no bot would move like I do. I think the main difference is that a bot is directly approaching his target (with waypoint navigation) so you get many straight lines from waypoint to waypoint. A human player moves in curves, abandoning the straight path to view at other locations, his back etc...
+To imitate this you had to make the bot leave his paths or at least randomly deviate from them. I would leave these inertia things to the engine.
+
+Tobias
+
+Tobias
+

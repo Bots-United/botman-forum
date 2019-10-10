@@ -1,0 +1,63 @@
+--------------------------------------------------
+Subject: weapon firing
+--------------------------------------------------
+12/03/01 at 14:11:26  Posted by: jldailey (jldailey@uchicago.edu)
+--------------------------------------------------
+simple question:
+does every frame with an IN_ATTACK button down generate exactly one bullet? and does the person shot at take damage in that frame or the next one or when?
+
+i want to compile bullet-to-bullet accuracy stats about different players...
+
+(warning: incoming math)
+using these stats and Chebyshev's inequality, we could calculate a probability of cheating in the following way:
+
+let a = accuracy of a random player
+let m = mean accuracy of players
+by Chebyshev:
+P( | a - m | >= b ) <= Var(a) / b^2
+
+in other words, the farther from the mean you are, the probability that a normal (randomly selected) player will be there, decreases with the square of that distance.
+
+so,
+P(cheating) = 1 - Var(a) / b^2
+which goes up by the square of how far from normal you are.
+
+yes, i know this will misclassify a few really good people, but im prepared for that.  usually people who are really good are good because of timing and position not big differences in accuracy.  at least that is my working assumption for counter strike (this could easily not be true in such a fast-blasting game as TFC).
+
+--------------------------------------------------
+12/03/01 at 14:39:49  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+"does every frame with an IN_ATTACK button down generate exactly one bullet?"
+
+No.  There is a delay in the SDK for how often a weapon will fire a bullet.  For the primary fire (IN_ATTACK) the SDK uses "m_flNextPrimaryAttack" as the delay between trigger pulls.  The rate at which bullets will be fired depends on this delay (and to some extent what frame rate you have).
+
+If the delay is smaller than your frame rate (i.e. the delay is 1/100th of a second, but you are only getting 10 FPS), the trigger will get pulled (and a bullet will be fired) every frame.  If your frame rate is larger than the delay, then the next frame time that is longer than the delay will be when the bullet is fired (and when the new delay is set up).
+
+Each weapon will have a different delay for each MOD (the more powerful weapons usually have a much longer delay to balance the game play a little better).  Some MODs will tell you what the rate of fire is (in rounds per second) for each weapon.  Some MODs won't tell you what this is, but with a full clip and a stop watch you can time this out yourself to get a rough estimate.
+
+Each time a player fires a weapon that is an "instant hit" type weapon (i.e. it doesn't launch a projectile that take time to hit the target), the damage is done at that instant (not during the next frame or even during the next players PreThink() or PostThink()).  These instant hit weapons will do damage as soon as the bullet is fired.
+
+botman
+
+--------------------------------------------------
+12/03/01 at 15:16:30  Reply by: ReDucTor[FGW] (sjdtmv@tpg.com.au)
+--------------------------------------------------
+QUOTE:
+
+does every frame with an IN_ATTACK button down generate exactly one bullet?
+
+
+
+
+No guns have a timer for the time between bullets, or else you would just hold on your fire button, and bullets would be going every where, the bit IN_ATTACK is on all the time the trigger is held down, and for firing bullets, the server side dll checks that bit, and checks if it can hook by checking the time, ammo, etc anything nesssery
+
+QUOTE:
+
+does the person shot at take damage in that frame or the next one or when?
+
+
+
+As soon as the server says ok to fire, and the bullet fire function is called, the damage is caused, and a bubble trail is made, creating the bullet like effect...
+
+A good way to do it, might be to Redirect the FireBullets function from the weapon entitys, then before they are called check the health, then call them, check the health agian, if its changed the player has hit the target, if not the player has missed, then do your math calculations
+

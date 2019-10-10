@@ -1,0 +1,60 @@
+--------------------------------------------------
+Subject: Compile Error Linux Rehdat 7.2 GCC 2.96
+--------------------------------------------------
+06/23/02 at 12:20:30  Posted by: D (dirkh@u.washington.edu)
+--------------------------------------------------
+If anybody has an idea of what I need to change I would appreciate the help. I am compiling hpb_bot_src_2_1.zip when I do so, I get the following error(s):
+
+gcc -Dstricmp=strcasecmp -Dstrcmpi=strcasecmp -m486 -O2 -w -I../engine -I../common -I../pm_shared -c h_export.cpp -o h_export.o
+h_export.cpp:82: ISO C++ forbids declaration of `GiveFnptrsToDll' with 
+no type
+h_export.cpp: In function `int GiveFnptrsToDll (enginefuncs_t *, 
+globalvars_t *)':
+h_export.cpp:192: return-statement with no value, in function declared 
+with a non-void return type
+make: *** [h_export.o] Error 1
+
+
+Any help would be wonderful.
+TIA,
+
+D
+
+--------------------------------------------------
+06/23/02 at 12:52:25  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+I am using an older version of gcc to build the HPB bot (specifically gcc 2.91.66).  Try installing an older version of gcc (or see the SDK 2.1 patches to make things compatible with more recent versions of gcc).
+
+botman
+
+--------------------------------------------------
+06/23/02 at 13:51:55  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+make sure you have:
+
+#ifndef __linux__
+#ifdef __BORLANDC__
+extern "C" DLLEXPORT void EXPORT GiveFnptrsToDll(enginefuncs_t* pengfuncsFromEngine, globalvars_t *pGlobals)
+#else
+void DLLEXPORT GiveFnptrsToDll( enginefuncs_t* pengfuncsFromEngine, globalvars_t *pGlobals )
+#endif
+#else
+extern "C" DLLEXPORT void GiveFnptrsToDll( enginefuncs_t* pengfuncsFromEngine, globalvars_t *pGlobals )
+#endif
+
+in h_export, botman didn't have a void type in GiveFnptrsToDll, where gcc doesn't like things without types.
+
+[modified on 06/23/02 at 13:51:55]
+--------------------------------------------------
+06/23/02 at 17:50:36  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+His error makes me think of the -ansi and -pedantic flags of GCC. Maybe one of those is enabled ? Check your makefiles and your command line... Those options make GCC very demanding about the ISO-ness of the code. I would suggest disabling them.
+
+
+--------------------------------------------------
+06/24/02 at 08:53:57  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+You can also try using "kgcc" instead of "gcc".  kgcc is an older version of the gcc compiler used to build the kernel for modules that haven't been ported to the newer gcc version.
+
+botman
+

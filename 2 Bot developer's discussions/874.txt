@@ -1,0 +1,128 @@
+--------------------------------------------------
+Subject: FakeClientCommand for the HumanPlayer
+--------------------------------------------------
+12/15/00 at 06:33:07  Posted by: Ewatch (ewatch@counter-strike.de)
+--------------------------------------------------
+Hi all,
+i want to make a command like the FakeClientCommand but it should be for the player.
+
+Can you help me please?
+
+Please answer sooon :D
+THX
+
+
+--------------------------------------------------
+12/15/00 at 07:26:47  Reply by: eLiTe (ali@elitegamer.fsnet.co.uk)
+--------------------------------------------------
+If it was for the player, it wouldn't be 'fake'.
+
+But you would just use the edict of the player for the first field of the FakeClientCommand.
+
+Look at a piece of code that checks whether the current 'player' is a bot or not, can't remember where... I think it might be in util.cpp, the function that tchecks the current bot index... UTIL_GetBotIndex or something like that...
+
+This will tell you how to check if the current player is a bot, and if it isn't a bot, copy the edict and use it in the FakeClientComand!
+
+--------------------------------------------------
+12/15/00 at 07:29:44  Reply by: Ewatch (ewatch@counter-strike.de)
+--------------------------------------------------
+Ok thx for that, i understand that :D.
+When anyone can help me then just write, :P.
+
+Ewatch
+
+--------------------------------------------------
+12/15/00 at 12:09:38  Reply by: ReDucTor[FGW] (sjdtmv@globalfreeway,com.au)
+--------------------------------------------------
+Client_command
+
+should work
+
+e.g.   Client_command(pEntity, "kill");
+
+
+
+--------------------------------------------------
+12/15/00 at 14:27:53  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+"Client_command should work"
+
+No, the ClientCommand() function won't work because the MOD version of ClientCommand() will call the engine's Cmd_Args, Cmd_Argv, and Cmd_Argc functions which won't currently be storing the correct data.  That's why I had to create my own FakeClientCommand() and by-pass the engine Args, Argv and Argc functions.
+
+botman
+
+--------------------------------------------------
+12/17/00 at 12:59:54  Reply by: Ewatch (ewatch@counter-strike.de)
+--------------------------------------------------
+SO Botman could you please explain how it would work?
+
+Ewatch
+
+--------------------------------------------------
+12/17/00 at 14:42:17  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+You don't need to have a version of FakeClientCommand() for human players.  Each human player has a client.  The client sends text messages to the ClientCommand() function on the server.  If you wish to implement a new command use put a new command inside the existing ClientCommand() function (just like the "addbot" command in the HPB bot source code).  The new command (like "addbot") can be entered on the client's console just like existing commands and will be intercepted by your Add-On MOD at which point it will do whatever code you have set up for it.  Be aware that this will ONLY work on the server.  You can't just create your own commands without having access to the server that is running the MOD.
+
+botman
+
+--------------------------------------------------
+12/18/00 at 21:54:08  Reply by: ReDucTor[FGW] (sjdtmv@globalfreeway,com.au)
+--------------------------------------------------
+But you can if you are a client, make yourself alias's and bind's..........
+
+--------------------------------------------------
+12/19/00 at 11:11:51  Reply by: Ewatch (ewatch@counter-strike.de)
+--------------------------------------------------
+So, i'll explain you now what I wanted to do:
+I wanted to make new commands for the Player itself. It sould be like a script, but programmed so that the user can't access and change them easily. 
+
+Is this possible or not?
+
+:D
+
+I understand you Botman... i promise!
+
+Ewatch
+
+--------------------------------------------------
+12/28/00 at 07:29:48  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+"Is this possible or not?"
+
+No, it's not.  Otherwise cheating would be more rampant that it already is.
+
+The server runs the Half-Life engine plus the MOD (this is the .dll file in the dlls folder).  The clients run the Half-Life engine plus the client.dll file (in the cl_dll folder).  The server MOD .dll IS the game.  The client.dll files only display the HUD sprites, create sound effects, and send keyboard and mouse movements to the server.  The Half-Life engine is what controls the 3D graphics (on the client) and handles the player physics (on the server).
+
+When you connect to an Internet game, the Half-Life engine compares the client.dll on your machine with the client.dll located on the server.  If they aren't exactly the same the server will not allow you to connect (and you get some message about an inconsistent client DLL).  Therefore you have to be running the same client DLL that is being used on the server (and by all the other clients connected to that server).  This way everybody is playing with the exact same client code.
+
+You can't change anything on the server since you usually don't have access to that machine.
+
+If you want to modify either the server DLL code or the client DLL code, you will have to run the server on your machine and everyone will have to have the same client that you are running on your machine.  If you want to create something similar to the HPB bot (to intercept or create custom commands), this will HAVE to be running on the same machine where the server DLL is running (i.e. on the Internet server).
+
+botman
+
+--------------------------------------------------
+12/28/00 at 15:11:07  Reply by: Ewatch (ewatch@counter-strike.de)
+--------------------------------------------------
+Ok thanks,
+now I understand it completly.
+
+Sorry, i feel that I've made you a bit angry Botman.
+But thanks for your very good explanation.
+
+Ewatch
+
+--------------------------------------------------
+12/29/00 at 07:25:55  Reply by: pikachu (emperorstuart@hotmail.com)
+--------------------------------------------------
+Erm botman...
+
+Is it possible to disable the crc check of the client.dll with the mod dll?
+
+--------------------------------------------------
+12/29/00 at 09:11:11  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+This is done by the Half-Life engine.  You can't disable it without modifying the Half-Life engine code.  All of this happens before the player gets connected to the server.
+
+botman
+

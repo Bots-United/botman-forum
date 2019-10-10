@@ -1,0 +1,30 @@
+--------------------------------------------------
+Subject: Chatting bots
+--------------------------------------------------
+03/06/01 at 06:06:56  Posted by: GambiT (arrago_a@epita.fr)
+--------------------------------------------------
+I know that bots can't receive text messages, because they are intercepted before actually being sent. If I understand well the code, if someone tries to send the bot a message, the rewritten function pfnMessageBegin() traps such message, i.e. assign NULL to botMsgFunction, hence nothing will be written on HUDs as the message body won't be read by the pfnWrite* functions. But I don't understand how to check that the message is a SayText one, and then do computation on the message body...
+Maybe I am not making myself clear enough, but could someone enlighten me please?
+
+--------------------------------------------------
+03/06/01 at 09:22:53  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+As you stated network messages are not sent to the bots by the Half-Life engine (since the bots don't have a client).  The MOD doesn't know anything about bots and will still send the message to a fake client (bot), but the engine will throw away that network message.
+
+You can intercept messages being sent to bots by catching the data sent between the pfnMessageBegin() and pfnMessageEnd() function calls.  Things such as pfnWriteByte() or pfnWriteString() will still get sent by the MOD.
+
+You can look at the way the FLF temporary entity (TempEntity) intercepts text messages that were sent to clients in FLF 1.1.  You can create something similar to capture the TextMsg network messages and compare the strings being sent to whatever you're looking for.
+
+botman
+
+--------------------------------------------------
+03/07/01 at 03:56:05  Reply by: GambiT (arrago_a@epita.fr)
+--------------------------------------------------
+I am now able to get the text sent to bots, and log it into a file. But i cannot figure out why each message is preceded by another one, which is empty (except for one special char, a stroked square). As i am currently unable to debug (see the 'debug with mvsc++' thread i you want to help ;p), i really don't where does this come from.
+
+--------------------------------------------------
+03/07/01 at 04:31:34  Reply by: GambiT (arrago_a@epita.fr)
+--------------------------------------------------
+my fault, talked too much before checking by myself...so, ok, i have seen that the byte written before the message was the pEntity->entindex() value...
+In fact, i have only intercepted SayText type messages, and i assign my own code to botMsgBeginFunction whichi will be called when receiving data, and i also now why the the function was called twice...pfff...guess next time i have to think a little but before posting annoying stuff. :|
+

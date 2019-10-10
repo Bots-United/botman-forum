@@ -1,0 +1,180 @@
+--------------------------------------------------
+Subject: Stripper 2
+--------------------------------------------------
+08/04/03 at 09:37:56  Posted by: eXistenZ (T.Franzen@freenet.de)
+--------------------------------------------------
+Hi all
+i have the following Question.
+i try to remove the Water and lava in 
+Deathmatch Classic maps,
+I createt an file called dmc_dm3_str.cfg,
+an insert the lines:
+
+[strip]
+func_water
+item_artifact_super_damage
+
+The Quad Damage on this dmc map is stripped,
+but Water is still on the map.
+which command i have tu use for remove the water, and Lave on a different map ??
+plz help
+
+--------------------------------------------------
+08/04/03 at 11:55:56  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+[strip]
+func_water
+
+Should remove water (and lava) from the map.
+
+I haven't tried this with DMC maps.  You might want to try a few of the other DMC maps and see if it works with any of them.
+
+botman
+
+--------------------------------------------------
+08/04/03 at 13:31:55  Reply by: eXistenZ (T.Franzen@freenet.de)
+--------------------------------------------------
+don´t know why,
+but it works only with the map dmc_dm4.bsp
+any idea why ??
+
+--------------------------------------------------
+08/04/03 at 15:05:34  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Perhaps the other maps don't really have func_water.
+
+You could try downloading my BSP Tools utilties and dump the entities in those maps to see if they are really "func_water" or something else.
+
+botman
+
+--------------------------------------------------
+08/05/03 at 09:53:41  Reply by: eXistenZ (T.Franzen@freenet.de)
+--------------------------------------------------
+ok, i dl the Bsp_tool,
+open an dos-window, and type
+"bsp_tool -ent dmc_dm3"
+now i can see many entry´s like
+"Enity index       : 215
+ Enity origin (x)  : 0.000000
+              (y)  : 0.000000
+              (z)  : 0.000000
+ Fist brush        : 0
+ Number of brushes : 0
+ Key/Value         : classname/light
+ Key/Value         : _light/255 240 136 100
+ Key/Value         : origin/1845 -32 -241"
+
+The "Enity index" is sequentially, from 0 to 215,
+and there are many different Key/Values
+but the problem is now i can only see the numbers
+from 194 to 215 in the dos-window.
+i cant see 0 to 193.
+plz help
+
+
+
+--------------------------------------------------
+08/05/03 at 10:35:14  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Do the command like this...
+
+bsp_tool -ent dmc_dm3 > output.txt
+
+...and it will create a text file with the output (called output.txt).
+
+botman
+
+--------------------------------------------------
+08/05/03 at 13:59:13  Reply by: eXistenZ (T.Franzen@freenet.de)
+--------------------------------------------------
+ok, it working, thanx alot...
+but ther is no func_water in this textfile :(
+i don´t understand what to do now, there is a pool with water on the map.
+confused 
+
+--------------------------------------------------
+08/05/03 at 15:30:01  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Look for other "func_" entities.
+
+All water/lava areas will be brush entities, which means the entity will have "model" key/value pair assigned to it.
+
+The only entities in dmc_dm3 with "model" tag are...
+
+func_door (model/*1)
+func_door (model/*2)
+trigger_teleport (model/*3)
+trigger_teleport (model/*4)
+func_door (model/*5)
+trigger_multiple (model/*6)
+trigger_multiple (model/*7)
+trigger_multiple (model/*8)
+
+...so it's probably one of the "func_door" entities.
+
+Try stripping out "func_door" and see if the water goes away.
+
+If it does, you can't remove just a single "func_" entity (since they don't have an origin to use to make them uniquely identifiable).  You CAN remove ALL func_doors and then use the Stripper2 [add] section to add back in the doors that you didn't want to remove (i.e. strip out all doors and add 2 of them back in).
+
+botman
+
+botman
+
+--------------------------------------------------
+08/06/03 at 00:30:24  Reply by: eXistenZ (T.Franzen@freenet.de)
+--------------------------------------------------
+I stripped out the funk_door entity, 
+that is 3 times in the textfile, createt by bsb_tool
+the plugin removes 3 Elevators from the map.
+The "trigger_multiple" are the switches for the Elevators.
+also...i try to remove all kind of light, it fails
+a little bit more confused
+
+--------------------------------------------------
+08/06/03 at 01:03:51  Reply by: LunaticWithCandy (candyranger@hotmail.com)
+--------------------------------------------------
+You cant remove lights.
+
+--------------------------------------------------
+08/06/03 at 01:30:21  Reply by: eXistenZ (T.Franzen@freenet.de)
+--------------------------------------------------
+Why i cant remove the lights ?
+One more Idea, is there a tool to convert maps (*.bsp) to a format, what i can import to Valve´s Hammes, so i can edit a map ??
+
+--------------------------------------------------
+08/06/03 at 06:04:44  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+WinBSPc (use www.google.com to find it) will attempt to decompile a .bsp file into a .map file which can be loaded into Worldcraft/Hammer.
+
+WinBSPc doesn't correctly handle texture alignment (you'll have to do that yourself) and it doesn't combine the BSP split polygons back into the original Worldcraft brush (nothing you can do about this), and the resulting .map file map may not be able to be compiled with the Half-Life (or Zoner's) compile tools due to errors in "seams" between some of the polygons (i.e. things don't line up exactly right and you get leaks).
+
+botman
+
+[modified on 08/06/03 at 06:04:44]
+--------------------------------------------------
+08/06/03 at 12:42:26  Reply by: eXistenZ (T.Franzen@freenet.de)
+--------------------------------------------------
+ok, i decompile the maps and load it into
+Valve´s Hammer
+i can select specific parts of the map, and i can see his meaning.
+Tha Lava at map dmc_dm4 is func_water
+(it´s stripped correctly.)
+But in the most other maps, Hammer tells me for the water or lava: "Solid with 6 faces".
+so, is there a way to stripp that part ??
+
+
+--------------------------------------------------
+08/06/03 at 13:23:17  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+No, if it's just BSP brushes and not an entity, there is no way to strip it out using Stripper2.
+
+botman
+
+--------------------------------------------------
+08/07/03 at 01:37:32  Reply by: eXistenZ (T.Franzen@freenet.de)
+--------------------------------------------------
+Bad Luck
+But thanx for trying to help
+Nice forum :)
+
+

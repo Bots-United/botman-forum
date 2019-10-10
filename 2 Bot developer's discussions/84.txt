@@ -1,0 +1,245 @@
+--------------------------------------------------
+Subject: Fixing the crash!
+--------------------------------------------------
+09/09/00 at 03:43:59  Posted by: Shagwana (Shagwana@btinternet.com)
+--------------------------------------------------
+First off I would just like to say, I have started working on my very own Counter-strike bot ;). Its gona be called "ShagBot". After I finish it im gona adapt it to code a few other bots for other well known and not so well known mod's. Anyway on with the reason for this post;
+
+Botman, have you (or anyone else) made any progress on fixing the crash that happens when bots are kicked or even after some level changes?. Looking through your code in HPB alfa 3, in Bot.cpp/BotThink() should't you check that pBot==NULL and return (from BotThink()) before anything has the chance to use it like Fatals milisecond code?. Also why do you check to see if the name is filled in every time BotThink() is called?, wouldn't it be faster to do this once on bot initialize code?
+
+
+--------------------------------------------------
+09/09/00 at 05:06:58  Reply by: admin (botman@mailandnews.com)
+--------------------------------------------------
+My bots should not cause a crash when being kicked.  When you kick a bot, the server calls the ClientDisconnect() function to indicate a bot was removed.  I mark a flag in the bot's bot_t structure to indicate this.  The next time that bot's BotThink() function is called, it sees that it was kicked and sets itself to DEAD.  That entity will STILL remain on the server even if the bot was kicked from the game.  The player isn't in the map, but the entity remains in the server.  Half-Life doesn't remove these or free these up when they aren't used anymore, so when the BotThink() for this "non-existant" player gets called again, I simply return (and do nothing).
+
+The "changelevel" bug is a problem in the Half-Life engine.  Jehannum (of Phineas Bot) is working on correcting this problem for Valve.  The "map" command will kick off all players before the level change occurs.  "changelevel" doesn't do this and leads to fake clients causing the server to crash.  When playing with bots in a level you should always use the "map" command instead of "changelevel" to load a new map.  They are the same otherwise.
+
+I check the first character of the name in the BotThink() function because all of the bots are created with the name "Bot" when they are spawned.  The server will change the name to "(1)Bot" or "(14)Bot" or whatever to keep 2 players from having the same name.  I don't know what this name is going to be when the bot is created (and don't make any attempt to prevent name conflicts since the server does this for me).
+
+The bot name doesn't change until AFTER is has connected to the server (which is after the BotCreate function has exited).  The only place to check what the bot's real name was is in the BotThink() function.  Notice that I don't just blindly copy it every time.  I check to see if it's been initialized yet (since I can't tell one BotThink() call from another) by looking at 1 byte and if it hasn't been initialized, I copy the name (so that I will keep the name the same when they respawn in another map).
+
+botman
+
+
+--------------------------------------------------
+09/09/00 at 05:21:12  Reply by: Shagwana (Shagwana@btinternet.com)
+--------------------------------------------------
+Ta for the reply, just looking around at other bots and came across RealBot 1.41 (I think), it claims to have fixed the problem!, time to go ask them how they did it!
+
+l8r
+
+--------------------------------------------------
+09/09/00 at 18:42:22  Reply by: Stealth (stealth@atozasia.com)
+--------------------------------------------------
+It do crash, because the bot is still in the game after you have kicked it. Daniel Ditlew had gave me a solution to it, thanks Ditlew. This is what he gave me:
+
+Subject: Re: The kick bot = crash problem!! 
+From: Daniel Ditlew   (ditlew@cs.auc.dk)  Block Sender 
+Date: Sept 05 - 12:13     [view full headers]  
+Okay here it a solution! And it should work!!! :o)
+If you use it in your bot plz give me some credits!! 
+ 
+put this in start of bot.cpp
+ 
+bool kickbot = false; //ditlew
+ 
+put this in BotThink( )
+ 
+ // has the bot been removed from the server?
+ if (pBot->respawn_state =RESPAWN_SERVER_KICKED)
+ {
+  pEdict->v.health 0;
+  pEdict->v.deadflag = DEAD_DEAD;  // make the kicked bot be dead
+ 
+  pBot->is_used = FALSE;  // this slot is now free to use
+ 
+//ditlew - start
+  if (!kickbot) BotCreate( pBot->pEdict, "5", "5", "kickedbot", NULL );
+  else kickbot true;
+//ditlew - stop
+ 
+  return;
+ }
+ 
+
+ // if the bot hasn't selected stuff to start the game yet, go do that...
+ if (pBot->not_started)
+ {
+  BotStartGame( pBot );
+ 
+//ditlew - start
+ 
+        if (strstr(pBot->name,"kickedbot"))
+  {
+   char cmd[80];
+ 
+            sprintf(cmd, "kick \"%s\"\n", pBot->name);
+ 
+   SERVER_COMMAND(cmd);
+   kickbot true;
+  } else
+ 
+//ditlew - stop
+ 
+  g_engfuncs.pfnRunPlayerMove( pEdict, pEdict->v.v_angle, pBot->f_move_speed,
+         pBot->s_move_speed, 0, pEdict->v.button, 0, pBot->msecval);
+// this don't work!!!    gpGlobals->frametime * 1000 );
+ 
+  return;
+ }
+
+put this in dll.cpp
+ 
+extern bool kickbot; //ditlew
+
+
+void ClientDisconnect( edict_t *pEntity )
+{
+   if (gpGlobals->deathmatch)
+   {
+      int index = -1;
+ 
+      if (debug_engine) { fp=fopen("bot.txt","a"); fprintf(fp, "ClientDisconnect: %x\n",pEntity); fclose(fp); }
+ 
+      for (int i=0; i < 32; i++)
+      {
+         if (bots[i].pEdict =pEntity)
+         {
+            index i;
+            break;
+         }
+      }
+ 
+      if (index !-1)
+      {
+         // someone kicked this bot off of the server (DON'T RESPAWN!)...
+         bots[index].respawn_state = RESPAWN_SERVER_KICKED;
+ 
+ 
+//ditlew - start
+   if (strstr(bots[i].name,"kickedbot") == NULL) kickbot false;
+   }
+//ditlew - stop
+   }
+ 
+   (*other_gFunctionTable.pfnClientDisconnect)(pEntity);
+}
+
+ 
+What this do is exploit the fact that you may kick bot that haven't send
+"
+  g_engfuncs.pfnRunPlayerMove( pEdict, pEdict->v.v_angle, pBot->f_move_speed,
+         pBot->s_move_speed, 0, pEdict->v.button, 0, pBot->msecval);
+"
+at anytime.. Which meens that they are in a state of "UNASSIGNED"!!
+ 
+The down site is that every time you kick someone you get at list of all the bot you have kicked previouly on the map..
+ 
+- Ditlew 
+
+
+
+Please do give credits to him, if you do uses his codes. But I think there should be another way to deal with this problem. botman, what do you think about this?
+
+--------------------------------------------------
+09/10/00 at 08:25:43  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+I can not duplicate the problem you are having kicking bots using the HPB bot Alpha 3.0 code.  Please describe what you do when running the HPB bot that causes the game to crash.
+
+I can create bots in Half-Life, TFC, and CS then, later, kick them off of the server using "kick botname" and they get removed from the server with no problems.
+
+P.S. The code you posted just appears to flag a bot that has been kicked then create the bot again with a special name that then gets kicked again.  Why would you want to do that?
+
+botman
+
+--------------------------------------------------
+09/10/00 at 08:48:02  Reply by: Stealth (stealth@atozasia.com)
+--------------------------------------------------
+It is like this, (actually the same problem that i had mentioned early in a Thread)I added like 4 bots. Later i kicked 1 bot so as to end the game(because the bot would know go out and find each other *no waypoint set*). So the game ends, the words "Counter-terrorist win" starts to fade. Then, *BANG* crashed, with an error ( i had mention in another post, if you do remember), something like Writing to uninitialized sizebuf_t. 
+
+You had told me that there is a pointers or something that are wrong, but i still can't figure out what are wrong. And Ditlew gave me the code and i tried it, it works perfectly okay. But i'm thinking, is the bot being removed from the bot list when it is being kicked? According to Ditlew thoery, the bot that is being kicked is not being removed from the server, it is still there. But i don't know what the hell crashed the game when i kicked it.
+
+--------------------------------------------------
+09/10/00 at 11:03:37  Reply by: Shagwana (Shagwana@btinternet.com)
+--------------------------------------------------
+The error that i get when i kick a bot and then end the round (in counter-strike)is "SZ_GetSpace : Tried to write to an uninitialized sizebuf_t" Like Stealth said. 
+
+If its a pointer out of wack hold it be...
+
+
+void BotThink( edict_t *pEdict )
+{
+   <<< varibles >>>
+
+   //This pointer here?
+   pBot = UTIL_GetBotPointer(pEdict);    
+
+   if (pBot->name[0] == 0)  // name filled in yet?
+      strcpy(pBot->name, STRING(pBot->pEdict->v.netname));
+
+   <<< more code from BotThink() >>>
+   
+   // Now check to see if its null!
+   if (pBot == NULL)
+      return;
+
+
+I know you said that this BotThink() should't be called because the bot don't exists. But heck it just seams good programming practice to not write to a NULL pointer when there is a chance to do so!
+
+L8r
+
+--------------------------------------------------
+09/10/00 at 13:48:09  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+Ahhh, okay.  It's not when the bot is kicked that it crashes, but when the round is restarted.
+
+Okay, I'll have a look and see about that bug.
+
+Stephen, you are correct about the pointer thing, I should be checking for a NULL pointer before using it.  I'll have to correct that also.
+
+botman
+
+--------------------------------------------------
+09/11/00 at 10:31:35  Reply by: Shagwana (Shagwana@btinternet.com)
+--------------------------------------------------
+First off Stephen Greener == Shagwana ;)
+
+QUOTE:
+Ahhh, okay.  It's not when the bot is kicked that it crashes, but when the round is restarted.
+
+Okay, I'll have a look and see about that bug.
+
+Stephen, you are correct about the pointer thing, I should be checking for a NULL pointer before using it.  I'll have to correct that also.
+
+botman
+
+
+
+
+I quoted, because some A-hole posted a nude bird. Anyway i found the fix for the kick bug. After having a word with DStroth (FireBot), he gave me this little bit of code;
+
+in BotThink() (u know were)
+
+if (pBot->respawn_state == RESPAWN_SERVER_KICKED)
+  {
+  pEdict->free = TRUE;        // -> *THE FIX!!* <-            
+  pEdict->v.health = 0;
+  pEdict->v.deadflag = DEAD_DEAD;            
+  pBot->is_used = FALSE;                  
+  return;
+  }
+
+Credit must go to nnbot author (Daniel or is it ditlew??) for this!
+
+
+
+
+--------------------------------------------------
+09/11/00 at 14:05:00  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+Okay, that's kind of interesting.  I'm not sure why you should have to do that since CS should clean up after itself in the ClientDisconnect() function.  But okay, whatever works!
+
+botman
+
+

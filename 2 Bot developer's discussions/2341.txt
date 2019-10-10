@@ -1,0 +1,127 @@
+--------------------------------------------------
+Subject: Spy gas gren
+--------------------------------------------------
+10/01/01 at 14:16:49  Posted by: RedFox (redfox@nildram.co.uk)
+--------------------------------------------------
+I has similar problems with spy gas grens with my admin mod fix (I'll post info on making you bot a admin mod plugin later)
+What I did for that was block the pfnClientCommand  (the engine one, not the dll one) function from being sent any further if it was a fake client.
+
+This one may be one of the new crashes with v1.1.0.8 I havn't spotted yet, so I'll test it out. 
+If it is their may need to be another fix for the stand alone code.
+
+Well, hope thats some help in tracking it down.
+
+--------------------------------------------------
+10/01/01 at 14:41:49  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+If I understand you correctly, the server is trying to get the client to execute a command using the CLIENT_COMMAND() function, right?
+
+If so, then yes, I should probably disable this from reaching the Half-Life engine if the MOD is trying to send a command to a bot "client".
+
+Thanks, I'll look into that to see if that fixes the problem.
+
+Then all I'll have to do is figure out why the voice communication stuff is buggered up on some machines (including one of my test machines).  :(
+
+botman
+
+--------------------------------------------------
+10/01/01 at 14:45:08  Reply by: RedFox (redfox@nildram.co.uk)
+--------------------------------------------------
+I havn't had any problems with the voice command when testing foxbot...but its been too busy crashing with v1.1.0.8 at the moment so it may be a problem with all bots.
+I'll look into it after testing the spy gas gren again.
+
+--------------------------------------------------
+10/01/01 at 16:31:34  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Okay Tom, that was the problem.  I had convinced myself a long time ago that I couldn't handle the variable arguments list that pfnClientCommand() was taking (in engine.cpp) and had always had it commented out.  Also the function override for it in h_export.cpp was also commented out.
+
+Here's why I had convinced myself that you can't override the pfnClientCommand() var arg list...
+
+I can use va_list, va_start(), and va_end() to handle the arguments, but I can't pass these same arguments to the engine version of pfnClientCommand() since I don't know how many arguments there are and I would HAVE to push those same arguments (actually pointers) onto the stack before calling the engine version of this function.  Someone had once sent me an example where they passed the va_list pointer directly to the engine pfnClientCommand() function (along with the szFmt string), but this was an INCORRECT argument since the engine pfnClientCommand accepts a variable argument list (a bunch of pointers) and NOT a va_list pointer.
+
+Then I thought I could just use vsprintf() to print the arguments passed into my version of pfnClientCommand() to a string and pass just this string to the engine's version of pfnClientCommand().  But then I realized that I don't know what all the valid list of string arguments (like %d, %f, %s, etc.) are to the engine's version of pfnClientCommand().  I was assuming that they were the same as printf() and thus vsprintf() should handle them the same way, but you know what you get when you ASSUME.  :)
+
+But, since it appears that the engine won't handle pfnClientCommand() being sent to a fake client correctly, I guess I will have to assume that vsprintf() will handle all of the engine's string arguments correctly and hope for the best.  I still don't like this solution, but until Valve manages to modify the engine interface to ignore pfnClientCommand() when the edict is a fake client I will have to use the following code...
+code:
+void pfnClientCommand(edict_t* pEdict, char* szFmt, ...)
+{
+   if (debug_engine)
+   {
+      fp=fopen("HPB_bot.txt","a");
+      fprintf(fp,"pfnClientCommand: edict=%x cmd=%s\n",pEdict,szFmt);
+      fclose(fp);
+   }
+
+   char tempFmt[256];
+
+   va_list argp;
+   va_start(argp, szFmt);
+   vsprintf(tempFmt, szFmt, argp);
+
+   if (!(pEdict->v.flags & FL_FAKECLIENT))
+      (*g_engfuncs.pfnClientCommand)(pEdict, tempFmt);   
+
+   va_end(argp);
+
+   return;
+}
+
+...and anyone else that's using this modification, don't forget to also change the commented line in h_export.cpp that overrides the engine version of pfnClientCommand() to use the one in engine.cpp instead.  I think this should work to prevent commands from being sent to any fake clients.  It seems to fix the "bug" in TFC anyway.
+
+P.S. The HPB bot template code actually has this COMPLETELY wrong and ignores ALL client commands from the MOD code.  The HPB bot template version of this function does NOTHING and just returns.  Any bot MOD built using this template code will NOT be sending the appropriate commands to the client and will change the way that the game is played for human players.
+
+botman
+
+[modified on 10/01/01 at 16:31:34]
+--------------------------------------------------
+10/01/01 at 17:46:37  Reply by: RedFox (redfox@nildram.co.uk)
+--------------------------------------------------
+Ah, thats useful, because mine just 'return's
+That may be the source of the current bug I'm hunting.
+Perhaps we can ask valve for some help on this one. It would be nice to atleast know all the proper arguments passed to it.
+
+Anyway, glad I could help on that one.
+
+--------------------------------------------------
+10/02/01 at 04:33:11  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Yep, I was going to e-mail Leon Hartwig this morning to ask him to check the engine code to make sure that pfnClientCommand() doesn't try to send a network message for fake clients (I'm betting that it does).  I think this is why AdminMOD crashes so much with bots is that they are trying to send client commands and getting the SZ_GetSpace error.
+
+I'll post Leon's reponse here when I hear anything back from him.
+
+botman
+
+--------------------------------------------------
+10/02/01 at 05:19:16  Reply by: RedFox (redfox@nildram.co.uk)
+--------------------------------------------------
+Yup, thats the one for admin mod, also pfnClientPrintf does the same if sent to a fakeclient (as they don't have a console I'd assume)
+But with the way admin mod now works (as a metamod plugin) you need to intercept these in some interesting ways to stop admin mod crashing. By making your bot a metamod plugin also (foxbot will be both standalone and metamod plugin...once this version done...urg)
+I had some queries about how todo this when I got it working. I'll post all you need to know once I release.
+
+Perhaps if we can let valve know it won't be needed in the future :)
+
+--------------------------------------------------
+10/02/01 at 09:48:56  Reply by: CountFloyd (countfloyd@botepidemic.com)
+--------------------------------------------------
+QUOTE:
+Yep, I was going to e-mail Leon Hartwig this morning to ask him to check the engine code to make sure that pfnClientCommand() doesn't try to send a network message for fake clients (I'm betting that it does).  I think this is why AdminMOD crashes so much with bots is that they are trying to send client commands and getting the SZ_GetSpace error.
+
+
+
+
+You're right again Botman. ClientCommands (and some other Text stuff as well) weren't checked against Fakeclients in the current engine code. It got sent over to the Bots and since they don't have a textbuffer assigned to them it crashed with that SZ_GetSpace Error. I've fixed this in our current Gearbox Engine Version (it's only 2 lines of code), I don't know about Valve though...
+
+--------------------------------------------------
+10/02/01 at 11:41:35  Reply by: William (william@cgf-ai.com)
+--------------------------------------------------
+It's funny to see familiar problems from the QuakeII engine happily live ever after :)
+
+William
+
+--------------------------------------------------
+10/02/01 at 12:06:42  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+lol! glad you fixed it for CS:CZ CF.. (wow, lots of C's there :)).. 
+
+
+

@@ -1,0 +1,704 @@
+--------------------------------------------------
+Subject: A*
+--------------------------------------------------
+02/02/03 at 14:16:32  Posted by: PM (pm@racc-ai.com)
+--------------------------------------------------
+I'm having a lotta brainache with that thing called A*. Don't laugh at me, I once swore that I would never use a pathfinder, hmm well... I've changed my mind.
+
+I would like to know how you guys (who are using A* that is) did the implementation of it in your bots. Did you start over from scratch ? Or did you use an already existing A* implementation sample ?
+
+I'm currently reading Amit's A* pages. I've look over what I could find on the net about C++ implementations of A*, but most of them are for grid-based maps ala "Civilization", and dare I say that I find them a bit complicated already. I'm in search for the BARE astar code, without all the improvements, so as I can understand it...
+
+Tips ? URLs ? any idea would be welcome, thanks...
+
+
+--------------------------------------------------
+02/02/03 at 14:58:26  Reply by: @$3.1415rin (johannes@_-removeifnotavirus-_lampel.net)
+--------------------------------------------------
+my pathfinder once started with the A* Code from the A* utility from http://www.generation5.org/ that's what william also used in Amsterdam to show us some stuff, but just the basic version, I think.
+The original code from there is slow, and looks first a bit strange, because of some GUI code inside it. ( maybe it's just me, I dont like MFC at all, and maybe therefore the whole code :D ). So still some stuff to optimize.
+
+well, I cannot post all that AStar related code here, but the main functions :) I hope I documentated it enough :)
+
+code:
+template <class tAStarGoal>
+class AStarMachine : public AStarBase
+{
+public:
+      AStarMachine(){
+      }
+      virtual ~AStarMachine(){
+      }
+
+      virtual void setStart(int iWP){
+            m_Goal.setStart(iWP);
+      }
+      virtual void setDestination(int iWP){
+            m_Goal.setDestination(iWP);
+      }
+      virtual int getStart(void){
+            return m_Goal.getStart();
+      }
+      virtual int getDestination(void){
+            return m_Goal.getDestination();
+      }
+      
+      void linkChild(AStarNode *pNode,const AStarNode *pChild){
+            // we have a new node: So we gotta check if it's on the open or on the closed list 
+            // If none of both, we gotta put it on the open list.
+            // in all cases we have to set the pointers correctly, so we'll get a nice tree here :)
+
+            int g = pNode->m_g +
+                  m_Goal.getCost(pNode->m_iWaypoint,pChild->m_iWaypoint);            // cost for this child
+            
+            int iCheck;            // if it is already in some list, the index is stored here
+            
+            assert(pChild->m_iWaypoint > -1 && pChild->m_iWaypoint < _MAX_WAYPOINTS);
+            
+            if(iCheck = m_PQOpen.getIndex(pChild->m_iWaypoint)){
+                  assert(iCheck <= m_PQOpen.m_ln && iCheck >= 0);
+                  // it's already on the open list ...
+                  AStarNode *pCheck = m_PQOpen.getItem(iCheck)->m_p;
+                  
+                  pNode->m_Children.addChild(pCheck);
+                  if(g < pCheck->m_g){
+                        pCheck->m_pParent = pNode;
+                        pCheck->m_g = g;
+                        pCheck->m_f = g + pCheck->m_h;
+                        
+                        m_PQOpen.updated(iCheck);
+                  }
+            }
+            else if(iCheck = m_PQClosed.getIndex(pChild->m_iWaypoint)){
+                  assert(iCheck <= m_PQClosed.m_ln && iCheck >= 0);
+                  // it's already on the closed list ...
+                  AStarNode *pCheck = m_PQClosed.getItem(iCheck)->m_p;
+                  
+                  pNode->m_Children.addChild(pCheck);
+                  
+                  if(g < pCheck->m_g){
+                        pCheck->m_pParent = pNode;
+                        pCheck->m_g = g;
+                        pCheck->m_f = g + pCheck->m_h;
+                        
+                        updateParents(pCheck);
+                  }
+            }
+            else{
+                  // it's neither on the open nor on the closed list ...
+                  AStarNode *pNewChild;
+                  pNewChild = newNode(pChild->m_iWaypoint);
+                  
+                  pNewChild->m_pParent = pNode;
+                  pNewChild->m_g = g;
+                  pNewChild->m_h = m_Goal.getHeuristic(pNewChild->m_iWaypoint);
+                  pNewChild->m_f = pNewChild->m_h + g;
+                  
+                  AStarNodeContainer PnC;
+                  PnC.m_p = pNewChild;
+                  
+                  pNode->m_Children.addChild(pNewChild);
+                  m_PQOpen.insert(PnC);
+            }
+      }
+      
+      void updateParents(AStarNode *pNode){
+            // if we found a better way than we have atm, update all the related data, i.e.
+            // all the nodes that are based on the old, not so perfect path
+
+            AStarNode *kid,*pParent;
+            AStarNodeChildren *pChildren = &(pNode->m_Children);
+            int i,ipNodeGi;            // new g value of the kid
+            
+            while(pChildren){
+                  for(i=pChildren->m_iChildren-1; i>=0 ; i--){
+                        kid = pChildren->m_ppChildren[i];
+                        ipNodeGi = pNode->m_g+m_Goal.getCost(pNode->m_iWaypoint,kid->m_iWaypoint);
+                        if(ipNodeGi < kid->m_g){
+                              kid->m_g = ipNodeGi;
+                              kid->m_f = ipNodeGi + kid->m_h;
+                              kid->m_pParent = pNode;
+                              
+                              push(kid);
+                        }
+                  }
+                  
+                  pChildren = pChildren->m_pNext;
+            }
+            while(!empty()){
+                  pParent = top();
+                  pop();
+                  
+                  pChildren = &(pParent->m_Children);
+                  while(pChildren){
+                        for(i=pChildren->m_iChildren-1; i>=0 ; i--){
+                              kid = pChildren->m_ppChildren[i];
+                              ipNodeGi = pParent->m_g+m_Goal.getCost(pParent->m_iWaypoint,kid->m_iWaypoint);
+
+                              if(ipNodeGi < kid->m_g){
+                                    kid->m_g = ipNodeGi;
+                                    kid->m_f = ipNodeGi + kid->m_h;
+                                    kid->m_pParent = pParent;
+                                    
+                                    push(kid);
+                              }
+                        }
+                        
+                        pChildren = pChildren->m_pNext;
+                  }
+            }
+      }
+      
+      virtual bool runAStar(void){
+            // main function of all this stuff :)
+            // - main loop
+            // - handle slices
+            // - getting best nodes
+            // - linking nodes
+            // - getting new open nodes
+
+            int iConnection,iConnectedWP,
+                  iCurrentWP;
+            CWaypoint *pWP;
+            AStarNode *P,*B,ASNTemp;
+            AStarNodeContainer PC;
+
+            if(!m_Goal.isValid())
+                  return false;
+            
+            if(m_bFinished){                  // if the last job was finished, this is a new job
+                  resetNodes();
+
+                  m_iCSlice = 0;
+                  
+                  m_iBreakReason = BR_NONE;                  // no break reason by default
+                  
+                  m_lRevolution = 0;
+                  m_lCSlice2 = m_lSliceSize;
+                  
+                  P = newNode(m_Goal.getStart());
+                  
+                  P->m_g = m_Goal.getCost(m_Goal.getStart(),m_Goal.getStart());
+                  P->m_h = m_Goal.getHeuristic(m_Goal.getStart());
+                  P->m_f = P->m_g + P->m_h;
+
+                  PC.m_p = P;                  // set container pointer
+                  
+                  m_PQOpen.insert(PC);
+            }
+            else{                  // job isnt finished yet, so just prepare a new slice and go on 
+                  m_iCSlice ++;
+                  m_lCSlice2 += m_lSliceSize;
+            }
+            
+            while(true){
+                  // check if this is enough
+                  if(m_lRevolution > m_lMaxRevolutions){      // is the maximum revolution count reached ?
+                        m_iBreakReason = BR_MAXREV;
+                        m_bFinished = true;
+                        logResult();
+                        return false;
+                  }
+
+                  if(m_lRevolution > m_lCSlice2){                  // a slice is full
+                        m_iBreakReason = BR_MAXSLICE;
+
+                        m_bFinished = false;
+                        return true;
+                  }
+
+                  if(m_PQOpen.empty()){            // no more open nodes - no path has been found
+                        m_bFinished = true;
+                        logResult();
+                        return false;
+                  }
+                  PC = m_PQOpen.getTop();
+                  B = PC.m_p;
+                  if(m_Goal.isDestination(B)){            // a path has been found
+                        m_pDestinationNode = B;
+                        m_bFinished = true;
+                        m_iBreakReason = BR_NONE;            // it's not a break :D
+                        logResult();
+                        return true;
+                  }
+                  iCurrentWP = B->m_iWaypoint;
+                  pWP = &(g_Map.m_Waypoints[iCurrentWP]);
+                  /*for(iConnection = pWP->getConnectionCount()-1; iConnection >= 0;iConnection--){
+                        iConnectedWP = pWP->getConnection(iConnection);
+                        
+                        if(m_Goal.isOpen(iCurrentWP,iConnectedWP)){
+                              ASNTemp.m_iWaypoint = iConnectedWP;
+                              
+                              linkChild(B,&ASNTemp);
+                        }
+                  }*/
+
+                  CPath *pPath = pWP;
+
+                  while(pPath){
+                        for(iConnection=0; iConnection < _MAX_PATHS; iConnection++){
+                              iConnectedWP = pPath->m_piPathTo[iConnection];
+
+                              if(iConnectedWP != -1){
+                                    if(m_Goal.isOpen(iCurrentWP,iConnectedWP)){
+                                          ASNTemp.m_iWaypoint = iConnectedWP;
+                                          
+                                          linkChild(B,&ASNTemp);
+                                    }
+                              }
+                        }
+                        pPath = pPath->m_pNext;
+                  }
+
+                  m_PQClosed.insertUnsorted(PC);
+
+                  m_lRevolution ++;
+            }
+      }
+      // data
+      
+      tAStarGoal m_Goal;
+};
+
+
+[modified on 02/02/03 at 14:58:26]
+--------------------------------------------------
+02/02/03 at 15:44:01  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Good ! good good
+I'm looking at that Generation5 A* implementation right now. Your code looks pretty like the one I'm watching, btw.
+
+Thank you @$3.1415rin (when will you find a nickname easier to write ?)
+
+Other ppl ? :)
+
+
+--------------------------------------------------
+02/03/03 at 02:28:06  Reply by: William (william@cgf-ai.com)
+--------------------------------------------------
+warning: the Generation5 A* implementation isn't good, and I recommend not using it. The sole reason I stayed close to the original implementation (which even has a bug in it) was to minimize the differences between the original A* Explorer and my variant for tactical pathfinding.
+Notably the 'update parents' call in James' A* implementation is unnecessary.
+
+You're better of looking at Amit's web pages, and grabbing some implementation from www.gameai.com. Then focus on a number of optimizations suggested by Amit:
+- implement open and closed list membership tests by bitflags in a static array
+- use a heap to implement the open list priority queue
+- don't store the per waypoint search state in the open and closed lists, but instead, store them in a static array
+
+While optimizing, keep a 'all-pairs' path lookup table (aka Floyd-Warshall computed table), and test against these paths. Note that in the case of multiple paths of the same costs, A* and the lookup table may return different paths. The costs however should be identical for both paths.
+
+[modified on 02/03/03 at 02:28:06]
+--------------------------------------------------
+02/03/03 at 01:59:59  Reply by: William (william@cgf-ai.com)
+--------------------------------------------------
+For bare bones pseudo code, and a great explanation, read Bryan Stout's article:
+http://www.gamasutra.com/features/19970801/pathfinding.htm
+
+William
+
+--------------------------------------------------
+02/03/03 at 05:34:40  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Here's the pseudo code that I used to create my A* code from...
+code:
+bool AStarSearch()
+{
+    // priority queues are explained in the next section  
+    priorityqueue OPEN 
+  
+    list CLOSED
+  
+    NODE node
+
+    node.application_stuff = (start conditions of application specific stuff)
+    node.cost = 0;
+    node.heuristic = GetNodeHeuristic( node )
+    node.f = node.cost + node.heuristic
+    node.parent = null
+    push node on OPEN
+
+    // this is the body of the search
+
+    while OPEN is not empty  
+    {
+        node = Pop the best node from OPEN  // ie: take the node off the open list
+
+        if node is a goal node 
+        {
+            construct path  (by following the parent pointers)
+            return success
+        }
+    
+        // otherwise we need to find what nodes can be generated from this node
+        NodePushSuccessors( OPEN, CLOSED, node ); // see below
+
+        push node onto CLOSED list // as we have now examined this node
+    }
+
+    // if we got here we emptied the OPEN list and found no GOAL states
+    // the search failed
+
+    return FALSE 
+}
+
+// Create the successors for the given node and add them to the open or closed 
+// lists as required
+
+void NodePushSuccessors( priorityqueue OPEN, list CLOSED, parent_node )
+{
+    // This is where you apply each valid rule to the node we're checking out
+    // In the case of a pathfinder, for example, a rule is a direction of movement
+
+    for each rule we can apply create the successor new_node
+    {
+        new_node.cost = (application specific cost of this node) + parent_node.cost 
+
+        // you need to write this function for your application
+        // usually the toughest part of implementing the astar.
+
+        new_node.heuristic = GetNodeHeuristic( new_node )  
+
+        new_node.f = new_node.cost + new_node.heuristic
+
+        if the new_node is on CLOSED but the node on CLOSED has a lower 'f'
+        {
+            continue;
+        }
+
+        if the new_node is on OPEN but the node on OPEN has a lower 'f'
+        {
+            continue;
+        }
+
+        remove new_node from the OPEN list if it is on it
+        remove new_node from the CLOSED list if it is on it
+
+        new_node.parent = parent_node
+
+        push new_node on to the OPEN list
+    }
+}
+
+I can't remember what website I found this at, but it seems to work properly.
+
+I just used a singly linked list for the OPEN and CLOSED list.  I kept the OPEN list sorted by cost (distance) with the least cost item at the head of the list for quick removal.
+
+The PushNodeSuccessors() routine just needs to loop through all the "children" that are available for the node that you are currently at (i.e. all the nodes withs paths from the current node).
+
+I also used Brian Stout's pseudo code in the "Game Programming Gems" article "The Basics of A* Path Finding" which helped explain things pretty well.
+
+It's pretty straight forward once you've created the code yourself (you'll understand it ALOT better if you create your own code).  The shortest path will always be found as long as you heuristic always underestimates the distance from the current node to the goal.  I just used the straight line 3D distance from current node to goal.  That works pretty well for everything except teleporters (wormholes, warpzones, etc.)
+
+botman
+
+[modified on 02/03/03 at 05:34:40]
+--------------------------------------------------
+02/03/03 at 05:48:09  Reply by: William (william@cgf-ai.com)
+--------------------------------------------------
+QUOTE:
+I just used a singly linked list for the OPEN and CLOSED list.  I kept the OPEN list sorted by cost (distance) with the least cost item at the head of the list for quick removal.
+
+
+
+
+If you ever need to reclaim some CPU time, you can speed the A* up 2 to 4x, by using bit sets for open/closed membership tests (replaces O(N) search with jumps through memory to a constant time direct and cache friendly test). 
+For similar reasons, the sorted open list can be implemented as a vector with heap algorithm on top of it: heaps have lower combined cost for insert and removal, and the vector prevents the memory hopping that comes with linked lists. The item to be removed typically ends up at the back of the vector, which is darn cheap to remove.
+The whole 'open list' vector can be reserved/sized ahead of time, since it's maximum length won't exceed the number of waypoints.
+That way, you can get rid of just about any malloc/new during the search.
+
+Most of the time, pathfinding isn't really critical anymore, but ray casts are. In that case, don't bother - you've got a nice algorithm in place. I'm simply speaking from experience on a PPro200MHz where the A* was eating too much time.
+
+William
+btw: botman, will you attend the GDC, next month in San Jose?
+
+[modified on 02/03/03 at 05:48:09]
+--------------------------------------------------
+02/03/03 at 05:56:01  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+"btw: botman, will you attend the GDC, next month in San Jose?"
+
+No, I don't think so.  I'm not sure if Gearbox ever sends anybody to GDC or not.  I'll have to check with Randy Pitchford to see if anyone is going.  Plus I've started working on a new project here at Gearbox (that hasn't been announced yet).  We have some milestones due at the end of February and I may not be able to take time off to travel to California anyway.  I'll e-mail you and let you know if I'm going to be there and we can hook up (assuming that you'll be there).
+
+I would definitely go if they would hold it in Dallas.  I wanted to go to the Winter CPL here in Dallas last December, but I was sick that weekend and didn't feel like getting out.
+
+botman
+
+--------------------------------------------------
+02/03/03 at 06:18:39  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+Here's my addition :) I use it with botmans Waypoint implementation.
+
+code:
+
+int AStarNextWaypoint ( CBot *pBot, int node_start, int node_goal )
+{
+    short int bot_team = UTIL_GetTeam(pBot->pEdict);
+    
+    ASTAR_T node[MAX_WAYPOINTS];
+    
+    register short int i;
+      
+    ASTAR_T *curr_node = NULL;
+    ASTAR_T *succ_node = NULL;
+      
+    PATH *pPath = NULL;
+    int path_index = 0; 
+    
+    short int node_current = -1;
+    short int node_successor = -1;
+    short int loops = 0;
+    short int goal_index;
+      
+    bool list_not_open = FALSE;
+    
+    float min_f = 999999.99;
+    float old_g = 0;
+    float current_g = 0;
+    
+    bool found_agoal = FALSE;   
+    bool delete_node_path = FALSE;
+    bool need_wall_stick = FALSE;   
+      
+    WAYPOINTS *waypoint;
+      
+    if( !WptIsValid(node_goal) )
+        return -1;
+    if( !WptIsValid(node_start) )
+        return -1;
+    
+    for ( i = 0; i < num_waypoints; i ++ )
+    {
+        curr_node = &node[i];
+            
+        curr_node->open = 0;
+        curr_node->closed = 0;
+        curr_node->f = 0.0;
+        curr_node->g = 0.0;
+        curr_node->h = 0.0;
+        curr_node->parent = -1;
+    }   
+    
+    node[node_start].open = 1; // Current waypoint on open list
+    
+    // look for nearest OPEN waypoint to goal AND bot
+      
+    while(( !found_agoal )&&( !list_not_open )&&(loops < num_waypoints))
+    {
+        delete_node_path = FALSE;
+            
+        i = 0;
+        
+        if( !loops ) // First loop?
+            i = node_start; // Choose the first node (the only node open!) save some time
+        
+        loops++;
+        
+        // we don't know the minimum yet, make it large.
+        min_f = 131070.00; // big floating point value
+        
+        list_not_open = TRUE;
+        node_current = -1;
+        node_successor = -1;        
+        
+        // Wpt is valid returns true when the waypoint index is inside 0 and num_waypoints
+        while ( WptIsValid(i) ) 
+        {
+            // Look for a new open node to check...
+                  
+            // Quicker access to node and waypoint.
+            curr_node = &node[i];
+            waypoint = &waypoints[i];   
+                  
+            if( curr_node->open )
+            {               
+                // Check whether bot can go through this waypoint at this point
+                // If it can't set open to FALSE and skip it.
+                        
+                // Ignore this stuff if using different mods
+                if ( (waypoint->flags & W_FL_WALL_STICK) &&
+                              (pBot->GetSpecies() != TYPE_LERK) && 
+                              (pBot->GetSpecies() != TYPE_SKULK) &&
+                              (!pBot->HasJetPack()) )
+                {
+                    curr_node->open = FALSE;
+                    i++;
+                              
+                    need_wall_stick = TRUE;
+                              
+                    continue;
+                }
+                        
+                if( (waypoint->flags & W_FL_DELETED) 
+                    (waypoint->flags & W_FL_AIMING) 
+                    pBot->InDodgeWaypoints(i))
+                {
+                    curr_node->open = FALSE;
+                    
+                    i ++;
+                    continue;
+                }   
+                        
+                // found an open node, set the list not open flag to false.
+                list_not_open = FALSE;
+                
+                curr_node->h = (waypoints[node_goal].origin - waypoint->origin).Length();
+                
+                // G is ZERO if its the first node and teleports, G will be updated for expanded nodes
+                curr_node->f = curr_node->g + curr_node->h;
+                
+                if( curr_node->f < min_f )
+                {
+                    // Store index
+                    node_current = i;
+                    min_f = curr_node->f;
+                }
+            }
+            
+            i++;
+        }
+        
+        if( list_not_open ) // if the list is not open quit the loop (can't find the goal)
+            break;
+            
+        curr_node = &node[node_current];
+        
+        curr_node->open = 0;
+        curr_node->closed = 1;
+        
+        pPath = NULL;
+        path_index = 0;
+        
+        while( (node_successor = WaypointFindPath(&pPath, &path_index, node_current, bot_team)) != -1) // Generate each state node_successor that can come after node_current
+        {
+            // for each node_successor of node_current                      
+            // Set the cost of node_successor to be the cost of node_current plus the cost to get to node_successor from node_current  
+                  
+            if( node_successor == node_current )
+            {
+                delete_node_path = TRUE;
+                continue;
+            }
+                  
+            succ_node = &node[node_successor];
+            
+            if(( succ_node->open )( succ_node->closed ))
+            {                       
+                if( WptIsValid(succ_node->parent) )
+                {
+                    // This node is a better route than the current found.
+                              
+                    old_g = succ_node->g;
+                    current_g = curr_node->g + (waypoints[node_successor].origin - waypoints[node_current].origin).Length();
+                    
+                    if( current_g > old_g ) // If this is a shorter route then ignore this successor.
+                        continue;
+                }
+                else
+                    continue;
+            }
+            
+            succ_node->open = 1;
+            succ_node->parent = node_current;         
+            succ_node->g = curr_node->g + (waypoints[node_current].origin - waypoints[node_successor].origin).Length();           
+        } 
+        
+        if ( delete_node_path ) // Found a waypoint with a path tp itself (delete it)...
+            WaypointDeletePath(node_current,node_current);
+            
+        // We've found a goal once the current node is the goal waypoint.
+        found_agoal = ( node_current == node_goal ); 
+    }   
+    
+    i = 0;
+    
+    // Found a goal route?
+    if( found_agoal )
+    {
+        // Moving backwards to find paths to take....
+        int current = node_goal;
+        
+        i = 0;
+            
+        while (( current != pBot->curr_waypoint_index )&&(WptIsValid(current))&& ( i < num_waypoints ))
+        {       
+            // Add to the bots waypoint visit stack (path)
+            pBot->goto_wpt = PushStack(pBot->goto_wpt,current);
+            
+            goal_index = current;   
+            
+            if(GameSettings.BotConfig.bot_debug && !IS_DEDICATED_SERVER())
+            {   
+                if ( GameSettings.ServerEdict() ) // Draw the bots route
+                    UTIL_DrawBeam(GameSettings.ServerEdict(),waypoints[current].origin,waypoints[node[current].parent].origin,4,16,10,255,255,255,200,10);
+            }
+            
+            current = node[current].parent; 
+            i++;                        
+        }
+    }
+    else // Clear the bots list of waypoints it wants to dodge
+        pBot->ClearDodgeWaypoints();    
+    
+    if ( pBot->goto_wpt.head ) // return the next waypoint
+        return pBot->goto_wpt.head->index;
+    else
+        return -1;
+}
+
+
+
+[modified on 02/03/03 at 06:18:39]
+--------------------------------------------------
+02/03/03 at 06:21:00  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Thanks botman && William ; I think I'll finally have a go for writing my own implementation. If it's that hard to do, I'll comment it as much as I can and maybe I'll put it in my template as well for other bot developers.
+
+[edited]
+hey Cheesy, I didn't know you were using Astar too, congratulations ! correct me if I'm wrong, but your function is, in fact, a sort of "step-taking" A*, right ? I mean, you call it each time the bot has moved to a new waypoint, isn't it ?
+
+[modified on 02/03/03 at 06:21:00]
+--------------------------------------------------
+02/03/03 at 09:25:18  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+Its called when the bot has no goal waypoint (or reached a goal)
+
+It's path is added to the bot structure in a stack. But it returns the next waypoint for convienience :)
+
+(i.e. nope it isn't called when the bot reaches a waypoint, rather than when it reaches its goal or when theres a problem like a bot misses out a waypoint...)
+
+[modified on 02/03/03 at 09:25:18]
+--------------------------------------------------
+02/05/03 at 00:24:55  Reply by: CountFloyd (countfloyd@botepidemic.com)
+--------------------------------------------------
+There's a basic A* pathfinder in the POD-Bot 2.6 src. Have a look into waypoint.cpp, everything below TestAPath. This is a very basic (bot working) implementation based on a University A* template I once found on the web. It's without any speed optimization and it's not using STL like the Generation5 src so it might be easier to understand. I'd advise to work out a rudimentary pathfinder and then going to optimise it for speed like using Priority Queues and a preallocated Master Node List.
+
+Here are some links which helped me a lot to understand it:
+http://ai-depot.com/Tutorial/PathFinding.html
+http://www.geocities.com/SiliconValley/Lakes/4929/astar.html   
+
+--------------------------------------------------
+02/07/03 at 08:29:25  Reply by: @$3.1415rin (johannes@_-removeifnotavirus-_lampel.net)
+--------------------------------------------------
+ok william, the update parents takes time, but with the other implementations, a node calling update parents is moved from the closed to the open list, thus maybe also needing time. I'll check this out and see how much slower it is :)
+
+( € : moving the node from the closed to the open list if g is smaller instead of updating the tree using updateParents is about 10% faster )
+
+about finding out if a node is on the open or closed list I use a hashtable combined with that priority queue in my implementation.
+
+[modified on 02/07/03 at 08:29:25]
+--------------------------------------------------
+02/09/03 at 09:30:48  Reply by: Extrarius (cprgmsw@rietta.com)
+--------------------------------------------------
+An even faster way to do is to not use a closed list at all. Give each node a boolean property 'onClosed', and if its true its already been visited and if its false, put it in the open list. If you get to a node using a shorter path than before, set the property to false and put it in the open list again.
+
+The only downside is that you can only run 1 search at a time on the set of nodes, but most implementations that I've seen run 1 search till it is completed and then run the next etc so its usually not much of a downside.
+
+--------------------------------------------------
+02/09/03 at 11:43:34  Reply by: @$3.1415rin (johannes@_-removeifnotavirus-_lampel.net)
+--------------------------------------------------
+yes, that's what william said. but you still have to keep the open list some way sorted. That'll take some time again. with priority queues it was O(lg n), right ?
+
+--------------------------------------------------
+02/25/03 at 18:36:43  Reply by: Gimli (sstephanoff@hotmail.com)
+--------------------------------------------------
+All I can say is my head hurts but I guess the more I look at that code the more I kind of understand...
+

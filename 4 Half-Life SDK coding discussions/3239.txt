@@ -1,0 +1,272 @@
+--------------------------------------------------
+Subject: Get team name from a CBaseEntity
+--------------------------------------------------
+06/09/02 at 02:38:49  Posted by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+I stumbled into another problem, in the function EntSelectSpawnPoint( CBaseEntity pPlayer ) i cant seem to figure out how to get the team name (m_szTeamName).
+
+I know:
+
+CBasePlayer->m_szTeamName is the team name
+i know CBasePlayer is derived from CBaseMonster. In fact i got it on a document so i know CBaseEntity is the root of all, however, there has to be a manner to figure out to get the CBasePlayer from a CBaseEntity. I am looking for 30 mins now and still cant find anything. 
+
+(i haven't found the answer using the search option either...)
+
+
+--------------------------------------------------
+06/09/02 at 03:38:59  Reply by: @$3.1415rin (joebot@botepidemic.com)
+--------------------------------------------------
+if you are _really_ sure that that entity has to be a player you should use something like ((CBasePlayer*)(p))-> ... , but if that's not a CBasePlayer, you'll have a lot of probs :D
+
+--------------------------------------------------
+06/09/02 at 03:42:02  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+yeah, i am 100% sure ;)
+thx will try asap
+
+--------------------------------------------------
+06/09/02 at 11:54:38  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+I found this in SDK (in client command) and I've arranged it so you can get the team name...
+
+code:
+
+entvars_t *pev = &pEntity->v;
+team = GetClassPtr((CBasePlayer *)pev)->m_szTeamName;
+
+
+--------------------------------------------------
+06/09/02 at 23:07:56  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+thanks cheesy, you seem to know really a lot of stuff about the SDK and such. Have you thought about writing down your knowledge and stuff on a document?
+
+--------------------------------------------------
+06/10/02 at 06:11:16  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+nope never thought of it, hehe :)
+
+--------------------------------------------------
+06/10/02 at 12:39:13  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+well, i thought of mapping the classes and such. So you know what functions are called by what and what classes are derived from other classes.
+
+Lets say, the CBaseEntity class already took me a full page with a list of functions (actually 1.5). I still got a lot of classes to do and then i have to 'explore' them all in order to understand them. Argh, its huge.
+
+
+
+--------------------------------------------------
+06/11/02 at 07:10:32  Reply by: Jedi_Master (jimhunterjr@bellsouth.net)
+--------------------------------------------------
+I've already done some of that. If you're interested, it's at http://personal.bhm.bellsouth.net/~jmhunter
+
+--------------------------------------------------
+06/11/02 at 11:11:06  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+i will take a look at it asap. For now i am getting a headacke:
+
+I have added a variable in the player class. This var will hold the 'target' for a player. The var itself is also a CBasePlayer , since you can only target players.
+
+Now, i use the following code to determine if a player has a target (in preThink) and when it does not have a target it should find a player which is alive, not self etc and then fill in the target var. 
+
+The programn however crashes when it wants to try to get the class CBasePlayer from the CBaseEntity.
+
+Here the code:
+code:
+
+// zoek target als we nog geen target hebben
+      if (target != NULL)
+      {
+            // de target
+            /*
+            char PrintOutText[201];
+            hudtextparms_t hText;
+
+            sprintf(PrintOutText, "Target: %s\n", STRING(target->edict()->v.netname));
+            
+            memset(&hText, 0, sizeof(hText));
+            hText.channel = 1;
+            hText.x = 0.1;
+            hText.y = 0.9;
+            hText.effect = 0;
+                        
+            // de rest is wit
+            hText.r1 = hText.g1 = hText.b1 = 255;
+            hText.a1 = 255;
+            hText.r2 = hText.g2 = hText.b2 = 255;
+            hText.fadeinTime = 0.2;
+            hText.fadeoutTime = 1;
+            hText.holdTime = 1.5;
+            hText.fxTime = 0.5;
+
+            UTIL_HudMessage(this, hText, PrintOutText);*/
+            UTIL_Debug("Ik heb een target\n");
+      }
+      else
+      {
+            UTIL_Debug("Ik heb geen target\n");
+            // vind een target
+            for ( int i = 1; i <= gpGlobals->maxClients; i++ )
+            {
+                  CBaseEntity *pEnt = UTIL_PlayerByIndex( i );
+                  if ( pEnt && pEnt != this && pEnt->IsAlive() && pEnt->IsPlayer())
+                  {
+                        // Target gevonden
+                        UTIL_Debug("Target gevonden....");
+                        target=UTIL_CastPlayer(pEnt);
+                        UTIL_Debug("en bewaar\n");
+                        break;
+                  }
+      }
+
+
+
+the code crashes in UTIL_CastPlayer(pEnt);
+
+pEnt is a CBaseEntity , therefor the following function is called:
+
+code:
+
+
+CBasePlayer* UTIL_CastPlayer ( CBaseEntity *pEnt )
+{
+      if (pEnt) // check validity
+      {
+            if (pEnt->IsPlayer()) // is it even a player?
+            {
+                  CBasePlayer *plr = GetClassPtr((CBasePlayer *)pEnt); // cast player
+                  if (plr) // check validity
+                        return plr; // return pointer
+            }
+      }
+
+      return NULL; // otherwise, its not a player
+}
+
+
+
+this function is from a tutorial, and i think the code looks ok! The code crashes on this line:
+
+code:
+
+      CBasePlayer *plr = GetClassPtr((CBasePlayer *)pEnt); // cast player
+
+
+
+the error is something about 'cannot find THIS'. Odd! Anyone knows whats going on? I am 100% certain its player i found! 
+
+--------------------------------------------------
+06/11/02 at 12:02:40  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+argh, even the following code crashes! this is insane!? Maybe it has to do with the fact a client connects but is not yet really connected? How do i check that?
+
+code:
+
+CBaseEntity *pPlayer = NULL;
+
+            for ( int i = 1; i <= gpGlobals->maxClients; i++ )
+            {
+                  pPlayer = UTIL_PlayerByIndex( i );
+                  if ( pPlayer && pPlayer != this && pPlayer->IsAlive())
+                  {
+                        target = pPlayer->edict();
+                        UTIL_Debug("Target aquired\n");
+                        break;
+                  }
+            }
+
+
+--------------------------------------------------
+06/11/02 at 12:13:52  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+okay, fixed:
+what i did:
+
+target = edict_s (when edict_t it also crashes, dunno why?)
+
+then the code is:
+
+code:
+
+            CBaseEntity *pPlayer = NULL;
+
+            for ( int i = 1; i <= gpGlobals->maxClients; i++ )
+            {
+                  pPlayer = UTIL_PlayerByIndex( i );
+                  if ( pPlayer && pPlayer != this && pPlayer->IsAlive())
+                  {
+                        target = pPlayer->edict();
+                        UTIL_Debug("Target aquired\n");
+                        break;
+                  }
+            }
+
+
+
+
+--------------------------------------------------
+06/11/02 at 13:42:00  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+this...
+
+CBasePlayer *plr = GetClassPtr((CBasePlayer *)pEnt); 
+
+should be
+
+CBasePlayer *plr = GetClassPtr((CBasePlayer *)&pEnt->pev); 
+
+i think... (entvars instead of edict_t/_s)
+
+--------------------------------------------------
+06/11/02 at 22:59:06  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+yeah, i hope so ;) I will try out as soon as i am at home. 
+
+--------------------------------------------------
+06/12/02 at 10:17:23  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+another method will be
+
+code:
+
+
+CBaseEntity *m_pEntity = !WHATEVER!;
+
+entvars_t *pev = &m_pEntity->edict()->v; 
+
+CBasePlayer *plr = (CBasePlayer*) CBasePlayer::Instance( pev );
+
+
+
+I think again ;)
+
+--------------------------------------------------
+06/12/02 at 11:28:11  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+thanks! the last sollution worked. The other one crashes aswell. Finally i can derive the player class! wohoo!
+
+
+
+--------------------------------------------------
+06/13/02 at 03:33:41  Reply by: CountFloyd (countfloyd@botepidemic.com)
+--------------------------------------------------
+The solution Cheesemonster posted probably crashed because of the unnecessary & sign. It should read like this:
+code:
+
+CBasePlayer *plr = GetClassPtr((CBasePlayer *)pEnt->pev);
+
+
+
+(just look it up in the HL SDK, there are tons of examples in it)
+
+--------------------------------------------------
+06/13/02 at 04:01:54  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+heh, it was not really on how to do it, but more like how to do it without crashing ;)
+
+it works now though, thx anywayz. ;)
+
+--------------------------------------------------
+06/13/02 at 04:43:16  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+yeah I forgot pev was already a pointer in CBaseEntity i was thinking more about the entvars_t in edict_t ;)
+

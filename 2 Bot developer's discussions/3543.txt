@@ -1,0 +1,249 @@
+--------------------------------------------------
+Subject: Botman: Possible FakeClientCommand bug?
+--------------------------------------------------
+08/06/02 at 12:36:37  Posted by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+I was just having another look through the FakeClientCommand function after reading JC's post,
+
+I noticed this...
+
+code:
+
+      isFakeClientCommand = 1;
+      
+      if ((arg1 == NULL)  (*arg1 == 0))
+            return;
+
+
+
+This means that isFakeClientCommand will still be 1 without setting it to zero before returning, I don't know what problems this might cause though and I don't know if you've fixed it in your latest source...
+
+/me fixes it in my code
+
+Edit:
+
+Obviosuly this will only happen though if you have a FakeClientCommand(pEdict,NULL,NULL,NULL)  or FakeClientCommand(pEdict,"",NULL,NULL) etc... But just incase ;D
+
+[modified on 08/06/02 at 12:36:37]
+--------------------------------------------------
+08/06/02 at 12:49:44  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+Also, I see...
+
+code:
+
+      strcpy(&g_argv[64], arg1);
+      
+      if (arg2)
+            strcpy(&g_argv[128], arg2);
+      
+      if (arg3)
+            strcpy(&g_argv[192], arg3);
+
+
+
+Should we terminate the string after the length of argX plus the g_argv index? Incase we get jumbled up things at the end of each "arg" ??
+
+EDIT:
+
+Example...
+
+code:
+
+      strcpy(&g_argv[64], arg1);
+
+      int arg_length = strlen(arg1);
+
+      g_argv[64 + arg_length] = 0;
+
+
+
+Would this affect anything? Or is there no need to do it at all?????
+
+[modified on 08/06/02 at 12:49:44]
+--------------------------------------------------
+08/06/02 at 12:52:20  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+strcpy() will append the null at the end.
+
+If you input string is longer than 64 characters then string N+1 will wipe out the tail end of string N (in the g_argv table).  I doubt arguments to FakeClientCommand() would never be more than 64 characters long.
+
+botman
+
+--------------------------------------------------
+08/08/02 at 16:33:48  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Try this, Cheesy :
+code:
+
+void FakeClientCommand (edict_t *pFakeClient, char *command)
+{
+   // the purpose of this function is to provide fakeclients (bots) with the same client
+   // command-scripting advantages (putting multiple commands in one line between semicolons)
+   // as real players. It is an improved version of botman's FakeClientCommand, in which you
+   // supply directly the whole string as if you were typing it in the bot's "console". It
+   // is supposed to work exactly like the pfnClientCommand (server-sided client command).
+
+   int length, fieldstart, fieldstop, i, index, stringindex = 0;
+
+   if (pFakeClient == NULL)
+      return; // reliability check
+
+   if ((command == NULL) || (*command == 0))
+      return; // if no argument, return
+
+   isFakeClientCommand = TRUE; // set the "fakeclient command" flag
+   length = strlen (command); // get the total length of the command string
+
+   // process all individual commands (separated by a semicolon) one each a time
+   while (stringindex < length)
+   {
+      fieldstart = stringindex; // save field start position (first character)
+      while ((stringindex < length) && (command[stringindex] != ';'))
+         stringindex++; // reach end of field
+      if (command[stringindex - 1] == '\n')
+         fieldstop = stringindex - 2; // discard any trailing '\n' if needed
+      else
+         fieldstop = stringindex - 1; // save field stop position (last character before semicolon or end)
+      for (i = fieldstart; i <= fieldstop; i++)
+         g_argv[i - fieldstart] = command[i]; // store the field value in the g_argv global string
+      g_argv[i - fieldstart] = 0; // terminate the string
+      stringindex++; // move the overall string index one step further to bypass the semicolon
+
+      index = 0;
+      fake_arg_count = 0; // let's now parse that command and count the different arguments
+
+      // count the number of arguments
+      while (index < i - fieldstart)
+      {
+         while ((index < i - fieldstart) && (g_argv[index] == ' '))
+            index++; // ignore spaces
+
+         // is this field a group of words between quotes or a single word ?
+         if (g_argv[index] == '"')
+         {
+            index++; // move one step further to bypass the quote
+            while ((index < i - fieldstart) && (g_argv[index] != '"'))
+               index++; // reach end of field
+            index++; // move one step further to bypass the quote
+         }
+         else
+            while ((index < i - fieldstart) && (g_argv[index] != ' '))
+               index++; // this is a single word, so reach the end of field
+
+         fake_arg_count++; // we have processed one argument more
+      }
+
+      ClientCommand (pFakeClient); // tell now the MOD DLL to execute this ClientCommand...
+   }
+
+   g_argv[0] = 0; // when it's done, reset the g_argv field
+   isFakeClientCommand = FALSE; // reset the "fakeclient command" flag
+   fake_arg_count = 0; // and the argument count
+}
+
+
+const char *GetArg (const char *command, int arg_number)
+{
+   // the purpose of this function is to provide fakeclients (bots) with the same Cmd_Argv
+   // convenience the engine provides to real clients. This way the handling of real client
+   // commands and bot client commands is exactly the same, just have a look in engine.cpp
+   // for the hooking of pfnCmd_Argc, pfnCmd_Args and pfnCmd_Argv, which redirects the call
+   // either to the actual engine functions (when the caller is a real client), either on
+   // our functions here, which does the same thing, when the caller is a bot.
+
+   int length, i, index = 0, arg_count = 0, fieldstart, fieldstop;
+
+   arg[0] = 0; // reset arg
+   length = strlen (command); // get length of command
+
+   // while we have not reached end of line
+   while ((index < length) && (arg_count <= arg_number))
+   {
+      while ((index < length) && (command[index] == ' '))
+         index++; // ignore spaces
+
+      // is this field multi-word between quotes or single word ?
+      if (command[index] == '"')
+      {
+         index++; // move one step further to bypass the quote
+         fieldstart = index; // save field start position
+         while ((index < length) && (command[index] != '"'))
+            index++; // reach end of field
+         fieldstop = index - 1; // save field stop position
+         index++; // move one step further to bypass the quote
+      }
+      else
+      {
+         fieldstart = index; // save field start position
+         while ((index < length) && (command[index] != ' '))
+            index++; // reach end of field
+         fieldstop = index - 1; // save field stop position
+      }
+
+      // is this argument we just processed the wanted one ?
+      if (arg_count == arg_number)
+      {
+         for (i = fieldstart; i <= fieldstop; i++)
+            arg[i - fieldstart] = command[i]; // store the field value in a string
+         arg[i - fieldstart] = 0; // terminate the string
+      }
+
+      arg_count++; // we have processed one argument more
+   }
+
+   return (&arg[0]); // returns the wanted argument
+}
+
+
+...and in engine.cpp,
+code:
+
+int pfnCmd_Argc (void)
+{
+   // this function returns the number of arguments the current client command string has.
+
+   // is this a bot issuing that client command ?
+   if (isFakeClientCommand)
+      return fake_arg_count; // if so, then return the argument count we know
+
+   return (*g_engfuncs.pfnCmd_Argc) (); // ask the engine how many arguments there are
+}
+
+
+const char *pfnCmd_Args (void)
+{
+   // this function returns a pointer to the whole current client command string.
+
+   // is this a bot issuing that client command ?
+   if (isFakeClientCommand)
+      return &g_argv[0]; // if so, then return the whole client command string we know
+
+   return (*g_engfuncs.pfnCmd_Args) (); // ask the client command string to the engine
+}
+
+
+const char *pfnCmd_Argv (int argc)
+{
+   // this function returns a pointer to a certain argument of the current client command.
+
+   // is this a bot issuing that client command ?
+   if (isFakeClientCommand)
+      return (GetArg (g_argv, argc)); // if so, then return the wanted argument we know
+
+   return (*g_engfuncs.pfnCmd_Argv) (argc); // ask the argument number "argc" to the engine
+}
+
+
+
+
+8)
+
+
+
+
+--------------------------------------------------
+08/08/02 at 17:11:43  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+ouch thats a lot ;) I'll try sometime :-P
+

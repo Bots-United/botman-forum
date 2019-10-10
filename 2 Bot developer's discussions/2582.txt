@@ -1,0 +1,143 @@
+--------------------------------------------------
+Subject: Aware of Environment needed in HL:CS ?
+--------------------------------------------------
+12/19/01 at 05:26:39  Posted by: spatel (averburg@liacs.nl)
+--------------------------------------------------
+
+If I would compare HL:CS to any other (or at least most) first-player shooter, I can't help to notice the difference in combat. 
+Where in quake-type of game a battle is mainly jumping around each other, a CS battle is looking for cover and shooting.
+
+So, a bot in CS should be able to look for cover when engaging a fight. This is something I haven't seen yet in bots nowadays. I think this is very important for a CS-bot. With a bot who doesn't look for cover I think you cannot simulate human-behaviour in CS. The bot should have an awareness of it's environment to imitate a human player or it should learn every possible situation from real players to simulate human look-for-cover behaviour.
+
+I have read the Quake3 bot-article (thanks William) about the Quake3 Area Awareness, however with their system a bot could not find cover. Does anyone any article on this subject or tried it themself -- I'm very interrested to hear about it.
+
+I appogise for my bad english (as always)
+
+Thank you in the advance,
+
+Alexander.
+
+--------------------------------------------------
+12/19/01 at 06:40:55  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+You might want to read the disussion on William's website about terrain analysis (tactical positions, taking cover, etc.)...
+
+http://www.botepidemic.com/aid/cgf/design_terrain_ranking.shtml
+
+botman
+
+--------------------------------------------------
+12/19/01 at 14:52:14  Reply by: Onslaught (None)
+--------------------------------------------------
+Many of the upcoming CS bots will now be able to take cover.
+
+--------------------------------------------------
+12/20/01 at 03:25:23  Reply by: William (william@cgf-ai.com)
+--------------------------------------------------
+kinda long answer...
+
+Indeed, few AI's in FP (tactical) shooters really give some thought about their position and environment. 
+
+The problem of picking tactically sound positions in combat and before combat includes:
+- locating nearby cover positions: most AI's do this, including the original Half-Life AI. 
+- improving the tactical positions during combat: most AI's don't try this (for example, moving closer locations offering plenty of cover), except for a few DM AI's (who also move towards power-ups when fighting). The real problem behind this is figuring out which position is better, which is easy to do when power ups are nearby, but hard in the absence of power-ups (as in CS).
+- improving the tactical positions before combat: a number of AI's attempt this using level-designer placed waypoint hints. The terrain understanding then is limited to 'good sniping spots' and 'all other kinds of spots', which leads to very predictable behavior that's only slightly more tactical. See also above.
+- tactical path planning: very few AI's do this
+- tactical team maneuvers: very few AI's do this.
+
+This 'lack of tactical terrain understanding' in FP game AI is due to (IMO):
+- tactical reasoning being (regarded as) expensive, in terms of CPU and memory, especially for consoles. It's simply not good enough to write an algorithm that tackles the problem. You also need to optimize it and most likely compress the data structures (line-of-sight, line-of-fire) in some way.
+- it's not standard (academic) AI, unlike state machines, pathfinding, planning, machine learning, and solely the military and their research institutes do some work in this area
+
+Despite that, there is some literature available:
+- I've experimented with all the issues listed above (CGF bots), and the following publications probably explain it best:
+--- http://www.cgf-ai.com/docs/igda_may2001_slides.pdf (slides 'Terrain Reasoning in 3D Action Games', basically the touched up slides from the GDC2001, but with a few improvements for the IGDA Amsterdam meeting - 100 slides, 1.3MB)
+--- http://www.cgf-ai.com/docs/gdc2001_paper.pdf (paper 'Terrain Reasoning in 3D Action Games' for the GDC2001, touched up version of the one that appeared in the GDC proceedings and at Gamasutra)
+--- chapter 'Squad Tactics: Team AI and Emergent Maneuvers' and chapter 'Squad Tactics: Planned Maneuvers', for the 'AI Programming Wisdom' book, available in March 2002
+
+Additionally, Lars Liden has a nice explanation of 'Tactical Analysis' in his presentation http://ai.eecs.umich.edu/people/laird/game-seminar/Liden.ppt (see slides 50 through 97).
+
+You'll also find a number of military and academic publications close to this topic on http://www.cgf-ai.com/links.html
+
+Finally, I'm currently busy writing a chapter on 'Tactical Pathfinding with A*'. Though the result won't be published until July 2002, I'm extending James Matthews' A* Explorer ( http://www.generation5.org/ase.shtml - recommended ) so you can experiment with tactical pathfinding yourself (the AI will prefer paths that alternate being exposed with cover, as to not enable the enemy to properly aim). The extended A* Explorer will be available somewhere in January.
+
+
+wrt QIIIA and cover/terrain understanding:
+In a game like QIIIA, cover isn't a top priority: you can almost always dodge and survive. Jan Paul and I actually discussed the merits of his and mine design for each of the games we worked on (QIII and CGF for Action QuakeII). The QIIIA area based system would be easily extended with tactical info per area, but it would mean less to the game than, for example, the noticeable differences in the opponent characters and the CTF command system.
+
+William
+
+--------------------------------------------------
+12/20/01 at 05:55:06  Reply by: @$3.1415rin (joebot@botepidemic.com)
+--------------------------------------------------
+mmhh, I think it's not unusual for csbots that they search for cover when they are in a bad situation ... I think I implemented some function which searches for a near place to hide from the current enemy to reload e.g. about 10 months ago or so .... so where is the problem ? stefan has something like that in his realbot, too if i have interpreted the beams in one screenshot right :D
+
+--------------------------------------------------
+12/20/01 at 08:56:44  Reply by: Onslaught (None)
+--------------------------------------------------
+Many of the csbots today, including mine,joebot,podbot & realbot, takes cover. The problem is either...
+a) they get killed so quickly that you wont notice them taking cover
+b) taking cover is one of the low-priority combat tasks of the bot, so the chances of seeing them take cover is low
+
+My Methods of taking cover (pseudocodes):
+
+Method 1:
+
+trace line to left about 70 units (ignore monsters)
+if no hit
+{
+  trace line from 70 units left to enemy origin (ignore monsters)
+  if hit
+  {
+    there is cover to the left
+  }
+}
+(you get the point, do the same stuff for looking for cover to the right)
+
+Method 2:
+
+for all waypoints less than 300 units away from you
+{
+   trace a line from waypoint origin to enemy origin (ignore monsters)
+   if hit 
+   {
+     cover available at this waypoint
+   }
+}
+
+[modified on 12/20/01 at 08:56:44]
+--------------------------------------------------
+12/22/01 at 14:59:30  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+the new realbot uses waypoints now for cover, it simply will look for a waypoint where the enemy cant see him. The bot will then look at a waypoint where the enemy will most likely come to.
+
+After taking cover a bot either decides to go into combat or to wait a while.
+
+When bots lose an enemy out of sight, they can also think of taking a short path to the enemy position, but not directly, but via a wpt that the enemy cannot see (hard to explain). Small ambushes get created this way.
+
+
+--------------------------------------------------
+12/23/01 at 11:13:55  Reply by: W@NJIK (wanjik@voila.fr)
+--------------------------------------------------
+@What:
+my bot does take cover when needed and the code is very close to your #2 method.
+But this task has one of the highest priority and I think every CS bot maker did so
+
+--------------------------------------------------
+12/25/01 at 17:43:28  Reply by: CountFloyd (countfloyd@botepidemic.com)
+--------------------------------------------------
+Yes, my Bot tries to take cover too ;)
+One thing you have to remember is that the linear distance you get by searching waypoints within the radius of a Bot is in some cases not the 'real' distance from point A to B since there might be no direct path to it. Instead I'm using the distances returned by the pathfinder and compare if the distance to a certain waypoint is smaller for the Bot than his enemy (to avoid choosing waypoints towards the enemy). 
+
+--------------------------------------------------
+12/27/01 at 03:46:41  Reply by: spatel (averburg@liacs.nl)
+--------------------------------------------------
+Thank you all very much for the replies !
+
+I saw a lot of good solutions I didn't think of !
+
+thank you !
+
+
+Alexander
+

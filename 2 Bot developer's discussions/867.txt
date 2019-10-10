@@ -1,0 +1,195 @@
+--------------------------------------------------
+Subject: Tutorial 1 : Planting the bomb
+--------------------------------------------------
+12/14/00 at 15:21:03  Posted by: DarkYouth (darkyouth@thegraze.freeserve.co.uk)
+--------------------------------------------------
+Add this function at the bottom of bot.cpp
+
+bool BotCanPlant(bot_t *pBot)
+{
+   char item_name[40];
+      edict_t *pEdict = pBot->pEdict;
+      int radius = 0;
+      edict_t *pent = NULL;
+      if ((pBot->bot_weapons & (1<<6)))      //DO WE HAVE THIS ONE?
+    {
+            while ((pent = UTIL_FindEntityInSphere( pent, pEdict->v.origin, radius )) != NULL)
+            {
+
+            strcpy(item_name, STRING(pent->v.classname));
+
+            // see if this is a "func_" type of entity (func_button, etc.)...
+            if (strncmp("func_bomb", item_name, 9) == 0)
+            {
+              return true;
+            }
+            }
+      }
+      return false;
+}
+
+Then in botthink(edict_t *pEdict) add the following lines just before:
+   else if (IsOnLadder( pBot ))  // check if the bot is on a ladder...
+      {
+
+else if (BotCanPlant(pBot))
+{
+            FakeClientCommand(pEdict, "weapon_c4", NULL, NULL);
+            pBot->f_move_speed = 0.0;
+            pEdict->v.button = IN_ATTACK;                        FakeClientCommand(pEdict, "radio3", NULL, NULL);
+                  FakeClientCommand(pEdict, "menuselect", "7", NULL);
+}
+
+That is it. Now terrorist bots will plant the bomb correctly.
+
+Things to try:
+
+1) Make the bot only use the radio message once (currently it keeps saying it)
+
+
+--------------------------------------------------
+12/14/00 at 15:33:38  Reply by: CountFloyd (countfloyd_1999@yahoo.com)
+--------------------------------------------------
+"1) Make the bot only use the radio message once (currently it keeps saying it)"
+
+No wonder because you're doing the radio command the whole time the bot is in the bombzone...
+Why don't you forget about that tutorial idea as long as you can't do better ?
+
+--------------------------------------------------
+12/14/00 at 15:36:42  Reply by: DarkYouth (darkyouth@thegraze.freeserve.co.uk)
+--------------------------------------------------
+I can do better but ive stripped out all my anti-radio flooding code, chat time checks and code to choose next destination afterwards. Theres also some half-finished code to make the bot go to a nearby sniping spot and wait for a successfull detonation that I took out...
+
+HAVE YOU TRIED MY BOT???... It doesnt flood when planting the bomb!
+
+The idea is that people use this buggy code and improve upon it. Look at the buying code tutorial... lol!
+
+Im simplifying things a whole lot.
+
+
+--------------------------------------------------
+12/15/00 at 01:17:22  Reply by: eLiTe (ali@elitegamer.fsnet.co.uk)
+--------------------------------------------------
+What does this line mean?
+
+if ((pBot->bot_weapons & (1<<6)))      //DO WE HAVE THIS ONE?
+
+Could't you use one of those #define statements to give a name to 1<<6 ? I think it's a flag of some sort, I just don't know which one it's meant to be.
+
+I'm not goign to implement bomb planting for a while, but thanks for the tutorial anyway! It shows that your kind enough to try and help newbies :)
+
+--------------------------------------------------
+12/15/00 at 04:59:15  Reply by: MKlimstra (mklimstra@zonnet.nl)
+--------------------------------------------------
+QUOTE:
+What does this line mean?
+
+if ((pBot->bot_weapons & (1<<6)))      //DO WE HAVE THIS ONE?
+
+Could't you use one of those #define statements to give a name to 1<<6 ? I think it's a flag of some sort, I just don't know which one it's meant to be.
+
+I'm not goign to implement bomb planting for a while, but thanks for the tutorial anyway! It shows that your kind enough to try and help newbies :)
+
+
+Yes, it's the weaponflag for the bomb.
+Botman already put a #define for it in 'bot_weapons.h' (CS_WEAPON_C4)
+
+
+
+--------------------------------------------------
+12/15/00 at 14:32:41  Reply by: DarkYouth (darkyouth@thegraze.freeserve.co.uk)
+--------------------------------------------------
+yeah... I found it out the hard way though because I wrote that function before I figured out where the weapon defines were stored (I didnt know what they were) I found out six was the bomb and that was that... :) (I used a debug_engine thingy)
+
+
+
+--------------------------------------------------
+03/10/02 at 03:05:33  Reply by: Spikeles (spikeles_@hotmail.com)
+--------------------------------------------------
+Hehe. i find it funny that different people do the same thing in so many different ways! I know this is an old post but what the hell.... it's good o rediscover the past... :)
+Anyway. I just started messing with the source code too.
+
+QUOTE:
+
+FakeClientCommand(pEdict, "weapon_c4", NULL, NULL);
+pBot->f_move_speed = 0.0;
+pEdict->v.button = IN_TTACK;
+FakeClientCommand(pEdict, "radio3", NULL, NULL);
+FakeClientCommand(pEdict, "menuselect", "7", NULL);
+
+
+
+
+What is the code above supposed to do?
+I'd just like to mention that i did it this way...
+
+I added this is the weapon_select structure at the top of bot_combat.cpp
+
+{CS_WEAPON_C4, "weapon_c4", 5, 0.0, 9999.0, 0.0,0.0,
+100, FALSE, 100, 1, 0, TRUE, FALSE, FALSE, FALSE, 0.0, 0.0},
+
+and this to the bot_dire delay..
+{CS_WEAPON_C4,0.0, {0.0, 0.0, 0.0, 0.0, 0.0}, {0.0, 0.0, 0.0, 0.0, 0.0},
+0.0, {0.0, 0.0, 0.0, 0.0, 0.0}, {0.0, 0.0, 0.0, 0.0, 0.0}},
+
+and then in the bot.cpp botthink() function i did this...
+
+// Do we need to plant the bomb?
+if (pBot->plant_bomb)
+{
+  // Do we still have the bomb?
+  if (!(pBot->bot_weapons & (1<<CS_WEAPON_C4)))
+    pBot->plant_bomb=false;
+  else
+  {
+    pEdict->v.button |= IN_DUCK;  // duck down
+    // Change to C4 weapon
+    UTIL_SelectWeapon(pEdict,CS_WEAPON_C4);
+    // Plant BOMB
+    Vector dummy;
+    BotFireWeapon( dummy, pBot, CS_WEAPON_C4);
+    pBot->f_move_speed = 0;  // don't move while planting
+    pEdict->v.angles.y = pEdict->v.v_angle.y;
+    f_strafe_speed=0.0f;
+    g_engfuncs.pfnRunPlayerMove( pEdict, pEdict->v.v_angle, pBot->f_move_speed, f_strafe_speed, 0, pEdict->v.button, 0, pBot->msecval);
+    return;
+  }
+}
+
+
+What do you think?
+
+--------------------------------------------------
+03/10/02 at 05:52:06  Reply by: Spikeles (spikeles_@hotmail.com)
+--------------------------------------------------
+QUOTE:
+What is the code above supposed to do?
+I'd just like to mention that i did it this way...
+
+
+
+
+Whoops... never mind.. i understand now...
+
+--------------------------------------------------
+03/10/02 at 07:54:59  Reply by: bluesy (bluesy@bezeqint.net)
+--------------------------------------------------
+Elite has found other solution which is more 'elegant' IMHO. You can peek in the TEAMbot source code to find more about it.
+
+That way you can save the weapon define and the chance that in the heat of combat your bot would pull out the c4 and try to whack people on the head with it :)
+
+--------------------------------------------------
+03/10/02 at 11:06:08  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+The best way is to grab the bombzone network message and tell the bot if it's in a zone or not. Oncee it's in the zone, simply tell the bot to choose the bomb and hold in the attack button.
+
+--------------------------------------------------
+03/10/02 at 14:25:06  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+Have you see my method too ? I don't think it's bad... 
+
+See it in http://perso.libertysurf.fr/pm0001/src/pmbot-cstrike_dll.zip
+
+Note that it's a quite old version of the bot. Many features have been added since. I'll make a new release in a few weeks.
+
+[modified on 03/10/02 at 14:25:06]

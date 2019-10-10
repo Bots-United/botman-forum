@@ -1,0 +1,184 @@
+--------------------------------------------------
+Subject: A* distance tables?
+--------------------------------------------------
+02/28/02 at 15:52:24  Posted by: Arjan (arjan4life@hotmail.com)
+--------------------------------------------------
+I'm currently playing around with the hpb bot's source. Now, I'm trying to implement A*. But I have a real strange bug here. It seems to loop forever, and I don't understand why.
+
+void CalDistanceTables {
+        bool* visited = new bool[num_waypoints];
+      queue<short> Open;
+
+      short i, j;
+      short index, prev_index;
+
+      int distance; // rounded distance
+
+      for (i = 0; i < num_waypoints; i++)
+      {
+            memset(visited, 0, sizeof(visited));
+
+            distance = 0;
+
+            Open.push(i);
+
+            prev_index = i;
+
+            while (!Open.empty())
+            {
+                  // get the first element off the queue...
+                  index = Open.front();
+                  Open.pop();
+
+                  // mark this waypoint as visited...
+                  visited[index] = true;
+
+                  // update the distance so far...
+                  distance += (int)(waypoints[prev_index].origin - waypoints[index].origin).Length();
+
+                  // update the distance between the waypoints. we can't set the
+                  // distance from index to i the same (one way paths).
+                  waypoints[i].distance_to[index] = distance;
+
+                  // get this waypoint's successors...
+                  for (j = 0; j < waypoints[index].num_paths; j++)
+                  {
+                        // if this waypoint hasn't been visited yet, push it on the queue...
+                        if (!visited[waypoints[index].path_index[j}})
+                              Open.push(waypoints[index].path_index[j]);
+                  }
+
+                  // store this waypoint's index...
+                  prev_index = index;
+
+                  if (Open.size() > num_waypoints)
+                  {
+                        ALERT(at_console, "Open queue got bigger than the number of waypoints!\n");
+                        ALERT(at_console, "Distance is %i", distance);
+                        break;
+                  }
+            }
+      }
+
+      // delete the visited array...
+      delete []visited;
+}
+
+--------------------------------------------------
+02/28/02 at 15:54:24  Reply by: Arjan (arjan4life@hotmail.com)
+--------------------------------------------------
+Oh, the queue get's bigger all the time!
+That's why I made the error message. Any solutions?
+
+--------------------------------------------------
+03/01/02 at 02:01:30  Reply by: William (william@cgf-ai.com)
+--------------------------------------------------
+Hi Arjan,
+
+you having problems because:
+- you don't clear the Open queue after processing waypoint i
+- you don't clear the visited array after processing waypoint i
+- in the innerloop, you don't test whether you arrived at an already visited waypoint successor via a shorter path
+
+additionally:
+- try to declare visited as a local array, and use standard STL functions to size and fill it (reserve, resize)
+- spend an hour studying both:
+--- an A* algorithm (this one borrows the expensive stuff from A*, such as the open queue, but isn't A* and doesn't have the advantages)
+--- the Floyd-Warshall algorithm, which basically IS the algorithm you try to implement here.
+
+http://www.cs.rochester.edu/u/leblanc/csc173/graphs/tc.html
+
+William
+
+--------------------------------------------------
+03/01/02 at 02:20:25  Reply by: Arjan (arjan4life@hotmail.com)
+--------------------------------------------------
+William:
+
+I (basically) how A* works.
+The thing i posted isn't the pathfinding algorithm, but only an algorithm to find the distance between two waypoints. 
+
+I want to store so I won't have to recalculate it over and over again.
+
+btw, how do you clear the queue?
+
+
+--------------------------------------------------
+03/01/02 at 03:59:27  Reply by: Arjan (arjan4life@hotmail.com)
+--------------------------------------------------
+ok. Now I got a really strange bug here:
+As soon as I make a stack instead of a queue, it works fine (but the distances are messed up.
+
+Why?
+
+I can't figure it out. 
+
+I now have this:
+
+void idontgetit(void)
+{
+        short i, j;
+      short index, prev_index;
+
+      int distance;
+
+      for (i = 0; i < num_waypoints; i++)
+      {
+            bool* visited = new bool[num_waypoints];
+
+            stack<short> Open;
+
+            for (j = 0; j < num_waypoints; j++)
+                  visited[j] = false;
+
+            distance = 0;
+
+            Open.push(i);
+
+            while (!Open.empty())
+            {
+                  index = Open.top();
+                  Open.pop();
+
+                  visited[index] = true;
+
+                  distance += (int)(waypoints[prev_index].origin - waypoints[index].origin).Length();
+
+                  waypoints[i].distance_to[index] = distance;
+
+                  for (j = 0; j < waypoints[index].num_paths; j++)
+                  {
+                        if (!visited[waypoints[index].path_index[j}})
+                              Open.push(waypoints[index].path_index[j]);
+                  }
+
+                  prev_index = index;
+            }
+
+            delete []visited;
+      }
+}
+
+--------------------------------------------------
+03/03/02 at 06:44:40  Reply by: theimann (killaruna@botepidemic.com)
+--------------------------------------------------
+1. You don't initialize prev_index
+2. You're just adding up all the distances in the graph instead of adding the additional distance to the distance of the previous node
+3. For calculating a distance table you'd better use Floyd's algorithm which is much easier(http://home.wxs.nl/~faase009/HaFloyds.html and http://www.cs.byu.edu/courses/cs236/javalect/GRAPHS8/Graphs8.html)
+
+Tobias
+
+
+
+--------------------------------------------------
+03/03/02 at 11:22:54  Reply by: Arjan (arjan4life@hotmail.com)
+--------------------------------------------------
+thanks, I'll give it a try and use floyds algo
+
+--------------------------------------------------
+03/03/02 at 15:18:30  Reply by: William (william@cgf-ai.com)
+--------------------------------------------------
+well done Tobias. somehow I didn't get that message across ;)
+
+William
+

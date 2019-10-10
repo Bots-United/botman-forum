@@ -1,0 +1,131 @@
+--------------------------------------------------
+Subject: v1.1.0.9 fix (for crashes/closes when a client/bot
+--------------------------------------------------
+04/25/02 at 10:57:16  Posted by: RedFox (redfox@nildram.co.uk)
+--------------------------------------------------
+For those of you experiencing problems with bots or your own mods, or especially metamod plugins (when a player/bot connects to the game, even you):
+
+Change the end of 
+enginefuns_t  (line 261)
+in
+eiface.h (sdk/engine)
+
+to read
+
+      // Added for HL 1109 (no SDK update):
+      const char * (*FN_GETPLAYERAUTHID) (edict_t *e);
+} enginefuncs_t;
+
+This will clear up the problem.
+Thank to the MM source code for this.
+
+Recompile ya code, and its sorted.
+
+[modified on 04/25/02 at 10:57:16]
+--------------------------------------------------
+04/25/02 at 11:30:27  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+could you give us a little bit of explanation about this issue?
+
+
+
+when does it apply / when does it NOT apply ?
+
+what is achieved here ? (well, not mainly for me because I can understand but for others...)
+
+why is it needed ?
+
+
+I don't think it would be superfluous... thanks :)
+
+[modified on 04/25/02 at 11:30:27]
+--------------------------------------------------
+04/25/02 at 12:21:19  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Valve added the new engine function to support SteamIDs.  Clients who are using Steam will not have a WONid, they will have a SteamID instead.  Since you won't know ahead of time whether a client is a WON client or a Steam client, Valve created an engine function called GetPlayerAuthId...
+code:
+const char *(*pfnGetPlayerAuthId) ( edict_t *e );
+
+...that will return the WONid (as a string) for WON clients and the SteamID (in the format "STEAM_0:98345").  Bots will return "BOT" from the pfnGetPlayerAuthId() function.
+
+You don't need to be concerned about this function other than adding the engine\eiface.h definition of it, unless you do something special with WONid's (like use them to authenticate someone who is allowed to issue bot commands, etc.).
+
+If you haven't changed anything in the h_export.cpp file from the HPB bot template source code, you won't even need to add this function to the enginefuncs_t structure when you upgrade to the 1.1.0.9 Half-Life engine.
+
+botman
+
+--------------------------------------------------
+04/25/02 at 12:33:53  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+hmm I believe it's related to the recently-discovered problem of killers and victims getting attributed the same ID in the logs by the newest HL servers (see planethalflife's news)... some MODs will have to be re-coded again :)
+
+However for some cleanliness I think I'll update my function list anyway. It won't make the game crash, at least. I like when things are neat :)
+
+Oh btw, will they update the SDK or something to let programmers know about their changes ?
+
+[modified on 04/25/02 at 12:33:53]
+--------------------------------------------------
+04/25/02 at 13:34:33  Reply by: RedFox (redfox@nildram.co.uk)
+--------------------------------------------------
+Well for me, foxbot being loaded as a metamod plugin (even with the new MM) was still crashing on my machine (which makes a change!!)
+so this fixed that.
+
+The problem (as far as I can tell) is that this is one of those spuriouse memory problems, that may or may not show up.
+i.e. 6 ppl get nasty errors while the coders system runs for weeks :p
+I know, cus I've been in that possition alot.
+
+So I thought I'd point out the fact that, as MM is a standalone dll, perhaps other dlls may also have the same problem. Even if it doesn't turn up.
+then again, it may just be a MM problem
+
+heh, the joys of writing crap all over windows memory
+
+for me this one turned up when I connect to the server, or if a bot did. either the HLDS closed with no error/logged close, or it had a windows access violation.
+
+last nights testing (before the fix) had it kill kernal32 which was fun
+even the blue screen of death froze up (lol)
+still, it could just be me for once
+
+[modified on 04/25/02 at 13:34:33]
+--------------------------------------------------
+04/25/02 at 14:28:27  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+"I believe it's related to the recently-discovered problem of killers and victims getting attributed the same ID in the logs by the newest HL servers"
+
+No, that problem came about because Valve changed the source code in Half-Life deathmatch, TFC and Counter-Strike to write out the SteamID in place of the WONid for Steam clients.  Someone who made these changes cut-and-pasted the wrong values in the code that spits out the log message when someone gets killed.  Something like this...
+code:
+int killer_id = Player1.GetID();
+int victim_id = Player2.GetID();
+ 
+PRINT_LOG("%s (%d) killed %s (%d) with %s", Player1.Name, killer_id, Player2.Name, killer_id, Player1.Weapon);
+
+// when it should have ACTUALLY been...
+
+PRINT_LOG("%s (%d) killed %s (%d) with %s", Player1.Name, killer_id, Player2.Name, victim_id, Player1.Weapon);
+
+...of course this is all just psuedo example code and won't really compile.  ;D
+
+botman
+
+--------------------------------------------------
+04/26/02 at 09:17:07  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+1) So you are saying there is a bug in HL 1109 where victims and killers are reversed???
+
+2) Does that mean in my bot code I'll need to reverse the victim/killer edicts for the bot to chat to when they talk?
+
+sort of 3) ;DI've noticed bots saying nothing in places where they should say a players name in chat text, I wonder if it is the same problem?
+
+--------------------------------------------------
+04/26/02 at 11:14:42  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+No, not reversed.  Both players have the same WONid (which actually belongs to the first player).  When the logging is on you get something like this...
+
+L 04/25/2002 - 19:47:46: "botman<1><940576><#Hunted_team2>" killed "Mr.Quakers<4><940576><#Hunted_team3>" with "supernails"
+
+...it makes all the stats screwed up since they use the WONid to keep track of who got a kill and who got killed (in this case, WONid 940576 got a kill and got killed at the same time!)
+
+P.S. It's ONLY in the log file where it's messed up.  It has nothing to do with the engine code or the MOD code not giving the correct killer and victim edict.  These are correct, the log file is just messed up.
+
+botman
+
+[modified on 04/26/02 at 11:14:42]

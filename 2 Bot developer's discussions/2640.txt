@@ -1,0 +1,113 @@
+--------------------------------------------------
+Subject: [need your opinion] slope and staircase detection
+--------------------------------------------------
+01/12/02 at 02:30:04  Posted by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+Improving my unwaypointed random navigation system...
+
+code:
+
+// trace line at waist level
+UTIL_TraceLine (pBot->pEdict->v.origin + gpGlobals->v_forward * 20,
+                pBot->pEdict->v.origin + gpGlobals->v_forward * 10000,
+                ignore_monsters, pBot->pEdict->v.pContainingEntity, &tr);
+
+// if plane normal's z is longer than its x AND y component, bot may have found a slope
+if ((tr.vecPlaneNormal.z > tr.vecPlaneNormal.x) && (tr.vecPlaneNormal.z > tr.vecPlaneNormal.y))
+{
+   // try to reach in front of the slope
+
+}
+
+// trace line at waist level plus maximal stair height (18)
+UTIL_TraceLine (pBot->pEdict->v.origin + Vector (0, 0, 18) + gpGlobals->v_forward * 20,
+                pBot->pEdict->v.origin + Vector (0, 0, 18) + gpGlobals->v_forward * 10000,
+                ignore_monsters, pBot->pEdict->v.pContainingEntity, &tr2);
+
+// if two both not same height and relatively close together, bot may have found a staircase
+if ((tr.flFraction < tr2.flFraction) && ((tr2.flFraction - tr.flFraction) * 10000 < 50))
+{
+   // try to reach in front of the staircase
+
+}
+
+
+
+What do you think of this ?
+If someone has a better way to detect slopes and staircases using tracelines, please let me know...
+
+
+--------------------------------------------------
+01/12/02 at 13:52:36  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+I don't know how these "planes" work but the way I see it, in your slope check, If the Z co-ordinate is <b>less</b> than x and y it could also be a slope. You'll need to get two parts of the plane, a min co-ord and a max co-ord and then compare the z values with it :)
+
+you might want to fire two tracelines ahead at slightly different higher height... i.e make it one hit a higher and one a bit lower. If both tracelines hit the same plane, and the traceline that hit something the furthest was the one that check higher than the other traceline, then you may well have a slope :)
+
+[modified on 01/12/02 at 13:52:36]
+--------------------------------------------------
+01/12/02 at 13:51:07  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+I made a little image up (on MS paint hehe) to show how it should work :-)
+
+http://homepage.ntlworld.com/pat.murphy/TRslope.jpg
+
+[modified on 01/12/02 at 13:51:07]
+--------------------------------------------------
+01/12/02 at 14:05:56  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+To find the angle of the slope of a surface, you can take the vecPlaneNormal field of the UTIL_TraceLine() result and use UTIL_VecToAngles() to convert the vecPlaneNormal vector to an array of angles.  From this you can examine the Z angle to see if the surface is a slope (if the angle is 0 then the face is perpendicular to the horizontal).
+
+botman
+
+--------------------------------------------------
+01/12/02 at 17:12:40  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+I guess that's a better way :D
+
+--------------------------------------------------
+01/13/02 at 14:07:54  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+Sure, as cheesy said, having a z coordinate lower than x and y in the Normal also indicates a slope. But actually if the z coordinate is lower, the slope angle would be > 45 degree and the bot could not climb it. That's why I don't convert it in UTIL_VecToAngles because I was thinking it's sufficient for good detection.
+
+In fact I'll do rather this:
+code:
+
+// trace line at waist level
+UTIL_TraceLine (pBot->pEdict->v.origin + gpGlobals->v_forward * 20,
+               pBot->pEdict->v.origin + gpGlobals->v_forward * 10000,
+               ignore_monsters, pBot->pEdict->v.pContainingEntity, &tr);
+
+// if plane normal's z is longer than its x AND y component, bot may have found a slope
+if ((tr.vecPlaneNormal.z > tr.vecPlaneNormal.x) && (tr.vecPlaneNormal.z > tr.vecPlaneNormal.y))
+{
+  // try to reach in front of the slope
+
+}
+
+// else if SURE this is a wall
+else if (tr.vecPlaneNormal.z == 0)
+{
+   // trace line at waist level plus maximal stair height (18)
+   UTIL_TraceLine (pBot->pEdict->v.origin + Vector (0, 0, 18) + gpGlobals->v_forward * 20,
+                  pBot->pEdict->v.origin + Vector (0, 0, 18) + gpGlobals->v_forward * 10000,
+                  ignore_monsters, pBot->pEdict->v.pContainingEntity, &tr2);
+
+   // if two both not same height and relatively close together, bot may have found a staircase
+   if ((tr.flFraction < tr2.flFraction) && ((tr2.flFraction - tr.flFraction) * 10000 < 50))
+   {
+     // try to reach in front of the staircase
+
+   }
+}
+
+
+
+
+--------------------------------------------------
+01/13/02 at 14:24:19  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+damn, u are right, this would not work... I drawed some triangles on a sheet of paper and I finally figured that out.
+
+I'll use Botman's method. Thanks !
+

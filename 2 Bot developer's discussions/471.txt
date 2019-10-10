@@ -1,0 +1,78 @@
+--------------------------------------------------
+Subject: Using the MAPS as the basis of navigation
+--------------------------------------------------
+10/30/00 at 18:40:23  Posted by: FuckFace (gellert.lukacs@dbs.hu)
+--------------------------------------------------
+I wonder if the CounterStrike or Half Life maps can be used to navigate the bots. As far as I understand these BOT things, major efforts are done to make the bot navigat through a map like hunan players do. For this, they might use waypoints and other esotheric navigation aids.
+
+I imagine poor bot, when he checks the world by a TRACELINE or two. It really gives so little information. 
+
+For the BOT AI, other things would be neccessary, like classifying places as open, closed, thunels, corners. The bot later could use this and other info to decide the most suitable course of action (this is from CONTACT :). Now, it would be very good to use all those 3-4 MB's of information stored in the BPS files to KNOW the map, instad of using waypoints of TRACELINES.
+
+I know, that TRACELINE is actually using that BSP database, when finds the nearest intersection, but there should be a more systematic description which might be used.
+
+???
+
+--------------------------------------------------
+10/31/00 at 01:39:14  Reply by: William (william@botepidemic.com)
+--------------------------------------------------
+Good point. 
+
+However, 
+**1**: deriving sector (room, hallway, street, water, tunnel) and portal (door, window, ladder) information from the BSP is rather tough and complex (since there are very few hints in the BSP that help you identify those sectors and portals).
+I did implement such a sector and portal classification scheme for (Action) Quake2. Took about 100 to 200 hours of work, and still needs more tuning. Not yet released.
+
+**2**: With today's state of Botman derived bots, very few AIs are sufficiently advanced that they can start reasoning about sectors and portals. Most of the AIs today are unable to correctly predict threats when they've lost sight to them. So what value do sectors and portals really add for these bots? The investment of 100+ hours would be better suited to improve other parts of the AI.
+
+However, a bot that probably would benefit from sectors and portals is Jumbot.
+
+William
+
+--------------------------------------------------
+10/31/00 at 03:46:20  Reply by: theimann (theimann@stud.fh-heilbronn.de)
+--------------------------------------------------
+William, I didn't know that you are actually working on a BSP analyzer! Just some questions:
+
+1) Given that you can derive sector information from the BSP, which kind of data structures do you use to describe an area? I could only think of the spheres/boxes-approach, saving the geometric information of these objects and making up an area of multiple linked instances.
+
+2) Have you tried gaining this sector information by tracing? I imagine that some sectors could be classified by just knowing the distances between enclosing walls.
+
+Tobias
+
+--------------------------------------------------
+10/31/00 at 06:03:19  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+If you want more information about the BSP tree structure take a look at the Quake Developer's Pages here...
+
+http://www.gamers.org/dEngine/quake/
+
+Here's some other good references...
+
+http://www.xs4all.nl/~smit/whole.htm
+http://www.flipcode.com/tutorials/tut_q2levels.shtml
+http://www.exaflop.org/site/frames.cgi?HREF=http://www.exaflop.org/docs/naifgfx/naifebsp.html
+
+...all of these were found by searching for "quake bsp tree" on www.google.com
+
+botman
+
+--------------------------------------------------
+10/31/00 at 06:23:34  Reply by: William (william@botepidemic.com)
+--------------------------------------------------
+Tobias,
+
+I'm not interpreting the BSP explicitly (as, for example, does Gladiator / Q3Arena, and as they do/attempted at Raven).
+
+I'm building sectors out of way points (my main means to reason about locations), and derive portals from paths between sectors. I'm taking into account various relations between the way points, and additional information from the geometry. For example, I test whether a way point has sky or a ceiling overhead.
+
+I use a 'home-grown' algorithm to 'grown' sectors out of individual way points. Tuning that algorithm to obtain decent results has been seriously troublesome.
+Sectors are classified using fuzzy logic (which sounds more advanced than it really is).
+
+I hinted at my work on sectors in the March and May CGF news updates. Currently, sector info is used to determine the benefits of throwing a grenade into that sector (which makes more sense if the sector is a tunnel than when the sector is an open street).
+
+When building sectors, I'm not interested in distance to walls. I'm more interested in growing sectors such that they have a uniform character, strong cohesion between the way points, and small borders to adjacent sectors.
+
+I do have a kind of 'close to wall' annotation for way points for other purposes: it helps CGF squads to patrol along walls (instead of in the more conspicable center of the street).
+
+William
+

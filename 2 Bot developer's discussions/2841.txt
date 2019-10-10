@@ -1,0 +1,202 @@
+--------------------------------------------------
+Subject: func_illusionaries bug workaround
+--------------------------------------------------
+03/13/02 at 18:17:27  Posted by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+Hello
+
+Maybe this thread should have been posted in the 'SDK coding discussion' board, I'm not sure...
+
+I am sure many of you know the problem of func_illusionaries that are completely invisible for bots. I am looking for a way to make func_illusionaries block tracelines (or seem to), so my bots won't try to rush through them no more.
+
+Do you know an entvars_t combination for entities that makes an entity
+- invisible to eyes
+- opaque to tracelines
+
+If such a combination existed, I would create and spawn such an entity right over each func_illusionary in the map while playing...
+
+Do you know the magic formula ?
+
+
+--------------------------------------------------
+03/14/02 at 04:27:36  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+If you spawn an entity and set pev->effects |= EF_NODRAW, it will not show that entity.  That's how weapons "hide" themselves after they get picked up while waiting to respawn.
+
+Realize that by spawning more entities in a level you will reduce the frame rate (even if something isn't being drawn).  The engine still has to cull those entities and process them during each frame only to find out later that they don't need to be drawn.
+
+func_illusionaries are brush models (like func_wall, func_ladder, etc.).  You can get the origin of them using VecBModelOrigin() and you can get the world coordinate limits from the pev->mins and pev->maxs values to determine how big they are (where the corners of the box is).  You can use this information to create your own function to determine if a line would intersect any of the 6 planes formed by this box.  Search for "line intersect plane" or something similar to get the formulas involved.  You might also want to look at the BSP viewer in my BSP tools since it has functions to do this line intersecting plane function.
+
+botman
+
+--------------------------------------------------
+03/14/02 at 08:53:31  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+thanks for the answer, botman.
+
+I was (stupidly?) thinking that tracelines could in some manner still be blocked by an entity that would not be drawn. Obviously this is not the case, and I'll have to eat some vector maths once more.
+
+God I hate that...
+
+--------------------------------------------------
+03/14/02 at 13:09:45  Reply by: Spikeles (spikeles_@hotmail.com)
+--------------------------------------------------
+QUOTE:
+...and I'll have to eat some vector maths once more.
+
+God I hate that...
+
+
+
+
+You're not the only one.. :)
+
+--------------------------------------------------
+03/14/02 at 15:17:35  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+I love it... ;D
+
+--------------------------------------------------
+03/15/02 at 04:05:40  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+woohoo, I've got another idea...
+this is the question of the last chance, the one that could prevent me from doing horrible vector maths once more...
+
+What is the trick that allows a BSP model such as a func_illusionary to get crossed by tracelines ?
+
+If I knew that, I'll just tweak those entities parameters during the game not to allow tracelines to cross them...
+
+
+--------------------------------------------------
+03/15/02 at 04:14:51  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+There ISN'T one.  Brush models DON'T get intersected by tracelines.  Period.  You'll have to do this another way.  The only way you'll get the engine to have tracelines intersect brush models is to change the engine.
+
+botman
+
+--------------------------------------------------
+03/15/02 at 04:33:16  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+aye aye, sir...
+
+--------------------------------------------------
+03/15/02 at 04:36:44  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+Just use the findentitybyclassname function to look for func_illusionaries or whatever!
+
+--------------------------------------------------
+03/15/02 at 12:45:22  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+What do you mean exactly ?
+
+At this point I am using UTIL_FindEntityByClassname() to retrieve the locations and sizes of each func_illusionary in the map and store that stuff in an array. This processing is done once per map at the start of the game, when all entities have been spawned.
+
+You said you like vector maths didn't you ? Excuse me but... would you mind explaining me (with some extense...) how I have to do to check if a line comes across a plane ? Someone already tried to explain me but... I'm still quite confused on this point... If you could take a concrete example and show me the calculations that I must do with it, it would be very kind from you.
+
+Thanks in advance...
+
+--------------------------------------------------
+03/15/02 at 14:26:31  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+There's a function in my BSP tools called CheckModelIntersection (it's in the waypoint.cpp file).  That function does what you want (except it uses stuff read directly from the .bsp file.  It loops though each face of the brush model and checks to see if a line will intersect that face (by calling VectorIntersectPlane).
+
+botman
+
+--------------------------------------------------
+03/15/02 at 15:16:38  Reply by: Tub (tubpc@authmann.de)
+--------------------------------------------------
+wait a sec.. before you start digging into vector maths to calculate an intersection of a model you only know the bounding box of, I'll give you a hint:
+
+TraceLine does NOT detect func_illusionary and func_wall.
+
+TraceHull does.
+
+so, if you don't mind tracing something that's noticably larger than a point, try it.
+
+--------------------------------------------------
+03/15/02 at 16:05:08  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+@Tub: Thanks for the hint. I'll examine a possible usage of TraceHull().
+
+@Botman: I'm gonna grab this stuff right now and check it, your function may be a lot faster than Tub's TraceHull()s.
+
+--------------------------------------------------
+03/15/02 at 16:15:36  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+"your function may be a lot faster than Tub's TraceHull()"
+
+Nope.  My traceline function uses an interative solution (tracing one point at a time slowly moving forward).  The engine TraceLine() and TraceHull() functions will be MUCH faster than the ones that I did.
+
+botman
+
+--------------------------------------------------
+03/15/02 at 16:27:21  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+alright, my last hope is UTIL_TraceHull().
+
+
+--------------------------------------------------
+03/15/02 at 18:33:05  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+In your opinion, which is the fastest ?
+code:
+
+UTIL_TraceHull (vecStart, vecEnd, ignore_monsters, point_hull, pContainingEntity, &tr);
+
+
+...notice the <b>point_hull</b>...
+or
+code:
+
+UTIL_TraceLine (vecStart, vecEnd, ignore_monsters, pContainingEntity, &tr);
+
+
+... or will both execute in nearly the same reasonable amount of time ?
+
+If TraceHull is blocked by func_illusionaries, isn't that first line the simplest answer to my problem ?
+
+[modified on 03/15/02 at 18:30:07]
+
+[modified on 03/15/02 at 18:33:05]
+--------------------------------------------------
+03/15/02 at 18:47:01  Reply by: Tub (tubpc@authmann.de)
+--------------------------------------------------
+using point_hull, you'll have the same results as using traceline: it ignores func_wall's / func_illusionary's
+
+I used head_hull. I think that's the smallest possible hull.
+
+--------------------------------------------------
+03/16/02 at 05:05:28  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Actually the size of the hull shouldn't matter.  The Half-Life engine uses the same hull tracing code that the Quake I engine used.  You can download the Quake I source code and search for SV_RecursiveHullTrace() to see how it's done.  Basically the engine makes all the walls "fatter" (by the thickness of the hull) and traces a line from point A to point B.  If the line will fit through the world with "fatter" walls, then the original hull will also fit through from A to B without the "fatter" walls.
+
+botman
+
+--------------------------------------------------
+03/16/02 at 06:19:55  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+???
+
+...I beg your pardon ?
+
+
+
+--------------------------------------------------
+03/16/02 at 08:30:09  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+Anyway botman, Tub is right.
+
+UTIL_TraceHull()s fired with point_hull don't get stopped by func_illusionaries.
+UTIL_TraceHull()s fired with head_hull do.
+
+Strange behaviour... I'm gonna look deeper into this function. If anyone has an explanation, let me know.
+
+[modified on 03/16/02 at 08:25:23]
+
+...aaargh! Of course, I can't know what happens in the engine at pfnTraceHull! Damnit.
+
+[modified on 03/16/02 at 08:26:01]
+
+...okay, let's go and do some ftp on ID software's servers...
+
+[modified on 03/16/02 at 08:30:09]

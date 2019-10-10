@@ -1,0 +1,78 @@
+--------------------------------------------------
+Subject: spawning
+--------------------------------------------------
+05/28/03 at 20:31:11  Posted by: Blood_Dust (di@html.com)
+--------------------------------------------------
+how whould i spawn an object in a info_deathmach_spawn thing when the map starts.
+
+--------------------------------------------------
+05/29/03 at 06:44:07  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Did you look through the player spawning code?
+
+botman
+
+--------------------------------------------------
+05/31/03 at 00:24:52  Reply by: Blood_Dust (di@html.com)
+--------------------------------------------------
+where is that located in player.cpp
+
+--------------------------------------------------
+05/31/03 at 05:54:26  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Open player.cpp and search for "EntSelectSpawnPoint" to find the function that spawns a player based on the gametype (single player, multiplayer, etc.).
+
+botman
+
+--------------------------------------------------
+06/04/03 at 00:38:52  Reply by: Blood_Dust (di@html.com)
+--------------------------------------------------
+im trying to get this to spawn in the map why the hell does it not work?
+
+
+code:
+
+class CItemDoubler : public CItem
+{
+void Precache( void )
+{
+PRECACHE_MODEL ("models/w_suit.mdl");
+PRECACHE_SOUND ("items/supplies.wav");
+}
+      void Spawn( void ) 
+{ 
+    Precache( ); 
+    SET_MODEL(ENT(pev), "models/w_suit.mdl"); 
+     pev->movetype = MOVETYPE_TOSS; 
+     pev->solid = SOLID_TRIGGER; 
+     UTIL_SetOrigin( pev, pev->origin ); 
+     UTIL_SetSize(pev, Vector(-16, -16, 0), Vector(16, 16, 16));  
+ 
+     if (DROP_TO_FLOOR(ENT(pev)) == 0) 
+     { 
+          ALERT(at_error, "Item %s fell out of level at %f,%f,%f", STRING( pev->classname ), pev->origin.x, pev->origin.y, pev->origin.z); 
+          UTIL_Remove( this ); 
+          return; 
+     }       
+}
+
+BOOL MyTouch( CBasePlayer *pPlayer ) 
+{
+if ( pPlayer->m_fDoubler )
+return FALSE;
+
+pPlayer->m_fDoubler = TRUE; 
+
+//communicates to the client that you have picked them up
+MESSAGE_BEGIN( MSG_ONE, gmsgItemPickup, NULL, pPlayer->pev ); 
+WRITE_STRING( STRING(pev->classname) ); 
+MESSAGE_END();
+      //when picked up, play a sound
+EMIT_SOUND(ENT(pPlayer->pev), CHAN_WEAPON, "items/supplies.wav", 0.8, ATTN_NORM);
+OZHud(pPlayer, "Rune - it worked!\n");
+return TRUE; 
+}
+}; 
+
+LINK_ENTITY_TO_CLASS( item_doubler, CItemDoubler );
+

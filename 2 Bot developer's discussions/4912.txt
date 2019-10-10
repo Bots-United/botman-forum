@@ -1,0 +1,159 @@
+--------------------------------------------------
+Subject: Detecting Shield in CS 1.6
+--------------------------------------------------
+10/17/03 at 01:06:16  Posted by: botmeister (meister@telus.net)
+--------------------------------------------------
+I've been trying to find a way to detect if a player has the shield lowered or not.
+
+If a player has the shield, then his model will be p_shield_weapon.mdl where weapon is whatever weapon is in hand when the shield is lowered.
+
+Example, p_shield_usp.mdl or p_shield_knife.mdl
+
+When the shield is activated, the model does not change. 
+
+So I was wondering if anyone has already figured out how to detect a lowered shield? My guess is to see if the field of view changes in the same way as zooming a rifle.
+
+
+--------------------------------------------------
+10/17/03 at 01:21:01  Reply by: W@NJIK (wanjik@voila.fr)
+--------------------------------------------------
+I don't have 1.6, but I guess one has to press either primary or secondary fire to use the shield, so why not check the player's buttons field?
+
+--------------------------------------------------
+10/17/03 at 04:56:42  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+I think the shield will be a problem to bots eyes aswell.
+
+Anyway, as said perhaps you should check the buttons being pressed. When you buy a shield its always 'lowered' (you see your weapon). So you could do this:
+
+on spawn of bot:
+code:
+
+bool bShielded=false;
+
+
+
+when triggering shield set to true and when already triggered set to false. This way you can also check when you are able to 'fire' with your gun when its visible. 
+
+
+
+--------------------------------------------------
+10/17/03 at 10:12:41  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+already checked pEdict->v.weaponanim ?
+
+
+--------------------------------------------------
+10/17/03 at 10:45:58  Reply by: botmeister (meister@telus.net)
+--------------------------------------------------
+What I want to do, is have a bot decide if an enemy player has the shield activated or not, so if I used the boolean flag concept, I'd have to be checking both bots and human players while maintaining an array of flags for each player - there's got to be a better way I hope!
+
+I don't know anything about pEdict->v.weaponanim what does it do?
+
+
+--------------------------------------------------
+10/17/03 at 11:51:50  Reply by: bluesy (bluesy@bezeqint.net)
+--------------------------------------------------
+I`ve found out 2 easy methods of detecting shield status:
+1. The less reliable one - set a flag whenever a bot buys the shield and then track the 'hideweapon' message to see wether the shield is raised or lowered.
+
+2. Use pEdict->v.sequence. If you look at this variable you`ll find some pretty useful data.
+
+PS - I remember some discussion regarding firefight detection (or similar)
+
+Note that the pEdict->v.sequence can be very (very) useful for detecting if a player shoots or reloads it`s weapon.
+
+Here`s a snippet of a code I use:
+
+int EnemyIsThreat( bot_t *pBot, edict_t *pEnemy)
+{
+      //check if enemy is reloading
+      if (pEnemy->v.sequence == 21 ||
+            pEnemy->v.sequence == 41 ||
+            pEnemy->v.sequence == 15 ||
+            pEnemy->v.sequence == 35 ||
+            pEnemy->v.sequence == 47 ||
+            pEnemy->v.sequence == 53)
+      {
+            return FALSE;
+      }
+        //...
+        //...
+
+      //check if enemy is actually shooting
+      if (pEnemy->v.sequence == 20 || 
+            pEnemy->v.sequence == 40 || 
+            pEnemy->v.sequence == 13 || 
+            pEnemy->v.sequence == 34 || 
+            pEnemy->v.sequence == 46 || 
+            pEnemy->v.sequence == 52)
+      {
+            return TRUE;
+      }
+        //...
+      return FALSE;
+}
+
+
+
+--------------------------------------------------
+10/17/03 at 13:30:06  Reply by: botmeister (meister@telus.net)
+--------------------------------------------------
+The pEnemy->v.sequence flag looks VERY usefull indeed! 
+
+In order for a bot to effectively use the shield, it needs to know when it has to activate the shield (eg being fired at) or when it is safe to lower it and attack (eg target is reloading) or very close with a knife.
+
+note: interesting how the knife can go through the sheild but nothing else can!
+
+Also, for a bot to defeat a player with a shield, it needs to know if the shield is activated or not, also if the orientation of the target leaves the player exposed or not (with shield activated). 
+
+So, a bot needs to know what its targets are doing (reloading, shooting, running away) and it needs to know if a player with a shield is exposed or not (shield activated, or player is exposed by relative orientation).
+
+Lot's of work there but doable.
+
+
+
+--------------------------------------------------
+10/18/03 at 12:40:37  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Hey, thanks for correcting me Bluesy, actually that's what I wanted to say :D (just confused v.sequence and v.weaponanim)
+To botmeister:
+pEdict->v.weaponanim is used to hold any particuliar state a weapon model is in (for example, with the M4A1 noise suppressor screwed in or not).
+pEdict->v.sequence stores the model animation index, as Bluesy says (model animations are in fact an array of arrays, lower array holds the vector transformation matrices and top array holds the different animations themselves).
+
+<self-advertising>Again again again, why don't you use my PMTools plugin ? it shows you all the entvars right away!!</self-advertising>
+
+
+[modified on 10/18/03 at 12:40:37]
+--------------------------------------------------
+10/18/03 at 20:53:20  Reply by: botmeister (meister@telus.net)
+--------------------------------------------------
+First time I'm hearing about the PMTools plugin - you need to advertise more often ;D
+
+I just took a look at your list of plugins, you've been very busy I see!
+
+[modified on 10/18/03 at 20:53:20]
+--------------------------------------------------
+10/20/03 at 08:30:29  Reply by: whistler_wmz (whistler_wmz@163.com)
+--------------------------------------------------
+#define CS_WEAPON_SHIELDGUN 2
+
+if (pEdict->v.weapons & (1<<CS_WEAPON_SHIELDGUN))
+{
+      // he has a shield!
+      ......
+}
+
+******
+well, this works only in beta version.
+It seems that there are something different between beta version and current version...
+
+[modified on 10/20/03 at 08:30:29]
+--------------------------------------------------
+10/20/03 at 09:34:17  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Maybe they just ran out of weapon slots and dropped the shield so as to have one weapon more ?
+
+What does the "WeaponList" usermsg say ?
+
+

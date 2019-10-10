@@ -1,0 +1,88 @@
+--------------------------------------------------
+Subject: szRejectReason not working
+--------------------------------------------------
+07/07/03 at 12:26:33  Posted by: botmeister (meister@telus.net)
+--------------------------------------------------
+Does anyone know how to get the client commection rejection message to show up in the clients pop-up window? I can get the string szRejectReason to display my custom message fine in the HLDS console, but the reason showing up in the clients pop-up window is not what I want.
+
+In my HLDS console I get the expected message:
+
+Dropped Player from server
+Reason:  Server refused connection because: Human player count exceeded. Try again later.
+
+Client pop-up shows this, which is not the rejection message I want:
+
+"Could not complete connection attempt."
+
+My code looks like this:
+
+qboolean pfnClientConnect_DLL( edict_t *pEntity, const char *pszName, const char *pszAddress, char szRejectReason [ 128 ] )
+{
+
+      if ( HumanCountExceeded( ) )
+      {
+            strcpy( szRejectReason, "Human player count exceeded. Try again later." );
+            return FALSE;
+      }
+
+      return (*other_gFunctionTable.pfnClientConnect)( pEntity, pszName, pszAddress, szRejectReason );
+}
+
+
+[modified on 07/07/03 at 12:26:33]
+--------------------------------------------------
+07/07/03 at 13:15:17  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+What does the message say that you are trying to get rid of?
+
+botman
+
+--------------------------------------------------
+07/07/03 at 15:10:55  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+I was not aware of that bug yet but strangely I'm not sure it ever worked. I don't remember having seen another client message than "Could not complete connection attempt" ever...
+
+If szRejectReason's 128 characters are never sent to the client through some sort of network message, how can he ever know *why* he couldn't connect ?
+
+
+--------------------------------------------------
+07/07/03 at 15:47:51  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+The default reject reason is "Connection rejected by game".  Here's some code from the engine...
+code:
+      // Handle rejections
+      sprintf( szName, "%s", host_client->name );
+      sprintf( szAddress, NET_AdrToString( host_client->netchan.remote_address ) );
+      sprintf( szRejectReason, "Connection rejected by game\n" );
+
+      // Allow the game dll to reject this client.
+      if ( !gEntityInterface.pfnClientConnect( ent, szName, szAddress, szRejectReason ) )
+      {
+            // Reject the connection and drop the client.
+            MSG_WriteByte (&host_client->netchan.message, svc_stufftext);
+            MSG_WriteString (&host_client->netchan.message, va("echo %s\n", szRejectReason ) );
+            SV_DropClient ( host_client, false, "Server refused connection because:  %s", szRejectReason ); 
+            return;
+      }
+
+So, the Half-Life engine fills in szRejectReason with "Connection rejected by game" by default.  You can override this by strcpy()ing a string into that buffer (which it appears you are doing).  The engine will then write this message to the client (svc_stufftext) and "echo" it to the console of the client.
+
+You don't have control over the text in a dialog box if that's the text you are trying to change.
+
+botman
+
+--------------------------------------------------
+07/08/03 at 00:21:49  Reply by: botmeister (meister@telus.net)
+--------------------------------------------------
+QUOTE:
+So, the Half-Life engine fills in szRejectReason with "Connection rejected by game" by default.  You can override this by strcpy()ing a string into that buffer (which it appears you are doing).  The engine will then write this message to the client (svc_stufftext) and "echo" it to the console of the client. 
+
+You don't have control over the text in a dialog box if that's the text you are trying to change. 
+
+
+
+Thanks for the reply Botman. It looks like everything in the code snippet you posted is being done. I wanted to have my custom reject reason showing up in the client dialog window. According to what you are saying, this cannot be done. Too bad, because the person who is rejected will most likely not notice the reason from his console since it instantly switches back to the connection screen, and the dialog pops up with the default message "Could not complete connection attempt.". The person who gets rejected ends up thinking he has an internet problem, or the server is messed up.
+
+The only solution I can come up with is to let the player connect, then kick him. That way he will see the message in his console if he takes the time to read it (I find that most people do not read it unfortunately).
+
+

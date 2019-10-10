@@ -1,0 +1,165 @@
+--------------------------------------------------
+Subject: Solider Bots shooting rockets accurately
+--------------------------------------------------
+11/29/01 at 17:52:04  Posted by: sorren (data_501@hotmail.com)
+--------------------------------------------------
+I was wondering how to make the Solider HBP bot shoot rockets based on the enemys movement.  I want the solider to shoot a rocket at where the enemy will be when the rocket reaches the enemy.  So, if the enemy is moving to the left of the solider, he will shoot in front of the person, and the rocket will hit him in mid air.  Of course if the enemy moves again after the rocket is fired, then it will miss him.  I would like source code examples if possible, so I can work with them.  With this source code then I can go onto, making the solider shoot at the feet of the enemy where he would be, and so forth.  Does anyone have any code examples of making this happen ?
+
+--------------------------------------------------
+11/29/01 at 20:58:02  Reply by: ReDucTor[FGW] (sjdtmv@tpg.com.au)
+--------------------------------------------------
+if(target->buttons & IN_LEFT)
+{
+  // Change aim ofsets to Aim to the left a bit
+}
+if(target->buttons & IN_RIGHT)
+{
+  // Change aim ofsets to Aim to the right a bit
+}
+
+if you where to use else if or else, then if the player is not moving anywhere, or pressing both then its going to aim to one or the other, but if you just change them the extact same then its going to aim for them..
+
+Now aiming infront of them, you want to check if they are moving forward or backward
+
+if(target->buttons & IN_FOWARD)
+{
+   // Make it aim a little infront of them, but put the z down so it aims for the ground
+}
+if(target->buttons & IN_BACK)
+{
+   // Make sure not to put the z down here because that will make it aim for about where they are atm, just make it aim back a bit
+}
+
+--------------------------------------------------
+11/30/01 at 07:51:39  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+Use speed = distance / time, find what angle the enemy is moving towards and get its speed. You can then calculate the distance it will take if you knew the speed of a soldiers rocket.
+
+First find the distance of the bot and the enemy. (Or the path of the rocket)
+
+Lets call this f_rocket_dist
+
+float f_rocket_dist = (pBot->pEdict->v.origin - pBot->pBotEnemy->v.origin).Length()
+
+If the speed of the rocket was say 600 units/sec and the distance between the bot and enemy was 1200 units then it will take 2 seconds to reach the target, by that timt the enemy has probably dodged the rocket completly.
+
+f_rocket_time = f_rocket_dist / f_rocket_speed
+
+So...
+
+We find out how far the enemy will move in 2 seconds (The length it will take the rocket to hit the enemy) You can always say that a players speed is the max_speed (pBot->f_max_speed) if you dont know how to find it. If you do another speed/distance/time within to find how far the enemy will travel in the rocket time (2 secs here)
+the 
+
+distance = 320 (or actual player speed) * 2
+
+f_enemy_travel_dist = (pBot->f_max_speed * f_rocket_time)
+
+I cant remember how to find an exact target or point where to find where the enemy will goto (of course you don't really know, we're just predicting where the enemy will go)
+
+really confusing, really gotta lay it on paper :)
+
+[modified on 11/30/01 at 07:51:39]
+--------------------------------------------------
+11/30/01 at 11:06:40  Reply by: Onslaught (None)
+--------------------------------------------------
+We're not talking just about speed here, were talking about velocity (speed + direction) so it may be quite inaccurate to measure it by speed = distance / time. I found a topic talking about this once but I can't remember the name... Try searching for it....
+
+--------------------------------------------------
+11/30/01 at 14:56:11  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+yes well velocity my vocabulary wasnt correct but I MEAN velocity. Because this is the proper term sed for it in physics and in the code. Of course by now ive forgot all that physics stuff I done years ago... ;D And to be quite honest I find nothing inefficient by using the average speed, after all :)
+
+[modified on 11/30/01 at 14:56:11]
+--------------------------------------------------
+12/02/01 at 19:46:12  Reply by: CountFloyd (countfloyd@botepidemic.com)
+--------------------------------------------------
+If you want to calculate the future location of a player you need to take his current position + his current velocity multiplied by the time you want to predict like this:
+code:
+
+edict_t *pEnemy // your ptr to the enemy goes here
+Vector vecPos = pEnemy->v.origin;
+float fTimeToPredict = 0.5; // predicting 0.5 secs
+vecPos = vecPos + (pEnemy->v.velocity * fTimeToPredict);
+...
+// vecPos now contains the (roughly because no friction/gravity) predicted position
+
+    
+
+[modified on 12/02/01 at 19:46:12]
+--------------------------------------------------
+09/25/02 at 09:52:55  Reply by: sorren (data_501@hotmail.com)
+--------------------------------------------------
+Ok, I've tried this technique and I was unsuccessful.  Here's what I did, I was able to get the soldier to shoot the rockets where the players would be given the direction they were traveling.  I  need to get some further clarification on some things.
+1.  Since each class has a different speed, how can I get the speed of the player I'm aiming at ?
+2.  How can I get the speed of the rocket projectile ?
+
+This last problem takes some explaination, lets say for example that your target gets hit from a rocket and is now propelled any direction upwards, when the bot shoots the 2nd rocket, it now will shoot where the target will be, which is WAY WAY up in the air, I want to prevent this, most likely by only shooting targets that are on the ground, is this possible, and how ?
+
+--------------------------------------------------
+09/25/02 at 10:36:04  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+Speed of player = pev->velocity.Length()
+
+Speed of rocket, do a search for an rpg_rocket and print its pev->velocity.Length() in console.
+
+An simpler way to do a type of better rocket shooting is just add the enemies pev->velocity to the bots target and make them shoot to the Z of the enemies absmin (bottom of player) just like count floyd says
+
+[modified on 09/25/02 at 10:36:04]
+--------------------------------------------------
+09/26/02 at 07:19:51  Reply by: sorren (data_501@hotmail.com)
+--------------------------------------------------
+"Speed of rocket, do a search for an rpg_rocket and print its pev->velocity.Length() in console."  This sounds great, I'm really familiar with getting into the console, but how would I go about printing its "pev->velocity.Length()" ?  How do I list the entities, and then print out the values of the entities ?
+
+--------------------------------------------------
+09/26/02 at 13:29:01  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+example:
+
+
+code:
+
+char msg[100];
+
+sprintf(msg,"Velocity: %0.5f\n",pev->velocity.Length());
+
+ClientPrint(pEntity,HUD_PRINTCONSOLE,msg);
+
+
+
+look at "search" client command in botmans hpb_bot template in dll.cpp
+
+change the radius to a bit bigger and get each line to also print out the velocity. Then in-game shoot a rocket and press a key binded to "search" as soon as you see the rocket in front of you, and rpg_rocket should appear in the search list along with origin etc and its velocity we hope!
+
+[modified on 09/26/02 at 13:29:01]
+--------------------------------------------------
+10/01/02 at 08:19:42  Reply by: sorren (data_501@hotmail.com)
+--------------------------------------------------
+I appreciate the help so far, very informative.  The last question was, how can I in code, find out of a player that the bot is shooting at is on the ground and not in the air, or in the water ?
+
+--------------------------------------------------
+10/01/02 at 09:37:33  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+(pev->flags & FL_ONGROUND) == FL_ONGROUND will be true if the player is standing on the ground.
+
+(pev->waterlevel == 3) will be true if the player is underwater (has the head underwater).
+
+Obviously if the above two are both false, the player is NOT on the ground and NOT under water (so they must be falling through the air?).
+
+botman
+
+--------------------------------------------------
+10/01/02 at 13:45:30  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Personally I use ENT_IS_ON_FLOOR () that seems to work with all kind of entities without problem. Does the FL_ONGROUND flag works with all kind of entities too ? If so, that could save me one function call :)
+
+
+
+--------------------------------------------------
+10/01/02 at 14:19:33  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+The FL_ONGROUND may only be set by the engine for players (FL_CLIENT) and monsters (FL_MONSTER).
+
+I haven't tried it with anything else, but the engine is the one that sets the FL_ONGROUND flag.
+
+botman
+

@@ -1,0 +1,691 @@
+--------------------------------------------------
+Subject: Bot turning
+--------------------------------------------------
+02/20/03 at 17:56:11  Posted by: Gimli (sstephanoff@hotmail.com)
+--------------------------------------------------
+Um maybe I'm using the wrong origin or vectors but I'm pretty sure this should turn a bot right?
+
+code:
+
+if(pBot->b_is_stuck)
+      {
+            
+                  
+                  //stop to turn this bitch
+                  pBot->BotLegs.movement_speed.x = 0;
+                  vector change = AnglesOf(pBot->pEntity);
+                  
+                  
+                  // update the bot's player entity angles
+                  if( RandomInteger(0, 1) == 0)
+                  {
+                        if(change.y <= 90)
+                        {
+                              change.y += 90;
+                              
+                        }
+                        else
+                        {      
+                              change.y -= 90;
+                        
+                        }
+                  }
+                  else
+                  {
+                        if(change.y <= 180)
+                        {
+                              change.y += 180;
+                        }
+                        else
+                        {
+                              change.y -= 180;
+                        }
+                  
+                  }
+                  
+                  BotSetIdealAngles(pBot, AnglesOfVector(change - AnglesOf(pBot->pEntity)));
+                  
+                  pBot->BotLegs.movement_speed.x = pBot->BotLegs.f_max_speed;
+                  
+      }
+
+
+
+Shouldnt this make the bot turn? It sometimes makes him turn but say 80% of the time it doesnt whats wrong!
+
+--------------------------------------------------
+02/20/03 at 18:43:24  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+There are 2 errors and 1 oddity in your code.
+
+Error #1. Vectors and angles are stored in the same structure : "vector". But they are different types of data. A VECTOR describes an OFFSET in a 3D referential from its origin. An ANGLE describes an ORIENTATION of the notion of "forward" in a 3D referential from an origin.
+Using AnglesOfVector(), you get the ANGLES in which the VECTOR is oriented. It supposes that (change - AnglesOf(pBot->pEntity)) is a vector. It is not, it is an angle.
+
+Error #2. With "change", you keep a local copy of the bot's body angles, which you alter by +/- 90 degree, then you want your bot to take it. BUT, after having altered this angle, you SUM IT AGAIN with the current angles the bot has : (change - AnglesOf(pBot->pEntity)). This is not what you want.
+
+Oddity. Instead of trying complicated computations in order for "change" not to overflow the +/- 180° bound, just use WrapAngle.
+"f_my_angle = WrapAngle (175 + 90)" will return -95.
+
+Sorry for not having replied to your email yet btw. Guess it's useless now...
+
+
+--------------------------------------------------
+02/20/03 at 19:05:08  Reply by: Gimli (sstephanoff@hotmail.com)
+--------------------------------------------------
+I'd still love to see your bsp stuff cause I'm not getting it. Anyways thanks I'll try and figure out what you just said!
+
+--------------------------------------------------
+02/21/03 at 15:39:22  Reply by: Gimli (sstephanoff@hotmail.com)
+--------------------------------------------------
+I'm sorry I'm such a re re but I really want to figure out how this bsp stuff works. I'm guessing it would look something like this
+
+a for loop here for the node index
+if( BotCanSeeOfEntity(pBot, pBot->pPersonality->PathMemory[node_index.walkface)
+{
+ //I know you wouldnt use botcanseeofentity but something like that that takes a vector and does a trace.
+  BotSetIdealAngles(AnglesOfVector(pBot->pPersonality->PathMemory[node_index].walkface - OriginOf(pBot->pEntity)));
+}
+else
+{
+ node_index++;
+}
+
+
+Is this anywhere in the general idea of what to do or am I still way off?
+
+
+--------------------------------------------------
+02/21/03 at 15:50:35  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+You need to read a lot about pathfinders. You don't seem to understand what a nav mesh is. READ and UNDERSTAND how a waypointed bot works first, like the HPB_bot or eLiTe's TEAMbot.
+
+
+--------------------------------------------------
+02/21/03 at 17:17:37  Reply by: Gimli (sstephanoff@hotmail.com)
+--------------------------------------------------
+I see how the bots with waypoints are used. But see they have a waypoint[blah].origin While these navnodes have corner_count, v_corners, and v_delimiters. I have no idea what to do with these because its not one origin its a bunch of them...I'm sooooo lost!
+
+--------------------------------------------------
+02/21/03 at 18:14:11  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+"navnodes" are BSP faces that can support a player. In extenso, a BSP face is a polygon : a triangle, a square, a parallelogram, etc.
+
+Hence the "navnodes" structure describe polygons which are either flat, or have an inclination inferior or equal to 45 degree, so as the players can walk upon them.
+
+To describe a polygon, you need to know its corners. It is given by the corner_count variable, which thus tells the size of the v_corners[] array for this navnode.
+
+The delimiters describe a point in the middle of each of the polygon's segments.
+
+navnodes can be used just like waypoints. You can keep track of which navnodes (which polygons) are reachable from a certain one, what type of reachability it is (either duck, jump, ladder, teleport, door, bobbing platform, etc.) and so you can build paths between them.
+
+Now in order to navigate from a polygon to another, you use its delimiters, which describe, as aforementioned, the middle of their delimiting segments. If your bot is on polygon A and wants to reach neighbour polygon B, you have to make it head up to the delimiter of B which is adjacent to A, until the bot has reached B.
+
+Feel free to change the layout of any of these structures to add/remove/change anything you find useful.
+
+
+--------------------------------------------------
+02/22/03 at 09:56:42  Reply by: Gimli (sstephanoff@hotmail.com)
+--------------------------------------------------
+I think I got it just tell me is it
+pBot->pPersonality->PathMemory[index].walface or pBot->pPersonality->PathMemory[index]->walface?
+
+lol I'm still having a really hard time here
+
+--------------------------------------------------
+02/22/03 at 20:02:13  Reply by: Gimli (sstephanoff@hotmail.com)
+--------------------------------------------------
+Lol I'm having problems with my code(as if you didnt guess this would happen. Heres the code I added in BotDecideWhatToDo()
+code:
+
+if(pBot->BotLegs.f_check_node_time <= CurrentTime())
+            {
+                  int nodeindex = BotFindNavNode(pBot, 400);
+                  pBot->BotLegs.f_check_node_time = CurrentTime() + 6;
+                  BotSetIdealAngles(pBot, pBot->pPersonality->PathMemory[nodeindex].walkface->v_delimiters - OriginOf (pBot->pEntity)) );
+            }
+
+
+Heres the def for BotFindNavNode(I bet this looks familiar botman :) )
+
+code:
+
+int BotFindNavNode(bot_t *pBot, float range)
+{
+   int i, min_index;
+   float distance;
+   float min_distance;
+   TraceResult tr;
+
+   // find the nearest Nav Node...
+
+   min_index = -1;
+   min_distance = 9999.0;
+
+   for (i=0; i < pBot->pPersonality->PathMemory->links_count; i++)
+   {
+      
+      distance = pBot->pPersonality[i].PathMemory->walkface->v_delimiters->Length() - OriginOf(pBot->pEntity).Length();
+
+      if ((distance < min_distance) && (distance < range))
+      {
+       
+            UTIL_TraceLine (OriginOf (pBot->pEntity),
+                      pBot->pPersonality[i].PathMemory->walkface->v_delimiters,
+                      ignore_monsters, pBot->pEntity, &tr);
+         if (tr.flFraction >= 1.0)
+         {
+            min_index = i;
+            min_distance = distance;
+         }
+      }
+   }
+
+   return min_index;
+}
+
+
+
+Heres the errors I get:
+C:\SIERRA\Half-Life\racc\release\common\bot_navigation.cpp(264) : error C2665: 'UTIL_TraceLine' : none of the 4 overloads can convert parameter 1 from type 'class vector'
+
+
+C:\SIERRA\Half-Life\racc\release\cstrike\bot.cpp(380) : error C2678: binary '-' : no operator defined which takes a left-hand operand of type 'class vector *' (or there is no acceptable conversion)
+
+                  
+Heres the code it points to in a row:
+code:
+
+      UTIL_TraceLine (OriginOf (pBot->pEntity),
+                      pBot->pPersonality[i].PathMemory->walkface->v_delimiters,
+                      ignore_monsters, pBot->pEntity, &tr);
+
+                  BotSetIdealAngles(pBot, pBot->pPersonality->PathMemory[nodeindex].walkface->v_delimiters - OriginOf (pBot->pEntity)) ;
+
+
+
+I know what your thinking, "God what a newb", but please tell me what I'm doing wrong lol
+
+--------------------------------------------------
+02/23/03 at 03:13:37  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+this is crazy code ;)
+
+code:
+
+ distance = pBot->pPersonality[i].PathMemory->walkface->v_delimiters->Length() - OriginOf(pBot->pEntity).Length(); 
+
+
+
+you need something like
+
+code:
+
+
+//middle should be average point of all corners. (sometimes not the case, but its quicker to write :)
+Vector v_middle = Vector(0,0,0);
+
+for ( int n = 0; n < pBot->pPersonality[i].PathMemory->walkface->corner_count )
+{
+  v_middle = v_middle + pBot->pPersonality[i].PathMemory->walkface->v_corners[n];
+}
+
+v_middle = v_middle / pBot->pPersonality[i].PathMemory->walkface->corner_count;
+
+distance = (v_middle - OriginOf(pBot->pEntity)).Length(); 
+
+
+
+again
+
+code:
+
+     UTIL_TraceLine (OriginOf (pBot->pEntity),
+                     pBot->pPersonality[i].PathMemory->walkface->v_delimiters,
+                     ignore_monsters, pBot->pEntity, &tr);
+
+
+
+you're dealing with an array of vectors, and traceline just wants a vector, not an array of them (or a pointer)
+
+code:
+
+     UTIL_TraceLine (OriginOf (pBot->pEntity),
+                     v_middle,
+                     ignore_monsters, pBot->pEntity, &tr);
+
+
+--------------------------------------------------
+02/23/03 at 10:23:45  Reply by: Gimli (sstephanoff@hotmail.com)
+--------------------------------------------------
+How about using
+NearestDelimiterOf(pBot->pEntity)?
+
+I got it like this
+pBot->BotLegs.current_node = NearestDelimiterOf(pBot->pEntity);
+
+BotSetIdealAngles(pBot, pBot->BotLegs.current_node - OriginOf(pBot->pEntity));
+
+lol but again they run like shit so I should probably look into your code huh?
+
+--------------------------------------------------
+02/23/03 at 12:56:03  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Do you at least have one pathfinding algorithm implemented in your bot ?
+If not, no wonder they "run like shit".
+
+
+--------------------------------------------------
+02/23/03 at 18:56:52  Reply by: Gimli (sstephanoff@hotmail.com)
+--------------------------------------------------
+lol that could be a problem but the thing is im not understanding the PathMemory-> like i didnt know that they were arrays I thought just PathMemory[] was.
+
+--------------------------------------------------
+02/24/03 at 16:54:02  Reply by: Gimli (sstephanoff@hotmail.com)
+--------------------------------------------------
+Can somebody explain to me how pathmemory works?
+It will all go into some tuts later when it all makes sense to me :)
+
+Ok tell me if I got this right...
+PathMemory[something]->walkface is the current walk face you are on(not physicly but in code).
+
+PathMemory[something->links_count is the amount of links there are from this node to another.
+
+PathMemory[something]->links are the links branching off the current node? reachabilty tells you if its reachable and walkface is the current walkface of the node which it links too(whew). Is that right?
+
+--------------------------------------------------
+02/24/03 at 22:02:48  Reply by: MrE (ezamudin@tm.net.my)
+--------------------------------------------------
+Let see if you can understand this...
+PathMemory[something]->walkface is the current walkface. Correct...
+PathMemory[something]->links_count is the amount of links there are from this node to another...Correct too..
+PathMemory[something]->links are links brenching off the current node..Also correct... 
+The walkface it links to is the destination. The reachability is actually how to get there...when there is a link between 2 walkfaces, it mean that it is reachable. how do you get there? ...reachability. If a path reachability from A to B is ladder (for example) so in order to get to B from A use a ladder. Life is so simple... 
+How PathMemory works ?... PathMemory is a pathfinder system.... how a pathfinder works is easily obtain from this link http://www.google.com/search?q=pathfinding
+One advise , Happy reading..
+
+
+
+--------------------------------------------------
+02/25/03 at 10:49:27  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+All good, Mr. E.
+
+One final note, as you may already have noticed, each bot has its own PathMemory. Thus each bot needs to build its. This can be done by monitoring the player moves, and letting the bot be aware of them when the player is in sight. I personally do that in PlayerPostThink().
+code:
+
+void PlayerPostThink (entity_t *pPlayer)
+{
+   // this function is called by the engine after any client player (including bots) has finished
+   // his thinking cycle (ie, the MOD's Think() function has been called for this player). Here
+   // we use it to check whether this player has moved onto another face, and if so, update the
+   // automatic pathbuilder. Also it's a good place to dispatch client sounds to the bot's ears.
+   // Then since we might have to compare something in this player's entity variables to its last
+   // state one day, it's always useful to keep a local copy of his entvars. 
+
+   // only process bots if we are in multiplayer mode
+   if (is_multiplayer_game)
+   {
+      walkface_t *face;
+      navnode_t *node;
+      int player_index, bot_index, face_index, link_index;
+
+      // are we dealing with a valid player AND this player is still alive ?
+      if (!IsNull (pPlayer) && IsAPlayer (pPlayer) && IsAlive (pPlayer))
+      {
+         // check for the face this player is walking on and remember if it has changed
+         player_index = PlayerIndexOf (pPlayer); // get this player's index
+         face = WalkfaceUnder (pPlayer); // get this player's ground face
+
+         // is this player the listen server client AND do we want high navigation debug level ?
+         if ((pPlayer == pListenserverEntity) && (DebugLevel.navigation > 1))
+         {
+            // draw the face on which it is on and the sector to which it belongs
+            UTIL_DrawSector (pListenserverEntity, BottomOriginOf (pPlayer), 3, 255, 0, 0);
+            UTIL_DrawWalkface (pListenserverEntity, face, 3, 0, 255, 0);
+         }
+
+         // is this player falling fast enough to get some damage ?
+         if ((VerticalVelocityOf (pPlayer) > MAX_PLAYER_SAFE_FALL_SPEED) && !IsOnFloor (pPlayer))
+            players[player_index].face_reachability |= REACHABILITY_FALLEDGE; // remember it
+
+         // else is this player climbing a ladder ?
+         else if ((VerticalVelocityOf (pPlayer) != 0) && IsFlying (pPlayer) && !IsOnFloor (pPlayer))
+            players[player_index].face_reachability |= REACHABILITY_LADDER; // remember it
+
+         // else is this player riding an elevator ?
+         else if ((VerticalVelocityOf (pPlayer) != 0) && (strcmp ("func_door", ClassnameOf (EntityUnder (pPlayer))) == 0))
+            players[player_index].face_reachability |= REACHABILITY_ELEVATOR; // remember it
+
+         // else is this player riding a bobbing platform ?
+         else if ((VelocityOf (pPlayer) != 0) && (strcmp ("func_train", ClassnameOf (EntityUnder (pPlayer))) == 0))
+            players[player_index].face_reachability |= REACHABILITY_PLATFORM; // remember it
+
+         // else is this player standing on a conveyor ?
+         else if ((VelocityOf (pPlayer) != 0) && (strcmp ("func_conveyor", ClassnameOf (EntityUnder (pPlayer))) == 0))
+            players[player_index].face_reachability |= REACHABILITY_CONVEYOR; // remember it
+
+         // else is this player riding a train ?
+         else if ((VelocityOf (pPlayer) != 0) && (strcmp ("func_tracktrain", ClassnameOf (EntityUnder (pPlayer))) == 0))
+            players[player_index].face_reachability |= REACHABILITY_TRAIN; // remember it
+
+         // has it changed since last time (ie has this player moved onto another face ?)
+         if ((face != NULL) && (face != players[player_index].pFaceAtFeet))
+         {
+            // cycle through all bot slots to find the bots who have this player in sight
+            for (bot_index = 0; bot_index < MaxClientsOnServer (); bot_index++)
+            {
+               if (!bots[bot_index].is_active || IsNull (bots[bot_index].pEntity))
+                  continue; // discard unused slots
+
+               // is this bot the player we're tracking OR can this bot see the player ?
+               if ((bots[bot_index].pEntity == pPlayer) || (BotCanSeeOfEntity (&bots[bot_index], pPlayer) != NULLVEC))
+               {
+                  // find the starting face index (it's the same as the navnode index)
+                  for (face_index = 0; face_index < map.walkfaces_count; face_index++)
+                     if (players[player_index].pFaceAtFeet == &map.walkfaces[face_index])
+                        break; // break when we know the index of the face under player's feet
+
+                  // have we found the starting face index ?
+                  if (face_index < map.walkfaces_count)
+                  {
+                     node = &bots[bot_index].pPersonality->PathMemory[face_index]; // quick access to node
+
+                     // loop through all the links the bot knows for this face's node
+                     for (link_index = 0; link_index < node->links_count; link_index++)
+                        if (face == node->links[link_index].walkface)
+                           break; // break when a link to this face already exists in the bot's nav brain
+
+                     // have we found NO link for this face ?
+                     if (link_index == node->links_count)
+                     {
+                        // if so, then it's time to update this bot's path memory
+
+                        // reallocate its navlinks space for it to hold one navlink more
+                        node->links = (navlink_t *) realloc (node->links, (node->links_count + 1) * sizeof (navlink_t));
+                        if (node->links == NULL)
+                           TerminateOnError ("PlayerPostThink(): bot %s running out of memory\n", bots[bot_index].pPersonality->name); // bomb out on error
+
+                        // write the new navlink (destination + reachability)
+                        node->links[node->links_count].walkface = face;
+                        node->links[node->links_count].reachability = players[player_index].face_reachability;
+
+                        // if navigation debug mode is high, display both source and destination faces
+                        if (DebugLevel.navigation > 1)
+                        {
+                           UTIL_DrawWalkface (pListenserverEntity, node->links[node->links_count].walkface, 100, 255, 0, 0);
+                           UTIL_DrawWalkface (pListenserverEntity, node->walkface, 100, 0, 255, 0);
+                        }
+
+                        node->links_count++; // this node holds now one link more
+                     }
+                  }
+
+               }
+            }
+
+            players[player_index].pFaceAtFeet = face; // remember the new face this player stands on
+            players[player_index].face_reachability = REACHABILITY_NORMAL; // default reachability
+         }
+
+         // see if this client needs to dispatch sounds to the bot's ears
+         PlayClientSoundsForBots (pPlayer);
+
+         // and remember this player's entity variables states
+         players[player_index].prev_v = players[player_index].pEntity->v;
+      }
+   }
+
+   (*other_gFunctionTable.pfnPlayerPostThink) (pPlayer);
+}
+
+
+Note the above code comes directly from my version of RACC, which is a little bit more evolved than the RACC template.
+
+
+
+--------------------------------------------------
+02/25/03 at 10:57:32  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+Youre better optimising some of this ;D shove a variable in somewhere to hole VerticalVelocityOf (pPlayer) and VelocityOf(pPlayer) instead of redoing all these calculations to speed up the process. ;)
+
+--------------------------------------------------
+02/25/03 at 15:40:40  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+"Computation ?"
+
+float VerticalVelocityOf (entity_t *pEntity)
+{
+   if (IsNull (pEntity))
+      return (0);
+
+   return (pEntity->v.velocity.z);
+}
+
+speak about a complicated computation ;D
+
+Anyway, optimizations come after...
+
+
+--------------------------------------------------
+02/25/03 at 16:48:52  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+still, requires a measly comparison (yea not much but you can cut this down a lot) :) and the fact calling functions to get variables is also just slightly longer than retrieving a variable from local stack, am I right? ;D
+
+--------------------------------------------------
+02/25/03 at 18:45:24  Reply by: Gimli (sstephanoff@hotmail.com)
+--------------------------------------------------
+Ok Heres my first pathfinder lol its random but its all I could come up with. I looked at all that A* stuff and didnt get it...
+
+code:
+
+int BotFindNavNode(bot_t *pBot, float range)
+{
+      int randomlink = 0;
+      TraceResult tr;
+      vector v_middle = Vector(0,0,0);
+      pBot->BotLegs.current_node = NearestDelimiterOf(pBot->pEntity, pBot);
+
+      if( (pBot->BotLegs.current_node - OriginOf(pBot->pEntity)).Length() <= range)
+      {
+            
+                  randomlink = RandomInteger(0, pBot->pPersonality->PathMemory->links_count);
+                  for(int n = 0; n < pBot->pPersonality->PathMemory->links[randomlink].walkface->corner_count; n++)
+                  {
+                        v_middle = v_middle + pBot->pPersonality->PathMemory->links[randomlink].walkface->v_corners[n];
+                  }
+                  v_middle = v_middle / pBot->pPersonality->PathMemory->links[randomlink].walkface->corner_count;
+                  
+            
+
+            pBot->BotLegs.current_node = v_middle;
+      }
+      
+   return randomlink;
+}
+
+
+
+And heres where its implemented
+code:
+
+if(pBot->BotLegs.f_check_node_time <= CurrentTime())
+            {
+                  int nodeindex = BotFindNavNode(pBot, RandomInteger(300, 500));
+                  pBot->BotLegs.f_check_node_time = CurrentTime() + 6;
+                  DrawLine(pListenserverEntity, OriginOf(pBot->pEntity), pBot->BotLegs.current_node,8,200,0,50);
+                  BotSetIdealAngles(pBot, pBot->BotLegs.current_node - OriginOf (pBot->pEntity)) ;
+            }
+
+
+
+Now I know your thinking, "Jesus this guy is a genius in disguise." but I cant do any better for now...I'm still not understanding how to do A* because I dont know what to make the "objective."
+
+Any idea why I'm so stupid or any way to make my randomness smarter lol. I tryed making sure they are in the bots field of view so they kind of run straight but no.
+
+--------------------------------------------------
+03/02/03 at 19:05:37  Reply by: Gimli (sstephanoff@hotmail.com)
+--------------------------------------------------
+Anybody got some hints or tips for me at least?
+
+--------------------------------------------------
+03/02/03 at 20:25:51  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Excuse me Gimli, but I believe you understand neither what pathfinding is about nor how a pathfinder works.
+
+I suggest you forget the trial and error method and you start off by reading a lot. Start here :
+
+http://www.gamasutra.com/features/19970801/pathfinding.htm
+
+Have yourself an account on Gamasutra.com before viewing the page.
+
+There are a lot of tutorials on the net about navmeshes and pathfinding. Read them ; if you already did, you haven't understood so read them again.
+
+
+
+--------------------------------------------------
+03/02/03 at 21:35:07  Reply by: MrE (ezamudin@tm.net.my)
+--------------------------------------------------
+Here's a tutorial for the famous A* in simple english... It help me in understanding basic AStar concept (without any codes...)
+www.policyalmanac.org/games/aStarTutorial.htm 
+I don't know any other links that explain it better (well beside Brian Stout's that is).Hopes it helps.
+
+--------------------------------------------------
+03/04/03 at 14:24:41  Reply by: Gimli (sstephanoff@hotmail.com)
+--------------------------------------------------
+Ok let me try to explain a little better what my problems is. I understand how the A* idea works I'm just not getting a few things. What would be the objective you want them to run to. See in NS I understand make the marines run to a place the commander just said. But in cs what is there?  Run to enemy spawn points? Like does the links->walface point to nodes or branches of a node? See with waypoints I understand. Its a list find the closest one then run to it. But the whole node then links from the node then walfaces is confusing. 
+
+--------------------------------------------------
+03/04/03 at 16:05:19  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+QUOTE:
+See with waypoints I understand. Its a list find the closest one then run to it.
+
+
+
+That's where you are completely wrong.
+
+Now either you admit that running to the nearest waypoint (or walkface or whatever) just CANNOT WORK, you realize that all waypointed bots use PATHFINDERS, and then you really admit you might eventually better build a pathfinder too, and you actually READ about pathfinders (and not "just get the idea"), or else you stop wasting everyone's time here and try your little idea on your own, without wanting people to write the code for you, until the date where you'll finally understand it doesn't work.
+If redoing other people's mistakes is the only way for you to understand, well go on your way, what can I say ?
+
+[modified on 03/04/03 at 16:05:19]
+--------------------------------------------------
+03/04/03 at 16:49:45  Reply by: Gimli (sstephanoff@hotmail.com)
+--------------------------------------------------
+Sorry then I wont make another post till I have one built. I just wasnt getting the way to implement it. I'll figure it out after reading it another 10-20 times I guess.
+
+--------------------------------------------------
+03/05/03 at 05:19:07  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Sometimes it's better to create your own navigation system if you don't understand (or don't agree with) the way someone else has done things.
+
+There's lots of websites on the Internet that describe algorithms for navigation (mostly geared toward robots, but in many cases that works equally well for bots in a multiplayer game).  Do some searching using www.google.com, look on other game developement websites (like www.gamedev.net or www.flipcode.com) for some other examples, ideas, discussions, etc.
+
+botman
+
+--------------------------------------------------
+03/05/03 at 10:32:57  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+I have to apologize for my excessive reaction. Sorry for flaming.
+
+Gimli, you should not be using my template if you want to build a simple bot using a navigation system of yours. My template is focused on using a navmesh, so if you don't (or don't want to) understand what a navmesh is and how it works, you won't ever do anything good with it. Maybe botman's template would be better for you then. It has no pathfinder at all and uses simple algorithms for the bots to avoid walls. Look for it at botman's downloads page.
+
+Or if you want another totally waypointless bot which works not that bad, you might want to use this one: http://www.racc-ai.com/racc-preview.exe
+The source code is included so you can hack it.
+
+
+--------------------------------------------------
+03/05/03 at 17:34:29  Reply by: Gimli (sstephanoff@hotmail.com)
+--------------------------------------------------
+The thing is that I want to learn how to use it but still have no clue. The bsp info is what attracted me to your bot. I've been working on making the navigation for at least a month now without much real luck. I'll figure it out sooner or later but for now I'm having real trouble.
+
+--------------------------------------------------
+03/06/03 at 05:18:07  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+You might want to do some research on Navigation Meshes (or NavMesh).  There was a discussion here that I started about NavMeshes a few weeks ago.  Use the Search feature at the top of the forum.
+
+botman
+
+--------------------------------------------------
+03/25/03 at 16:59:18  Reply by: Gimli (sstephanoff@hotmail.com)
+--------------------------------------------------
+Ok I think I might be starting to understand this stuff. I staired at the loading and saving of the pathmemory. Ok If I'm right this should find a nav node in the bots field of view:
+code:
+
+for(int nodeindex = 0; nodeindex < map.walkfaces_count; nodeindex++)
+      {
+            for(int linkindex = 0; linkindex < pBot->pPersonality->PathMemory[nodeindex].links_count; linkindex++)
+            {
+                  for(int n = 0; n < pBot->pPersonality->PathMemory[nodeindex].links[linkindex].walkface->corner_count; n++)
+                  {
+                        v_middle = v_middle + pBot->pPersonality->PathMemory[nodeindex].links[linkindex].walkface->v_corners[n];
+                  }
+                  v_middle = v_middle / pBot->pPersonality->PathMemory[nodeindex].links[linkindex].walkface->corner_count;
+
+                  if(VectorIsInPlayerFOV(pBot->pEntity, v_middle))
+                  {
+                        pBot->BotLegs.current_node = v_middle;
+                        
+                  }
+                  else if(VectorIsInPlayerFOV(pBot->pEntity, DropAtHumanHeight(v_middle)))
+                  {
+                        pBot->BotLegs.current_node = DropAtHumanHeight(v_middle);
+                        
+                  }
+            }
+      }
+
+
+
+I saw this in the preview code but I dont know how I would stick this in the other code.
+code:
+
+pBot->pEdict->v.v_angle.z = 0; // reset roll to 0 (straight up and down)
+   pBot->pEdict->v.angles.x = 0;
+   pBot->pEdict->v.angles.y = UTIL_WrapAngle (pBot->pEdict->v.v_angle.y); // make body face eye's direction
+   pBot->pEdict->v.angles.z = 0;
+
+
+
+I see what it does it makes him look striaght before it checks his field of view.
+
+--------------------------------------------------
+03/25/03 at 19:13:30  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+How many times we'll have to tell you.
+
+Bot navigation has to be PLANNED.
+That's to say, before the bot even moves towards its first navnode, it must know ***ALL*** the path it wants to follow.
+That's the purpose of pathfinders.
+Once you get a path with your pathfinder (which path can be considered as an array of navnodes with node #0 being where the bot stands and node #final being where the bot wants to go), you know where to make your bot head up to.
+This means, when you know a path, you know WHICH ONE of the navnodes surrounding the bot, is the navnode for the bot to head up to.
+And once the bot will have reached this navnode, you will know as well WHICH ONE of the other navnodes surrounding the bot there, will be the NEXT navnode to head up the bot to.
+
+Else, there are PLENTY of navnodes surrounding the bot each time. If the bot doesn't know WHICH ONE to choose, your bots will run like shit. And that's exactly what you do. You want your bot to pick up the first node it finds. It just CAN'T WORK.
+
+So will you please BUILD A DAMN PATHFINDER.
+
+And optionally, you are misusing the navmesh. The bot passes from walkface to walkface by heading to the appropriate NAVLINK. Not by heading to the middle of the walkface.
+
+If you don't want to build a pathfinder, the navmesh is no use for you.
+Honestly. I suggest you forget completely your idea of working on my template, and that you do some easier stuff instead. For example, download botman's HPB_bot template #4 and try to improve the bots. That's where all we bot coders started. Do it for quite a time. Then move on bigger stuff, such as hacking the HPB_bot 2.1's Floyd pathfinder. My template was meant to be useful to those who already knew a little about game AI.
+
+
+--------------------------------------------------
+03/26/03 at 04:39:38  Reply by: Gimli (sstephanoff@hotmail.com)
+--------------------------------------------------
+Well I had no other troubles with implementing shooting and defusing/planting bombs and stuff. I just couldnt understand how you work all the different arrays in the paths. I just posted that code to show you I understand how to move through the arrays. Otherwise I never really had much trouble with botmans other than it not compiling :) hehe I am working on a pathfinder and I'm sorry I make it vague when showing you some of the code I figured out. lol and I'm sorry you think I'm such an idiot Pierre.
+
+--------------------------------------------------
+03/26/03 at 10:55:06  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+I don't think you're an idiot, I think you keep trying to start things by the wrong side, whatever we say.
+
+I missed your second question anyway: you wanted to know what's the relation between pEdict->v.angles and pEdict->v.v_angle.
+
+These two vector fields apply to player and monster entities only.
+pEdict->v.angles are the BODY angles of the model. The vector it represents points towards the "forward" direction from the body's point of view (i.e, the direction the body will move when pressing the forward key).
+pEdict->v.v_angle are the VIEW angles of the model. The vector it represents points towards the direction where the model's head is LOOKING AT. It may be different from the forward direction since you can have a player or a monster (such as a scientist) walking in a certain direction while turning its head to stare at the player.
+
+Since in a multiplayer game, players can't turn their head while not turning their body together, the pEdict->v.angles and pEdict->v.v_angle of players is always the same, no matter the situation. Hence in the bot code, I snap the body angles to the direction where the bot is staring at.
+
+

@@ -1,0 +1,41 @@
+--------------------------------------------------
+Subject: Podbot aim code?
+--------------------------------------------------
+09/05/03 at 00:50:46  Posted by: fatman (nvnam2001@yahoo.com)
+--------------------------------------------------
+the problem in podbot`s aim code is that, bot drag  its crosshair to its enemy too slowly, it "lock" its crosshair on its enemy but not correctly, i want to  improve PODbot aim code to make it better, 
+could anyone can point me the exactly code?, i am confusing between some function : botfaceposition(vector);botforcusenemy();botchooseaimdirection() and pBot->vlookat
+
+--------------------------------------------------
+09/05/03 at 07:21:01  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Rewrite it completely from the bottom up, that's IMO the best solution.
+
+General directions:
+
+- Most bots based off botman's HPB_bot, including PODBot, use the pEdict->v.idealpitch and pEdict->v.idealyaw entity variables to store the x and y components of their IDEAL aim vector, that's to say, the vector they WANT to look at, and to which they are always in the process of "moving their crosshair".
+
+- Based on this, all you have to do is to make the bots turn slightly towards that direction each frame ; just do it only ONCE per frame, preferably at the end, for example, before pfnRunPlayerMove() is called and the bot's thinking cycle terminates. IGNORE all other attempts to set the bot's pEdict->v.angles and pEdict->v.v_angle to another value. Just delete these lines whenever you find them. These variables are the BODY and HEAD angles the bot is CURRENTLY facing. They should be set only once per frame, as I said, at the end of the bot's thinking cycle.
+
+- Now it's up to you to determine a good math algorithm that will make the bots' turning look human-like. You could start off simple, like this one, and improve it later. Here's a simple aiming algorithm, in pseudocode :
+code:
+
+   Xdiff = (ideal vertical angle - current vertical angle) in degrees
+   Ydiff = (ideal horizontal angle - current horizontal angle) in degrees
+
+   Bot's New Current Vertical Angle = Bot's Previous Current Vertical Angle + (Xdiff / 2)
+   Bot's New Current Horizontal Angle = Bot's Previous Current Horizontal Angle + (Ydiff / 2)
+
+
+   This VERY simple code will make your bot steady its aim over time, but foremost it's simple enough for you to get an idea of what an aiming algorithm should be. It is nevertheless way better than the one in POD-bot. But it goes without saying that it should be improved if you want to match the current "quality" of most bot's aiming algorithms, be it JoeBot, mEAn's admin mod, the BotAim plugin or whatever.
+
+
+--------------------------------------------------
+09/05/03 at 22:11:22  Reply by: fatman (nvnam2001@yahoo.com)
+--------------------------------------------------
+As u say , the problem in podbot`s aim code is 
+the pEdict->v.idealpitch and pEdict->v.idealyaw
+ , the vector they WANT to look at, and my target is realizing the IDEAL vector
+thank Pierre-Marie Baty ,thank for GOD bearing u in this world and certainly in this forum :D
+
+

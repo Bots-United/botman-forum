@@ -1,0 +1,236 @@
+--------------------------------------------------
+Subject: FAO Botman - re using your code
+--------------------------------------------------
+02/19/01 at 13:28:19  Posted by: Spartan (john@crickett.co.uk)
+--------------------------------------------------
+Botman,
+
+Ok just d/led you template #2 to have a look at using it for a DoD bot, but theres no readme etc (or did I miss it)?
+
+So whats the restrictions on me using the source, and is there a simple guide somewhere to using it, or do I have to read the code and run doxygen over it?
+
+Cheers, S
+
+--------------------------------------------------
+02/19/01 at 16:08:41  Reply by: bigjesus (holybigjesus@hotmail.com)
+--------------------------------------------------
+Ahh yes if you havent read botmans mod faq you need to there isnt a readme that I know of and what else am I forgeting lol oh ya have a nice day :)
+
+--------------------------------------------------
+02/20/01 at 01:58:33  Reply by: William (william@botepidemic.com)
+--------------------------------------------------
+Hi Spartan,
+
+(nick don't change much, do they?)
+
+No restrictions on using the source, except for credits where credits are due.
+
+You'll probably more get info from browsing the message boards for problems related to the template and TFC, CS, whatever mod, than reading the template documentation.
+
+The ugly thing about this kind of AI development is the time spent on replicating the decisions and game rules within the mod.
+
+William
+
+--------------------------------------------------
+02/20/01 at 02:09:40  Reply by: Spartan (john@crickett.co.uk)
+--------------------------------------------------
+Hi William,
+
+Its been a while :-) heh if I used a different nick you wouldnt know who I was.
+
+Anyway DoD really perked my interest, I rather like the beach maps and fancy seeing them with 20+ soldiers storming out of the landing craft. So natuarally I'll be focusing on them to start with.
+
+What I was wondering is how the dlls work together, exactly how much of the game logic do I need to copy (or beg from the makers of the mod)?
+
+How much of valves stuff do I need to reproduce? 
+
+I did have a glance over the FAQ but didnt seem to see much about this...
+
+Regards, S
+
+--------------------------------------------------
+02/20/01 at 02:33:18  Reply by: William (william@botepidemic.com)
+--------------------------------------------------
+Botman's template generates a wrapper .dll, intercepting and forwarding calls (from the executable) to the mod's dll. In other words, you don't have to have the mod source code, but you _do_ need to figure out the messages, protocols (especially delays between commands) and states used in the mod dll.
+
+There are some facilities in hl and botman's template to capture and interpret messages to the mod dll. 
+However, figuring out the specific "special entities" may be troublesome. For example, the smoke cloud from the CS smoke grenade doesn't seem to visibile at all in the protocol.
+
+Most mod's use similar designs (hl based) to deal with respawns, player connects, etc. That's why I suggested reading about the problems that people have with different mods.
+
+Your taste for beach assaults is appreciated :)
+
+William
+
+--------------------------------------------------
+02/20/01 at 04:48:48  Reply by: Spartan (john@crickett.co.uk)
+--------------------------------------------------
+Right, sounds like input from the author of Blitz/DoD would get help, and get a lot of the dull bits out of the way.
+
+Ok heres some thoughts so far:
+
+Navigation will be based on the ideas/code I had for Oak II, but with much improved laying of waypoints, and a way for a player to edit, add or delete waypoints and their attributes in game, via a menu.
+
+The tactical side will borrow heavily on the work/ideas published by William on his CGF site, along with my own thoughts/addaptations for the game style.
+
+I'm hoping to make it all as open and portable as possible, so path files will be stored in plain text (zipped if too large), hmm, xml springs to mind, I'll have to see if the Xerces parser is easy enough to use to read and write documents. Additionally it'll be open source.
+
+Any snippets of code/pointers for doing the menus/hl/DoD stuff will be much appreciated, I'd rather be doing the AI :-)
+
+Regards, S
+
+--------------------------------------------------
+02/20/01 at 05:15:42  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+As William said, the use of the HPB bot template source is pretty much unrestricted as long as you give some credit to me in the ReadMe.txt, Website credits, etc.
+
+As far as the code goes, source files in the dlls directory is stuff that I changed or created from the Valve Standard SDK.  It would be a very good idea to download the Standard SDK so that you have an understanding of how things work (like weapons, player movement, lifts, water, etc.).  Most of the Quake I/II knowledge will translate to Half-Life with little problems.
+
+The .h files are almost all verbatim from the Standard SDK source (they still have the Valve header comments, etc.).  All of the bot related stuff is in .cpp files beggining with "bot" so "bot.cpp" has the bot create and bot think functions.  "bot_navigate.cpp" has the bot navigation code.  "bot_combat.cpp" has the bot combat code, etc.  All of the other .cpp files (with the execption of util.cpp) are the "glue" needed to link the bot .dll between the Half-Life engine and the MOD that you are adding bots to.
+
+Also, as William said, the biggest problems is understanding how things are stored in the MOD and what is send back and forth between the server and the clients.  There is some debug code in "engine.cpp" that will allow you to capture network messages between server and client by using the console command "debug_engine".  This will turn on a global variable that causes all network messages to be logged to a file called "bot.txt" in the Half-Life directory.  You can look though this file to find messages being sent when something happens (like when a grenade is thrown, or when a text message is sent to a player, etc.).
+
+Reading through the source code will help you understand how the bots "fake out" the MOD dll into believing they are just like normal human clients.  One of the nice things is that there are structures in the engine subdirectory that can't be modified by the MOD (since the engine shares these include files when it is being built).  Look at the entvars_t structure in the progdefs.h file.  This is the "base entity" structure that the Half-Life engine uses.  Stuff like health, armor, origin, velocity, body angles (angles), view angles (v_angle), etc. are all stored in this structure.  This structure is pointed to by a class variable called "pev" in the SDK and is pointed to by "pEdict->v." in the HPB bot source code.
+
+I have often thought about taking some time off of the HPB bot development to create a detailed document describing a lot of the code contained in the HPB bot.  This would help people get started but it won't tell you anything about how a specific MOD does a specific effect (like smoke bombs or building sentry guns, etc.).
+
+botman
+
+--------------------------------------------------
+02/20/01 at 14:19:56  Reply by: Spartan (john@crickett.co.uk)
+--------------------------------------------------
+Cheers chaps, however compiling the template code with no changes results in hl crashing. Having a quick look over things the most suspicious thing seems to be a lack of exported symbols in the dll (using dumpbin.exe). Does that sound reasonable? Hmm it'll probably teach me not to use Visual Studio.NET, tch!
+
+S
+
+--------------------------------------------------
+02/21/01 at 01:23:27  Reply by: William (william@botepidemic.com)
+--------------------------------------------------
+wrt VS .NET Beta 1:
+Did you notice any other relevant changes? (Have you been able to compile and run Q2 sources)?
+Are you able to run VS .NET side by side with VS6?
+
+I installed VS .Net on my back up system, and ran into some interesting compiler errors. The compiler front end seems to have become more strict (typedef'd types not necessarily equal the types they've been typedef'd to), and it seems to be harder to get the compiler to identify the correct instantiation of the std::min and std::max templates.
+
+Anyway, thanks for the warning :)
+
+William
+
+--------------------------------------------------
+02/21/01 at 04:29:04  Reply by: Spartan (john@crickett.co.uk)
+--------------------------------------------------
+William,
+
+No I've only just got around to reinstalling it (new machine), and it's the first time I've used Visual C++ with it (spent most of my time looking at C#, which seem pretty good bar the obvious mistakes in the language which are the same as Java's).
+
+Anyway I was being an idiot partly, dumpbin /export showed a good number of exports, although their is one with C++ linkage, something begining like "SUB_", the rest are C linkage.
+
+Heh Dustin how about some input, you've done this for DoD already havent you?
+
+Cheers, S
+
+--------------------------------------------------
+02/21/01 at 05:04:38  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+There is a bug in the template code with the welcome message displayed when the listenserver client connects to the server.  See the middle of this thread...
+
+http://dynamic.gamespy.com/~botman/yabb/YaBB.pl?board=2&action=display&num=898
+
+I suppose I should correct that bug and post a new version of the template source code.
+
+botman
+
+--------------------------------------------------
+02/21/01 at 13:50:29  Reply by: Spartan (john@crickett.co.uk)
+--------------------------------------------------
+Botman, was that the right thread? I couldnt see what might relate to my problem?
+
+Perhaps I should have given a little more info:
+
+I've compiled your template (no changes), and placed the dll in the DoD\dlls dir, then modified the liblist.gam file to point to the new dll. I start Dod and through the menus start a lan game, it gets as far as initialising sound: EAX Started (or something), i.e. not actually into the map, and crashes.
+
+Regards, S
+
+--------------------------------------------------
+02/21/01 at 18:57:19  Reply by: SilentSno (dustin@frostedsoftware.com)
+--------------------------------------------------
+Spartan, go through each code that was modified and created by botman. Go through and whereever it says somethink for TFC or VALVE copy that exactly but change it to DOD. Then you should be able to run the game.
+
+Dustin
+
+--------------------------------------------------
+02/22/01 at 05:05:40  Reply by: theimann (tobias.heimann@cl.cam.ac.uk)
+--------------------------------------------------
+Spartan: The problem is that the HPB-bot natively doesn't support DOD. You have to write the proper functions for handling special MOD-actions (as Dustin pointed out) and include special DOD-entities (if there are any). However, before getting at this, I'd try to compile the bot and see if it works in HL, TFC, CS or any other supported MOD - just to be sure it actually works. As botman said, there are a couple of bugs in Template2 that you should fix first before trying to port it to any other MOD.
+
+Tobias
+
+
+--------------------------------------------------
+02/22/01 at 05:47:26  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+Spartan, your crashing problem may be due to DoD function normally exported from the DoD DLL not being exported from the HPB bot template source code.  All of the non-C++ linkage functions that are exported from the DoD DLL need to be added to the linkfunc.cpp file and the HPB bot template needs to be rebuilt.
+
+You can use "dumpbin /exports <filename.dll>" and redirect the output to a text file then add the non-name mangled functions to linkfunc.cpp similar to the ones that are in there.  Most of the functions will already be in linkfunc.cpp but many will be specific to DoD and won't exist in the linkfunc.cpp file.
+
+BTW, what error message do you get (if any) when Half-Life crashes?
+
+botman
+
+--------------------------------------------------
+02/22/01 at 14:31:49  Reply by: Spartan (john@crickett.co.uk)
+--------------------------------------------------
+Botman:
+
+HL has caused and error in <unknown>
+HL will now close.
+
+Heh life would be so easy if Dustin could be persuaded to post the changes he made to your template as part of template #3 :-)
+
+In the meantime I guess I've got to go through and start changing things as per his last post.
+
+Cheers guys, S
+
+--------------------------------------------------
+02/22/01 at 16:49:27  Reply by: SilentSno (dustin@frostedsoftware.com)
+--------------------------------------------------
+We will see, depends on how much free time I have. Some suggestions:
+To check entities search for botman's exports.c program and compile it, and use it to export the entities from the dod hl.dll file.
+
+SilentSno
+
+--------------------------------------------------
+02/23/01 at 05:00:25  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+Spartan's already got Microsoft's dumpbin which does the same thing as my exports.c file.
+
+botman
+
+--------------------------------------------------
+02/24/01 at 19:03:11  Reply by: eLiTe (ali@elitegamer.fsnet.co.uk)
+--------------------------------------------------
+Hey cool is Spartan a veteran bot maker like William? He sounded like he was going to add in a lot of complicated stuff, maybe he could leave in the support for other mods in his DLL?? The open source should be VERY interesting :P     Sounds like it will have a lot of advanced AI, and that's just the sort of thing that I don't know yet :D     But I'm happy with the way my bot is going at the moment the AI stuff is pretty simple at the moment, I've not got aound to the more complex things yet :D
+
+--------------------------------------------------
+02/25/01 at 01:36:41  Reply by: William (william@botepidemic.com)
+--------------------------------------------------
+Spartan indeed is a veteran. He built the Oak bot for Quake1, and worked on OakII for Q2 (never released, AFAIK).
+
+William
+
+
+--------------------------------------------------
+02/27/01 at 23:19:53  Reply by: Spartan (john@crickett.co.uk)
+--------------------------------------------------
+Alistair,
+
+I've got to find time to get the bot going in DoD first, but hopefully it'll manage to be half way decent :-)
+
+William, 
+
+Oak II was released several times, and also in combinations with Ace and Eraser. Plus a brief Rocket Arena version...
+
+Oak 3 was the one that never saw the light of day, as Q3 already had bots, and I don't like the idea of working in carmacks cut down shitty languages, I'd prefer to have the full "power" of C++.
+
+S
+

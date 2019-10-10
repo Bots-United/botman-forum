@@ -1,0 +1,132 @@
+--------------------------------------------------
+Subject: Prob with teamplay and sdk 2.2
+--------------------------------------------------
+08/05/02 at 13:52:11  Posted by: drporka (drporka@zeelandnet.nl)
+--------------------------------------------------
+i readed a tut (http://hlpp.telefragged.com/tuts/grpack1.htm)
+about teamplaying. now when i compile the whole thing i got an pointer error (i think).
+
+F:\Project\source\Source Code\dlls\player.cpp(2667) : error C2039: 'm_szTeamName' : is not a member of 'CBaseEntity'
+        F:\Project\source\Source Code\dlls\cbase.h(136) : see declaration of 'CBaseEntity'
+
+now i am really bad @ pointer so i just want to ask if someone can help me out. it all looks good (pointed the prob with "->" whitout the quotes)in this routine but there still a prob. maybe some can help me out ? would be really cool ! tnx.
+ 
+
+edict_t *EntSelectTeamSpawnPoint( CBaseEntity *pPlayer )
+{
+      CBaseEntity *pSpot;
+      edict_t            *player;
+
+      player = pPlayer->edict();
+
+      CBasePlayer *pBPlayer = (CBasePlayer *)pPlayer;
+
+      pSpot = g_pLastSpawn;
+
+      char *szTempNextTeam = NULL;
+
+    switch( pBPlayer->m_iNextTeam )            // should only ever be 0, 1, or 2 by now
+      {
+->      case 0: szTempNextTeam = pPlayer->m_szTeamName;
+            break;
+      case 1: szTempNextTeam = TEAM1;
+            break;
+      case 2: szTempNextTeam = TEAM2;
+            break;
+      }
+
+      // Randomize the start spot
+      for ( int i = RANDOM_LONG(1,5); i > 0; i-- )
+      {
+            if ( FStrEq( szTempNextTeam, TEAM1 ) )
+                  pSpot = UTIL_FindEntityByClassname( pSpot, "info_player_team1" );
+            else
+                  pSpot = UTIL_FindEntityByClassname( pSpot, "info_player_team2" );
+      }
+
+      if ( FNullEnt( pSpot ) )  // skip over the null point
+      {
+            if ( FStrEq( szTempNextTeam, TEAM1 ) )
+                  pSpot = UTIL_FindEntityByClassname( pSpot, "info_player_team1" );
+            else
+                  pSpot = UTIL_FindEntityByClassname( pSpot, "info_player_team2" );
+      }
+
+      CBaseEntity *pFirstSpot = pSpot;
+
+      do
+      {
+            if ( pSpot )
+            {
+                  // check if pSpot is valid
+                  if ( IsSpawnPointValid( pPlayer, pSpot ) )
+                  {
+                        if ( pSpot->pev->origin == Vector( 0, 0, 0 ) )
+                        {
+                              if ( FStrEq( szTempNextTeam, TEAM1 ) )
+                                    pSpot = UTIL_FindEntityByClassname( pSpot, "info_player_team1" );
+                              else
+                                    pSpot = UTIL_FindEntityByClassname( pSpot, "info_player_team2" );
+                              continue;
+                        }
+                              // if so, go to pSpot
+                        goto ReturnTeamSpot;
+                  }
+            }
+            // increment pSpot
+
+            if ( FStrEq( szTempNextTeam, TEAM1 ) )
+                  pSpot = UTIL_FindEntityByClassname( pSpot, "info_player_team1" );
+            else
+                  pSpot = UTIL_FindEntityByClassname( pSpot, "info_player_team2" );
+
+      } while ( pSpot != pFirstSpot ); // loop if we're not back to the start
+            // we haven't found a place to spawn yet,  so kill any guy at the first spawn point and spawn there
+      if ( !FNullEnt( pSpot ) )
+      {
+            CBaseEntity *ent = NULL;
+            while ( (ent = UTIL_FindEntityInSphere( ent, pSpot->pev->origin, 128 )) != NULL )
+            {
+                  // if ent is a client, kill em (unless they are ourselves)
+                  if ( ent->IsPlayer() && !(ent->edict() == player) )
+                        ent->TakeDamage( VARS(INDEXENT(0)), VARS(INDEXENT(0)), 300, DMG_GENERIC );
+            }
+            goto ReturnTeamSpot;
+      }
+
+ReturnTeamSpot:
+      if ( FNullEnt( pSpot ) )
+      {
+            ALERT(at_error, "PutClientInServer: no player/team start on level");
+            return INDEXENT(0);
+      }
+
+      g_pLastSpawn = pSpot;
+      return pSpot->edict();
+}
+
+--------------------------------------------------
+08/05/02 at 16:24:31  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+You have this...
+
+case 0: szTempNextTeam = pPlayer->m_szTeamName
+
+...was it supposed to be this...
+
+case 0: szTempNextTeam = pBPlayer->m_szTeamName
+
+???
+
+pPlayer is a bad choice of a variable name.  It should have been something like pEntity to keep it from getting confused with pBPlayer.
+
+botman
+
+--------------------------------------------------
+08/06/02 at 00:05:55  Reply by: drporka (drporka@zeelandnet.nl)
+--------------------------------------------------
+hmmmm works, but when you join you will get automatacli join the team with the fewest players (good). but you only get an hud and no weapons :s
+and auto join crashes back to the desktop :S
+confusing...
+
+[modified on 08/06/02 at 00:05:55]

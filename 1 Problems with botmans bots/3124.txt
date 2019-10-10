@@ -1,0 +1,100 @@
+--------------------------------------------------
+Subject: Bots does not start
+--------------------------------------------------
+05/21/02 at 02:11:02  Posted by: FasterMaster (andre.feld@web.de)
+--------------------------------------------------
+Hi all,
+
+I installed HPB-bot 2.1a for TFC on a Linux dedicated server with HLDS 3.1.0.9 (build 2020).
+
+First I tried in combination with metamod-1.12/adminmod-2.50.26, i.e. including HPB_bot by adding the server start parameter "+localinfo gamedll dlls/HPB_bot_i486.so" and I tried it also by creating the file metagame.ini containing the line "dlls/HPB_bot_i486.so" (without quotes of course).
+It does not work, because the bots are not started automatically. (I used the standard configuration file HPB_bot.cfg with uncommented "min_bots 2" and "max_bots 6"). 
+But I am able to start bots manually by the console command "HPB_bot addbot".
+
+Then I removed all metamod plugins, which means I had only metamod and HPB_bot. I tried also both combinations of starting HPB_bot (+localinfo ... / metagame.ini), but the same problem. The bots did not start automatically, but I was able to start them manually.
+
+In all these situations the default settings in HPB_bot.cfg were not considered by HPB_bot (e.g. min_bots, max_bots, etc.) Probably the HPB_bot.cfg was not read by HPB_bot_i486.so?
+
+Then I removed also metamod, i.e. using the default liblist.gam from HPB_bot, but with the same problem as mentioned above: Boty can only be started manually.
+
+What can cause this problem? The HPB_bot.cfg seems not to be executed at all.
+
+By inserting the line "HPB_bot addbot" in my server.cfg, one bot starts automatically, but i can not start more then one bot in this way.
+
+Any help is very much appreciated.
+
+Regards
+
+    FasterMaster
+
+
+--------------------------------------------------
+05/21/02 at 04:20:56  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+You didn't mention if you ran the HPB_bot/tfc/Install script or not.  If you haven't done this, you will need to do this to place all the HPB bot files in the proper directories.  (I wasn't sure if the HPB_bot.cfg file you were editing was in the tfc directory or in the HPB_bot directory.  If it's in the HPB_bot directory, that won't work).
+
+botman
+
+--------------------------------------------------
+05/21/02 at 05:27:59  Reply by: FasterMaster (andre.feld@web.de)
+--------------------------------------------------
+I edited the corrct file and meanwhile I found the problem:
+
+I started the server with the parameter 
+  
+    +exec autoexec.cfg
+
+But this makes the server executing the autoexec.cfg twice, because the automatically loads and executed this file, I do not have to specify this at the commandline.
+
+But then I detected another problem:
+
+The last line in my autoexec.cfg is
+
+     map <mapname>
+
+If mapname has no waypoint file (e.g. avanti) my server crashes with the error:
+
+Creating HPB bot...
+ERROR:  PutClientInServer: no info_player_start on levelL 05/21/2002 - 14:37:27: [META] (debug:3) Calling HPB_bot_i486.so:Sys_Error()
+L 05/21/2002 - 14:37:27: FATAL ERROR (shutting down): ERROR:  PutClientInServer: no info_player_start on level
+FATAL ERROR (shutting down): ERROR:  PutClientInServer: no info_player_start on level
+
+If the <mapname> has a waypoint file (e.g. 2fort) the server starts correctly and spawns bots and I also can then change to maps without waypoint file (e.g. avanti). And then the bots will also be spawned correctly.
+
+Summary: The first map at server start has to be a map with waypoint file? 
+
+Is that a known limitation or a misconfiguration of my server?
+
+Regards
+
+    Andre
+
+--------------------------------------------------
+05/21/02 at 09:01:41  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+It looks like you have something else misconfigured.  The HPB bot waypoints files are not required (they will be used if they are found, but if they don't exist they won't cause the game to crash).
+
+"info_player_start" is used in single player maps.  TFC uses "info_player_teamspawn" for spawn locations.  I'm not sure what would be causing the problems with the avanti map.  You might want to try reinstalling TFC to see if that fixes the problem.
+
+Also, try removing the "map" command from autoexec.cfg and put it on the command line "-map avanti" and see if that helps.
+
+botman
+
+
+--------------------------------------------------
+05/21/02 at 10:03:51  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+hmmm it's "+map avanti" instead, botman :D
+
+--------------------------------------------------
+11/08/02 at 13:52:26  Reply by: manta_rai (steipe@hotmail.com)
+--------------------------------------------------
+I'm having the exact same problem. Everything is working and the server says it loads the wayfile, however, only 1 bot starts in TFC. I'm also running halfd, adminmod, and HPB2.1 
+
+No min bots set and max bots is set 10 less then maxplayers. I also have the command line in halfd set to +exec autoexec.cfg +exec HPB_bot.cfg
+
+Any ideas at all? This is getting frustrating. 
+
+Thx
+
+

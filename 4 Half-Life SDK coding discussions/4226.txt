@@ -1,0 +1,144 @@
+--------------------------------------------------
+Subject: Not recognizing client commands...
+--------------------------------------------------
+03/19/03 at 14:21:37  Posted by: Lazer (lazer@devin-afshin.com)
+--------------------------------------------------
+in my teamplay_gamerules.h:
+
+class CHalfLifeTeamplay : public CHalfLifeMultiplay
+{
+public:
+      CHalfLifeTeamplay();
+
+      virtual BOOL ClientCommand( CBasePlayer *pPlayer, const char *pcmd );
+etc....
+
+in my teamplay_gamerules.cpp:
+
+BOOL CHalfLifeTeamplay::ClientCommand( CBasePlayer *pPlayer, const char *pcmd)
+{
+
+      if ( FStrEq( pcmd, "menuselect" ) )
+      {
+            if ( CMD_ARGC() < 2 )
+                  return TRUE;
+
+            int slot = atoi( CMD_ARGV(1) );
+            if(pPlayer->m_iMenu == 1)
+            {
+                  switch(slot)
+                  {
+                        case 1:
+                        if(pPlayer->m_iMoneyAmount <= 199)
+                              return TRUE;
+                              pPlayer->GiveNamedItem( "weapon_froggun" );
+                              pPlayer->m_iMoneyAmount -= 200;
+                              break;
+                        case 2:
+                        if(pPlayer->m_iMoneyAmount <= 399)
+                              return TRUE;
+                              pPlayer->GiveNamedItem( "weapon_scout" );
+                              pPlayer->m_iMoneyAmount -= 400;
+                              break;
+                        case 3:
+                        if(pPlayer->m_iMoneyAmount <= 599)
+                              return TRUE;
+                              pPlayer->GiveNamedItem( "weapon_minigun" );
+                              pPlayer->m_iMoneyAmount -= 600;
+                              break;
+                        case 4:
+                        if(pPlayer->m_iMoneyAmount <= 799)
+                              return TRUE;
+                              pPlayer->GiveNamedItem( "weapon_railgun" );
+                              pPlayer->m_iMoneyAmount -= 800;
+                              break;
+                        case 0:
+                              if(pPlayer->m_iMoneyAmount <= 999)
+                              return TRUE;
+                              break;
+                        }
+                  }
+                  return TRUE;
+      }
+      
+      return FALSE;
+}
+
+in my client.cpp under the clientcommand procedure:
+
+      else if ( g_pGameRules->ClientCommand( GetClassPtr((CBasePlayer *)pev), pcmd ) )
+      {
+            // MenuSelect returns true only if the command is properly handled,  so don't print a warning
+      }
+
+Most of that stuff is default's except for the buy commands. The problem is, when I try and have it read any command in the BOOL clientcommand, it always returns it false, even with the menuselects.
+
+[modified on 03/19/03 at 14:21:37]
+--------------------------------------------------
+03/19/03 at 14:23:13  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Are you playing a 'teamplay' MOD?
+
+The CHalfLifeTeamplay object is only created if you are in 'teamplay' mode (i.e. if you MOD is not team based, changing stuff in CHalfLifeTeamplay won't do anything for you).
+
+botman
+
+--------------------------------------------------
+03/19/03 at 17:25:30  Reply by: Lazer (lazer@devin-afshin.com)
+--------------------------------------------------
+thanks got it... just one other thing:
+
+                        if(GetClassPtr((CBasePlayer *)pev)->m_iMoneyAmount <= 199)
+                        {
+                              GetClassPtr((CBasePlayer *)pev)->GiveNamedItem( "weapon_froggun" );
+                              GetClassPtr((CBasePlayer *)pev)->m_iMoneyAmount -= 200;
+                              GetClassPtr((CBasePlayer *)pev)->m_iMenu = 0;
+                              break;
+                        }
+                        else
+                        {
+                              ClientPrint(pev, HUD_PRINTCENTER, "Not enough money!\n");
+                              GetClassPtr((CBasePlayer *)pev)->m_iMenu = 0;
+                              break;
+                        }
+I use that to check to see if they have enough money to buy something and if they don't its supposed to tell them... I don't see it saying anything though.
+
+[modified on 03/19/03 at 17:25:30]
+--------------------------------------------------
+03/20/03 at 05:11:26  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+I think your compare logic is backwards.  You are checking to see if they have LESS than 199 and then taking away 200 (leaving them with -1 if they had 199 to begin with).
+
+Change your '<= 199' to '>= 200'.
+
+botman
+
+--------------------------------------------------
+03/20/03 at 11:46:57  Reply by: Lazer (lazer@devin-afshin.com)
+--------------------------------------------------
+That's not the problem, my problem is that I can't get the clientprint to say anything to me when I'm lacking money...
+
+--------------------------------------------------
+03/20/03 at 13:37:32  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+You miss my point.
+
+Because of the bug in your logic, if you have less than 199 then you won't get a message because of your code.
+
+With your code as it is, the only way you should get the message is if you have 200 or more in your money amount when calling that function.
+
+Fix your logic bug, or test it using more than 200 in the money amount.
+
+botman
+
+--------------------------------------------------
+03/20/03 at 15:01:27  Reply by: Lazer (lazer@devin-afshin.com)
+--------------------------------------------------
+I did, but still no messages...
+
+--------------------------------------------------
+03/20/03 at 16:31:23  Reply by: Lazer (lazer@devin-afshin.com)
+--------------------------------------------------
+Thanks, got it working.
+
+[modified on 03/20/03 at 16:31:23]

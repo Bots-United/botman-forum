@@ -1,0 +1,86 @@
+--------------------------------------------------
+Subject: Effective or stupid?
+--------------------------------------------------
+01/08/01 at 10:58:00  Posted by: Suikun (Phoenix.Tschache@t-online.de)
+--------------------------------------------------
+I worked on a bot for some time and - to make it somehow unique - I developed a new (?) navigation system based on zones. That means, that you define four point and so create a rectangle, the bot moves in. Each zone has its own properties, like "build a sg here" "belongs to team x" and so on. It works all right and the bots dont move that static and walk properly around the map (yay), but I doubt, whether this system is effective and really needed for making the bot move more dynamic, or is it just my urge to make something own as it's real pain to map a level having to set four points instead of one.
+
+--------------------------------------------------
+01/08/01 at 11:35:49  Reply by: ARES (j.sdubbelboer@freeler.nl)
+--------------------------------------------------
+Can you send me the dll. I wand to take a look at how the bots move. I'm interested in other moving systems for bots.
+
+--------------------------------------------------
+01/08/01 at 13:16:03  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+I would image you would get similar results by having a single point and a radius of a circle instead of 4 points to mark off a square.  As long as the radius is large enough to overlap other circles you would have zones that "touch" each other.  The bot could vary the distance from the center of this "zone" as they navigate and it would give the same effect.  The problem is that in tight areas (like on narrow walkways) you would want the radius of the circle to be fairly small to keep the bots from falling off the edge.
+
+botman
+
+--------------------------------------------------
+01/09/01 at 01:24:09  Reply by: theimann (theimann@stud.fh-heilbronn.de)
+--------------------------------------------------
+What's the size of your zones? If they are big enough you could e.g. map a long narrow walkway to a single zone which is better than having a bunch of overlapping cells (less waypoints/-areas). Nevertheless I must admit that I'm using the cell-system (as described by Botman) as well and am quite happy with it. How complex are your calculations to determine if the bot is within a zone and where to move to get to the next zone?
+
+Tobias
+
+
+--------------------------------------------------
+01/09/01 at 04:40:48  Reply by: Suikun (Phoenix.Tschache@t-online.de)
+--------------------------------------------------
+I first excluded the idea with circles, because the bots could get stuck very fast and some corners wouldn't be covered. The disadvantage of my system is, that its hard to map a weird looking area (many corners and so on).
+The calculations are not that hard. I just take the extreme points of a zone, this means the highest and lowest vectors and check, wether the bot is inside.
+In a zone you create "connections", simply a line. The bot chooses a point on that line and moves there; this way it gets from on zone to another.
+The zones dont have a fixed size, they can be just 100 or 1000 pixels long and high. It looks cool while mapping, when you see all that blue, green and red lines :).
+The code is somehow...very...annoying, but that's because it's my first large (that means, longer than 50 lines of code :) ) C++ project...I also deleted every (!) waypoint related functions and wrote it all again to fit my needs.
+
+
+
+--------------------------------------------------
+01/09/01 at 05:46:59  Reply by: theimann (theimann@stud.fh-heilbronn.de)
+--------------------------------------------------
+> I just take the extreme points of a zone, this means the highest and lowest vectors and check, wether the bot is inside.
+
+For me this sounds like:
+Vector min=..., max=...;
+if ((bot.x<max.x) && (bot.x>min.x) && (bot.y<max.y) && ... )
+This only works for quads with all sides parallel to the coordinate system axes. Be aware that general testing if a point is within a volume is much more complicated: A method used in 3D-clipping is to calculate the dotproduct for the point and all normals of the planes making up the volume and check if all results are >0 (or <0, depends on your normals). Search the net for frustrum-clipping if you are interested in details.
+Regarding your connection-method: how do you determine the point on the line that the bot is going to move to?
+But apart from the critics: I think you should stick with your zones, the system certainly has a big potential. Positive that you wrote everything from scratch, there are too many standard-waypoint-navigation-systems... Innovation lacks!
+
+Tobias
+
+--------------------------------------------------
+01/09/01 at 06:17:18  Reply by: Suikun (Phoenix.Tschache@t-online.de)
+--------------------------------------------------
+Well, I was unable to use polygons as zones, so I indeed used only blocks with parallel lines. Because of this it's very hard to map some areas with many corners and non-90°-angles, but there are also some possibilities, a simply dont map them and set the connection in a far-away zone.
+To the connections:
+They also are simple lines. As a property it is saved, which value is constant (x, y or z) and so I simply take a random value (not that random, depends on the bots distance to the line).
+
+I always wanted to use polygonal blocks as zones, but I didn't know how to find out, whether the bot is inside.
+
+--------------------------------------------------
+01/09/01 at 06:42:22  Reply by: William (william@botepidemic.com)
+--------------------------------------------------
+Definitely not stupid, but I'm not that sure whether it is effective to tackle this problem as your first big programming project.
+
+Nevertheless, here's some additional info:
++ in "Game Programming Gems", M. Deloura (ed.), Charles River Media, 2000, Greg Snook contributes a chapter on ""Simplified 3D Movement and Pathfinding Using Navigation Meshes". 
+Greg uses 'arbitrary sized polygons' (actually resulting from map compilation for rendering purposes) for navigation purposes.
+Though the GPG book ain't cheap, it is well worth it's money, especially if you like to delve deeper in game programming.
+
+Primarily directed at (US Army/MC tactical) simulators, Doug Reece of the IST worked out pros and cons for various terrain representations in the following paper:
+Reece, D., Krauss, M., Dumanoir, P., "Tactical Movement Planning for Individual Combatants", in Proceedings of the 9th Conference on Computer Generated Forces and Behavioral Representation, 2000. It's available on-line here (be sure to reconstruct the link): http://www.sisostds.org/cgf-br/9th/scripts/user_Paper_info.cfm?&client=9THCGF&Paper_Num=9TH-CGF-045&page=view_papers_by_papernum.cfm&process=Papers
+
+There should be plenty of robotics navigation research that also uses a cell/zone based approach to navigation.
+
+Note that you can combine way points and zones in various ways. Botman already suggested: 1 zone ~ 1 waypoint, but you can also think of zones as consisting of multiple waypoints (which is what I'm doing).
+
+Games that use a zone approach include: Quake3 (the area based approaches by MrElusive / John Cash) does something similar. Games such as Unreal and the Rainbow Six series use zones for other purposes, and in combination with waypoints.
+
+IMO, an area/zone based approach doesn't offer big advantages over waypoints, except for being better aligned with the game geometry. You'd need less data if you could share geometry, and automatic generation of navigation is easier, provided you have access to the full game engine.
+
+Keep on researching!!!
+
+William
+

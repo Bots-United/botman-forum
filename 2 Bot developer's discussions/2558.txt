@@ -1,0 +1,111 @@
+--------------------------------------------------
+Subject: DMC: BotClient_Dmc_WeaponPickup() never parsed ?
+--------------------------------------------------
+12/13/01 at 14:08:03  Posted by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+Hello, sorry to bother you again
+
+This question is for those of you who made/are making a bot for DMC.
+
+When my bots pick up weapons, they don't switch automatically to it and the following function is never called. I saw it by putting a UTIL_SayText() in it, that never displays anything.
+
+Actually the bots weapons seem to be updated only by UpdateClientData().
+
+code:
+
+// This message gets sent when the bot picks up a weapon.
+void BotClient_Dmc_WeaponPickup (void *p, int bot_index)
+{
+   int index;
+
+   index = *(int *)p;
+
+   // set this weapon bit to indicate that we are carrying this weapon
+   bots[bot_index].bot_weapons |= (1 << index);
+}
+
+
+
+Does this code work with your bots ?
+
+The bit shift (1<<index) is not the problem here (I know that DMC weapons IDs are not sequential so I will do a "|= index" instead). The problem is that this function is never called.
+
+
+
+--------------------------------------------------
+12/14/01 at 11:56:23  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+I have to say that the message IDs are correctly registered in pfnRegUsrMsg().
+code:
+
+int pfnRegUserMsg (const char *pszName, int iSize)
+{
+   int msg = (*g_engfuncs.pfnRegUserMsg) (pszName, iSize);
+
+   if (gpGlobals->deathmatch)
+   {
+      if (strcmp (pszName, "WeaponList") == 0)
+         message_WeaponList = msg;
+      else if (strcmp (pszName, "CurWeapon") == 0)
+         message_CurWeapon = msg;
+      else if (strcmp (pszName, "AmmoX") == 0)
+         message_AmmoX = msg;
+      else if (strcmp (pszName, "AmmoPickup") == 0)
+         message_AmmoPickup = msg;
+      else if (strcmp (pszName, "WeapPickup") == 0)
+         message_WeapPickup = msg;
+      else if (strcmp (pszName, "ItemPickup") == 0)
+         message_ItemPickup = msg;
+      else if (strcmp (pszName, "Health") == 0)
+         message_Health = msg;
+      else if (strcmp (pszName, "Battery") == 0)
+         message_Battery = msg;
+      else if (strcmp (pszName, "Damage") == 0)
+         message_Damage = msg;
+      else if (strcmp (pszName, "DeathMsg") == 0)
+         message_DeathMsg = msg;
+      else if (strcmp (pszName, "ScreenFade") == 0)
+         message_ScreenFade = msg;
+   }
+
+   return msg;
+}
+
+
+... and should be called as follows (in pfnMessageBegin()...
+code:
+
+botMsgFunction = NULL; // no msg function until known otherwise
+botMsgEndFunction = NULL; // no msg end function until known otherwise
+botMsgIndex = index; // index of bot receiving message
+
+if (msg_type == message_WeaponList)
+   botMsgFunction = BotClient_Dmc_WeaponList;
+else if (msg_type == message_CurWeapon)
+   botMsgFunction = BotClient_Dmc_CurrentWeapon;
+else if (msg_type == message_AmmoX)
+   botMsgFunction = BotClient_Dmc_AmmoX;
+else if (msg_type == message_AmmoPickup)
+   botMsgFunction = BotClient_Dmc_AmmoPickup;
+else if (msg_type == message_WeapPickup)
+   botMsgFunction = BotClient_Dmc_WeaponPickup;
+else if (msg_type == message_ItemPickup)
+   botMsgFunction = BotClient_Dmc_ItemPickup;
+else if (msg_type == message_Health)
+   botMsgFunction = BotClient_Dmc_Health;
+else if (msg_type == message_Battery)
+   botMsgFunction = BotClient_Dmc_Battery;
+else if (msg_type == message_Damage)
+   botMsgFunction = BotClient_Dmc_Damage;
+else if (msg_type == message_ScreenFade)
+   botMsgFunction = BotClient_Dmc_ScreenFade;
+
+
+
+I think nothing is missing, right ?
+
+Please tell me what you think and if it works with you, LET ME KNOW because I can't find why BotClient_Dmc_WeaponPickup() never gets called.
+
+
+
+

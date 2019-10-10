@@ -1,0 +1,81 @@
+--------------------------------------------------
+Subject: Const char to char?
+--------------------------------------------------
+08/12/03 at 10:51:53  Posted by: Lazer (lazer@devin-afshin.com)
+--------------------------------------------------
+I have a function that reads a veriable and it needs to convert it to a char to call another function. It is originally a const char. How would I convert it?
+
+--------------------------------------------------
+08/12/03 at 11:34:24  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Just recast your char pointer to (const char *) like so...
+code:
+char buffer[256];
+sprintf(buffer, "%d", value);
+
+MyFunc((const char *)&buffer[0]);
+
+botman
+
+--------------------------------------------------
+08/12/03 at 16:26:01  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+In fact botman, it's the contrary. The guy has a (char *), and wants a (const char *).
+
+Maybe there's an issue here, I'm not sure. Because if you casted a char * to a const char *, it would mean you casted a read/write pointer to a read-only pointer. Hence 2 solutions, either the compiler disallows the original data (originally read/write) to be written, or it makes a copy of it, that it would set read-only. A problem could arise if for example, you changed the value of the string this pointer points to AFTER calling this function, and this function would have stored it in another variable (static, for example), in order to use it later. In this case, you can't be sure it's the same instance of the variable that will be used.
+
+But it's technical stuff, so if you don't understand what it's all about, I'd suggest to try out a cast, like botman says.
+
+
+[modified on 08/12/03 at 16:26:01]
+--------------------------------------------------
+09/24/03 at 23:04:15  Reply by: OffTopic (khomsan.ph@student.chula.ac.th)
+--------------------------------------------------
+i bet your code is looking like this
+
+code:
+
+const char *gsz = "hello";
+void test( char *sz) { ; }
+void main() { test(gsz); }
+
+
+
+if you change to the following three it will work
+
+code:
+
+const char *gsz = "hello";
+void test( const char *sz) { ; }
+void main() { test(gsz); }
+
+
+
+code:
+
+char *gsz = "hello";
+void test( char *sz) { ; }
+void main() { test(gsz); }
+
+
+
+code:
+
+char *gsz = "hello";
+void test( const char *sz) { ; }
+void main() { test(gsz); }
+
+
+
+or you can explicitly cast it
+
+code:
+
+const char *gsz = "hello";
+void test( char *sz) { ; }
+void main() { test((char *)gsz); }
+
+
+
+
+[modified on 09/24/03 at 23:04:15]

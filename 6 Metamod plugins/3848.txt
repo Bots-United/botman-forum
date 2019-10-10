@@ -1,0 +1,105 @@
+--------------------------------------------------
+Subject: Bringing up the buy menu
+--------------------------------------------------
+11/18/02 at 22:43:39  Posted by: AustinBotServer (AustinBotServer@MindSpring)
+--------------------------------------------------
+I am writing a Metamod plug in where you can walk around a map and drop weapons and item entities and then save them back to the bsp file.  I looked at the menu code in the bot template source and understand it very will but what I would like to do is let the user bring up the buy menu anywhere in the map.  So my questions are:
+
+1)      How would I from a Metamod plug in allow the user to bring up the buy menu anywhere any time in the map? Ideally they could bring up either menu T or CT.
+2)      How would I get the menu item they actually chose?
+
+All the rest is pretty easy especially since Zoner’s tools (ripent) has the code to read/write entities in bsp files.
+
+Thanks.
+
+
+--------------------------------------------------
+11/19/02 at 05:46:15  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+You display the menu by sending the TextMenu network message (see the HPB bot util.cpp file for some code).
+
+When the client has a menu displayed, they press "1", "2", "3", "4", or "5" (or whatever keys they have bound to "slot1", "slot2", etc.  The client will send back "menuselect 1", "menuselect 2", "menuselect 3", etc. in the ClientCommand() function to indicate which menu key was pressed.
+
+All you have to do is keep track of which menu is being displayed for each client and match up the "menuselect x" responses with the options available in that menu (much like the HPB bot dll.cpp code does).
+
+botman
+
+--------------------------------------------------
+12/07/02 at 14:17:35  Reply by: AustinBotServer (AustinBotServer@MindSpring)
+--------------------------------------------------
+
+QUOTE:
+
+When the client has a menu displayed, they press "1", "2", "3", "4", or "5" (or whatever keys they have bound to "slot1", "slot2", etc.  The client will send back "menuselect 1", "menuselect 2", "menuselect 3", etc. in the ClientCommand() function to indicate which menu key was pressed.
+botman
+
+
+
+
+Great thanks. I have a working menu system, but a few more questions.
+
+1) I only get keys 1-5 in my ClientCommand() function.  I have slot6, slot7 etc. bound.
+Is this by design?
+
+2) I have set up to look for the command "menu". And everythign is working fine. I see this command come across in ClientACOmmand() and handle it, but I get "unknown command" displayed in the console. How do I keep this from happenning? Do I return RETURN_META (MRES_SUPERCEDE); when I handle the command and return RETURN_META (MRES_IGNORED); when I don't handle the command???
+It looks like  (*other_gFunctionTable.pfnClientCommand)(pEntity); is alwayed called at the botton of ClientCOmmand() in the HPB 2.1 code.
+
+3)Is there a way to change the key the engine sees?
+For example:
+
+If(some condition I know how to look for)
+   AlwayMakeTheEngineSeeKey2 no matter what the users choose;
+
+As always thanks for the great help.
+
+
+--------------------------------------------------
+12/07/02 at 14:56:01  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+1. It depends on the MOD.  Half-Life deathmatch supports keys 1-9 and 0.  Other MODs may only support keys 1-5.  Some MODs may not support any keys at all.
+
+2. You need to "return;" in your code to prevent it from falling through to the default which will be "unknown command".  If you are using metamod, you will need to prevent the Game DLL ClientCommand() code from being executed if your command was found.  Just use "RETURN_META(MRES_SUPERCEDE);" to indicate to metamod that you don't want it to call the Game DLL code.
+
+3. If you are asking can you prevent keys from being pressed on the client, no, you can't do that.  You can intercept any commands sent from the client to the server (any commands that ClientCommand would see).  You can also turn off any bits that are set in the player's pev->button field by resetting those bits yourself.  For example, let's say you wanted to prevent eveyone from jumping.  You could turn off the IN_JUMP bit on every client's entvars_t structure during every frame.  This would prevent the Game DLL code from seeing the bit being set and allowing the client to jump (at least on the server it would, if the client uses effects on the client itself, you couldn't stop these no matter what you did).
+
+botman
+
+--------------------------------------------------
+12/07/02 at 17:22:52  Reply by: AustinBotServer (AustinBotServer@MindSpring)
+--------------------------------------------------
+
+QUOTE:
+1.  Other MODs may only support keys 1-5.  
+
+2. Just use "RETURN_META(MRES_SUPERCEDE);" to indicate to metamod that you don't want it to call the Game DLL code.
+
+3. If you are asking can you prevent keys from being pressed on the client, no, you can't do that.  You can intercept any commands sent from the client to the server botman
+
+
+
+
+1) it looks like counter strike konyl supports key 1-5.
+
+2) Everything is working great.  
+
+3) What I want to do is allow the user to press any key they want, but since I am getting the key press before the engin I wanted to know if I could change the key.  In this case I want to change all "menuselect 1-4" to be menuselect 2.
+
+Another way of wording the question is, can I change the value of CMD_ARGV(1); inside of ClientCommand() and have the engine get the new value???
+Thanks...
+
+
+
+--------------------------------------------------
+12/08/02 at 07:05:09  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+You can't change the CMD_ARGV stuff.  That's why the HPB bot source code has a FakeClientCommand() function.  The FakeClientCommand() function intercepts the MOD Game DLL code calling the engine pfnCmdArgv() function and instead of letting the engine return a pointer to the string the HPB bot code returns a pointer to a replacement string.  This has to be done since fake clients don't have a command buffer allocated in the engine and, even if they did, there's no way to fill this buffer with command text.
+
+Take a look at the FakeClientCommand() stuff in the HPB bot code and you'll see what I mean.
+
+botman
+
+--------------------------------------------------
+12/09/02 at 03:26:13  Reply by: AustinBotServer (AustinBotServer@MindSpring)
+--------------------------------------------------
+Great, Thanks!
+

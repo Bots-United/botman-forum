@@ -1,0 +1,156 @@
+--------------------------------------------------
+Subject: making new keys
+--------------------------------------------------
+12/13/03 at 17:13:13  Posted by: Macdamia (spicednutmeg@hotmail.com)
+--------------------------------------------------
+Hi guys, I've been looking all over for this but the only links I find that look hopeful take me to dead links.  I'm trying to make new keys/buttons for my mod so that, for instance, I can make a button that brings up the team change menu during the game.  I would like to make this button appear in the options and let the players change it to whatever they want.  Can anyone link me to a good tutorial on how to do this or explain it to me?  I tried messing around with input.cpp and the ClientCommand stuff but couldn't get anything working.
+
+Thanx guys
+
+--------------------------------------------------
+12/13/03 at 17:59:01  Reply by: LazyOne (the_lazy_one_09@hotmail.com)
+--------------------------------------------------
+To make something appear in the key configuration options just look at the file kb_act.lst in your mod's gfx\shell directory. There are plenty of things already there to get you started.
+
+As for making commands to activate menus, ect...
+Just go to ClientCommand in either your gamerules or in client.cpp and add something like...
+
+code:
+
+if ( FStrEq( CMD_ARGV( 0 ), "mycommand" ) )
+{
+   DoSomething( );
+}
+
+
+
+CMD_ARGV Gets the arguments of the command with the specified index. For instance, above, I used index 0 to get the command name.
+
+There is also CMD_ARGS which get all of the arguments from index 1 and beyond, and CMD_ARGC which returns the number of arguments entered.
+
+
+--------------------------------------------------
+12/14/03 at 03:50:48  Reply by: Cheesemonster!!! (cheeseh(at)rcbot(dot)net)
+--------------------------------------------------
+I think he means more general input as buttons
+
+btw I've never known about how to add buttons but I just read the SDK for about 5 minutes and I've got an idea. I think you should too ay? :p
+e.g.
+
+I Found that you need to first create a variable, typically global to the file which is a "kbutton_t"
+
+you'll find a lot of these declared at once in input.cpp
+
+so add something like
+
+code:
+
+kbutton_t in_my_new_button;
+
+
+
+or whatever you want to call it :p
+
+You need to create a command in console from it as well, you can do this by using pfnAddCommand()
+
+First though you need to make a function which just makes the key down or up (pressed or released)
+
+So you need to make TWO functions and TWO pfnAddCommand statements. Have a look...
+
+code:
+
+// pressed button
+void IN_My_New_Button_Down(void)
+{
+      KeyDown( &in_my_new_button );
+}
+
+// released button
+void IN_My_New_Button_Up(void)
+{
+      KeyUp( &in_my_new_button );
+}
+
+
+
+There is also a place in input.cpp where a lot of pfnAddCommand()'s are made. Add your commands there.
+
+you need to specify the command you want it to be and the name of the function which deals with it that you just made above.
+
+e.g.
+
+code:
+
+      gEngfuncs.pfnAddCommand ("+my_button", IN_My_New_Button_Down);
+      gEngfuncs.pfnAddCommand ("-my_button", IN_My_New_Button_Up);
+
+
+
+remember your button whatever you want.
+
+Now you should make a new bit for your button that will work with 'pev->button' in entvars.
+
+Define it in input.h,
+
+e.g.
+
+code:
+
+#define IN_MY_NEW_BUTTON (1<<16)
+
+
+
+That's your new button's bit mask set that you can check in game if it is pressed.
+
+Now you've done that you can go down into the CL_ButtonBits() function.
+
+this here->
+code:
+
+int CL_ButtonBits( int bResetState )
+
+
+
+Add some new code to add your new bitmask to the bits pressed when your button in_my_new_button's state is 3 (i Think!)
+
+Here is an example
+
+code:
+
+      if ( in_my_new_button.state & 3 )
+      {
+            bits |= IN_MY_NEW_BUTTON;
+      }
+
+
+
+You also have to add the button when your resetting the state at the bottom of the function.. where it has all of this stuff..
+
+code:
+
+      if ( bResetState )
+      {
+            in_attack.state &= ~2;
+            in_duck.state &= ~2;
+               ...
+               ...
+        }
+
+
+
+so just add..
+
+code:
+
+in_my_new_button.state &= ~2;
+
+
+
+in there... and there you go I believe.
+      
+
+--------------------------------------------------
+12/15/03 at 19:48:38  Reply by: Macdamia (spicednutmeg@hotmail.com)
+--------------------------------------------------
+Thanx for the responses guys!  Lazy had exactly what I needed.  It works great.  I knew about the ClientCommand stuff, all I needed was the kb_act.lst file to get me going.  Thanx again
+

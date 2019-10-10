@@ -1,0 +1,155 @@
+--------------------------------------------------
+Subject: Light
+--------------------------------------------------
+09/29/03 at 13:46:03  Posted by: CrossFire (traci@mach1pc.com)
+--------------------------------------------------
+ok, I am making a mod LOOSLY like Lord of The Rings, and the wizards staff I made is kool I made a addative blue glow to it with Jeds HLMV, 
+
+
+any way in the mod the specialists you can buy flashlights for the guns, I want to use the same effect for the staff, but you dont have to buy it, like when your a wizard you hit F and it turns the flashlight on ( making the crystal at the end of the staff glow like the guns in The Specialists) how would I do this I just cant figure it out I am pretty sure they use a sprite for it, but how they get the light effect I dont know.
+
+--------------------------------------------------
+09/29/03 at 17:44:43  Reply by: CrossFire (traci@mach1pc.com)
+--------------------------------------------------
+Botman, any body?
+
+--------------------------------------------------
+09/29/03 at 17:52:25  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+I've never tried creating anything light related on the client other than spawning DLIGHT entities (which can really slow the framerate down).
+
+If I were you, I'd search for "half-life flashlite tutorial" or "half-life flashlight tutorial" on google.com and see what you can find.
+
+If you want the code that Valve used to create the original flashlite, here it is...
+code:
+void CL_PlayerFlashlight( void )
+{
+   cl_entity_t *ent;
+   dlight_t *dl;
+
+   ent = cl_entities + cl.playernum + 1;
+
+   if ( ent->curstate.effects & (EF_BRIGHTLIGHT|EF_DIMLIGHT) && cl.worldmodel )
+   {
+      if ( cl.pLight && cl.pLight->key == 1 )
+         dl = cl.pLight;
+      else
+         dl = efx.CL_AllocDlight (1);
+
+      if ( ent->curstate.effects & EF_BRIGHTLIGHT )
+      {
+         dl->color.r = dl->color.g = dl->color.b = 250;
+         dl->radius = 400;
+         VectorCopy (ent->origin,  dl->origin);
+         dl->origin[2] += 16;
+      }
+      else
+      {
+         pmtrace_t trace;
+         vec3_t end;
+         float falloff;
+
+         VectorCopy (ent->origin,  dl->origin);
+         VectorAdd( dl->origin, cl.viewheight, dl->origin );
+         VectorMA( dl->origin, FLASHLIGHT_DISTANCE, vpn, end );
+
+         // Trace a line outward, use studio box to avoid expensive studio hull calcs
+         pmove->usehull = 2;
+         trace = PM_PlayerTrace( dl->origin, end, PM_STUDIO_BOX, -1 );
+
+         if ( trace.ent > 0 )
+         {
+            // If we hit a studio model, light it at it's origin so it lights properly (no falloff)
+            if ( pmove->physents[ trace.ent].studiomodel )
+            {
+               VectorCopy( pmove->physents[trace.ent ].origin, trace.endpos );
+            }
+         }
+
+         VectorCopy( trace.endpos, dl->origin );
+         falloff = trace.fraction*FLASHLIGHT_DISTANCE;
+
+         if ( falloff < 500 )
+            falloff = 1.0;
+         else
+            falloff = 500.0 / (falloff);
+
+         falloff *= falloff;
+         dl->radius = 80;
+         dl->color.r = dl->color.g = dl->color.b = 255 * falloff;
+#if 0
+         dlight_t *halo;
+         halo = efx.CL_AllocDlight( 2 );
+         halo->color.r = halo->color.g = halo->color.b = 60;
+         halo->radius = 200;
+         VectorCopy (ent->origin,  halo->origin);
+         halo->origin[2] += 16;
+         halo->die = cl.time + 0.2;
+#endif
+      }
+
+      cl.pLight = dl;
+      dl->die = cl.time + 0.2;
+      CL_TouchLight( dl );
+   }
+   else
+   {
+      if ( cl.pLight && cl.pLight->key == 1 )
+         cl.pLight->die = cl.time;
+      cl.pLight = NULL;
+   }
+}
+
+This code is in engine format (not client DLL format), since the flashlight in Half-Life is embedded in the engine code and not in the client DLL file.
+
+botman
+
+--------------------------------------------------
+09/29/03 at 17:54:27  Reply by: CrossFire (traci@mach1pc.com)
+--------------------------------------------------
+thanks :)
+
+--------------------------------------------------
+09/29/03 at 17:55:59  Reply by: CrossFire (traci@mach1pc.com)
+--------------------------------------------------
+oh one more thing, have you played The Specialists? if you have you'll know what I am talking about, with their flashlight they have like a glow type of sprite, how do I add a sprite to the end of a model, like I could use glow.spr, but how would I add it to the end of the weapon is it coding or modeling, if so how, thanks
+
+--------------------------------------------------
+09/29/03 at 17:58:20  Reply by: CrossFire (traci@mach1pc.com)
+--------------------------------------------------
+here is what I mean.
+
+
+link is http://www.edu.lahti.fi/~klaakson/kuvat/ts_silenced/ts_Silenced0000.jpg
+
+[modified on 09/29/03 at 17:58:20]
+--------------------------------------------------
+09/30/03 at 14:40:03  Reply by: CrossFire (traci@mach1pc.com)
+--------------------------------------------------
+any body?
+
+--------------------------------------------------
+09/30/03 at 15:51:23  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+I think you're on your own.
+
+botman
+
+--------------------------------------------------
+09/30/03 at 16:13:53  Reply by: Cheesemonster!!! (cheeseh(at)rcbot(dot)net)
+--------------------------------------------------
+indeed, if you want the same effect to that in the Specialists mod, then why don't you ask them?
+
+--------------------------------------------------
+09/30/03 at 20:54:51  Reply by: CrossFire (traci@mach1pc.com)
+--------------------------------------------------
+
+QUOTE:
+indeed, if you want the same effect to that in the Specialists mod, then why don't you ask them?
+
+
+
+
+golly gee wilikers ( I awlays wanted to say that, LOL )
+I will do that.
+

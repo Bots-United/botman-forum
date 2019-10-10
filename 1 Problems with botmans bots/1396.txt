@@ -1,0 +1,96 @@
+--------------------------------------------------
+Subject: Version 1.1 and logo sprays
+--------------------------------------------------
+03/19/01 at 11:06:16  Posted by: BAStumm (bs@bs-linux.com)
+--------------------------------------------------
+Please tell me more about the bots ability to spray logos. Does it only work on listen servers or can I use that feature on my dedicated linux box. What kind of logo's are used. The kind that came built into the game or can they do full color. How do they pick a logo. etc.
+
+--------------------------------------------------
+03/19/01 at 11:49:45  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+The bitmaps are written to decals.wad as lumps.  The bot_logo.exe application converts bitmap images to WAD lumps (just like Wally does).
+
+Some MODs have their own decals.wad file.  Some MODs use the decals.wad in the Half-Life directory (i.e. they all share the same file).
+
+When you connect to a dedicated server or a listen server over the Internet (or a LAN), your copy of decals.wad does not have to be the same as the servers version of decals.wad.  The new decals that are on the server DO NOT get sent to the client that is connecting to this server.  If you are the client on a listen server or you have a dedicated server with the client running on the same machine as the dedicated server, you will see the decals (spray logos) used by the bots.  If you are on another machine, you will see nothing.
+
+The only other way to get clients to see decals that are on the server is to have them download the server's version of the decals.wad file and replace the decals.wad file on their machine with the version on your server.
+
+When the bots join the game they will randomly pick from the available bot decals that were added to decals.wad using bot_logo.exe (or Wally).
+
+Using the bot_logo.exe application, you can add monochrome bitmap images (and select a color for them from the pull down menu) or you can select color images (even with pure blue transparency parts) and add those to the decals.wad file.  The only restriction is that the image MUST be 8 bit (256 colors or shades of grey) and the width and height can be no bigger than 256 pixels.
+
+Since bot logos sprayed on dedicated servers don't show up on clients, the Linux version of the HPB bot doesn't have any support for bot logos at all.
+
+Like I had stated earlier, I may modify the dedicated server code so that bots can choose from the standard decals that are available in the game (blood splats, signs, "Die Freeman", etc.) and spray those as spray logos.  You won't be able to change the colors or images of these "logos".  Since these are available as part of Half-Life, everyone will have these decals already in their decals.wad file.
+
+botman
+
+--------------------------------------------------
+03/19/01 at 14:36:21  Reply by: BAStumm (bs@bs-linux.com)
+--------------------------------------------------
+Why won't this work like a clients custom logo? IE- I have a custom color logo I made. My server can pass this logo through to other clients that are connected.
+
+
+--------------------------------------------------
+03/19/01 at 14:52:43  Reply by: BAStumm (bs@bs-linux.com)
+--------------------------------------------------
+To further clarify, why couldn't the logo's be inserted into the custom.hpk at server start??? Or what if I used my client to make sure the logo's the bots were going to use were in the custom.hpk by using those logo's myself until they are all in there. Not a big deal I just don't understand how this works. Guess I should set up the new version on my windows machine and play around a bit.
+
+--------------------------------------------------
+03/20/01 at 04:51:52  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+"...I just don't understand how this works."
+
+I don't fully understand everything about the custom logos myself, but here's what I found out during my testing with a dedicated server...
+
+1) There is a special network message sent to all clients when a player sprays a logo (it's called TE_PLAYERDECAL).
+
+2) The server displays normal decals (from decals.wad), the network message used is TE_WORLDDECAL).
+
+3) The Half-Life engine keeps player decals (logos) and world decals separate from each other.  I know this because you send the index number of the decal you want to use.  If you send a TE_PLAYERDECAL network message with index #1, you get a player's logo.  If you send a TE_WORLDDECAL network message with index #1, you get one of the decals from decals.wad (like a blood splat or scorch mark).
+
+4) Client's send their decals to the server when they connect to the server.  This is an internal Half-Life engine thing and the MOD has no access to these network packets.
+
+5) Bot's don't have a client and therefore can not send the custom spray logo to the engine.
+
+6) The custom.hpk file appears to be used to cache decals (and other stuff?) that are exchanged between the server and the client.  The version of custom.hpk on the server does not have to be the same as the custom.hpk on the client (and 2 clients also won't have the same custom.hpk).
+
+7) Bots CAN spray other player's logos, by using the TE_PLAYERDECAL message along with some other human player's decal index #, since these decals have been exchanged between the server and each of the clients.
+
+8) If you spray a logo (using TE_PLAYERDECAL) that hasn't been exchanged between the server and all the clients (like immediately after joining a game before the other clients get updated with your logo), you get the Half-Life Lambda symbol in a circle.
+
+9) If the bots spray a decal (TE_WORLDDECAL) that does not exist in the client's decals.wad file, the client sees nothing.
+
+10) If the bots spray a decal that does exist in the client's decals.wad file ("{bloodhand1" for example), all clients will be able to see this decal (since they already had it in their decals.wad file).  This is also true if you modify your version of decals.wad (adding bot custom spray logos) and someone downloads that to their machine to replace the default MOD's decals.wad file.
+
+The basic result of all this is that any client that has the same decals that are in your decals.wad file will see these bot logos.  Any clients that do not have the same decals.wad will not see the bot logos.  I can't find any method that forces the engine to exchange decals between the server (where the bots are) and the clients (other than manually downloading the decals.wad file).
+
+botman
+
+--------------------------------------------------
+03/20/01 at 11:28:46  Reply by: BAStumm (bs@bs-linux.com)
+--------------------------------------------------
+So it still sounds possible to put the logo in the custom.hpk and then have the bots spray that logo by index number. It wouldn't even bother me if I as a client had to use each logo I wanted the bots to use to get it added to the custom.hpk. It would be a one time thing. I've heard its also possible to parse the logo's out of the custom.hpk which might be a way to select the logo's the bots will use. I wouldn't mind if I had to spend 15 - 20 minutes setting this up, if it was a one time thing (or once every 3 months or whatever). 
+
+--------------------------------------------------
+03/20/01 at 13:07:24  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+The engine only lets the MOD get at player decals that are currently in use.  I can specify the decal index of any player CURRENTLY connected to the server, but I can't randomly pick decals from the custom.hpk file and display those since they are only active while that player is connected to the game.
+
+You'll have to settle for decals of players that are currently connected or decals from the standard decals.wad file.
+
+botman
+
+--------------------------------------------------
+03/20/01 at 16:55:11  Reply by: kh138 (kh138@starpower.net)
+--------------------------------------------------
+You could also, in your motd, have a download location for your version of the decals.wad for players that wanted to see the bot sprayed logos to use. That way the players would have the same  version of this file as the server and would see the decals just fine. Right?
+
+--------------------------------------------------
+03/21/01 at 05:04:02  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+That would work if you only played on a single server with bots.  If you played on multiple servers you would have to switch back and forth between multiple decals.wad files (which would be quite a pain in the buttocks).
+
+botman
+

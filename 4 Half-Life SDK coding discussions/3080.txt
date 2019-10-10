@@ -1,0 +1,105 @@
+--------------------------------------------------
+Subject: MIP in BSP
+--------------------------------------------------
+05/06/02 at 10:17:26  Posted by: SLAVIK (slava@deep-shadows.com)
+--------------------------------------------------
+hi botman! can u help me pls?
+Can you tell me what does MipTexLump data structure. I want to make prog that twill list textures in bsp (as your bsp_tool), but got really confused with data structures.
+
+var
+BSP_Header: TBSPHeader;
+BSP_MipTexLump: TMipTexLump;
+BSP_MipTex: TMipTex;
+n: integer;
+begin
+BSP:=TFileStream.Create(editFileName.Text,fmOpenRead);
+BSP.Read(BSP_Header,sizeof(BSP_Header));
+//reading header
+BSP.Seek(BSP_Header.lumps[LUMP_TEXTURES].fileofs,soFromBeginning);
+//seeking to texlump
+BSP.Read(BSP_MipTexLump,sizeof(BSP_MipTexLump));
+//reading 1 miptex lump
+
+what to do next? what does this 4 offsets?
+I know that I have to read MipsCOunt MipTextures, but all this confused me. Please, need your help...
+
+--------------------------------------------------
+05/06/02 at 11:06:25  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+This is from the wadlib.h file...
+code:
+/*
+   WAD3 Header
+   {
+      char identification[4];   // should be WAD3 or 3DAW
+      int  numlumps;
+      int  infotableofs;        // offset to lump table
+   }
+
+   Mip section
+   {
+      First mip
+      {
+         char name[16];
+         unsigned width, height;
+         unsigned offsets[4];  // mip offsets relative to start of this mip
+         byte first_mip[width*height];
+         byte second_mip[width*height/4];
+         byte third_mip[width*height/16];
+         byte fourth_mip[width*height/64];
+         short int palette_size;
+         byte palette[palette_size*3];
+         short int padding;
+      }
+      Next mip {}
+      Next mip {}
+      .
+      .
+      .
+      Last mip {}
+   }
+
+   Lump table
+   {
+      First lump entry     // 32 bytes in size
+      {
+         int  filepos;     // file offset of mip
+         int  disksize;    // size of mip in bytes
+         int  size;        // uncompressed
+         char type;        // 0x43 = WAD3 mip (Half-Life)
+         char compression; // not used?
+         char pad1, pad2;  // not used?
+         char name[16];    // null terminated mip name
+      }
+      Next lump {}
+      Next lump {}
+      .
+      .
+      .
+      Last lump {}
+   }
+*/
+
+The WAD file contains a header (with "WAD3" as the identification, number of lumps and a file offset to the lump table.
+
+Next in the file comes all of the MIPs (one after the other).  These MIPs will be variable size depending on the width and hight of the bitmap.
+
+The offset in the WAD header takes you to the lump table (which is what you need to read in first after opening the file).  Each lump table entry gives you the file position (offset into the file) of the corresponding MIP.  The lumps are all the same size (32 bytes each), so you can just allocate an array in memory (using malloc or new), read in the total number of lumps (32 bytes * numlumps from the WAD header), then use a loop to go through those lumps one-by-one, seeking to the file position for that lump, reading the MIP name, width and height, mip offsets, then read the 4 mips (size based on width and height), then the palette size (always 256 bytes), then the palette and finally the unused padding byte.
+
+botman
+
+--------------------------------------------------
+05/06/02 at 11:35:19  Reply by: SLAVIK (slava@deep-shadows.com)
+--------------------------------------------------
+thnx, I already know that ;-) and wrote Wad Viewer (1.7 beta).
+can you tell me pls how I can get textures from BSP files if they are attached?
+
+Thanks
+
+--------------------------------------------------
+05/07/02 at 04:22:33  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+The dtexdata chunk of the BSP file will mip lump information (see bspfile.h).  The dtexdata will be dmiptexlump_t structures.  Each of these dmiptexlump_t structures contains a dataofs field.  If the field is non-zero and not negative -1 (indicates a deleted texture) then the mip texture is contained within the BSP file.  See the Load_Textures function in texture.cpp to see how this texture is extracted from the BSP file (search for this, "if (pMipTex->offsets[0] != 0)")
+
+botman
+

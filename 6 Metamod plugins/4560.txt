@@ -1,0 +1,56 @@
+--------------------------------------------------
+Subject: Monster plugin and 'round restarts'
+--------------------------------------------------
+06/20/03 at 23:13:24  Posted by: TeamBage (TeamBage@Hotmail.com)
+--------------------------------------------------
+Righto then, lets get down to business. I've noticed that when the round restarts in DoD 1.0 (ie. a team has capped out), the monsters who are currently spawned and active will stop where they are, continue their 'animations', and become 'ghosts' (can walk right through 'em).
+
+The same happens to monsters who are spawned when the map is first loaded. As soon as the game starts (I assume a round restart occurs when the first player joins) the spawned monsters will just freeze and become ghosts.
+
+Any suggestions on how I could get around this?
+
+ - Ben
+
+--------------------------------------------------
+06/21/03 at 06:01:00  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+I assume the MOD code (DoD) is doing something to all entities in the game (this includes the monsters).
+
+In order for the DoD code to not know about the monster entities, you would have to intercept the engine functions used to loop through entities and not return any monster entities back to the DoD code.  This way it can't mess with them.
+
+I sent an e-mail to Alfred (original author of AdminMOD) about something like this.  Here's what I sent him...
+
+QUOTE:
+> We did that but then the mod would crash because they assumed that a
+> pointer would be returned... In the engine I can fix it properly by
+> having a per dll list of entities but in MetaMod its not something that
+> can easily be done.
+
+What's wrong with something like...
+
+edict_t *pfnFindEntityByString(edict_t *pPrevEdict, blah, blah)
+{
+   edict_t *pEdict = engine.pfnFindEntityByString(pPrevEdict, blah, blah);
+
+   while ( (pEdict != NULL) && IsPluginEntity(pEdict) )
+   {
+      // the MOD shouldn't see this one, get the next one...
+      pEdict = engine.pfnFindEntityByString(pEdict, blah, blah);
+   }
+
+   return pEdict;
+}
+
+> Anyway, the easy solution is for mod developers just to be aware of what
+> Admin Mod (and other 3rd party plugins) do and don't break them :)
+
+But MOD developers shouldn't have to dig through metamod or AdminMOD code
+just to make sure their MODs work properly with them, the burden should be
+on the metamod and AdminMOD team to make their stuff compatible with a
+specific set of MODs.
+
+
+
+
+botman
+

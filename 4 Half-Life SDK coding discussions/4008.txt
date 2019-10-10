@@ -1,0 +1,47 @@
+--------------------------------------------------
+Subject: Client Commands
+--------------------------------------------------
+01/09/03 at 02:17:26  Posted by: Phreak (dead_sexy_simon@hotmail.com)
+--------------------------------------------------
+I know i have posted a few questions in a few days. I am sorry for this if you are laughing at my 'needyness'. I have been trying to figure this one out.
+
+How can i allow clients to use commands that are only on the server?
+
+For example:
+
+I have a command that the server with the DLL can type into the console, without returning an Unknown Command: Console print. The command for demonstration purposes is addbot
+
+How can i allow a client, who does not have the DLL to use this command, and not return an Unknown Command: error for them?
+
+Would it be in client.dll?
+
+Thanks in advance
+
+Phreak
+
+--------------------------------------------------
+01/09/03 at 05:46:11  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+When clients issue commands, they get passed from the client DLL code to the server via the Half-Life engine network stream.  When the server engine receives a command from a client, it will check to see if it is an internal engine command first (like "kick", "ban", "map", etc.).  Internal commands are only allowed to be executed from the console on the server (or via 'rcon' if the client has the rcon password).
+
+If the command is not recognised as an internal engine command, the engine will call the ClientCommand() function in the game DLL code.  If you have a hook DLL installed between the engine and the game DLL (like metamod, or the HPB bot), the engine will call this DLL's version of ClientCommand() and then the hook's version will call the game DLL's version.
+
+Inside the ClientCommand() function, you will do whatever you want to determine if this client should be allowed to execute this command or not.  For example, the HPB bot code checks to make sure that the commands were issued by the client that created the server (by storing the edict of the player that connected using "localhost" as the IP address).  You could get the client's WON authorization key and compare that to a list of accepted keys and only allow that person to execute the command.  AdminMOD does something similar to this for admin-only type features.
+
+If you don't check anything for that client, then any client would be allowed to execute that command and do whatever you wanted on the server.
+
+See the HPB bot source code or the metamod/AdminMOD source code for examples of this.
+
+botman
+
+--------------------------------------------------
+01/09/03 at 05:51:55  Reply by: Phreak (dead_sexy_simon@hotmail.com)
+--------------------------------------------------
+
+I now know what you mean. I will figure my own way out for getting Admin Identification. I don't want to rip anything off for a while, I have asked alot of question here tonight, and haven't left yet :D.
+
+I'll be hard at work trying this, thank you again botman
+
+
+Simon
+

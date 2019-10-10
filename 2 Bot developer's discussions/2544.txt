@@ -1,0 +1,212 @@
+--------------------------------------------------
+Subject: bot problem... (still need help)
+--------------------------------------------------
+12/16/01 at 20:50:19  Posted by: WKYA-Undertaker (mofo_badboys@yahoo.com)
+--------------------------------------------------
+Maybe someone here can help.  HLPB (the mod im making a bot for) is about to release version 3.0 and im trying to get my bot working with it so the creator can test the mod against opponents.  Anyway, as soon as you add a bot, the game crashes to the desktop.  The bot works perfectly with the lattest acctual release, but with the release he has sent me the bots crash.  I do have all the link entity to funcs set, and everything else is fine.  Anyway, here is what I got out of the bot.txt... this is from the time I typed addbot to the end of the file.  It seems to me the problem would be in the team select right?  The bots not even getting to class select is it?
+
+ClientCommand: addbot
+ClientUserInfoChanged: pEntity=2307e0c infobuffer=\name\[spud]MrPotatoHead\model\gordon\topcolor\1\bottomcolor\1
+pfnMessageBegin: edict=2307ae8 dest=1 type=77
+pfnWriteByte: 1
+pfnWriteString: Creating bot...
+
+pfnMessageEnd:
+pfnPvAllocEntPrivateData:
+ClientConnect: pent=2307e0c name=[spud]MrPotatoHead
+ClientPutInServer: 2307e0c
+pfnSetModel: edict=2307e0c models/player.mdl
+pfnSetSize: 2307e0c
+pfnClientCommand=console 1.0
+
+pfnMessageBegin: edict=2307e0c dest=1 type=79
+pfnWriteByte: 0
+pfnMessageEnd:
+pfnMessageBegin: edict=2307e0c dest=1 type=80
+pfnMessageEnd:
+pfnMessageBegin: edict=0 dest=2 type=77
+pfnWriteByte: 1
+pfnWriteString: [spud]MrPotatoHead has joined the game
+
+pfnMessageEnd:
+pfnGetPlayerUserId: 2307e0c
+pfnGetPlayerWONId: 2307e0c
+pfnGetPlayerUserId: 2307e0c
+pfnMessageBegin: edict=2307e0c dest=1 type=86
+pfnWriteByte: 1
+pfnMessageEnd:
+pfnMessageBegin: edict=2307e0c dest=1 type=83
+pfnWriteByte: 2
+pfnWriteShort: 0
+pfnWriteShort: 0
+pfnWriteShort: 0
+pfnWriteShort: 0
+pfnMessageEnd:
+pfnLoadFileForMe: filename=motd.txt
+pfnMessageBegin: edict=2307e0c dest=1 type=88
+pfnWriteString: HLPB-Player
+pfnMessageEnd:
+pfnMessageBegin: edict=2307e0c dest=1 type=87
+pfnWriteByte: 0
+pfnWriteString: Welcome to PaintBall!
+
+
+
+Version 2.0
+
+
+
+http://www.paintball
+pfnMessageEnd:
+pfnMessageBegin: edict=2307e0c dest=1 type=87
+pfnWriteByte: 1
+pfnWriteString: -mod.net/
+pfnMessageEnd:
+pfnFreeFile:
+pfnMessageBegin: edict=2307e0c dest=1 type=83
+pfnWriteByte: 1
+pfnWriteShort: 0
+pfnWriteShort: 0
+pfnWriteShort: 0
+pfnWriteShort: 1
+pfnMessageEnd:
+pfnMessageBegin: edict=2307e0c dest=1 type=83
+pfnWriteByte: 2
+pfnWriteShort: 0
+pfnWriteShort: 0
+pfnWriteShort: 0
+pfnWriteShort: 0
+pfnMessageEnd:
+pfnMessageBegin: edict=2307e0c dest=1 type=98
+pfnWriteByte: 2
+pfnWriteString: Blue
+pfnWriteString: Red
+pfnMessageEnd:
+pfnMessageBegin: edict=2307e0c dest=1 type=84
+pfnWriteByte: 1
+pfnWriteString: Blue
+pfnMessageEnd:
+pfnMessageBegin: edict=2307e0c dest=1 type=99
+pfnWriteByte: 2
+pfnWriteString: (null)
+
+
+[modified on 12/16/01 at 20:50:19]
+--------------------------------------------------
+12/11/01 at 05:09:05  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+You see you are trying to write a null string at the end which is bad because you're trying to access something that is null, a memory location that doesn't exist! I take it you're trying to write some string or text which has nothing in it or your trying to write something into a "%s" (inside an sprintf statement maybe) which hs nothing in the part to put into the %s. If you catch my drift!
+
+Or you've basically got a "%s", "%d" etc inside your string which you haven't told whats going in them.
+
+[modified on 12/11/01 at 05:09:05]
+--------------------------------------------------
+12/11/01 at 06:32:30  Reply by: ReDucTor[FGW] (sjdtmv@tpg.com.au)
+--------------------------------------------------
+cheesemonster, if that was the case, then it would not have that string in the file...
+
+its hitting the pfnMessageEnd() function is my guess and just dieing...check that function out..
+
+--------------------------------------------------
+12/11/01 at 08:49:28  Reply by: WKYA-Undertaker (mofo_badboys@yahoo.com)
+--------------------------------------------------
+I just checked the pfnMessageEnd() function, it is still exactly the same as the unedited temp3.  Somthing that seems very strange to me, I comented out the code to let the bots select a team or class and I am still getting this error.  message 99 is for the vgui, but I have nothing at all in my vgui function (thats where I comented the code out).  The bot isnt getting to the point where it selects a team.  If you think I need to post some code, tell me what parts to post, I am completly lost with this bug, and appreciate you guys for trying to help.
+
+--------------------------------------------------
+12/11/01 at 09:04:25  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+you could post the parts where you change the bots start actions. (in bot_client.cpp)
+
+And what I meant earlier at the part of pfnWriteString its writing a NULL string, meaning a crash and theres no reason for it not to cause a crash if this happens unless you are using an MSVC debug DLL. Although if its simply something done by HL then it won't cause a crash.
+
+[modified on 12/11/01 at 09:04:25]
+--------------------------------------------------
+12/11/01 at 09:02:40  Reply by: WKYA-Undertaker (mofo_badboys@yahoo.com)
+--------------------------------------------------
+void BotClient_PB_VGUI(void *p, int bot_index)
+{
+   /*if ((*(int *)p) == 2)  // is it a team select menu?
+
+      bots[bot_index].start_action = MSG_PB_TEAM_SELECT;
+
+   else if ((*(int *)p) == 3)  // is is a class selection menu?
+
+      bots[bot_index].start_action = MSG_PB_CLASS_SELECT;*/
+}
+
+
+It shows the exact same thing with the comments as it does without in the bot.txt, but the last thing it calls is the vgui... ahhh i dont know!
+
+--------------------------------------------------
+12/11/01 at 09:15:25  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+hmm have you got your code which also shows how you call your function (BotClient_PB_VGUI) In engine.cpp with the msg_types you've changed.
+
+[modified on 12/11/01 at 09:15:25]
+--------------------------------------------------
+12/11/01 at 09:47:44  Reply by: WKYA-Undertaker (mofo_badboys@yahoo.com)
+--------------------------------------------------
+Well crap I feel about 3 inches tall right now.... I just recompiled with the vgui code comented out and the crash problem is gone... I know I tried it last night like that and it still crashed...  Guess I should of tested it this morning before replying.  Anyway im sure I can track down the bug now that I know where to look.  Thanks for all yalls help
+
+--------------------------------------------------
+12/11/01 at 11:22:22  Reply by: WKYA-Undertaker (mofo_badboys@yahoo.com)
+--------------------------------------------------
+Ok sorry to post about this again, but im at loss again.....  Shouldnt The following 2 code snipets do the same thing??  The first is from bot_start.cpp and the second is from bot_client.cpp... the second works without the bot crashing, with the first the bot still crashes!  why?  I am only using 1 at a time... 
+
+
+===========================
+void BotStartGame( bot_t *pBot )
+{
+   if (mod_id == HLPB_DLL)
+      if (pBot->start_action == MSG_PB_TEAM_SELECT)
+      {
+         return;
+      }
+      if (pBot->start_action == MSG_PB_CLASS_SELECT)
+      {
+         return;
+      }
+}
+
+=========================
+
+void BotClient_PB_VGUI(void *p, int bot_index)
+{
+  /*if ((*(int *)p) == 2)  // is it a team select menu?
+
+     bots[bot_index].start_action = MSG_PB_TEAM_SELECT;
+
+  else if ((*(int *)p) == 3)  // is is a class selection menu?
+
+     bots[bot_index].start_action = MSG_PB_CLASS_SELECT;*/
+}
+
+===========================
+
+--------------------------------------------------
+12/11/01 at 12:28:39  Reply by: WKYA-Undertaker (mofo_badboys@yahoo.com)
+--------------------------------------------------
+Ok got the bot completly fixed!  I just added this to the code I posted earlier from bot_client.cpp
+
+            if(!p) // PaintBall - Spawn: try this...
+            return
+
+w00t!  Spawn = me hero :D
+
+--------------------------------------------------
+12/12/01 at 20:25:38  Reply by: WKYA-Undertaker (mofo_badboys@yahoo.com)
+--------------------------------------------------
+ok I have a new problem now!  The bots spawn and do everything like normal... only problem is that after you shot a bot, sometimes they die, sometimes it says they die but they keep running around (not shoting), and sometimes it doesnt say anything and they keep shooting!  I had 2 bots get stuck with the last option face to face for about a minute until another bot came along!  Anyone have any clue what might cause this?
+
+--------------------------------------------------
+12/13/01 at 09:34:31  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+perhaps you've hax0red something!!! ;) This could actually accidently happen if you've got an if/while statement that has one '=' instead of two if you're trying to compare something.
+
+Also try giving your bot a clean compile by deleting all the object files (either called *.o or *.obj files depending on the compiler)
+
+--------------------------------------------------
+12/13/01 at 20:41:12  Reply by: WKYA-Undertaker (mofo_badboys@yahoo.com)
+--------------------------------------------------
+Well, I know its not the object files, I always use "rebuild all" in MVC.  As far as the single = sign, I havnt changed any since I updated from the old beta to the new, so that shouldnt be it... (im still searching anyway).  I did realize what it is doing though, most of the time, it simply takes 15-30 seconds for the game to kill you after youve been shot, then it says that you killed your self.  Sometimes though, the game acts normal and instantly kills you and shows who killed you.  So besides the = sign, anyone have anymore suggestions?  Its gona take me awhile to go through all the =s.....
+

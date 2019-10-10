@@ -1,0 +1,123 @@
+--------------------------------------------------
+Subject: Found some bugs in the new bot
+--------------------------------------------------
+01/28/01 at 14:06:48  Posted by: tweak3d (Tweak3d@home.com)
+--------------------------------------------------
+Ok, first bug is a very easy one to fix cause i know what you did wrong.
+
+Bots don't allways join teams evenly. in your current source i noticed that it says team 1, team 2, team 5 aka auto team and this unbalances the teams so just make is so they join just teams 1 and 2 on maps like 2fort and not that extra auto team cause it gives blue team the advantage.
+
+I also noticed when i was playing to day that a scout had the flag and yelled medic while a spy coming in the same direction did and he yelled medic. they are both on the same team and pulled out there knife and crowbar hit eachother a couple of times and went on there way. i got so screenies f you want to see any of these bugs.
+
+--------------------------------------------------
+01/28/01 at 15:55:43  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+The bots randomly select teams if you don't specify a team when issuing the "addbot" command.  It's not a bug, it's the way that I intended for it to be.
+
+The yelling for medic bug was cause by me using the wrong version of a source file when I built the release.  If you yell for a medic your teammates will attack you and whail on you with the crowbars.  I will fix this problem and upload another release tomorrow (January 29th).
+
+botman
+
+--------------------------------------------------
+01/30/01 at 01:33:33  Reply by: theimann (theimann@stud.fh-heilbronn.de)
+--------------------------------------------------
+> If you yell for a medic your teammates will attack you and whail on you with the crowbars.
+
+I wish I could see the face of the gamer in this moment!
+
+Tobias
+
+--------------------------------------------------
+01/30/01 at 19:21:23  Reply by: BrianL (halfkiller@hotmail.com)
+--------------------------------------------------
+Botman, (Help me with this? Please?)
+
+Alright I need help with the bots checking if anyone near em or anyone called for medic?
+
+I know what to do but when I ran debug_engine I found this but I don't know how to pu it together.
+
+
+ClientCommand: saveme  
+pfnMessageBegin: edict=1fc5e44 dest=1 type=23
+pfnWriteByte: 124
+pfnWriteByte: 1
+pfnWriteCoord: 50.000000
+prnWriteShort: 166
+prnWriteShort: 40
+pfnMessageEnd:
+
+
+Thanx
+
+--------------------------------------------------
+01/31/01 at 05:28:31  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+I looked at this network message as well and couldn't make much sense out of it either.  I decided to settle for just catching the EmitSound() events and using those instead.
+
+Here's what I'm doing to listen for calls for a medic...
+code:
+void pfnEmitSound(edict_t *entity, int channel, const char *sample, /*int*/float volume, float attenuation, int fFlags, int pitch)
+{
+   int index;
+   float distance;
+   Vector vecEnd;
+   edict_t *pEdict;
+
+   if (gpGlobals->deathmatch)
+   {
+      if (debug_engine) { fp=fopen("bot.txt","a"); fprintf(fp,"pfnEmitSound: edict=%x sound=%s\n",entity,sample); fclose(fp); }
+
+      if (mod_id == TFC_DLL)
+      {
+         // is someone yelling for a medic?
+         if ((strcmp(sample, "speech/saveme1.wav") == 0) 
+             (strcmp(sample, "speech/saveme2.wav") == 0))
+         {
+            for (index=0; index < 32; index++)
+            {
+               if (bots[index].is_used)  // is this slot used?
+               {
+                  pEdict = bots[index].pEdict;
+                  
+                  if (pEdict->v.playerclass != TFC_CLASS_MEDIC)
+                     continue;  // skip this player if not a medic
+
+                  int player_team = UTIL_GetTeam(entity);
+                  int bot_team = UTIL_GetTeam(pEdict);
+
+                  // don't heal your enemies...
+                  if ((bot_team != player_team) &&
+                      !(team_allies[bot_team] & (1<<player_team)))
+                     continue;
+
+                  distance = (pEdict->v.origin - entity->v.origin).Length();
+
+                  vecEnd = entity->v.origin + entity->v.view_ofs;
+
+                  // is player nearby and visible? (even behind you)
+                  if ((distance < 1000) && FVisible(vecEnd, pEdict) &&
+                      (bots[index].pBotEnemy == NULL))
+                  {
+                     bots[index].pBotEnemy = entity;
+
+                     bots[index].pBotUser = NULL;  // don't follow user when enemy found
+                  }
+               }
+            }
+         }
+      }
+   }
+
+   (*g_engfuncs.pfnEmitSound)(entity, channel, sample, volume, attenuation, fFlags, pitch);
+}
+
+
+botman
+
+
+
+--------------------------------------------------
+01/31/01 at 10:53:50  Reply by: ARES (j.sdubbelboer@freeler.nl)
+--------------------------------------------------
+I check the clientcommand function. And if someone uses saveme I will store him in a index for the medics.
+

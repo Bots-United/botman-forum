@@ -1,0 +1,126 @@
+--------------------------------------------------
+Subject: SDK 2.2 Have the player phyics changed?
+--------------------------------------------------
+05/17/02 at 12:46:07  Posted by: mattkimbo (mattkimbo@yahoo.co.uk)
+--------------------------------------------------
+Hey, Been having a problem with my bot. For some strange reason, it just freezes for a couple of seconds (Not stuck, as if the bot had a lag problem) and then starts to move again. Has the value for the total msec value changed from being 1000 every second? Can't figure this one out... Any suggestions? (The bot is not getting stuck)
+
+The Bot will pause completely including it's animation.
+
+Thanks.
+(Could you emial me your replies as my college has banned the site (Grrrr) )
+
+--------------------------------------------------
+05/19/02 at 07:12:48  Reply by: SoulWind (SoulWind@gmx.de)
+--------------------------------------------------
+And You hear the "water-sound" near the frozen Bot ?
+
+I also had that effect a while ago. In my case it was caused by wrong (too high) move-speeds given to RunPlayerMove().
+
+- SoulWind
+
+
+
+--------------------------------------------------
+05/24/02 at 11:07:59  Reply by: mattkimbo (mattkimbo@yahoo.co.uk)
+--------------------------------------------------
+Yeah :) Thought is was something to do with the msec :)
+
+It only occured since I ported it over to the new SDK (The modified one for the borland compiler) If anybody doesn't understand what I'm trying to describe, you can download the bot at www.geocities.com/mattkimbo
+
+At the moment, I have a sample of code that works out the framerate by counting the total number of frames each second, and then dividing 1000 over this framerate.
+
+//MSec Calculation
+
+      //The following code calculates the msec value for the physics function.
+      //It needs to be dependant on framerate so the bot will move at the
+      //correct speed.
+      
+      if (bot->msecdel <= gpGlobals->time)
+      {
+            bot->msecdel = gpGlobals->time + 1;
+            if (bot->msecnum > 0)
+                        bot->msecval = 1000/bot->msecnum;
+            bot->msecnum = 0;
+      }
+      else
+            bot->msecnum++;
+
+        if (bot->msecval < 5)
+                bot->msecval = 5;       //This should mean a maximum of 200fps
+
+        if (bot->msecval > 255)
+                bot->msecval = 255;     //This should mean a minimum of 3.9fps
+
+
+Was told by the Phineas bot creator that this should create a total of 1000 each seccond, as the game engine will use this for player possition prediction. I BELIEVE that the bot can still look around whenever this happens, but I have'nt been able to test it properly, as, my bot only believes it's stuck if it hasn't moved over the last 5 seconds. By the time the bot realises it's stuck, most of the time the problem disappears.
+
+Have no idea what the msec value should total now. Was fine with SDK 2 (The Alpha 1 version of my bot shows this)
+
+- Matt
+
+--------------------------------------------------
+05/24/02 at 11:15:24  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Have you tried using gpGlobals->frametime * 1000 for the msec value?
+
+botman
+
+--------------------------------------------------
+05/30/02 at 11:36:44  Reply by: mattkimbo (mattkimbo@yahoo.co.uk)
+--------------------------------------------------
+If you do that, then an engine bug surfaces as you can only assign that varible once every frame (I think) and then the result is that one bot will run at the correct speed, and the rest will not (They get the buggy gpGlobals->frametime)
+
+I thought it may be down to my coding, and wondered if the bot's think function wasn't being called (And a a result the function passed onto the engine with the msec values and fwd values and such... Forgot name :S) But the bot's think function IS being called.
+
+I deleted a couple of waypoint files to force the bot to roam randomly, and I wonder if this problem is related to a clipping probem that I can't solve, When a bot falls off a ledge, it sometimes gets stuck at the edge of a drop. And equally bizzarly, the bot cannot look in a straight line forward and run up ramps, It gets stuck there too! The only way to get up the ramp is to look up.
+
+Any ideas yet? (I'm clueless)
+
+--------------------------------------------------
+06/08/02 at 11:26:16  Reply by: mattkimbo (mattkimbo@yahoo.co.uk)
+--------------------------------------------------
+Think I've cracked it!
+
+Now using the following;
+
+if (msecdel <= gpGlobals->time)
+      {
+            msecdel = gpGlobals->time + 0.5;
+            if (msecnum > 0)
+                        msecval = 500/msecnum;
+            msecnum = 0;
+      }
+      else
+            msecnum++;
+
+
+        if (msecval < 1)
+                msecval = 1;
+        if (msecval > 127.5)
+                msecval = 127.5;
+
+I think the problem lies at the msecval being greater than 100 (Or there about) Not done much thinking on this, but as the msecval is a byte can the fact that we are all using floats be a problem?
+
+Next point is, I'm using 127.5 as a maxima instead of 255 (The largest byte value) as this is half a byte. Seems to be OK. I'm beggining to suspect that the engine player physics have changed, I'm not sure on this one. Try setting the maximum msecval to 255 and your bot should start freezing! The big problem though is once the framerate drops below about 9, then the bots do not run at the correct speed (Players can out run them)
+
+-Periannath34
+
+--------------------------------------------------
+06/10/02 at 15:55:28  Reply by: CountFloyd (countfloyd@botepidemic.com)
+--------------------------------------------------
+I doubt that Valve changed the physics code without saying a word (however there are some cs velocity hacks to prevent bunnyhopping). Perhaps you're the first to really investigate into the msecval code. I know that at least the outrunning bit is true, don't know about the freezing. There's an old but interesting thread about it here:
+[URL]
+http://dynamic.gamespy.com/~botman/yabb/YaBB.pl?board=2&action=display&num=517
+--------------------------------------------------
+06/13/02 at 12:49:53  Reply by: mattkimbo (mattkimbo@yahoo.co.uk)
+--------------------------------------------------
+:) I took part in that discussion, I used to go by the name Redeemer until too many people used that alias, anyway, the principles remain the same. Over a period of one second the msec vals passed to the game engine must total 1000 at the end of that second.
+
+--------------------------------------------------
+06/17/02 at 12:52:52  Reply by: mattkimbo (mattkimbo@yahoo.co.uk)
+--------------------------------------------------
+Brian, What are you returning as the angles that the bot looks? Hanvn't tried out your demo yet as I havn't updated HL from 1.1.0.8 (Or whatever it is!! lol) If the bots turn at  all then this isn't the problem. Lemme know as soon as you figure it out! (Don't believe the msec val can affect it in anyway) and can't see how having renamed the function "BotThink 2 BotThinkMain" could affect it, unless your code calls "BotThink" from elsewhere...
+
+Good luck ;)
+

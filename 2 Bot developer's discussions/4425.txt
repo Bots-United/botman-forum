@@ -1,0 +1,194 @@
+--------------------------------------------------
+Subject: Shooting Angle Question Please Help
+--------------------------------------------------
+05/18/03 at 00:45:56  Posted by: Tea (tea@mail97.com)
+--------------------------------------------------
+Hi all, I have a problem of the shoot angle when bot shooting at the breakable window, if the bot shoot at any breakable window at the ground floor, he have no problem at all, but if he detected any breakable window at the 2nd floor(bot is on the ground floor), he'll keep shooting at the ground floor that mean he can't move his gun above his head and point to the 2nd floor's window, also another problem if some windows that need shoot 2 times to break, my bot will stand still then keep pointing at the window but do nothing after he fired the first shot, here is the breakable object code please help:
+
+_________________________________________________
+
+void BreakableObject(bot_t *pBot)
+{
+edict_t *pent = NULL;
+edict_t *pPickupEntity = NULL;
+Vector pickup_origin;
+Vector entity_origin;
+float radius = 400;
+bool can_pickup;
+char item_name[40];
+TraceResult tr;
+Vector vecStart;
+Vector vecEnd;
+int angle_to_entity;
+edict_t *pEdict = pBot->pEdict;
+
+pBot->pBotPickupItem = NULL;
+
+while ((pent = UTIL_FindEntityInSphere( pent, pEdict->v.origin, radius )) != NULL)
+{
+ can_pickup = FALSE;  // assume can't use it until known otherwise
+
+ strcpy(item_name, STRING(pent->v.classname));
+
+ // see if this is a func_button...
+ if (strcmp("func_breakable", item_name) == 0)
+ {
+   // BModels have 0,0,0 for origin so must use VecBModelOrigin...
+   entity_origin = VecBModelOrigin(pent);
+
+   vecStart = pEdict->v.origin + pEdict->v.view_ofs;
+   vecEnd = entity_origin;
+
+   angle_to_entity = BotInFieldOfView( pBot, vecEnd - vecStart );
+
+   // check if entity is outside field of view (+/- 45 degrees)
+   if (angle_to_entity > 45)
+   continue;  // skip this item if bot can't "see" it
+
+  // trace a line from bot's eyes to func_ entity...
+  UTIL_TraceLine( vecStart, vecEnd, dont_ignore_monsters, pEdict->v.pContainingEntity, &tr);
+
+  // check if traced all the way up to the entity (didn't hit wall)
+  if (strcmp(item_name, STRING(tr.pHit->v.classname)) == 0)
+  {
+   if ((pent->v.takedamage == DAMAGE_YES)
+   {
+    if (WeaponIsPrimary(pBot))
+    {
+     // stand still till the offending item is destroyed
+     pBot->f_move_speed = 0;
+    
+     Vector bot_angles = UTIL_VecToAngles( vecEnd - vecStart  );
+     pEdict->v.ideal_yaw = bot_angles.y;
+     BotFixIdealYaw(pEdict);
+
+     pBot->pEdict->v.v_angle.x = bot_angles.x;
+     if (pBot->pEdict->v.v_angle.x > 180)
+       pBot->pEdict->v.v_angle.x -=360;
+     // set the body angles to point the gun correctly
+     pBot->pEdict->v.angles.x = pBot->pEdict->v.v_angle.x / 3;
+     // adjust the view angle pitch to aim correctly (MUST be after body v.angles stuff)
+     pBot->pEdict->v.v_angle.x = -pBot->pEdict->v.v_angle.x;
+
+     // if we are looking at the breakable object
+     
+     if (angle_to_entity < 10)
+     {
+      pBot->pEdict->v.button = IN_ATTACK;
+     }
+     }
+   }
+  }
+ }
+}
+}
+
+[modified on 05/18/03 at 00:45:56]
+--------------------------------------------------
+05/18/03 at 06:40:14  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+I don't think this part will work correctly...
+code:
+ // trace a line from bot's eyes to func_ entity... 
+ UTIL_TraceLine( vecStart, vecEnd, dont_ignore_monsters, pEdict->v.pContainingEntity, &tr); 
+
+ // check if traced all the way up to the entity (didn't hit wall) 
+ if (strcmp(item_name, STRING(tr.pHit->v.classname)) == 0) 
+
+...brush entities (like func_breakable, func_door, etc.) won't cause a traceline to collide with it (so you can't "detect" it by tracelines).
+
+I would simply trace a line from the bot's origin to the origin of the brush entity (just like you are doing), except just check if the trace result fraction is 1.0.  If so, you know the trace line went all the way from the bot to the func_ entity and you should be able to set the view_angle to aim the gun at that entity.
+
+botman
+
+--------------------------------------------------
+05/18/03 at 23:07:26  Reply by: Tea (tea@mail97.com)
+--------------------------------------------------
+Tks for the reply botman, I have try check trace result fraction is 1.0 but it even worst and the bot will aim to a wrong target, the code I used can success detect any breakable object without problem(in DoD), the problem is bot can't "aim" to any breakable object that's above his head after he detected it, I have notice bot did move up his head and look at the breakable object at 2nd floor, but when he shoot, his head will move down again and aim to the 1st floor, so I think the aim correction code have problem, if yes what wrong is it ?
+
+code:
+Vector bot_angles = UTIL_VecToAngles( vecEnd - vecStart  );
+    pEdict->v.ideal_yaw = bot_angles.y;
+    BotFixIdealYaw(pEdict);
+
+    pBot->pEdict->v.v_angle.x = bot_angles.x;
+    if (pBot->pEdict->v.v_angle.x > 180)
+      pBot->pEdict->v.v_angle.x -=360;
+    // set the body angles to point the gun correctly
+    pBot->pEdict->v.angles.x = pBot->pEdict->v.v_angle.x / 3;
+    // adjust the view angle pitch to aim correctly (MUST be after body v.angles stuff)
+    pBot->pEdict->v.v_angle.x = -pBot->pEdict->v.v_angle.x;
+
+
+
+--------------------------------------------------
+05/19/03 at 04:07:50  Reply by: Tea (tea@mail97.com)
+--------------------------------------------------
+Hi Botman, I have found out what's causing the problem, This is only happen if bot use bazooka since it need to deploy before fire, it seem the bot angle will reset after he press the IN_ATTACK2(deploy), here is the bazooka attack code hope you can help me.
+
+code:
+                              if (WeaponIsBazooka(pBot))
+                              {
+
+                                    Vector bot_angles = UTIL_VecToAngles( vecEnd - vecStart );
+                                    pEdict->v.ideal_yaw = bot_angles.y;
+                                    BotFixIdealYaw(pEdict);
+
+                                    pBot->pEdict->v.v_angle.x = bot_angles.x;
+                                    if (pBot->pEdict->v.v_angle.x > 180)
+                                      pBot->pEdict->v.v_angle.x -=360;
+                                    // set the body angles to point the gun correctly
+                                    pBot->pEdict->v.angles.x = pBot->pEdict->v.v_angle.x / 3;
+                                    // adjust the view angle pitch to aim correctly (MUST be after body v.angles stuff)
+                                    pBot->pEdict->v.v_angle.x = -pBot->pEdict->v.v_angle.x;
+
+                                    // if we are looking at the breakable object
+                                    
+                                    if (angle_to_entity < 10)
+                                    {
+                                          // stand still till the offending item is destroyed
+                                          pBot->f_move_speed = 0;
+                                          
+                                          pEdict->v.button = IN_ATTACK2;
+                                          
+                                          // wait bazooka totally deploy
+                                          pBot->f_pause_time = gpGlobals->time + 1.0;
+                                          
+                                          // press in_attack 3 sec
+                                          pBot->f_bazooka_time = gpGlobals->time + 3.0;
+                                          
+                                          //un-deploy
+                                          pEdict->v.button = IN_ATTACK2;
+                                          pBot->f_pause_time = gpGlobals->time + 1.0;
+                                          
+                                          if (pBot->current_weapon.iClip < 1)
+                                          {
+                                                pBot->pEdict->v.button = IN_RELOAD;  // press reload button
+                                                pBot->f_pause_time = gpGlobals->time + 1.0;
+                                          }
+                                    }
+
+
+                              // return here as we have found a breakable item. If we don't find a
+                              // breakable item, reset the break_time variable below
+                              return;
+                              }
+                  }
+
+
+[modified on 05/19/03 at 04:07:50]
+--------------------------------------------------
+05/19/03 at 08:07:31  Reply by: rick (rick_helmus8@hotmail.com)
+--------------------------------------------------
+hehe maybe its even better to let not the bot shoot when he's holding a bazooka, doesn't look very smart to shoot a window with a bazooka ;) 
+
+--------------------------------------------------
+05/19/03 at 19:48:52  Reply by: Tea (tea@mail97.com)
+--------------------------------------------------
+Actually this a breakable wall code not breakable window. =P
+
+--------------------------------------------------
+05/20/03 at 02:05:28  Reply by: rick (rick_helmus8@hotmail.com)
+--------------------------------------------------
+ok then a rocket launcher is handy :)
+

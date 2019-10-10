@@ -1,0 +1,70 @@
+--------------------------------------------------
+Subject: Geez.. what am I missing?
+--------------------------------------------------
+09/05/01 at 08:43:51  Posted by: Spectual (spectual@hotmail.com)
+--------------------------------------------------
+I'm currently making a "bookmark" function to my bot so that a player can move around on the map very fast. 
+
+Its supposed to save the position and the (model- and viewing-) angles.
+
+However, when I copy back the values, it doesn't not turn the player in the right direction - in fact it doesn't change the direction at all (though it moves the player to the right position).  
+
+I figure it might be something I'm missing. This code is what I have now:
+
+pEntity->v.origin = bookmarks.Positions [bm_nr];
+pEntity->v.v_angle = bookmarks.V_Angles [bm_nr];
+pEntity->v.angles = bookmarks.Angles [bm_nr];
+
+Is there some kind of function I should call?
+
+[modified on 09/05/01 at 08:43:51]
+--------------------------------------------------
+09/05/01 at 08:55:59  Reply by: jerry_stoel (jerry_stoel@hotmail.com)
+--------------------------------------------------
+Try setting your ideal_yaw like this:
+code:
+
+pEntity->v.ideal_yaw = bookmarks.V_Angles[bm_nr];
+
+
+Maybe that works, but I also ain't that good at angles :P.
+
+Seeya,
+
+--------------------------------------------------
+09/05/01 at 09:15:16  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+i thought only the RunPlayerMove function could update the player information correctly?
+
+
+
+--------------------------------------------------
+09/05/01 at 09:35:27  Reply by: Spectual (spectual@hotmail.com)
+--------------------------------------------------
+Well. Maybe this is why it is not working.
+
+IdealYaw did nothing.
+
+Botman uses something which is close to what I need. I tried copying the code in, but it didn't change anything.
+
+Maybe I should try RunPlayerMove....
+
+--------------------------------------------------
+09/05/01 at 12:28:44  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+pfnRunPlayerMove is to move a bot from the current position at a specified speed.
+
+If you are trying to adjust a real player's position, pfnRunPlayerMove won't help you.
+
+To change the location of a player set the pev->flags field so that they aren't touching the ground (&= ~FL_ONGROUND) then change the pev->origin field to what you want.  See the teleporter trigger code in the SDK to see how the teleporter moves a player.
+
+If you want to also adjust the angles, you should set pev->fixangle to TRUE like this...
+
+pev->v_angle = new_view_angles;
+pev->angles = new_body_angles;
+pev->fixangle = TRUE;
+
+...the engine will set these angles for the player before the start of the next frame.
+
+botman
+

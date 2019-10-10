@@ -1,0 +1,217 @@
+--------------------------------------------------
+Subject: bots crashing linux tfc server
+--------------------------------------------------
+10/06/03 at 16:29:48  Posted by: MadScientist (junk@madslab.com)
+--------------------------------------------------
+The server starts fine and runs for a few mins, then crashes and auto-restarts. I have the 3.0 binary. I'm running metamod and define the mm_gamedll in autoexec.cfg like this:
+
+localinfo mm_gamedll "dlls/HPB_bot_i486.so"
+
+When I remove that line from the autoexec, the server runs fine for days. When I add it back, the server crashes within a minute of restart, whether or not I add bots to the game.
+
+Other info about the server:
+
+version :  46/1.1.2.0/Stdio 2511 secure
+Metamod v1.16.2  2003/08/02
+Currently loaded plugins:
+      description      stat pend  file              vers      src  load  unlod
+ [ 1] AMX              RUN   -    amx_mm_i386.so    v0.9.7    ini  ANY   ANY
+ [ 2] FUN              RUN   -    fun_mm_i386.so    v0.9.7    ini  ANY   ANY
+2 plugins, 2 running
+
+Any ideas how to stabilize this?
+
+[modified on 10/06/03 at 16:29:48]
+--------------------------------------------------
+10/06/03 at 16:58:00  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Try removing 'FUN' and see if the server starts up fine with bots.
+
+Not all (in fact many) plugins are compatible with bots.  Some plugins try to send network messages to players and sending network messages to bots can cause the server to crash.
+
+You may not be able to run the bots and some other plugins at the same time (it's one or the other).
+
+botman
+
+--------------------------------------------------
+10/07/03 at 14:29:12  Reply by: MadScientist (DontSpamMe@madslab.com)
+--------------------------------------------------
+After spending a little more time on this I have the following to add:
+
+- Removing "FUN" didn't solve the problem.
+- I don't think it's related to plugins doing things to the bots because it happens even when there are no bots on the server.
+- The server appears to be doing more of an unexpected shutdown than a crash. i.e. the players are disconnected and the logs are flushed. This isn't normally what happens with a crash.
+
+Here are some log examples. First, a normal map ending, from the players final words to the log being closed. Note this includes the final score showing:
+
+L 10/06/2003 - 20:09:14: "MADScientist<128><STEAM_0:1:124103><Red>" killed "Toast <DSM><110><STEAM_0:1:476809><Blue>" with "rocket"
+L 10/06/2003 - 20:09:14: "Rugbypig<142><STEAM_0:0:205271><Blue>" say "gg all"
+L 10/06/2003 - 20:09:15: "rugged<158><STEAM_0:0:571654><Blue>" say "gg"
+L 10/06/2003 - 20:09:16: "MADScientist<128><STEAM_0:1:124103><Red>" say "gg"
+L 10/06/2003 - 20:09:18: "Toast <DSM><110><STEAM_0:1:476809><Blue>" say "gg"
+L 10/06/2003 - 20:09:19: Team "Blue" scored "26" with "6" players (kills "120") (kills_unaccounted "32")
+L 10/06/2003 - 20:09:19: Team "Red" scored "45" with "5" players (kills "161") (kills_unaccounted "77")
+L 10/06/2003 - 20:09:20: [META] ini: Begin re-reading plugins list: addons/metamod/plugins.ini
+L 10/06/2003 - 20:09:20: [META] ini: Read plugin config for: AMX
+L 10/06/2003 - 20:09:20: [META] ini: Read plugin config for: FUN
+L 10/06/2003 - 20:09:20: [META] ini: Finished reading plugins list: addons/metamod/plugins.ini; Found 2 plugins
+L 10/06/2003 - 20:09:20: [META] dll: Updating plugins...
+L 10/06/2003 - 20:09:20: [META] dll: Finished updating 2 plugins; kept 2, loaded 0, unloaded 0, reloaded 0, delayed 0
+L 10/06/2003 - 20:09:20: Log file closed
+
+
+Next, an "unexpected shutdown" in the middle of a map, showing lines from the last few events during normal play until the log file is closed. Note the lack of score being displayed and the player's STEAMIDs are missing in their disconnect messages. But the normal end-of-map metamod refresh happens and the log flushes as if it were a controlled shutdown:
+
+L 10/07/2003 - 13:17:42: "Orange Peel-[aiX]<8><STEAM_0:0:207157><Blue>" say "i think its a misquito or something"
+L 10/07/2003 - 13:17:46: "EMP Demon<11><STEAM_0:1:186071><Blue>" say "XD"
+L 10/07/2003 - 13:17:46: "EMP Demon<11><STEAM_0:1:186071><Blue>" killed "RAZZ<7><STEAM_0:1:707228><Red>" with "sentrygun"
+L 10/07/2003 - 13:17:56: [META] ini: Begin re-reading plugins list: addons/metamod/plugins.ini
+L 10/07/2003 - 13:17:56: [META] ini: Read plugin config for: AMX
+L 10/07/2003 - 13:17:56: [META] ini: Finished reading plugins list: addons/metamod/plugins.ini; Found 1 plugins
+L 10/07/2003 - 13:17:56: [META] dll: Updating plugins...
+L 10/07/2003 - 13:17:56: [META] dll: Finished updating 1 plugins; kept 1, loaded 0, unloaded 0, reloaded 0, delayed 0
+L 10/07/2003 - 13:17:56: "MADBigBoobies<-1><><Red>" disconnected
+L 10/07/2003 - 13:17:56: "RAZZ<-1><><Red>" disconnected
+L 10/07/2003 - 13:17:56: "Orange Peel-[aiX]<-1><><Blue>" disconnected
+L 10/07/2003 - 13:17:56: "CyBorg  ReBorne<-1><><Red>" disconnected
+L 10/07/2003 - 13:17:56: "Dr.Chronic<-1><><Blue>" disconnected
+L 10/07/2003 - 13:17:56: "EMP Demon<-1><><Blue>" disconnected
+L 10/07/2003 - 13:17:56: "EMP Demon<-1><><Blue>" triggered "Sentry_Destroyed"
+L 10/07/2003 - 13:17:56: Server shutdown
+L 10/07/2003 - 13:17:56: Log file closed
+
+
+So it's not the bots themselves that are crashing (or shutting down) the server. Simply loading the HPB_bot_i486.so file ahead of the tfc_i386.so is doing it. When I remove the bot .so file and have metamod go straight to tfc, no more crashes. Any help would be great!
+
+[modified on 10/07/03 at 14:29:12]
+--------------------------------------------------
+10/07/03 at 15:52:16  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+I don't understand what's causing the server to shutdown.  There's nothing in the bot code that would cause a 'shutdown', if anything the bot's could cause the server to crash (and create a crash dump 'core' file), but something somewhere is issuing a command to the server to have it shutdown cleanly.
+
+It's almost as though you have some server command in the bot .cfg file that's getting executed after the server starts up (even without adding bots).  You don't have something like 'exit' or 'quit' or something like that in your HPB_bot.cfg file do you?  (show the contents of your HPB_bot.cfg file).
+
+botman
+
+--------------------------------------------------
+10/07/03 at 15:58:23  Reply by: Cheesemonster!!! (cheeseh(at)rcbot(dot)net)
+--------------------------------------------------
+QUOTE:
+"I don't think it's related to plugins doing things to the bots because it happens even when there are no bots on the server"
+
+
+
+So the plugins are at fault? The bot will not do anything if there are no bots! UNless there is some memory overwrite caused by bots. I HAVE noticed memory overwrites with HPB Bot if you have bot configs that have long lines (I dont think botman correctly terminates the string at the end when reading in a line of a buffer from fgets, but I don't know if doing that solves it either) If you have edited your HPB_bot.cfg config file then make sure the lines are not too long (80 characters long, say)
+
+[modified on 10/07/03 at 15:58:23]
+--------------------------------------------------
+10/07/03 at 22:44:27  Reply by: MadScientist (DontSpamMe@madslab.com)
+--------------------------------------------------
+My HPB_bot.cfg file is the default file with a "#" in front of the six "addbot" statements, commenting them out like so:
+
+#addbot
+
+Otherwise, I changed nothing to any of the files that came with the tar file.
+
+Here's how I installed it:
+
+I went into the Install shell script and commented out the single line that would overwrite my liblist.gam file. Next I ran the script to copy all the files to their locations. I then added the following line to my autoexec.cfg file:
+
+localinfo mm_gamedll "dlls/HPB_bot_i486.so"
+
+I then commented out the six places where "addbot" occurs in the HPB_bot.cfg file. Then I started the server and manually added a few bots, played for about ten mins, and after a few people joined, the server shut down. On restart, I played for a while without adding any bots and after about five or six people joined, the server shut down again.
+
+I commented out the line in autoexec.cfg, and after the next "involuntary" shutdown, the normal tfc .so file was loaded and the server ran fine for the rest of the night. This morning, I uncommented the line from autoexec.cfg, disabled "FUN", and restarted to see what would happen... I played by myself for about a half hour with no problems. As soon as about five or six people were on the server, it shut down again... Commenting out the line in autoexec, the server has been running fine all night, full for the past six hours or so with no problems. Very bizarre. I'm stumped. :-?
+
+--------------------------------------------------
+10/07/03 at 22:51:40  Reply by: MadScientist (DontSpamMe@madslab.com)
+--------------------------------------------------
+OK, this may be something. In the changelog for AMX 0.9.7, one of the entries is:
+
+- made that on a module error a server exits with a proper message
+
+Perhaps AMX is calling a function in the TFC so file but the bot so file isn't passing it through, causing an error? I will follow up in the AMX forums as well to see if this behaviour can happen mid-game, and not just at server startup.
+
+--------------------------------------------------
+10/09/03 at 18:43:27  Reply by: MadScientist (DontSpamMe@madslab.com)
+--------------------------------------------------
+I have isolated this problem. When you build a teleporter, the server shuts down with the following logged to the console:
+
+FATAL ERROR (shutting down): Host_Error: PF_precache_model_I: 'models/teleporter.mdl' Precache can only be done in spawn functions
+
+This is completely independent of any plugins. I was able to reproduce it without even have metamod running, and using HPB_bot directly in my liblist.gam file. Also, there needn't be any bots spawed when the teleporter is built.
+
+Anybody know how to fix this?
+
+[modified on 10/09/03 at 18:43:27]
+--------------------------------------------------
+10/14/03 at 14:40:18  Reply by: MadScientist (DontSpamMe@madslab.com)
+--------------------------------------------------
+So, am I the only one who cannot build teleporters when HPB_bot_i486.so is loaded? Is there anybody else experiencing this problem?
+
+--------------------------------------------------
+10/14/03 at 15:44:10  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Maybe there's some new weird engine/MOD function that the HPB bot code doesn't handle.
+
+You can use metamod and my Stripper2 plugin to precache those models to prevent that "Precache can only be done in spawn" message.  I'm not sure why this is suddenly a problem with the HPB bot running on tfc servers.
+
+I think Brian posted this same problem a couple of weeks ago (but I can't see to find the thread with his question about the teleporter and my response).
+
+botman
+
+--------------------------------------------------
+10/16/03 at 18:30:39  Reply by: MadScientist (DontSpamMe@madslab.com)
+--------------------------------------------------
+Stripper2 solved it for now. The only bummer is that precaching can only be done in per-map configs, so if with each new map, I'll have to remember to copy the str file as well, otherwise I'll get crashes. The following is the config file to cause the appropriate resources to be precached:
+
+PRECACHE_MODEL(models/teleporter.mdl)
+PRECACHE_MODEL(sprites/particle.spr)
+PRECACHE_SOUND(misc/teleport_out.wav)
+PRECACHE_SOUND(misc/teleport_in.wav)
+PRECACHE_SOUND(misc/teleport_ready.wav)
+
+Thanks for your help!!
+
+
+
+--------------------------------------------------
+10/17/03 at 10:20:34  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+If you want, you can modify the HPB_bot source code, in the DispatchSpawn() function, in the block that tests for "worldspawn", then in the lower level in the block that tests for the TFC_DLL, add these lines:
+code:
+
+PRECACHE_MODEL("models/teleporter.mdl");
+PRECACHE_MODEL("sprites/particle.spr");
+PRECACHE_SOUND("misc/teleport_out.wav");
+PRECACHE_SOUND("misc/teleport_in.wav");
+PRECACHE_SOUND("misc/teleport_ready.wav");
+
+
+
+
+--------------------------------------------------
+12/28/03 at 23:42:24  Reply by: BAStumm (bs@bs-linux.com)
+--------------------------------------------------
+QUOTE:
+I think Brian posted this same problem a couple of weeks ago (but I can't see to find the thread with his question about the teleporter and my response).
+
+botman
+
+
+
+
+http://dynamic.gamespy.com/~botman/yabb/YaBB.pl?board=6&action=display&num=4817
+
+[modified on 12/28/03 at 23:42:24]
+--------------------------------------------------
+12/28/03 at 23:45:51  Reply by: BAStumm (bs@bs-linux.com)
+--------------------------------------------------
+if the interest is there I could provide a fixed HPB_bot .so file for TFC (tfc only, don't ask for me to modify hpb for other mods, and dont ask for a dll since I don't do windows) to fix the teleporter problems under steam. 
+
+--------------------------------------------------
+12/29/03 at 01:00:11  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Else I suppose I'll get to have a go for compiling the HPB_bot metamod plugin for Linux... The Bots United server is a Linux server, so now I can do it. Mh yeah, definitely, I'm gonna do this. Right away.
+
+

@@ -1,0 +1,919 @@
+--------------------------------------------------
+Subject: bot coders: how do YOU catch the gunshot sounds ?
+--------------------------------------------------
+11/23/02 at 14:51:56  Posted by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Still on my hearing system for bots.
+
+I would like to know, how YOU bot developers, make your bots react to gunshots.
+Personally I am hooking the AmmoX messages, and given the weaponmodel the entity is holding, and whether it is actually firing IN_ATTACK[2] or not, I dispatch a corresponding sound to my bots' ears.
+
+But when your loader is empty, or when your player is validating a weapon selection in his HUD drop-down menu ? Or when your gun is silenced out ? There are countless ways for a sound that should be played not to be, and the contrary is true. So I would like to know how YOU are doing, and whether you theorized the question (hi Tobias ;)).
+
+May this thread condensate all the ideas one can have about bot hearing...
+
+
+--------------------------------------------------
+11/23/02 at 16:24:09  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+you could always try checking when ricochet decals / sparks are created, although I haven't tried this myself.
+
+--------------------------------------------------
+11/23/02 at 17:10:46  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+ricochet decals ? how would you hook the creation of a ricochet decal by the server side ?
+
+
+--------------------------------------------------
+11/23/02 at 22:35:42  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Actually I was doing something like this. Each time a AmmoX message gets sent over the network, I call this function with the edict of the sender entity.
+code:
+
+void PlayBulletSoundsForBots (edict_t *pPlayer)
+{
+   // FIXME: can't capture crowbar swings. No ammo update!
+
+   char sound_path[256];
+
+   if (FNullEnt (pPlayer)  pPlayer->free)
+      return; // skip invalid players
+
+   if (!IsAlive (pPlayer))
+      return; // skip this player if not alive (i.e. dead or dying)
+
+   if (b_observer_mode && !(pPlayer->v.flags & FL_FAKECLIENT))
+      return; // skip real players if in observer mode
+
+   // is the weapon this player is holding in its hands a .357 magnum python ?
+   if (stricmp (STRING (pPlayer->v.weaponmodel), "models/p_357.mdl") == 0)
+   {
+      // is that player actually firing the gun ?
+      if (pPlayer->v.button & IN_ATTACK)
+      {
+         sprintf (sound_path, "weapons/357_shot%d.wav", RANDOM_LONG (1, 2));
+         DispatchSound (sound_path, GetGunPosition (pPlayer), 1.0, ATTN_NORM);
+      }
+   }
+
+   // else is it the MP5 submachinegun ?
+   else if (stricmp (STRING (pPlayer->v.weaponmodel), "models/p_9mmar.mdl") == 0)
+   {
+      // is that player actually firing the gun or launching a grenade or reloading ?
+      if (pPlayer->v.button & IN_ATTACK)
+      {
+         sprintf (sound_path, "weapons/hks%d.wav", RANDOM_LONG (1, 3)); 
+         DispatchSound (sound_path, GetGunPosition (pPlayer), 1.0, ATTN_NORM);
+      }
+      else if (pPlayer->v.button & IN_ATTACK2)
+         DispatchSound ((RANDOM_LONG (0, 1) ? "weapons/glauncher.wav" : "weapons/glauncher.wav2"),
+                        GetGunPosition (pPlayer), 1.0, ATTN_NORM);
+      else if ((pPlayer->v.button & IN_RELOAD) && !(pPlayer->v.oldbuttons & IN_RELOAD))
+         DispatchSound ("items/cliprelease1.wav", GetGunPosition (pPlayer), 1.0, ATTN_NORM);
+      else if (!(pPlayer->v.button & IN_RELOAD) && (pPlayer->v.oldbuttons & IN_RELOAD))
+         DispatchSound ("items/clipinsert1.wav", GetGunPosition (pPlayer), 1.0, ATTN_NORM);
+   }
+
+   // else is it the glock ?
+   else if ((stricmp (STRING (pPlayer->v.weaponmodel), "models/p_9mmhandgun.mdl") == 0)
+             (stricmp (STRING (pPlayer->v.weaponmodel), "models/p_glock.mdl") == 0))
+   {
+      // is that player actually firing the gun or reloading ?
+      if ((pPlayer->v.button & IN_ATTACK)  (pPlayer->v.button & IN_ATTACK2))
+         DispatchSound ("weapons/pl_gun3.wav", GetGunPosition (pPlayer), 1.0, ATTN_NORM);
+      else if ((pPlayer->v.button & IN_RELOAD) && !(pPlayer->v.oldbuttons & IN_RELOAD))
+         DispatchSound ("items/9mmclip2.wav", GetGunPosition (pPlayer), 1.0, ATTN_NORM);
+      else if (!(pPlayer->v.button & IN_RELOAD) && (pPlayer->v.oldbuttons & IN_RELOAD))
+         DispatchSound ("items/9mmclip1.wav", GetGunPosition (pPlayer), 1.0, ATTN_NORM);
+   }
+
+   // else is it the crossbow ?
+   else if (stricmp (STRING (pPlayer->v.weaponmodel), "models/p_crossbow.mdl") == 0)
+   {
+      // is that player actually firing the gun ?
+      if (pPlayer->v.button & IN_ATTACK)
+         DispatchSound ("weapons/xbow_fire1.wav", GetGunPosition (pPlayer), 1.0, ATTN_NORM);
+   }
+
+   // else is it the egon ?
+   else if (stricmp (STRING (pPlayer->v.weaponmodel), "models/p_egon.mdl") == 0)
+   {
+      // is that player actually starting firing, firing or ending firing the gun ?
+      if ((pPlayer->v.button & IN_ATTACK) && !(pPlayer->v.oldbuttons & IN_ATTACK))
+         DispatchSound ("weapons/egon_windup2.wav", GetGunPosition (pPlayer), 1.0, ATTN_NORM);
+      else if ((pPlayer->v.button & IN_ATTACK) && (pPlayer->v.oldbuttons & IN_ATTACK))
+         DispatchSound ("weapons/egon_run3.wav", GetGunPosition (pPlayer), 1.0, ATTN_NORM);
+      else if (!(pPlayer->v.button & IN_ATTACK) && (pPlayer->v.oldbuttons & IN_ATTACK))
+         DispatchSound ("weapons/egon_off1.wav", GetGunPosition (pPlayer), 1.0, ATTN_NORM);
+   }
+
+   // else is it the gauss ?
+   else if (stricmp (STRING (pPlayer->v.weaponmodel), "models/p_gauss.mdl") == 0)
+   {
+      // is that player actually firing, starting spinning, spinning or firing the gun ?
+      if (pPlayer->v.button & IN_ATTACK)
+         DispatchSound ("weapons/gauss2.wav", GetGunPosition (pPlayer), 1.0, ATTN_NORM);
+      else if ((pPlayer->v.button & IN_ATTACK2) && !(pPlayer->v.oldbuttons & IN_ATTACK2))
+         DispatchSound ("ambience/pulsemachine.wav", GetGunPosition (pPlayer), 1.0, ATTN_NORM);
+      else if (!(pPlayer->v.button & IN_ATTACK2) && (pPlayer->v.oldbuttons & IN_ATTACK2))
+         DispatchSound ("weapons/gauss2.wav", GetGunPosition (pPlayer), 1.0, ATTN_NORM);
+   }
+
+   // else is it the hornet gun ?
+   else if (stricmp (STRING (pPlayer->v.weaponmodel), "models/p_hgun.mdl") == 0)
+   {
+      // is that player actually firing the gun ?
+      if ((pPlayer->v.button & IN_ATTACK) && (pPlayer->v.button & IN_ATTACK2))
+      {
+         sprintf (sound_path, "agrunt/ag_fire%d.wav", RANDOM_LONG (1, 3));
+         DispatchSound (sound_path, GetGunPosition (pPlayer), 1.0, ATTN_NORM);
+      }
+   }
+
+   // else is it the rpg ?
+   else if (stricmp (STRING (pPlayer->v.weaponmodel), "models/p_rpg.mdl") == 0)
+   {
+      // is that player actually firing the gun ?
+      if (pPlayer->v.button & IN_ATTACK)
+         DispatchSound ("weapons/rocketfire1.wav", GetGunPosition (pPlayer), 1.0, ATTN_NORM);
+   }
+
+   // else is it the shotgun ?
+   else if (stricmp (STRING (pPlayer->v.weaponmodel), "models/p_shotgun.mdl") == 0)
+   {
+      // is that player actually firing the gun ?
+      if (pPlayer->v.button & IN_ATTACK)
+         DispatchSound ("weapons/sbarrel1.wav", GetGunPosition (pPlayer), 1.0, ATTN_NORM);
+      else if (pPlayer->v.button & IN_ATTACK2)
+         DispatchSound ("weapons/dbarrel1.wav", GetGunPosition (pPlayer), 1.0, ATTN_NORM);
+   }
+
+   return;
+}
+
+
+...until I notice in debug mode that half of the sounds that should be dispatched to my bots here are not. Looks like AmmoX messages are only sent for SECONDARY ammo updates, i.e. for HL, the grenade launcher feature of the MP5 ; they don't seem to be sent when a single bullet is fired. WTF ? the HUD ammo value does updates as well ??
+
+
+[modified on 11/23/02 at 22:35:42]
+--------------------------------------------------
+11/24/02 at 03:24:21  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+from SDK...
+
+code:
+
+void UTIL_GunshotDecalTrace( TraceResult *pTrace, int decalNumber )
+{
+      if ( decalNumber < 0 )
+            return;
+
+      int index = gDecals[ decalNumber ].index;
+      if ( index < 0 )
+            return;
+
+      if (pTrace->flFraction == 1.0)
+            return;
+
+      MESSAGE_BEGIN( MSG_PAS, SVC_TEMPENTITY, pTrace->vecEndPos );
+            WRITE_BYTE( TE_GUNSHOTDECAL );
+            WRITE_COORD( pTrace->vecEndPos.x );
+            WRITE_COORD( pTrace->vecEndPos.y );
+            WRITE_COORD( pTrace->vecEndPos.z );
+            WRITE_SHORT( (short)ENTINDEX(pTrace->pHit) );
+            WRITE_BYTE( index );
+      MESSAGE_END();
+}
+
+
+void UTIL_Sparks( const Vector &position )
+{
+      MESSAGE_BEGIN( MSG_PVS, SVC_TEMPENTITY, position );
+            WRITE_BYTE( TE_SPARKS );
+            WRITE_COORD( position.x );
+            WRITE_COORD( position.y );
+            WRITE_COORD( position.z );
+      MESSAGE_END();
+}
+
+
+void UTIL_Ricochet( const Vector &position, float scale )
+{
+      MESSAGE_BEGIN( MSG_PVS, SVC_TEMPENTITY, position );
+            WRITE_BYTE( TE_ARMOR_RICOCHET );
+            WRITE_COORD( position.x );
+            WRITE_COORD( position.y );
+            WRITE_COORD( position.z );
+            WRITE_BYTE( (int)(scale*10) );
+      MESSAGE_END();
+}
+
+
+
+I don't know if it will work for all mods if you try catching these net messages.....
+
+--------------------------------------------------
+11/24/02 at 05:54:36  Reply by: @$3.1415rin (johannes@_-removeifnotavirus-_lampel.net)
+--------------------------------------------------
+i'm using currentweapon for determining shots. but atm the bots only 'hear' the gun sound, not the sound of a bullet hitting something.
+
+and about silenced weapons : I'm still thinking about how to code that, being compatible to the other 'design' of the bot.
+
+anyway, this is my function at the moment, not elaborated, but it works, that's sufficient now
+
+code:
+void BotClient_Valve_CurrentWeapon(void *p, int bot_index,int iAdd){
+      static int state = 0;   // current state machine state
+      static int iState;
+      static int iId;
+      static int iClip;
+      CBaseBot *pBot;
+      
+      if(iAdd != _CLIENT_END){
+            if (state == 0){
+                  state++;
+                  iState = *(int *)p;  // state of the current weapon (WTF???)
+            }
+            else if (state == 1){
+                  state++;
+                  iId = *(int *)p;  // weapon ID of current weapon
+            }
+            else if (state == 2){
+                  state = 0;
+                  
+                  iClip = *(int *)p;  // ammo currently in the clip for this weapon
+                  
+                  if(bot_index != -1){
+                        if (iId <= 31)
+                        {
+                              pBot = g_pGame->getBot(bot_index);
+                              pBot->m_pWeapons->m_iWeapons |= (1<<iId);  // set this weapon bit
+                              
+                              if(pBot->m_pWeapons->m_iId != -1){
+                                    pBot->m_pWeapons->m_piAmmoClip[pBot->m_pWeapons->m_iId] =
+                                          pBot->m_pWeapons->m_iClip;
+                              }
+                              
+                              if (iState == 1)
+                              {
+                                    pBot->m_pWeapons->m_iId = iId;
+                                    pBot->m_pWeapons->m_iClip = iClip;
+                                    
+                                    // update the ammo counts for this weapon...
+                                    pBot->m_pWeapons->m_iAmmo1 =
+                                          pBot->m_pWeapons->m_piAmmo[weapon_defs[iId].iAmmo1Id];
+                                    pBot->m_pWeapons->m_iAmmo2 =
+                                          pBot->m_pWeapons->m_piAmmo[weapon_defs[iId].iAmmo2Id];
+                              }
+                        }
+                  }
+                  
+                  // let's tell all the other bots that a shot was fired
+                  int i;
+                  CPlayer *pPlayer = g_pGame->getPlayer(g_pGame->isPlayer(g_pClientCallEdict));
+                  
+                  if(pPlayer){
+                        for(i=g_pGame->getMaxCurrentBot(); i>=0; i--){
+                              if(i == bot_index)
+                                    continue;
+                              
+                              if(pBot = g_pGame->getBot(i)){
+                                    CPerceipt *pNewPerceipt = pBot->m_pPerception->addPerceipt();
+                                    
+                                    pNewPerceipt->m_pPlayer = pPlayer;
+                                    pNewPerceipt->m_VOrigin = pPlayer->getOrigin();
+                                    pNewPerceipt->m_pEntity = g_pClientCallEdict;
+                                    pNewPerceipt->m_lType = CPerceipt::PT_SOUND;
+                                    pNewPerceipt->m_lTypeSpec |= (CPerceipt::PTX_SOUND_LOC|CPerceipt::PTX_SOUND_SHOOT);
+                                    
+                                    if(pPlayer->getTeam() == pBot->m_bot_team){
+                                          pNewPerceipt->m_lTypeSpec |= CPerceipt::PTX_SOUND_TMATE;
+                                    }
+                                    else{
+                                          pNewPerceipt->m_lTypeSpec |= CPerceipt::PTX_SOUND_ENEMY;
+                                    }
+                                    
+                                    pNewPerceipt->m_fDistance = (pBot->m_pPlayer->getOrigin()-pNewPerceipt->m_VOrigin).Length();
+                              }
+                        }
+                  }
+            }
+      }
+}
+
+--------------------------------------------------
+11/24/02 at 10:55:17  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+and what about gunshots fired by <b>players</b> ? I understand here, bots hear other bots firing, but they can't hear a player, is it Joe ?
+
+[edited] thanks Cheesy, I'll have a look.
+
+BTW, for silenced weapons, I have written a little metamod plugin that dumps any entity's entvars_t during the game when you issue a command (you can list all entities too and get their indices, or you can know the index of the entity in front of you by issuing a command too). Using it I noticed the weapon entity's entvars_t changes when you put the silencer on/off. I didn't investigate what field now (there are several). If you want that plugin (with source code of course) email me.
+
+[modified on 11/24/02 at 10:55:17]
+--------------------------------------------------
+11/24/02 at 12:45:26  Reply by: @$3.1415rin (johannes@_-removeifnotavirus-_lampel.net)
+--------------------------------------------------
+ok, you are right ... I should have mentioned that i changed a bit of code in the engine.cpp:
+
+code:
+      if (ed)
+            {
+                  index = g_pGame->isBot(ed);
+                  
+                  // is this message for a bot?
+                  if (index != -1)
+                  {
+                        botMsgFunction = NULL;  // no msg function until known otherwise
+                        botMsgIndex = index;    // index of bot receiving message
+                        
+                        if (mod_id == VALVE_DLL)
+                        {
+                              if (msg_type == message_WeaponList)
+                                    botMsgFunction = BotClient_Valve_WeaponList;
+                              else if (msg_type == message_CurWeapon)
+                                    botMsgFunction = BotClient_Valve_CurrentWeapon;
+                              else if (msg_type == message_AmmoX)
+
+
+                              [....]
+
+
+         }
+             else{
+                   // it's no a bot, but maybe we wanna know what this is, too ?!
+                   botMsgFunction = NULL;  // no msg function until known otherwise
+                   botMsgIndex = -1;    // no index of bot receiving message
+                   g_pClientCallEdict = ed;
+
+                   if (mod_id == VALVE_DLL)
+                   {
+                         if (msg_type == message_Damage)
+                               botMsgFunction = BotClient_Valve_Damage;
+                         else if (msg_type == message_AmmoX)
+                               botMsgFunction = BotClient_Valve_CurrentWeapon;
+                   }
+                   else if (mod_id == CSTRIKE_DLL)
+                   {
+                         if (msg_type == message_Damage)
+                               botMsgFunction = BotClient_CS_Damage;
+                         else if (msg_type == message_AmmoX)
+                               botMsgFunction = BotClient_CS_CurrentWeapon;
+                   }
+                   else if (mod_id == DOD_DLL)
+                   {
+                         if (msg_type == message_Damage)
+                               botMsgFunction = BotClient_DOD_Damage;
+                         else if (msg_type == message_AmmoX)
+                               botMsgFunction = BotClient_DOD_CurrentWeapon;
+                   }
+             }
+
+--------------------------------------------------
+11/24/02 at 14:25:37  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+ok...
+that's what I was doing too.
+code:
+
+      if (ed)
+      {
+         index = UTIL_GetBotIndex (ed);
+
+         // is this message for a bot?
+         if (index != -1)
+         {
+            [...]
+         }
+
+         // has someone fired a bullet ?
+         if (msg_type == message_AmmoX)
+            PlayBulletSoundsForBots (ed); // call this so bots hear bullet sounds
+      }
+      else if (msg_dest == MSG_ALL)
+      {
+         [...]
+      }
+
+
+
+News about the silenced weapons: did you notice that when you buy an USP or a M4A1, screw the silencer, throw it, buy another one, DON'T put the silencer && throw it, the game still knows which one of both of them on the ground is silenced and which one is not.
+
+Here's a dump from my plugin about the entvars of an <b>UN</b>silenced USP then a silenced one.
+code:
+
+PMTOOLS (console): Printing out ALL "weapon_" entities in game...
+PMTOOLS (console): index CLASSNAME ["netname"] (model): absmin (x, y, z); size (x, y, z); distance d
+PMTOOLS (console): 46 weapon_knife (): min (-248, -1768, 100); siz (0, 0, 0); dst 34
+PMTOOLS (console): 47 weapon_usp (): min (-248, -1768, 100); siz (0, 0, 0); dst 34
+PMTOOLS (console): End of list - 930 entities found.
+
+
+
+PMTOOLS (console): Printing out entity #47 variable information...
+PMTOOLS (console): (variable name = value (meaning))
+PMTOOLS (console): pEntity->v.classname = 233421780 ("weapon_usp")
+PMTOOLS (console): pEntity->v.globalname = 0 ("")
+PMTOOLS (console): pEntity->v.origin = Vector (-224.0, -1744.0, 100.0)
+PMTOOLS (console): pEntity->v.oldorigin = Vector (0.0, 0.0, 0.0)
+PMTOOLS (console): pEntity->v.velocity = Vector (0.0, 0.0, 0.0) - Length 0.000 - Length2D 0.000
+PMTOOLS (console): pEntity->v.basevelocity = Vector (0.0, 0.0, 0.0) - Length 0.000 - Length2D 0.000
+PMTOOLS (console): pEntity->v.clbasevelocity = Vector (0.0, 0.0, 0.0) - Length 0.000 - Length2D 0.000
+PMTOOLS (console): pEntity->v.movedir = Vector (0.0, 0.0, 0.0)
+PMTOOLS (console): pEntity->v.angles = Vector (0.2, 50.8, 0.0)
+PMTOOLS (console): pEntity->v.avelocity = Vector (0.0, 0.0, 0.0) - Length 0.000 - Length2D 0.000
+PMTOOLS (console): pEntity->v.punchangle = Vector (0.0, 0.0, 0.0)
+PMTOOLS (console): pEntity->v.v_angle = Vector (0.0, 0.0, 0.0)
+PMTOOLS (console): pEntity->v.endpos = Vector (0.0, 0.0, 0.0)
+PMTOOLS (console): pEntity->v.startpos = Vector (0.0, 0.0, 0.0)
+PMTOOLS (console): pEntity->v.impacttime = 0.000
+PMTOOLS (console): pEntity->v.starttime = 0.000
+PMTOOLS (console): pEntity->v.fixangle = 0 (nothing)
+PMTOOLS (console): pEntity->v.idealpitch = 0.000
+PMTOOLS (console): pEntity->v.pitch_speed = 0.000
+PMTOOLS (console): pEntity->v.ideal_yaw = 0.000
+PMTOOLS (console): pEntity->v.yaw_speed = 0.000
+PMTOOLS (console): pEntity->v.modelindex = 0
+PMTOOLS (console): pEntity->v.model = 0 ("")
+PMTOOLS (console): pEntity->v.viewmodel = 0 ("")
+PMTOOLS (console): pEntity->v.weaponmodel = 0 ("")
+PMTOOLS (console): pEntity->v.absmin = Vector (-248.0, -1768.0, 100.0)
+PMTOOLS (console): pEntity->v.absmax = Vector (-200.0, -1720.0, 116.0)
+PMTOOLS (console): pEntity->v.mins = Vector (0.0, 0.0, 0.0)
+PMTOOLS (console): pEntity->v.maxs = Vector (0.0, 0.0, 0.0)
+PMTOOLS (console): pEntity->v.size = Vector (0.0, 0.0, 0.0)
+PMTOOLS (console): pEntity->v.ltime = 0.000 (current time is 62.004)
+PMTOOLS (console): pEntity->v.nextthink = 62.058 (current time is 62.004)
+PMTOOLS (console): pEntity->v.movetype = 12 (MOVETYPE_FOLLOW)
+PMTOOLS (console): pEntity->v.solid = 0 (SOLID_NOT)
+PMTOOLS (console): pEntity->v.skin = 0 ("")
+PMTOOLS (console): pEntity->v.body = 0 ("")
+PMTOOLS (console): pEntity->v.effects = 128 (EF_NODRAW)
+PMTOOLS (console): pEntity->v.gravity = 0.000 (fraction /1 of normal)
+PMTOOLS (console): pEntity->v.friction = 0.000
+PMTOOLS (console): pEntity->v.light_level = 0
+PMTOOLS (console): pEntity->v.sequence = 0 ("")
+PMTOOLS (console): pEntity->v.gaitsequence = 0 ("")
+PMTOOLS (console): pEntity->v.frame = 0.000 (position /255 of total in sequence)
+PMTOOLS (console): pEntity->v.animtime = 0.000 (current time is 62.004)
+PMTOOLS (console): pEntity->v.framerate = 0.000 (times normal speed)
+PMTOOLS (console): pEntity->v.controller = {0, 0, 0, 0}
+PMTOOLS (console): pEntity->v.blending = {0, 0}
+PMTOOLS (console): pEntity->v.scale = 0.000
+PMTOOLS (console): pEntity->v.rendermode = 0 (kRenderNormal)
+PMTOOLS (console): pEntity->v.renderamt = 0.000
+PMTOOLS (console): pEntity->v.rendercolor = Vector (0.0, 0.0, 0.0) (RGB)
+PMTOOLS (console): pEntity->v.renderfx = 0 (kRenderFxNone)
+PMTOOLS (console): pEntity->v.health = 0.000
+PMTOOLS (console): pEntity->v.frags = 0.000
+PMTOOLS (console): pEntity->v.weapons = 0 (00000000000000000000000000000000)
+PMTOOLS (console): pEntity->v.takedamage = 0.000 (DAMAGE_NO)
+PMTOOLS (console): pEntity->v.deadflag = 0 (DEAD_NO)
+PMTOOLS (console): pEntity->v.view_ofs = Vector (0.0, 0.0, 0.0)
+PMTOOLS (console): pEntity->v.button = 0 ()
+PMTOOLS (console): pEntity->v.impulse = 0
+PMTOOLS (console): pEntity->v.chain = NULL
+PMTOOLS (console): pEntity->v.dmg_inflictor = NULL
+PMTOOLS (console): pEntity->v.enemy = NULL
+PMTOOLS (console): pEntity->v.aiment = Entity #1 ("player")
+PMTOOLS (console): pEntity->v.owner = Entity #1 ("player")
+PMTOOLS (console): pEntity->v.groundentity = NULL
+PMTOOLS (console): pEntity->v.spawnflags = 1073741824
+PMTOOLS (console): pEntity->v.flags = 0 ()
+PMTOOLS (console): pEntity->v.colormap = 0 (0x0)
+PMTOOLS (console): pEntity->v.team = 0
+PMTOOLS (console): pEntity->v.max_health = 0.000
+PMTOOLS (console): pEntity->v.teleport_time = 0.000
+PMTOOLS (console): pEntity->v.armortype = 0.000
+PMTOOLS (console): pEntity->v.armorvalue = 0.000
+PMTOOLS (console): pEntity->v.waterlevel = 0 (not in water)
+PMTOOLS (console): pEntity->v.watertype = 0
+PMTOOLS (console): pEntity->v.target = 0 ("")
+PMTOOLS (console): pEntity->v.targetname = 0 ("")
+PMTOOLS (console): pEntity->v.netname = 0 ("")
+PMTOOLS (console): pEntity->v.message = 0 ("")
+PMTOOLS (console): pEntity->v.dmg_take = 0.000
+PMTOOLS (console): pEntity->v.dmg_save = 0.000
+PMTOOLS (console): pEntity->v.dmg = 0.000
+PMTOOLS (console): pEntity->v.dmgtime = 0.000 (current time is 62.004)
+PMTOOLS (console): pEntity->v.noise = 0 ("")
+PMTOOLS (console): pEntity->v.noise1 = 0 ("")
+PMTOOLS (console): pEntity->v.noise2 = 0 ("")
+PMTOOLS (console): pEntity->v.noise3 = 0 ("")
+PMTOOLS (console): pEntity->v.speed = 0.000
+PMTOOLS (console): pEntity->v.air_finished = 0.000
+PMTOOLS (console): pEntity->v.pain_finished = 0.000
+PMTOOLS (console): pEntity->v.radsuit_finished = 0.000
+PMTOOLS (console): pEntity->v.pContainingEntity = Entity #47 ("weapon_usp")
+PMTOOLS (console): pEntity->v.playerclass = 0
+PMTOOLS (console): pEntity->v.maxspeed = 0.000
+PMTOOLS (console): pEntity->v.fov = 0.000
+PMTOOLS (console): pEntity->v.weaponanim = 0
+PMTOOLS (console): pEntity->v.pushmsec = 0
+PMTOOLS (console): pEntity->v.bInDuck = 0 (FALSE)
+PMTOOLS (console): pEntity->v.flTimeStepSound = 0 (current time is 62.004)
+PMTOOLS (console): pEntity->v.flSwimTime = 0 (current time is 62.004)
+PMTOOLS (console): pEntity->v.flDuckTime = 0 (current time is 62.004)
+PMTOOLS (console): pEntity->v.iStepLeft = 0
+PMTOOLS (console): pEntity->v.flFallVelocity = 0.000
+PMTOOLS (console): pEntity->v.gamestate = 0
+PMTOOLS (console): pEntity->v.oldbuttons = 0
+PMTOOLS (console): pEntity->v.groupinfo = 0
+PMTOOLS (console): pEntity->v.iuser1 = 0
+PMTOOLS (console): pEntity->v.iuser2 = 0
+PMTOOLS (console): pEntity->v.iuser3 = 0
+PMTOOLS (console): pEntity->v.iuser4 = 0
+PMTOOLS (console): pEntity->v.fuser1 = 0.000
+PMTOOLS (console): pEntity->v.fuser2 = 0.000
+PMTOOLS (console): pEntity->v.fuser3 = 0.000
+PMTOOLS (console): pEntity->v.fuser4 = 0.000
+PMTOOLS (console): pEntity->v.vuser1 = Vector (0.0, 0.0, 0.0)
+PMTOOLS (console): pEntity->v.vuser2 = Vector (0.0, 0.0, 0.0)
+PMTOOLS (console): pEntity->v.vuser3 = Vector (0.0, 0.0, 0.0)
+PMTOOLS (console): pEntity->v.vuser4 = Vector (0.0, 0.0, 0.0)
+PMTOOLS (console): pEntity->v.euser1 = NULL
+PMTOOLS (console): pEntity->v.euser2 = NULL
+PMTOOLS (console): pEntity->v.euser3 = NULL
+PMTOOLS (console): pEntity->v.euser4 = NULL
+PMTOOLS (console): End of dump.
+
+
+
+PMTOOLS (console): Printing out entity #47 variable information...
+PMTOOLS (console): (variable name = value (meaning))
+PMTOOLS (console): pEntity->v.classname = 233421780 ("weapon_usp")
+PMTOOLS (console): pEntity->v.globalname = 0 ("")
+PMTOOLS (console): pEntity->v.origin = Vector (-224.0, -1744.0, 100.0)
+PMTOOLS (console): pEntity->v.oldorigin = Vector (0.0, 0.0, 0.0)
+PMTOOLS (console): pEntity->v.velocity = Vector (0.0, 0.0, 0.0) - Length 0.000 - Length2D 0.000
+PMTOOLS (console): pEntity->v.basevelocity = Vector (0.0, 0.0, 0.0) - Length 0.000 - Length2D 0.000
+PMTOOLS (console): pEntity->v.clbasevelocity = Vector (0.0, 0.0, 0.0) - Length 0.000 - Length2D 0.000
+PMTOOLS (console): pEntity->v.movedir = Vector (0.0, 0.0, 0.0)
+PMTOOLS (console): pEntity->v.angles = Vector (0.2, 50.8, 0.0)
+PMTOOLS (console): pEntity->v.avelocity = Vector (0.0, 0.0, 0.0) - Length 0.000 - Length2D 0.000
+PMTOOLS (console): pEntity->v.punchangle = Vector (0.0, 0.0, 0.0)
+PMTOOLS (console): pEntity->v.v_angle = Vector (0.0, 0.0, 0.0)
+PMTOOLS (console): pEntity->v.endpos = Vector (0.0, 0.0, 0.0)
+PMTOOLS (console): pEntity->v.startpos = Vector (0.0, 0.0, 0.0)
+PMTOOLS (console): pEntity->v.impacttime = 0.000
+PMTOOLS (console): pEntity->v.starttime = 0.000
+PMTOOLS (console): pEntity->v.fixangle = 0 (nothing)
+PMTOOLS (console): pEntity->v.idealpitch = 0.000
+PMTOOLS (console): pEntity->v.pitch_speed = 0.000
+PMTOOLS (console): pEntity->v.ideal_yaw = 0.000
+PMTOOLS (console): pEntity->v.yaw_speed = 0.000
+PMTOOLS (console): pEntity->v.modelindex = 0
+PMTOOLS (console): pEntity->v.model = 0 ("")
+PMTOOLS (console): pEntity->v.viewmodel = 0 ("")
+PMTOOLS (console): pEntity->v.weaponmodel = 0 ("")
+PMTOOLS (console): pEntity->v.absmin = Vector (-248.0, -1768.0, 100.0)
+PMTOOLS (console): pEntity->v.absmax = Vector (-200.0, -1720.0, 116.0)
+PMTOOLS (console): pEntity->v.mins = Vector (0.0, 0.0, 0.0)
+PMTOOLS (console): pEntity->v.maxs = Vector (0.0, 0.0, 0.0)
+PMTOOLS (console): pEntity->v.size = Vector (0.0, 0.0, 0.0)
+PMTOOLS (console): pEntity->v.ltime = 0.000 (current time is 73.258)
+PMTOOLS (console): pEntity->v.nextthink = 73.358 (current time is 73.258)
+PMTOOLS (console): pEntity->v.movetype = 12 (MOVETYPE_FOLLOW)
+PMTOOLS (console): pEntity->v.solid = 0 (SOLID_NOT)
+PMTOOLS (console): pEntity->v.skin = 0 ("")
+PMTOOLS (console): pEntity->v.body = 0 ("")
+PMTOOLS (console): pEntity->v.effects = 128 (EF_NODRAW)
+PMTOOLS (console): pEntity->v.gravity = 0.000 (fraction /1 of normal)
+PMTOOLS (console): pEntity->v.friction = 0.000
+PMTOOLS (console): pEntity->v.light_level = 0
+PMTOOLS (console): pEntity->v.sequence = 0 ("")
+PMTOOLS (console): pEntity->v.gaitsequence = 0 ("")
+PMTOOLS (console): pEntity->v.frame = 0.000 (position /255 of total in sequence)
+PMTOOLS (console): pEntity->v.animtime = 0.000 (current time is 73.258)
+PMTOOLS (console): pEntity->v.framerate = 0.000 (times normal speed)
+PMTOOLS (console): pEntity->v.controller = {0, 0, 0, 0}
+PMTOOLS (console): pEntity->v.blending = {0, 0}
+PMTOOLS (console): pEntity->v.scale = 0.000
+PMTOOLS (console): pEntity->v.rendermode = 0 (kRenderNormal)
+PMTOOLS (console): pEntity->v.renderamt = 0.000
+PMTOOLS (console): pEntity->v.rendercolor = Vector (0.0, 0.0, 0.0) (RGB)
+PMTOOLS (console): pEntity->v.renderfx = 0 (kRenderFxNone)
+PMTOOLS (console): pEntity->v.health = 0.000
+PMTOOLS (console): pEntity->v.frags = 0.000
+PMTOOLS (console): pEntity->v.weapons = 0 (00000000000000000000000000000000)
+PMTOOLS (console): pEntity->v.takedamage = 0.000 (DAMAGE_NO)
+PMTOOLS (console): pEntity->v.deadflag = 0 (DEAD_NO)
+PMTOOLS (console): pEntity->v.view_ofs = Vector (0.0, 0.0, 0.0)
+PMTOOLS (console): pEntity->v.button = 0 ()
+PMTOOLS (console): pEntity->v.impulse = 0
+PMTOOLS (console): pEntity->v.chain = NULL
+PMTOOLS (console): pEntity->v.dmg_inflictor = NULL
+PMTOOLS (console): pEntity->v.enemy = NULL
+PMTOOLS (console): pEntity->v.aiment = Entity #1 ("player")
+PMTOOLS (console): pEntity->v.owner = Entity #1 ("player")
+PMTOOLS (console): pEntity->v.groundentity = NULL
+PMTOOLS (console): pEntity->v.spawnflags = 1073741824
+PMTOOLS (console): pEntity->v.flags = 0 ()
+PMTOOLS (console): pEntity->v.colormap = 0 (0x0)
+PMTOOLS (console): pEntity->v.team = 0
+PMTOOLS (console): pEntity->v.max_health = 0.000
+PMTOOLS (console): pEntity->v.teleport_time = 0.000
+PMTOOLS (console): pEntity->v.armortype = 0.000
+PMTOOLS (console): pEntity->v.armorvalue = 0.000
+PMTOOLS (console): pEntity->v.waterlevel = 0 (not in water)
+PMTOOLS (console): pEntity->v.watertype = 0
+PMTOOLS (console): pEntity->v.target = 0 ("")
+PMTOOLS (console): pEntity->v.targetname = 0 ("")
+PMTOOLS (console): pEntity->v.netname = 0 ("")
+PMTOOLS (console): pEntity->v.message = 0 ("")
+PMTOOLS (console): pEntity->v.dmg_take = 0.000
+PMTOOLS (console): pEntity->v.dmg_save = 0.000
+PMTOOLS (console): pEntity->v.dmg = 0.000
+PMTOOLS (console): pEntity->v.dmgtime = 0.000 (current time is 73.258)
+PMTOOLS (console): pEntity->v.noise = 0 ("")
+PMTOOLS (console): pEntity->v.noise1 = 0 ("")
+PMTOOLS (console): pEntity->v.noise2 = 0 ("")
+PMTOOLS (console): pEntity->v.noise3 = 0 ("")
+PMTOOLS (console): pEntity->v.speed = 0.000
+PMTOOLS (console): pEntity->v.air_finished = 0.000
+PMTOOLS (console): pEntity->v.pain_finished = 0.000
+PMTOOLS (console): pEntity->v.radsuit_finished = 0.000
+PMTOOLS (console): pEntity->v.pContainingEntity = Entity #47 ("weapon_usp")
+PMTOOLS (console): pEntity->v.playerclass = 0
+PMTOOLS (console): pEntity->v.maxspeed = 0.000
+PMTOOLS (console): pEntity->v.fov = 0.000
+PMTOOLS (console): pEntity->v.weaponanim = 0
+PMTOOLS (console): pEntity->v.pushmsec = 0
+PMTOOLS (console): pEntity->v.bInDuck = 0 (FALSE)
+PMTOOLS (console): pEntity->v.flTimeStepSound = 0 (current time is 73.258)
+PMTOOLS (console): pEntity->v.flSwimTime = 0 (current time is 73.258)
+PMTOOLS (console): pEntity->v.flDuckTime = 0 (current time is 73.258)
+PMTOOLS (console): pEntity->v.iStepLeft = 0
+PMTOOLS (console): pEntity->v.flFallVelocity = 0.000
+PMTOOLS (console): pEntity->v.gamestate = 0
+PMTOOLS (console): pEntity->v.oldbuttons = 0
+PMTOOLS (console): pEntity->v.groupinfo = 0
+PMTOOLS (console): pEntity->v.iuser1 = 0
+PMTOOLS (console): pEntity->v.iuser2 = 0
+PMTOOLS (console): pEntity->v.iuser3 = 0
+PMTOOLS (console): pEntity->v.iuser4 = 0
+PMTOOLS (console): pEntity->v.fuser1 = 0.000
+PMTOOLS (console): pEntity->v.fuser2 = 0.000
+PMTOOLS (console): pEntity->v.fuser3 = 0.000
+PMTOOLS (console): pEntity->v.fuser4 = 0.000
+PMTOOLS (console): pEntity->v.vuser1 = Vector (0.0, 0.0, 0.0)
+PMTOOLS (console): pEntity->v.vuser2 = Vector (0.0, 0.0, 0.0)
+PMTOOLS (console): pEntity->v.vuser3 = Vector (0.0, 0.0, 0.0)
+PMTOOLS (console): pEntity->v.vuser4 = Vector (0.0, 0.0, 0.0)
+PMTOOLS (console): pEntity->v.euser1 = NULL
+PMTOOLS (console): pEntity->v.euser2 = NULL
+PMTOOLS (console): pEntity->v.euser3 = NULL
+PMTOOLS (console): pEntity->v.euser4 = NULL
+PMTOOLS (console): End of dump.
+
+
+
+I still can't find what's different.
+What I thought that had changed was in fact the absmin, absmax and angles. In my previous tests I was moving around with my gun while testing, that's why. Here I stood still and issued all the client commands since spawn time from the console.
+
+
+[modified on 11/24/02 at 14:25:37]
+--------------------------------------------------
+11/24/02 at 14:51:59  Reply by: @$3.1415rin (johannes@_-removeifnotavirus-_lampel.net)
+--------------------------------------------------
+now the answer we usually give to noobs one time for you : there is a search function :)
+
+it's weaponanim storing the information about silenced weapons, at least in CS
+
+old joebot says :
+code:
+if(iWeapon == CS_WEAPON_KNIFE
+                                     iWeapon == CS_WEAPON_TMP
+                                     (iWeapon == CS_WEAPON_M4A1&&pEnt->v.weaponanim==0 )      // silenced m4a1
+                                     (iWeapon == CS_WEAPON_USP&&pEnt->v.weaponanim==0)){      // silenced usp
+                                    fMaxShootDistanceThis /= 2.0;
+                              }
+
+
+€ : ( well, it's in the entvars of the player, but I guess you didn't want to find out if a weapon lying around is silenced, right ? I guess the fact if a weapon is silenced or not after being thrown away is probably stored in some cs-internal class, not in the entvars )
+
+[modified on 11/24/02 at 14:48:15]
+
+[modified on 11/24/02 at 14:51:59]
+--------------------------------------------------
+11/24/02 at 17:18:58  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+OMG Thankyou !!!
+OK, I was on the right track, but I was going in the wrong way, so... instead of looking at weapon entities I should have better looked at players :D
+QUOTE:
+
+now the answer we usually give to noobs one time for you : there is a search function :)
+
+
+
+Shame on me!!
+
+ok, silenced weapons problem solved.
+code:
+
+   // is the weapon this player is holding in its hands a USP ?
+   if (stricmp (STRING (pPlayer->v.weaponmodel), "models/p_usp.mdl") == 0)
+   {
+      // is that player actually firing the gun?
+      if (pPlayer->v.button & IN_ATTACK)
+      {
+         // is it NOT silenced ?
+         if (pPlayer->v.weaponanim != 0)
+            sprintf (sound_path, "weapons/usp_unsil-1.wav"); // unsilenced USP
+         else
+            sprintf (sound_path, "weapons/usp%d.wav", RANDOM_LONG (1, 2)); // there are 2 silenced sounds
+         DispatchSound (sound_path, GetGunPosition (pPlayer), 1.0, ATTN_NORM); // make the bots hear it
+      }
+   }
+
+
+aaaaaaahhhhhhhh I like when things go that well ;D
+
+now on the reloading sounds. They don't seem to be caught by message_CurWeapon's. Any ideas ?
+
+edited again: goddamnit, nor does the Egon gun in HLDM when you fire it !!! <b>No</b> message at all gets sent ! wtf ?
+
+yet another edit: sorry, the egon gun not sending messages was in fact a bug in my code. Apparently, hooking both CurWeapon and AmmoX messages give me a relatively good idea of a sound being played at that very moment. It's up to me then to determine which sound it was, hence my PlayBulletSoundsForBots() function. I still lack 3 sounds (in HLDM):
+-the glock being reloaded
+-the MP5 being reloaded.
+-the Gauss spinning up (secondary fire)
+Interesting: after you reload one of them, just at the moment the ammo is updated, 2 messages get sent at once: 1 AmmoX and 1 CurWeapon. But they are sent AFTER the reload animation has been played, and your gun is ready to fire already. I'd have liked to use these in order to determine the dispatch of a reload sound, but it's not accurate, since it comes 1~2 seconds after you actually reloaded it.
+...and it seems to me that the gauss spinning up is a DSP-related trick of the engine at some very low level of the sound subsystem, since I've found nowhere a sound sample of Gauss spinning up.
+I'd be curious to know how Tobias makes his bot handle this.
+
+[modified on 11/24/02 at 17:05:49]
+
+[modified on 11/24/02 at 17:10:23]
+
+[modified on 11/24/02 at 17:18:58]
+--------------------------------------------------
+11/26/02 at 12:43:48  Reply by: Benaksoy (Benaksoy@hotmail.com)
+--------------------------------------------------
+Hey Pierre-Marie Baty. This isn't related to this topic but many pages of your bot website haven't been working for me for the past couple of months including the download page (the download page comes up in the French version but the link still doesn't work). I really want to try your bot. I'm having no issues with my computer so I'm guessing it's the website. Am I the only one having problems? Is it because I live in the U.S.?
+
+--------------------------------------------------
+11/26/02 at 14:21:53  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+nope, that's because I have a bad habit : announcing things before they are done. I always figure that I will be able to release something in, let's say 2 weeks, so I start to build up the pages, and then it appears that what I thought to be the remaining 5% of the work actually is taking 95% of the time.
+
+I once released a rushed version of RACC because a thread miraculously appeared in Nuclearbox forums, hyping this bot whereas I wasn't announcing nothing at all (I didn't knew Nukebox at that time, and I hadn't, and still have not, referenced my site on ANY search engine !!) - the people went impatient and began talking about vaporware so I had to release something. 2-3 versions followed, mostly bugfixes and the addition of a camping feature.
+
+You can get a copy of them at www.bot-planet.de, multibots section. Anyway the only quality of this bot is that it's the only working waypointless bot. The nav works very well, but there's no pathfinder. The combat is fun too, and the bots know a little about the goals of the game they play, but everything else isn't really biggy. The bot supports HLDM, DMC, OpFor, TFC, CS and Azure Sheep (which is basically HLDM without HEV).
+
+Source code is included, btw.
+
+
+--------------------------------------------------
+11/27/02 at 08:11:54  Reply by: RedLink (redlink_star@hotmail.com)
+--------------------------------------------------
+It's great with a b0t without Waypoints.. I just think that a bot with waypoints l00ks unnatural... But it's s0 damn hard to make a bot without em.. i tryed but they just g0t stuck in the walls ;) ^^
+
+--------------------------------------------------
+11/27/02 at 09:26:58  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+What's the intrinsic worth of your contribution ?
+
+"It's great with a b<b>0</b>t without Waypoints.. I just think that a bot with waypoints l<b>00</b>ks unnatural... But it's s<b>0</b> damn hard to make a bot without em.. i tryed but they just g<b>0</b>t stuck in the walls ;) ^^"
+
+lame habit. how irritating.
+:(
+
+[edited: I wish botman removed the 4 posts above, including this one, as they are not related to the thread in no point]
+
+[modified on 11/27/02 at 09:26:58]
+--------------------------------------------------
+11/27/02 at 10:30:21  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+lol;)
+
+I thought 0's where used to shorten words in leet ways hmm :P
+
+I've tried an unwaypointed bot, in fact the bot for Natural Selection is unwaypointed (using a similar method to RACC, thanks to a little of PM's RACC source for some info I needed) ;D although they can create waypoints themselves while they walk which they can use.
+
+--------------------------------------------------
+12/03/02 at 00:10:10  Reply by: Sweeper (Mercenary_aim_@hotmail.com)
+--------------------------------------------------
+I looked at the code, it made some sense, it is understandable and I got an idea of what happened.
+but learning C++ is possibly like learning a language, you learn first is to understand it that is the easy part. but speaking (here: writing) is harder.
+
+so far it looks rather good.
+
+--------------------------------------------------
+12/03/02 at 01:59:57  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+If you've got questions Sweeper, feel free to email me :)
+
+--------------------------------------------------
+12/04/02 at 02:10:19  Reply by: Sweeper (Mercenary_aim_@hotmail.com)
+--------------------------------------------------
+
+QUOTE:
+If you've got questions Sweeper, feel free to email me :)
+
+
+
+
+Thanks man, I guess I will be needing you a lot.
+Though I got some ideas what to implent and what to avoid.
+You recognised me nukebox now didn't you?
+Still I have to thank you, Botman and the others here for helping me so far.
+
+--------------------------------------------------
+12/04/02 at 02:39:08  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+QUOTE:
+
+You recognised me nukebox now didn't you?
+
+
+
+
+sure ;D ... especially when you come up as 'Sweeper' ;D ...
+
+BTW. NP, you're welcome -
+
+--------------------------------------------------
+12/04/02 at 04:00:53  Reply by: Sweeper (Mercenary_aim_@hotmail.com)
+--------------------------------------------------
+
+QUOTE:
+
+You recognised me nukebox now didn't you?
+
+
+sure ;D ... especially when you come up as 'Sweeper' ;D ...
+
+BTW. NP, you're welcome -
+
+
+
+
+There is a story behind the nickname as well.
+But this is another story.
+
+I think I will be in the buisness after Christmas.
+So far I'll collect some ideas and store them.
+
+--------------------------------------------------
+12/07/02 at 03:53:29  Reply by: RedFox (redfox@nildram.co.uk)
+--------------------------------------------------
+Just my 2cents...
+pfnPlaybackEvent catches all the different fireing modes, including the reload sound
+
+the Decal stuff in the SDK isn't sent over the network (in most cases), instead all the decal tracing (including the ricochey sounds) is done client side
+
+maybee CS does send these via network messages, but TFC doesn't....unless your suffereing from spy gas grenade halusinations, then you get those decal messages
+
+
+--------------------------------------------------
+12/07/02 at 09:22:12  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Prodigiously interesting :D
+
+What if the client has weapon anim prediction enabled ? Does he still receive pfnPlaybackEvents ?
+
+
+--------------------------------------------------
+12/07/02 at 18:24:54  Reply by: RedFox (redfox@nildram.co.uk)
+--------------------------------------------------
+Don't know...guess it would
+didn't know that was possible, how do you turn that on?
+
+oh...the playback also catches doors and lifts (from what I've tested today), including what sound they play, and weather their opening or closing or stopping (including the direction...up/down..dunno if it has somthing different for side to side!)
+
+So thats kinda useful :)
+
+--------------------------------------------------
+12/08/02 at 06:06:20  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Well, you have to know, and that's very important, that a good amount of events are predicted on the clients during the game. The server is NOT responsible of every event played in the game. Let's say a player wants to fire his gun, the server gets updated by some net msg that tells it this client is pressing IN_ATTACK. Then, given the state of the player entity it knows by its side (if he's still got ammo in his gun and such) the server will assume this player has fired a bullet. BUT it will NOT NECESSARILY order the client to play the gun animation first. The client does the exact same checks as the server on his own engine, and decides himself to play the animation.
+
+This (client-side prediction) can be disabled by some CVARS, however it is almost always used since it is said to cut down the required bandwith by almost 50%.
+
+Have a go on Google for:
+cl_nopred
+cl_lw
+and you'll certainly find several others. There are a lot of situations a client can be allowed to predict. It seems to me that catching pfnPlaybackEvent should take this in account, else it's highly unreliable.
+
+
+[modified on 12/08/02 at 06:06:20]
+--------------------------------------------------
+12/08/02 at 14:52:09  Reply by: RedFox (redfox@nildram.co.uk)
+--------------------------------------------------
+well, I've called the playback events directly, and some trigger the actual event (a shotgun blast with decals, but no damage to players....a cs smoke gren cloud etc)
+
+so, I assume its only ever called when its decided the event is going to happen on the server
+
+did find some limitations to it...it only happens if the mod has event files (cs/tfc/flf do, but not many other mods have them)
+not sure if you can fool the hl engine by precaching events the mod doesn't have...doubt it'd be that dynamic somehow, but if it is, could be a good way of detecting alot of thing..but thats a 100 to 1 shot :p
+
+on another note, did discover that the engine (in CS atleast, and probably in most other mods) calls a trace line from players to what evers infront of them (for displaying playernames if you look at them etc)...so you could use that for gunshot ricochet tracing without using another trace line :) (log the start, link to a player, and log the end pos)
+should be interesting to see if it works well or not, and on how many mods it works
+if its a standard hl thing, would be very useful
+
+--------------------------------------------------
+12/08/02 at 15:14:38  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+THAT (the traceline thingy) is a REALLY good idea ! Thanks Tom !!
+
+

@@ -1,0 +1,151 @@
+--------------------------------------------------
+Subject: Juz help me!
+--------------------------------------------------
+11/27/00 at 20:17:55  Posted by: Gen[X]Cops (lastride87@hotmail.com)
+--------------------------------------------------
+Good Day 
+I am building my bot by using botman's source code. I have got everything ready except waypoints. How do i make waypoints?
+
+
+Ands thats the bottom line cos stone cold said so!
+
+
+--------------------------------------------------
+11/27/00 at 21:14:45  Reply by: ReDucTor[FGW] (sjdtmv@globalfreeway,com.au)
+--------------------------------------------------
+using the add waypoint commands :)
+
+--------------------------------------------------
+11/28/00 at 03:34:50  Reply by: Gen[X]Cops (lastride87@hotmail.com)
+--------------------------------------------------
+Gosh! It was soooo simple! Sorry that i even asked that! But the bottom line is thank u sooo much!
+
+--------------------------------------------------
+11/28/00 at 04:43:16  Reply by: cooldude (Cooldude158@excite.com)
+--------------------------------------------------
+"I am building my bot by using botman's source code."
+
+Ha, thats funny, the "my bot" part when in the same sentence he said he was useing "botman's source code."
+
+--------------------------------------------------
+11/28/00 at 04:46:03  Reply by: Gen[X]Cops (lastride87@hotmail.com)
+--------------------------------------------------
+Whatever. I don't understand your sense of humor. After i placed my waypoints, the bots continued to wander around like they don see the waypoints at all. Help?
+
+--------------------------------------------------
+11/28/00 at 05:39:16  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+There is no waypoint navigation code built into the HPB bot template source.  There ARE plenty of waypoint functions to be found in the waypoints.cpp file.  You mission, should you choose to accept it, is to add code to the bot_navigate.cpp file (in the BotFindWaypoint and BotHeadTowardWaypoint functions) that will allow the bot to navigate from one waypoint to the next.
+
+Do a search on this forum for "waypoint" or "navigation" to find relevant threads.  You might also want to search for "floyd" or "floyd's" since many people have chosen to use Floyd's algorithm as a good waypoint navigation routine.
+
+Also see my "Links" page under the Bot AI section on other websites with source code and papers on bot navigation.
+
+botman
+
+--------------------------------------------------
+11/28/00 at 06:51:05  Reply by: eLiTe (ali@elitegamer.fsnet.co.uk)
+--------------------------------------------------
+I managed to get my navigation to work just by looking at the enemy hunting code - it tells you how to walk forward, and how to make the bot turn to face a direction by doing stuff with vectors...
+
+--------------------------------------------------
+11/28/00 at 20:27:17  Reply by: Gen[X]Cops (lastride87@hotmail.com)
+--------------------------------------------------
+Here is my code :
+
+bool BotFindWaypoint( bot_t *pBot, int team )
+{
+ int  i, wpt_index[6], select_index; 
+  PATH *pPath = NULL; 
+  int path_index; 
+
+ for (i=0; i < 6; i++) 
+ { 
+    wpt_index = -1; 
+ } 
+ for (i=0; i < num_waypoints[team]; i++) 
+ { 
+   if ((i == pBot->curr_wpt_index) 
+    (i == pBot->prev_wpt_index[0]) 
+    (i == pBot->prev_wpt_index[1]) 
+    (i == pBot->prev_wpt_index[2])) 
+    continue; 
+
+   if (i == -1) 
+   { 
+   continue; 
+   } 
+   else 
+   { 
+    i = WaypointFindPath(&pPath, &path_index, pBot->curr_wpt_index, team); 
+   } 
+ } 
+ select_index = (RANDOM_LONG(1, i)); 
+
+ if (select_index != -1)  // was a waypoint selected? 
+ { 
+     pBot->prev_wpt_index[2] = pBot->prev_wpt_index[1]; 
+     pBot->prev_wpt_index[1] = pBot->prev_wpt_index[0]; 
+     pBot->prev_wpt_index[0] = pBot->curr_wpt_index; 
+
+     pBot->curr_wpt_index = select_index; 
+     pBot->wpt_origin = waypoints[team][select_index].origin; 
+
+     return TRUE; 
+ } 
+ else 
+ { 
+ return FALSE; 
+ } 
+}        
+
+When i compile they say "gcc -march=pentium -O2 -w -I../engine -I../common -I../pm_shared -c bot_navigate.cpp -o bot_navigate.o
+bot_navigate.cpp: In function `bool BotFindWaypoint(struct bot_t *, int)':
+bot_navigate.cpp:201: incompatible types in assignment of `int' to `int[6]'
+bot_navigate.cpp:203: invalid types `int[int]' for array subscript
+bot_navigate.cpp:205: `struct bot_t' has no member named `curr_wpt_index'
+bot_navigate.cpp:206: `struct bot_t' has no member named `prev_wpt_index'
+bot_navigate.cpp:207: `struct bot_t' has no member named `prev_wpt_index'
+bot_navigate.cpp:208: `struct bot_t' has no member named `prev_wpt_index'
+bot_navigate.cpp:217: `struct bot_t' has no member named `curr_wpt_index'
+bot_navigate.cpp:224: `struct bot_t' has no member named `prev_wpt_index'
+bot_navigate.cpp:224: `struct bot_t' has no member named `prev_wpt_index'
+bot_navigate.cpp:225: `struct bot_t' has no member named `prev_wpt_index'
+bot_navigate.cpp:225: `struct bot_t' has no member named `prev_wpt_index'
+bot_navigate.cpp:226: `struct bot_t' has no member named `prev_wpt_index'
+bot_navigate.cpp:226: `struct bot_t' has no member named `curr_wpt_index'
+bot_navigate.cpp:228: `struct bot_t' has no member named `curr_wpt_index'
+bot_navigate.cpp:229: `struct bot_t' has no member named `wpt_origin'
+bot_navigate.cpp:229: no match for `WAYPOINT &[int &]'
+C:\MINGW32\BIN\MAKE.EXE: *** [bot_navigate.o] Error 1:" I know its lots of them. Plz help me.
+  
+
+
+--------------------------------------------------
+11/29/00 at 01:02:48  Reply by: eLiTe (ali@elitegamer.fsnet.co.uk)
+--------------------------------------------------
+First, you need to edit the bot.h file. You'll find a structure called bot_t in there, you need to add curr_wpt_index and prev_wpt_index in there.
+
+I'm not sure about the first error, but that might disappear if you add those varialbles to the bot_t structure
+
+--------------------------------------------------
+11/29/00 at 05:18:02  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+Your first error is here...
+
+   for (i=0; i < 6; i++) 
+   { 
+      wpt_index = -1; 
+   } 
+
+...you should have this...
+
+   for (i=0; i < 6; i++) 
+   { 
+      wpt_index[ i ] = -1; 
+   } 
+
+(unless that's what you had and the forum changed it to italics.  [ i ] without spaces becomes the tag for italics.)
+
+botman
+

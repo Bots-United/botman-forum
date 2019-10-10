@@ -1,0 +1,209 @@
+--------------------------------------------------
+Subject: Conditional stripping
+--------------------------------------------------
+02/05/03 at 07:41:18  Posted by: buzzkill (buzzkill@digitalwidget.net)
+--------------------------------------------------
+I'm trying to figure out an elegant way to allow conditional stripping (preferably based on cvar values). However, I have a chicken/egg problem...
+
+Here's a real-world example: 
+
+GOAL: I currently adjust the skyboxes based on time of day (e.g., dawn, dusk, night, etc). I'm doing this via an AdminMod plugin. I would like to spawn an ambient cricket noise during periods of night. 
+
+PROBLEM: AdminMod does not execute the plugin_init functions until someone connects to the server. This means that any action I might take in an AM plugin (i.e., setting a CVAR) will not be visible to Stripper during its initialization and precaching phases. By the time I know its nighttime (in AM) it's too late for me to do anything about it in Stripper.
+
+ALTERNATIVES: I could move all of my conditional checks directly into Stripper2, but I don't want to do that. Additionally, I could simply exec_client say the cricket.wav, but I lose the benefits of sound origin.
+
+If there's a way to force AdminMod to execute it's plugin_init functions immediately, that would be one solution (and is a question more appropriate for the AM forum, I know). Anyone have any other thoughts?  Thanks.
+
+--------------------------------------------------
+02/06/03 at 08:19:13  Reply by: buzzkill (buzzkill@digitalwidget.net)
+--------------------------------------------------
+FYI -- I have solved my specific problem with a very short-term solution involving scheduled swaps of my 2fort_str.cfg file. Not a very scalable solution, but it works for now.
+
+
+
+--------------------------------------------------
+02/12/03 at 08:27:33  Reply by: daRope (fzschocke@web.de)
+--------------------------------------------------
+
+QUOTE:
+
+If there's a way to force AdminMod to execute it's plugin_init functions immediately, that would be one solution (and is a question more appropriate for the AM forum, I know). Anyone have any other thoughts? 
+
+
+
+
+Place the line 
+admin_command
+into your server.fg file.
+
+--------------------------------------------------
+02/27/03 at 10:22:50  Reply by: Jellric (jellric@yahoo.com)
+--------------------------------------------------
+Just curious- what plugin lets you change the skybox?
+
+--------------------------------------------------
+02/28/03 at 23:00:24  Reply by: buzzkill (buzzkill@digitalwidget.net)
+--------------------------------------------------
+QUOTE:
+
+
+If there's a way to force AdminMod to execute it's plugin_init functions immediately, that would be one solution (and is a question more appropriate for the AM forum, I know). Anyone have any other thoughts? 
+
+Place the line 
+admin_command
+into your server.fg file.
+
+
+
+
+
+<shakes head at the simplicity of that> LOL.. thank you! However, I'm now thinking that stripper2 is long done with it's init phases by the time server.cfg executes.
+
+I wound up running a .bat file at 6am and 6pm that swaps two stripper config files. Not very elegant, but it works.  :)
+
+
+
+[modified on 02/28/03 at 23:00:24]
+--------------------------------------------------
+02/28/03 at 22:56:07  Reply by: buzzkill (buzzkill@digitalwidget.net)
+--------------------------------------------------
+QUOTE:
+Just curious- what plugin lets you change the skybox?
+
+
+
+
+Well, Botman's Darkulator does it, among other things -- but you don't need a plugin of any type at all to modify the skybox. Skyboxes are not part of a compiled map and can be adjusted at any time in-game through console commands (though only new joins will see the new skyboxes).
+
+As a reference, here's my "time-of-day" skybox code in AdminMod. I have different sections for different "families" of maps in terms of the sky. This one is for 2fort-style skies...
+
+new TValue[MAX_DATA_LENGTH];
+      new THour[MAX_DATA_LENGTH];
+      
+      servertime(THour, MAX_DATA_LENGTH, "%I");
+      servertime(TValue, MAX_DATA_LENGTH, "%p");
+      
+      new hr = strtonum(THour);
+      if (streq(TValue, "PM")==1 && hr < 12)
+            hr = hr + 12;
+            
+      if (streq(TValue, "AM")==1 && hr == 12)
+            hr = 0;
+
+if (streq(strCurrentMap,"2fort")==1  
+            streq(strCurrentMap,"rock2")==1  
+            streq(strCurrentMap,"well")==1  
+            streq(strCurrentMap,"crossover2")==1  
+            streq(strCurrentMap,"avanti")==1) {
+
+            if (hr < 1)
+                  exec("sv_skyname night"); // night
+            else if (hr < 4)
+                  exec("sv_skyname space"); // pitch black
+            else if (hr < 5)
+                  exec("sv_skyname dusk"); // predawn
+            else if (hr < 7)
+                  exec("sv_skyname 2desert"); //dawn
+            else if (hr < 11)
+                  exec("sv_skyname morning"); // morning
+            else if (hr < 16)
+                  exec("sv_skyname desert"); // midday
+            else if (hr < 19)
+                  exec("sv_skyname dusk"); // dusk
+            else
+                  exec("sv_skyname night"); // night
+            
+      }
+
+[modified on 02/28/03 at 22:56:07]
+--------------------------------------------------
+03/04/03 at 19:33:11  Reply by: ~OLC~Gambit (OLC_Gambit@hotmail.com)
+--------------------------------------------------
+whats the ip for your server Buzzkill... id really like to see all that in action
+
+--------------------------------------------------
+03/06/03 at 07:29:29  Reply by: buzzkill (buzzkill@100acrebloodbath.com)
+--------------------------------------------------
+66.51.85.240:27016
+
+
+
+--------------------------------------------------
+03/06/03 at 07:30:54  Reply by: buzzkill (buzzkill@100acrebloodbath.com)
+--------------------------------------------------
+
+QUOTE:
+
+
+If there's a way to force AdminMod to execute it's plugin_init functions immediately, that would be one solution (and is a question more appropriate for the AM forum, I know). Anyone have any other thoughts? 
+
+
+
+Place the line 
+admin_command
+into your server.fg file.
+
+
+
+
+Unfortunately that doesn't seem to work... ah well.
+
+--------------------------------------------------
+03/06/03 at 15:56:49  Reply by: LunaticWithCandy (candyranger@hotmail.com)
+--------------------------------------------------
+did you try "admin_command admin_gravity 800" or some other amod command that wont play with your settings?
+
+You may also try putting "meta refresh" in your server.cfg so it reloads all plugins?
+
+--------------------------------------------------
+03/09/03 at 23:13:08  Reply by: buzzkill (buzzkill@100acrebloodbath.com)
+--------------------------------------------------
+
+QUOTE:
+did you try "admin_command admin_gravity 800" or some other amod command that wont play with your settings?
+
+You may also try putting "meta refresh" in your server.cfg so it reloads all plugins?
+
+
+
+
+Yah. It appears to be a timing issue. "admin_command...." in server.cfg yields nothing. "admin_command..." rcon'd in just after the restart forces the AM plugins to load. My guess is that AM hasn't bootstrapped enough at server.cfg execution time to be ready for an admin_commmand, but I'll keep playing with it.
+
+
+--------------------------------------------------
+03/09/03 at 23:24:18  Reply by: LunaticWithCandy (candyranger@hotmail.com)
+--------------------------------------------------
+Hmmmm....
+
+What about at the end of the adminmod.cfg file?
+
+And did you try "meta refresh"?
+
+[modified on 03/09/03 at 23:24:18]
+--------------------------------------------------
+03/10/03 at 00:17:34  Reply by: buzzkill (buzzkill@100acrebloodbath.com)
+--------------------------------------------------
+QUOTE:
+Hmmmm....
+
+What about at the end of the adminmod.cfg file?
+
+And did you try "meta refresh"?
+
+[modified on 03/09/03 at 23:24:18]
+
+
+
+
+Yes, at the end. And no.. a meta refresh would load only those mm plugins that had changed substantively (checksum change) since the last load. This would be unaffected by AM script changes. Additionally, since AM can only be loaded at server start (the Start/Start designation in meta info), it's moot.
+
+Are you seeing different results?
+
+[modified on 03/10/03 at 00:17:34]
+--------------------------------------------------
+03/10/03 at 01:20:50  Reply by: LunaticWithCandy (candyranger@hotmail.com)
+--------------------------------------------------
+I havn't actauly tried anything :). I just know that the other day our server was having amod issues (not initializing and crashing the server), and using "meta refresh" fixed the lot of it.
+
+[modified on 03/10/03 at 01:20:50]

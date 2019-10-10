@@ -1,0 +1,282 @@
+--------------------------------------------------
+Subject: Meta return values how?
+--------------------------------------------------
+11/03/02 at 01:51:12  Posted by: AustinBotServer (AustinBotServer@MindSpring)
+--------------------------------------------------
+I need to run some code before and after the FindEntityInSphere() function.
+
+I have the hook working in Meta mod.
+
+edict_t *FindEntityInSphere(edict_t *pEdictStartSearchAfter, const float *org, float rad)
+{
+// run some code
+FIND_ENTITY_IN_SPHERE(pEdictStartSearchAfter, org, rad);
+// run some more code
+// return the value from the FIND_ENTITY_IN_SPHERE() function call      
+}
+
+I can't use a local variable to hold the return value from the FIND_ENTITY_IN_SPHERE() call since it would not be valid after the the function exits, and using a global variable can cause concurrency problems.
+
+How would I do this?
+Thanks.
+
+
+
+--------------------------------------------------
+11/03/02 at 06:19:03  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Are you trying to examine the entities that the game DLL would see?  Or are you trying to store them somewhere for some reason?
+
+The game DLL code would do this (except it would use CBaseEntity instead of edict_t, but that's mostly a semantic thing)...
+
+code:
+edict_t *pEdict = NULL;
+ 
+while ((pEdict = UTIL_FindEntityInSphere(blah, blah, blah)) != NULL)
+{
+   // do stuff with pEdict
+}
+
+If you wanted to modify the types of entities returned to the game DLL code (i.e. hide some entities so they don't show up), you would do something like this in the metamod code...
+code:
+edict_t *pfnFindEntityInSphere(blah, blah, blah)
+{
+   edict_t *pEdict;  // pointer returned from (and stored in) the engine
+   // call the engine function
+   pEdict = gEngfuncs.pfnFindEntityInSphere(blah, blah, blah);
+   // check if we should return this entity or not...
+   while (strcmp(STRING(pEdict->v.classname), "weapon_hockeystick") == 0)
+   {
+      // keep getting the next entity...
+      pEdict = gEngfuncs.pfnFindEntityInSphere(blah, blah, blah);
+   }
+   // return the edict_t pointer that's in the engine...
+   return pEdict;
+}
+
+Obviously you'd need to check for a NULL pEdict pointer before the "while" statement, but you get the idea.
+
+For what reason would you want to loop though all the entities in your metamod code and store their edicts locally?
+
+botman
+
+--------------------------------------------------
+11/03/02 at 13:42:39  Reply by: AustinBotServer (AustinBotServer@MindSpring)
+--------------------------------------------------
+
+QUOTE:
+
+For what reason would you want to loop though all the entities in your metamod code and store their edicts locally?
+
+
+
+
+Actually that is not what I am trying to do.  Sorry if my first post was a little vague.
+
+I am working with PM's POD fix metamod plug in. This is the first thing that I am trying to do with HL and Meta mod programming so I am really new to all this, but I have a lot of Windows C/C++ experience. (This is Mark the guy who tipped you off to the small bug in BSP view.)
+
+1)      The problem is POD will often crash the server when a hostage is killed so PM wrote a plug in that keeps the hostages from being un-damageable. 
+
+       // cycle through all hostages and set no damage
+      for (int index = 0; index < hostage_count; index++)
+            pHostages[index]->v.takedamage = DAMAGE_NO;
+
+
+2)      Works great. I would much rather put up with hostages not being able to be killed on CS maps then have my server crash every 5-10 minutes, but in version 1 the hostages could not be used so a fix was put in to allow them to take damage if someone was trying to use them.
+
+void StartFrame (void)
+{
+   // oddity, but the Counter-Strike code skips the hostage_entities when they are being
+   // triggered and have the DAMAGE_NO flag... maybe for speeding up the entity search...
+
+   // cycle through all players
+   for (index = 1; index <= gpGlobals->maxClients; index++)
+   {
+      edict_t *pPlayer = INDEXENT (index);
+
+      if (!pPlayer || pPlayer->free)
+         continue; // skip invalid players
+
+      // is this player attempting to use something ?
+      if (pPlayer->v.button & IN_USE)
+      {
+         // is there a hostage near this player ?
+         while ((pHostage = FIND_ENTITY_IN_SPHERE (pHostage, pPlayer->v.origin, 70)) != NULL)
+         {
+            if (FNullEnt (pHostage))
+               break; // reliability check
+            if (strcmp (STRING (pHostage->v.classname), "hostage_entity") == 0)
+               pHostage->v.takedamage = DAMAGE_YES; // this hostage will temporarily be damageable
+         }
+      }
+   }
+
+
+3)       So in version 2 they can now be used but the round ends if even one hostage is rescued.  I guess it is the same problem The CS code doesn't find hostages if they are set to take no damage.  The strange thing is CS does know the hostage is rescued.  So it must use two different methods to determine if a) a hostage has been rescued and b) If hostages are still in the map.
+
+4)      PM suggested a fix where for the two calls:
+FIND_ENTITY_IN_SPHERE 
+FIND_ENTITY_BY_STRING
+
+The hostage are set to take damage before these functions are called and then set back to not take damage after the calls. 
+
+So I have tried this for both FIND_ENTITY_IN_SPHERE() and FIND_ENTITY_BY_STRING():
+
+edict_t *FindEntityByString(edict_t *pEdictStartSearchAfter, const char *pszField, const char *pszValue) 
+{
+      edict_t *pEdict; 
+      SetDamage(true);
+      pEdict = FIND_ENTITY_BY_STRING(pEdictStartSearchAfter, pszField, pszValue);      
+      SetDamage(false);      
+      RETURN_META_VALUE(MRES_IGNORED, pEdict
+)
+      
+Running this code we go back to the original problem of the hostages not being able to be used.
+
+So I guess my new questions are:
+1)      in the above function FindEntityByString() am I handling the return value correctly as metamod woudl want?
+2)      Do you have any suggestions on how to handle this?  I took a look at olo's headshot plugin where you can disallow hits based on what body part is hit.  I thought I could change this to disallow all hits if the entity is a hostage. The magic lines of code in head shot are:
+
+void TraceLine(const float *v1, const float *v2, int fNoMonsters, edict_t *pentToSkip, TraceResult *ptr)
+{
+      TRACE_LINE(v1, v2, fNoMonsters, pentToSkip, ptr);      
+      if ( !(hs_body&(1<<ptr->iHitgroup)) )
+            ptr->flFraction = 1.0;      
+      RETURN_META(MRES_SUPERCEDE);
+}
+
+But I am not sure how I would modify this to disallow hits only on hostages.
+If TraceResult was an entity pointer then based on your reply I might do this.
+
+void TraceLine(const float *v1, const float *v2, int fNoMonsters, edict_t *pentToSkip, TraceResult *ptr)
+{
+      TRACE_LINE(v1, v2, fNoMonsters, pentToSkip, ptr);      
+      if ( strcmp(STRING(ptr->v.classname), "hostage_entity") == 0 )
+            ptr->flFraction = 1.0;      
+      RETURN_META(MRES_SUPERCEDE);
+}
+
+But TraceResult  is not an entity pointer..
+What to do ???     
+
+P.S.
+Is there a document that lists all the HL functions and a brief description of what they do?
+I have searched the web and have only found the info on the metamod site. It list the functions but not what they do.
+In learning any new set of APIs I always do a review of every API call availible before I start trying to do any programming. 
+
+
+
+--------------------------------------------------
+11/04/02 at 00:45:55  Reply by: AustinBotServer (AustinBotServer@MindSpring)
+--------------------------------------------------
+QUOTE:
+
+
+But I am not sure how I would modify this to disallow hits only on hostages.
+
+
+
+
+
+Geezeezz, please disregard my last post! I had not yet had the time to start looking through the Hl SDK. When I did the answer was so simple! TraceResult has an edict_t pointer to the entity that was "hit" by the traceline! 
+
+The problem - POD crashes when hostages are killed.
+
+The solution (sort of) trap ONE function traceLine
+and disallow hits on hostages.
+
+void TraceLine(const float *v1, const float *v2, int fNoMonsters, edict_t *pentToSkip, TraceResult *ptr)
+{
+      TRACE_LINE(v1, v2, fNoMonsters, pentToSkip, ptr);      
+      if ( strcmp(STRING(ptr->pHit->v.classname), "hostage_entity") == 0 )
+      {
+            ptr->flFraction = 1.0;      
+            RETURN_META(MRES_SUPERCEDE);
+      }
+      else
+      {
+            RETURN_META(MRES_IGNORED);
+      }
+}
+
+
+Everything works great but two problems still remain.  The code above keeps the hostages from being damaged from bullets, but they can still be damaged from knives and grenades.
+Anyone have a suggestion on how to disallow damage from knives and grenades?
+Thanks.
+
+
+--------------------------------------------------
+11/04/02 at 06:00:10  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+I don't think you can prevent damage from knives or grenades, since the damage from these weapons is caused internally in the game DLL code (search for "RadiusDamage" in the ggrenade.cpp file).
+
+The only way I can think of to prevent this problem is to loop through all the entities 5 or 10 seconds after the map has been loaded (to allow all entities to get spawned) and find all the hostages, set their health to some HUGE number (like 9999999).  This way it will take LOTS of damage before they get killed.
+
+You could also loop through the hostage entity edicts (that you saved somewhere from the previous loop setting their health so you don't have to loop through all the entities again) during each frame (in StartFrame) and keep setting the their health back to some large value.  This should keep them from being able to be killed.
+
+botman
+
+--------------------------------------------------
+11/04/02 at 14:10:09  Reply by: AustinBotServer (AustinBotServer@MindSpring)
+--------------------------------------------------
+
+QUOTE:
+
+find all the hostages, set their health to some HUGE number (like 9999999).  
+
+
+
+The following code doesn't seem to have any effect on the health of the hostages. It always starts at 100% and it always takes the same damage about 3 bullets or so to kill them. ???
+
+int Spawn(edict_t *pent)
+{
+      // are we spawning a hostage ?
+      if (strcmp (STRING (pent->v.classname), "hostage_entity") == 0)
+      {
+            // save a pointer to every hostage we spawn
+            pHostages[hostage_count] = pent; 
+            hostage_count++;
+
+            LOG_CONSOLE(PLID, "Spawned hostage");
+
+            pent->v.max_health      = 9999999999.0;
+            pent->v.health                  = 9999999999.0;
+      }
+
+      RETURN_META_VALUE (MRES_IGNORED, 0);
+}
+
+I tried it with and without setting the max_health.
+
+--------------------------------------------------
+11/04/02 at 15:10:26  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+I'm not sure the "Spawn" function is the proper place to put this.
+
+Try setting all scientists health to a large value 30 seconds after the map has been loaded (i.e. in StartFrame where a new map is detected, set a timer for 30 seconds in the future, then in StartFrame, when the game time is greater than that time, set the scientist health and change the timer to infinity (1.0e6) so it won't keep setting the health during every frame.
+
+botman
+
+--------------------------------------------------
+11/04/02 at 23:41:46  Reply by: AustinBotServer (AustinBotServer@MindSpring)
+--------------------------------------------------
+QUOTE:
+I'm not sure the "Spawn" function is the proper place to put this.
+
+
+
+
+Of couse, you are right! 
+
+Metamod traps the Spawn() call BEFORE the game code. so the hostage is not created yet so setting the hostage health has no effect probably since the game code initializes the health back to the normal values. Putting this code in Spawn_post() works great!
+
+Good idea botman. I tweaked the health value to give the hostage ~1,000 lives (HP = 200000.0) So just setting the health once at Spawn time should be fine.
+(You do need to also set max_health or it doesn't work. Ah, the value of reading through the SDK...)
+So one function, Spawn_post() fixes the pod crash.
+Clean, Easy, Nice, Thanks!!!!
+Done!
+
+P.S.
+Welcome to Texas!
+
+[modified on 11/04/02 at 23:41:46]

@@ -1,0 +1,237 @@
+--------------------------------------------------
+Subject: Bots aren't selecting a team
+--------------------------------------------------
+10/09/03 at 00:03:24  Posted by: LazyOne (the_lazy_one_09@hotmail.com)
+--------------------------------------------------
+This is annoying me since it should work,
+I have a check for the vgui menu message in MessageBegin, in WriteByte I do an action based on the message id...
+
+code:
+
+void WriteByte( int iData )
+{
+      gpMetaGlobals->mres = MRES_IGNORED;
+
+      if ( g_bIsVGUI == true )
+      {
+            if ( iData == 2 )
+            {
+                  BOT_ShownTeamSelect( BOT_BotFromEdict( g_pCurrentEdict ) );
+            }
+            else if ( iData == 3 )
+            {
+                  BOT_ShownModelSelect( BOT_BotFromEdict( g_pCurrentEdict ) );
+            }
+      }
+
+      return;
+}
+
+
+
+The bots are created fine, but they sit in the unemployed section ( Science and Industry ) and do nothing.
+
+The BOT_DoWhatever functions never get called,
+am I going about this the wrong way?
+
+code:
+
+void BOT_ShownTeamSelect( struct bot_s* pBot )
+{
+      char szArgv[ 16 ];
+
+      sprintf( szArgv, "%d", pBot->m_SelectTeam );
+      UTIL_FakeClientCommand( pBot->m_pEdict, "setteam", szArgv, 0, 0, 0 );
+}
+
+void BOT_ShownModelSelect( struct bot_s* pBot )
+{
+      char szArgv[ 16 ];
+
+      sprintf( szArgv, "%d", pBot->m_SelectModel );
+      UTIL_FakeClientCommand( pBot->m_pEdict, "setmodel", szArgv, 0, 0, 0 );
+}
+
+
+
+Any help is appreciated.
+
+[ Added ]
+
+This is very wierd, I set up a command to force everyone on the server ( including bots ) to execute a command.
+
+Before I did anything the bot was hovering in the mcl respawn, wasn't solid but could be shot.
+
+The second I forced the command "changeteam", it joined the mcl team properly but was nowere in the map.
+
+I don't mind the second bug since I know what it is now, but why are they "spawning" while in spectator mode?
+
+They also don't respond to FakeClientCommands after they're out of spectator mode.
+
+[modified on 10/09/03 at 00:03:24]
+--------------------------------------------------
+10/09/03 at 03:49:32  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Whala, you'll gonna get yourself a heavy brainache if you get any further this way !!!
+
+Why don't you just use a state machine like botman does in bot_client.cpp ???
+
+If you don't want to, you'll have to implement a generic message catcher/releaser like I did in the podfix plugin.
+
+Do you know exactly the shape of your message, for starters ?
+
+
+--------------------------------------------------
+10/09/03 at 11:01:22  Reply by: LazyOne (the_lazy_one_09@hotmail.com)
+--------------------------------------------------
+[ Edited ]
+
+I did the method from the templates and it seems to work but there is a small catch.
+
+They only receive the team and model select menus if I specifically force them to execute the "changeteam" and "changemodel" commands.
+
+What is the best course of action to take?
+
+if ( bot_created_time = gpGlobals->time + 0.1 )
+{
+ fakeclientcmd( changeteam )
+}
+else if ( bot_created_time = gpGlobals->time + 0.2 )
+{
+ fakeclientcmd( changemodel )
+}
+
+I'm not sure if thats the best action to take or wether it will cause problems down the road.
+
+If it helps, heres my BOT_CreateFunction...
+
+code:
+
+struct bot_s* BOT_Create( void )
+{
+      /*      Creates a new bot and returns its bot_s pointer
+            on success, else a 0 is returned.
+      */
+
+      struct bot_s* pBot = 0;
+      edict_t* pEdict = 0;
+      char szRejectMsg[ 256 ];
+      char szName[ 256 ];
+      char* pInfoBuffer = 0;
+      int iIndex = 0;
+
+      pBot = BOT_MakeNewPtr( );
+
+      if ( ! pBot )
+      {
+            return 0;
+      }
+
+      if ( g_fNames )
+      {
+            BOT_Initialize( pBot );
+            BOT_PickName( szName );
+      }
+      else
+      {
+            memset( szName, 0, 256 );
+            strcpy( szName, "Bot" );
+      }
+
+      pBot->m_pEdict = g_engfuncs.pfnCreateFakeClient( szName );
+      pEdict = pBot->m_pEdict;      /*      Easier - pEdict now points to pBot->m_pEdict      */
+
+      if ( FNullEnt( pEdict ) )
+      {
+            UTIL_LogPrintf( "[ SciBot ]: Error: Max players reached.\n" );
+
+            return 0;
+      }
+
+      gpMetaUtilFuncs->pfnCallGameEntity( PLID, "player", g_engfuncs.pfnGetVarsOfEnt( pEdict ) );
+      
+      pInfoBuffer = g_engfuncs.pfnGetInfoKeyBuffer( pEdict );
+      iIndex = g_engfuncs.pfnIndexOfEdict( pEdict );
+
+      g_engfuncs.pfnSetClientKeyValue( iIndex, pInfoBuffer, "model", "gordon" );
+      g_engfuncs.pfnSetClientKeyValue( iIndex, pInfoBuffer, "rate", "2000" );
+
+      MDLL_ClientConnect( pEdict, szName, "127.0.0.1", szRejectMsg );
+      MDLL_ClientPutInServer( pEdict );
+
+      pEdict->v.flags = FL_FAKECLIENT;
+
+      return pBot;
+}
+
+
+
+Thanks for your help so far, this is turning out to be harder than I thought :/ .
+
+[modified on 10/09/03 at 11:00:05]
+
+[modified on 10/09/03 at 11:01:22]
+--------------------------------------------------
+10/09/03 at 15:32:21  Reply by: Cheesemonster!!! (cheeseh(at)rcbot(dot)net)
+--------------------------------------------------
+You need to make sure you are finding the other Vgui menus you want by their ID in messageBegin (or 'BotClient*_VGUI()' function for the mod if you are using those functions) and set up a constant for the type of menu, like botman does, 
+
+these are just examples.. not related to your code.
+
+e.g.
+
+
+#define BOT_VGUI_MENU_SELECT_WEAPONS <VGUI MENU ID>
+
+And set up some things like the choices the bots can make from the menu, say an array or for simple purposes, the min number of choice and max.
+
+// has a choice from one to five (if there are things between 
+//these values then make an array and choose a random pos in the array).
+#define BOT_VGUI_CHOICE_MIN_SELECT_WEAPON 1
+#define BOT_VGUI_CHOICE_MAX_SELECT_WEAPON 5
+
+...
+
+when a vgui happens:
+
+pBot->SetVGUIMenu(*(int*)p); //give bot the vgui menu shown from the poniter.
+
+when a bot is trying to join game etc,
+
+void StartGame ( bot_t *pBot )
+{
+...
+
+char cmd[64];
+
+switch ( pBot->myVGUIMenu )
+{  
+case BOT_VGUI_MENU_SELECT_WEAPONS:
+sprintf(cmd,"%d",RANDOM_LONG(BOT_VGUI_CHOICE_MIN_SELECT_WEAPON,BOT_VGUI_CHOICE_MAX_SELECT_WEAPON));
+
+FakeClientCommand(pBot->pEdict,"menuselect",cmd,NULL);
+break;
+
+case BOT_VGUI_MENU_SELECT_TEAM:
+/// do stuff
+break;
+//....
+}
+
+...
+}
+
+
+--------------------------------------------------
+10/09/03 at 16:07:54  Reply by: LazyOne (the_lazy_one_09@hotmail.com)
+--------------------------------------------------
+I did set up the vgui, but they still weren't receiving the menus.
+
+I put a check in BOT_Think and faked it so now they select their team and model properly.
+
+I guess its time to stop playing around ( I was putting bots saying hello ) and get to work on the movement and navigation code now.
+
+Thanks for all your help.
+
+
+

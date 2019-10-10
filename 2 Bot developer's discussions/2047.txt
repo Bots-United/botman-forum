@@ -1,0 +1,111 @@
+--------------------------------------------------
+Subject: Buyzone... in depth , help... !!!
+--------------------------------------------------
+07/25/01 at 04:56:38  Posted by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+I take it this network message means a bot entered a buyzone
+
+code:
+
+pfnWriteByte: 1
+pfnWriteString: buyzone
+
+
+
+and this means a bot left a buyzone
+
+code:
+
+pfnWriteByte: 0
+pfnWriteString: buyzone
+
+
+
+So how do I find out what bot these messages are for, when they occur and how to somehow link the writebyte message with the buyzone message?
+
+--------------------------------------------------
+07/25/01 at 05:15:59  Reply by: @$3.1415rin (as3.1415rin@gmx.de)
+--------------------------------------------------
+just look into ur bot_client.cpp, there are a lot of examples how to process this messages. Then u have to add this funtion to this if-else constructs in engine.cpp
+
+[modified on 07/25/01 at 05:15:59]
+--------------------------------------------------
+07/25/01 at 09:17:14  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+When the network message is sent it will ALWAYS begin with pfnMessageBegin() and will ALWAYS end with pfnMessageEnd().  The pfnMessageBegin() function gets passed the edict_t pointer as an argument.  This indicates which client (or bot) this network message is being sent to.  You can use UTIL_GetBotIndex() to convert an edict_t pointer to an index into the bots[] array.
+
+In engine.cpp the pfnRegUserMsg() is used to store the ID number of network messages.  This network message ID will be passed into pfnMessageBegin() as the "msg_type" parameter.  From this value you will know what network message is being sent.  The "ed" parameter in pfnMessageBegin() will be the edict_t pointer of the client getting this network message.
+
+So you can examine "msg_type" and examine "ed" to know what message is being sent and who it's being sent to.  The function pointers (BotClient_Valve_XXXXX) that are set up in pfnMessageBegin() will be used to process the values that get sent between pfnMessageBegin() and pfnMessageEnd().  Each of these BotClient_Valve_XXXXX functions (found in bot_client.cpp) contain a state machine that processes the pfnWriteByte(), pfnWriteLong(), pfnWriteCoord(), pfnWriteString(), etc. data as the network message is being sent.  Use an Internet search engine to look up "state machines" to understand what they are and how they work.
+
+Once all of the data has been collected by the BotClient_Valve_XXXXX function, the last state of the state machine will store (or process) this information.  At this point you have all of the data that was sent during a network message and can set flags or variables within the bot_t structure to allow the bot to "know" about the information that was contained within that network packet.
+
+You'll need to understand how C/C++ function pointers work as well as how state machines operate to understand what's really happening in the pfnMessageBegin(), pfnWriteXXX(), pfnMessageEnd() and BotClient_Valve_XXXX() functions.
+
+botman
+
+--------------------------------------------------
+07/25/01 at 09:20:10  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+How would I find out if the bot enters the buyzone or leaves it, ie, the writebyte message is 0 or 1, Cos I'll need to find out if the buyzone has been entered or left.
+
+--------------------------------------------------
+07/25/01 at 09:28:43  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+I dont suppose it might be something like
+
+code:
+
+void BotClient_CS_BuyZone(void *p, int bot_index)
+{
+
+   if( (*(int *)p) == 0 )
+     bots[bot_index].bot_can_buy = FALSE;
+   else if( (*(int *)p) == 1 )
+     bots[bot_index].bot_can_buy = TRUE;
+   else
+     bots[bot_index].bot_can_buy = FALSE;
+}
+
+
+
+
+or do I HAVE to use the state thingy and how do I use that... I am new to these functions ..!!!
+
+--------------------------------------------------
+07/25/01 at 12:41:41  Reply by: @$3.1415rin (as3.1415rin@gmx.de)
+--------------------------------------------------
+although i slightly changed botman's system, i'm sure u understand the system. This is my code in bot_client.cpp
+
+code:
+
+void BotClient_CS_StatusI(void *p, int bot_index,int iAdd)
+{
+      static int state = 0;   // current state machine state
+      static bool btemp;
+      
+      if(iAdd != _CLIENT_END){
+            if(state == 0){
+                  btemp = *(bool*)p;
+                  state ++;
+            }
+            else if (state == 1){
+                  state ++;
+                  
+                  if(!strcmp((char *)p,"buyzone")){
+                        btemp?bots[bot_index].Action.lAction|=BA_BUYZONE:bots[bot_index].Action.lAction&=~BA_BUYZONE;
+                  }
+                  if(!strcmp((char *)p,"defuser")){
+                        btemp?bots[bot_index].Action.lAction|=BA_DEFKIT:bots[bot_index].Action.lAction&=~BA_DEFKIT;
+                  }
+            }
+      }
+      else
+            state = 0;
+}
+
+--------------------------------------------------
+07/25/01 at 16:49:04  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+Hmm... confusing, will take me some time to understand that hehe!!! I couldn't try my own code properly because I stuck in new start actions for the bots which were obviously wrong becuase when I added a bot they never started the game!
+

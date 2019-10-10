@@ -1,0 +1,380 @@
+--------------------------------------------------
+Subject: bot questions
+--------------------------------------------------
+12/18/01 at 16:37:16  Posted by: ocb (ocb1@earthlink.net)
+--------------------------------------------------
+I've been experimenting with writing bots for CS.  Right now I have some questions, which apply mostly to Half-Life bots in general:
+
+When a bot is hit, can it easily figure out which direction the shot came from?
+
+How does a bot know which weapon (shotgun, machine gun, etc.) it's carrying?  I thought maybe this info would be available in the pEdict structure.
+
+What audio cues (like footsteps) are available to a bot?
+
+If a hostage is contacted by a bot (with the Use key), can other bots readily tell that the hostage is currently honed to this bot?  For example, I'd like a bot to tell the difference between a hostage being rescued and a stranded hostage.
+
+Oscar
+
+
+--------------------------------------------------
+12/18/01 at 23:08:07  Reply by: jerry_stoel (jerry_stoel@hotmail.com)
+--------------------------------------------------
+First question:
+
+Look in bot_client.cpp. Look for a function called botclient_cs_damage(); In that function when a bot is damaged the bot will look at the attacker so you don't have to code that :)
+
+Second question:
+
+You can check that in 
+code:
+
+pBot->current_weapon.iId
+
+
+
+Third question:
+
+Check in the botthink function in bot.cpp there is a function which checks the footsteps and sounds. So you might take a look there.
+
+Fourth question:
+
+You can't (I think) check if the bot has a hostage, but you can make an array yourself in which you keep which bot has an hostage when a bot uses an hostage.
+
+Good luck,
+
+[modified on 12/18/01 at 23:08:07]
+--------------------------------------------------
+12/19/01 at 02:13:48  Reply by: Onslaught (None)
+--------------------------------------------------
+1st question: I think it's in botclient_valve_damage(), botclient_cs_damage() calls this function
+3rd question: Look in the UpdateSounds() function
+
+[modified on 12/19/01 at 02:13:48]
+--------------------------------------------------
+12/19/01 at 02:13:23  Reply by: jerry_stoel (jerry_stoel@hotmail.com)
+--------------------------------------------------
+Yes I know, but when you look in that function you can find it out for yourself :P
+
+--------------------------------------------------
+12/19/01 at 02:14:21  Reply by: Onslaught (None)
+--------------------------------------------------
+well i guess so... :)
+
+--------------------------------------------------
+12/19/01 at 09:18:06  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+the hostage question. (again in some detail ;) )
+
+You should store an edict_t array in your bot. hostages is a good name for it ;)
+
+Whenever a bot uses a hostage just store the hostages edict_t into a free slot in the hostages array in the bot. Then you could check each of them to tell if a bot is currently using one. You should remove hostages from the array when they die or are rescued by checking if they are alive.
+
+[modified on 12/19/01 at 09:18:06]
+--------------------------------------------------
+12/19/01 at 16:16:40  Reply by: ocb (ocb1@earthlink.net)
+--------------------------------------------------
+You guys have been a great help.  Thanks!
+
+Looks like I'll have to do my own housekeeping to keep track of the hostages.  Also, I'll have to somehow determine whether a bot successfully pressed the Use key on a hostage.  Every now and then (maybe because the bot is slightly too far away), contact isn't made between bot and hostage.
+
+Oscar
+
+
+--------------------------------------------------
+12/19/01 at 17:53:15  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+Well if the distance is less than the maximum needed to use a hostage and the bot is currently facing the hostage then you can say that it used it. 
+
+I don't think there is a way to check if a hostage has been used sucessfully. You'll probably have to look into the bots privatedata, but I don't even know if its in there either ;-)
+.. Unless there are network messages that tell this.
+
+[modified on 12/19/01 at 17:53:15]
+--------------------------------------------------
+12/28/01 at 02:53:37  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+isnt there a way to figure out if a key is pressed ? this way there should be a way to capture the 'use' key and determine who pressed it, and maybe its even possible to figure out 'on what' the use key is used? 
+
+Just a wild guess, but even if you can prevent bots stealing hostages from each other, its still a big irritating bug that bots steal hostages from real players...
+
+--------------------------------------------------
+12/28/01 at 06:02:52  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+you could always check to see if the hostages are moving and if they are then you could guess they are being used but still that isn't perfect.
+
+--------------------------------------------------
+01/09/02 at 08:02:39  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+Actually I just thought of these... :)
+
+You could maybe find the owenr of the hostage by checking hostage_entity->v.owner and if it's the same as the bot then it is owned by that bot. There are other edict_t pointers in the entvars such as users which may also have the bots edict in it.
+
+If none of they work then check if the hostages angles are facing that bot.
+
+You could also check if a hostage is in use (if the owner is not found) by checking its speed. :-)
+
+--------------------------------------------------
+01/10/02 at 05:26:34  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+even more simple, you could just check if either one or the other sound hostages make when you use them is emitted, like Botman does it in TFC for calling medics.
+
+--------------------------------------------------
+01/14/02 at 17:38:55  Reply by: ocb (ocb1@earthlink.net)
+--------------------------------------------------
+I tried looking at pEntity->v.owner and its always zero.
+
+Watching for the sounds the hostages say is an idea, but when a bot "unuses" them afterwards (as a terrorist may do), they don't say anything.  So you can't unlink them to the bot this way.
+
+In the end, I'll probably just have to track the hostage (position, angle, speed, etc.) in relation to the bot to see if it's linked to the bot.
+
+Oscar
+
+
+--------------------------------------------------
+01/15/02 at 05:32:17  Reply by: @$3.1415rin (joebot@botepidemic.com)
+--------------------------------------------------
+this topic has been discussed some month ( years ?! ) ago, so use the search function :D
+
+--------------------------------------------------
+05/03/02 at 15:16:37  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+I'd just like to resurrect this little post about hostage using.
+
+I'd use 
+
+DispatchUse( pUsed, pEntity )
+
+for a bot to use a hostage and find out who is using a hostage.
+
+pUsed = Hostage
+pEntity = pBot->pEdict
+
+Using DispatchUse() For a bot to Use a Hostage may be "cheating" in a way hehe, but it makes sure that the hostage is being used.
+
+Just a wittle tippy :)
+
+--------------------------------------------------
+05/03/02 at 16:26:56  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+Lol I imagine one of your bots calling a hostage from the other side of the map, cheesy ! That's ZE ultimate solution for CTs ! Don't even move, camp at base, press a button and watch the hostages come to us !!
+ROTFL ;D
+
+--------------------------------------------------
+05/04/02 at 12:35:29  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+FYI: To detect if a hostage is in use by a normal player, you should just add a check if the hostage is not moving. Simple :)
+
+--------------------------------------------------
+05/04/02 at 17:05:55  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+What if the player isnt moving? ;D
+
+--------------------------------------------------
+05/04/02 at 18:14:54  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+IMO the hostages array thing is the safest solution.
+
+--------------------------------------------------
+05/05/02 at 04:24:03  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+pierre, that does not count for real players. You could do a check, a timer for instance for each hostage. When the hostage moves, you reset the timer, when the timer is not updated for some time you know the hostage has been standing still for some time. So, this could solve problems like when players are going through a door. 
+
+THis could improve , but not solve, the hostage 'being used' detection issue.
+
+--------------------------------------------------
+05/05/02 at 11:40:36  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+personally I think a global hostage array would be useful here. Create a linked list (Or an array for simplicity, a linked list is better as there may be a lot of hostages) with a hostage edict, and a User edict. 
+
+Add a hostage to the list when one spawns in DispatchSpawn. Initialise all the pUser edicts when a round/level starts. Add the pUser edict to the approprate hostage entity in the list when a "hostage_entity" is being used in DispatchUse.
+
+Update as often as possible all the hostages in the list by checking the pUser is valid (i.e. Alive) and set the pUser back to NULL if invalid.
+
+Once a bot wants to use a hostage, check the global hostages list and see if there is a pUser already assigned to it, if not then use the hostage. If there is a pUser attached to the hostage in the list then don't use that hostage.
+
+I've done an example of what I think might work.
+
+Setting the array up..!
+
+code:
+
+
+typedef struct
+{
+  edict_t *pHostage;
+  edict_t *pUser;
+}hostage_t;
+
+#define MAX_HOSTAGE 10
+
+hostage_t hostages[MAX_HOSTAGES];
+
+
+
+
+Initializing the new hostages array...
+
+code:
+
+int DispatchSpawn( edict_t *pent )
+{
+      ...
+            
+            if( mod_id == CSTRIKE_DLL )
+            {
+                  if( strcmp(pClassname, "hostage_entity") == 0 )
+                  {
+                        int found_index = 0;
+                        
+                        while (( found_index < MAX_HOSTAGE ) && 
+                              ( hostages[found_index].pHostage != NULL ))
+                        {
+                              found_index++;
+                        }
+                        
+                        if( found_index < MAX_HOSTAGE )
+                        {
+                              hostages[found_index].pHostage = pent;
+                              hostages[found_index].pUser = NULL;
+                        }
+
+                        ...
+                  }
+
+                  ...
+            }
+
+            ...
+
+            if (strcmp(pClassname, "worldspawn") == 0)
+            {                    
+                  int i;
+
+                  for ( i = 0; i < MAX_HOSTAGE; i ++ )
+                  {
+                        hostages[i].pHostage = NULL;
+                        hostages[i].pUser = NULL;
+                  }
+
+
+
+Adding a User to a Hostage...
+
+code:
+
+void DispatchUse( edict_t *pentUsed, edict_t *pentOther )
+{
+      if( !strcmp(STRING(pentUsed->v.classname),"hostage_entity") )
+      {
+            int found_index = 0;
+
+            while (( found_index < MAX_HOSTAGE ) && 
+                     ( hostages[found_index].pHostage != pentUsed ))
+            {
+                  found_index++;
+            }
+
+            if( found_index < MAX_HOSTAGE )
+            {
+              if( hostages[found_index].pUser == pentOther )
+                      hostages[found_index].pUser = NULL;      // Someone has Un-used the hostage
+              else
+              {
+                          hostages[found_index].pHostage = pentUsed;
+                        hostages[found_index].pUser = pentOther;
+              }
+            }
+      }
+
+      (*other_gFunctionTable.pfnUse)(pentUsed, pentOther);
+}
+
+
+
+Checking for invalid hostage users...
+
+code:
+
+      if ( mod_id == CSTRIKE_DLL )
+      {
+            bool invalid = FALSE;
+
+            for ( i = 0; i < MAX_HOSTAGE; i ++ )
+            {
+                  invalid = FALSE;
+
+                  if ( hostages[i].pHostage )
+                  {
+                        if ( hostages[i].pUser )
+                        {
+                              if( !IsAlive(hostages[i].pUser) )
+                                    invalid = TRUE;
+                        }
+
+                        if (!invalid)
+                          invalid = !IsAlive(hostages[i].pHostage);
+                        
+                        if( invalid )
+                              hostages[i].pUser = NULL;
+
+
+
+When a bot wants to use a hostage, check if the hostage is already in use
+
+code:
+
+      int i;
+      bool hostage_in_use;
+
+      while ( (hostage = UTIL_FindEntityByClassname(hostage,"hostage_entity")) != NULL )
+      {
+            hostage_in_use = FALSE;
+
+            for ( i = 0; i < MAX_HOSTAGE; i ++ )
+            {
+                  if ( hostage == hostages[i].pHostage )
+                  {
+                        if( hostages[i].pUser )
+                              hostage_in_use = TRUE;
+                  }
+                        
+            }
+
+            if( hostage_in_use )
+                  continue;
+
+            ...
+            
+            //If Hostage is visible
+            //Face the hostage
+            //If Distance < Useable Distance
+            //Use the Hostage
+            //Else
+            //Walk towards the hostage
+      }
+
+
+
+And of course, each round must initialise all users to NULL..
+
+code:
+
+// Whereever you check for a new round
+// If a new round then...
+
+        int i;
+
+        for ( i = 0; i < MAX_HOSTAGE; i ++ )
+      {
+         hostages[i].pUser = NULL;
+      }
+
+
+
+Comments..!!! ;D
+
+[modified on 05/05/02 at 11:40:36]
+--------------------------------------------------
+05/05/02 at 10:16:08  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+Good idea, as soon as you just hook the DispatchUse() and not issue it yourself, that's not cheating ;D
+

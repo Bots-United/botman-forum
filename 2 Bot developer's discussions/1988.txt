@@ -1,0 +1,126 @@
+--------------------------------------------------
+Subject: "true" console command
+--------------------------------------------------
+07/17/01 at 13:12:13  Posted by: bluesy (bluesy@bezeqint.net)
+--------------------------------------------------
+i`m almost done with the Opera bot but there is  one major snag that`s holding me back.
+
+is there a way for a bot to send TRUE console command (not FakeClientCommand() which equals to cmd <command>)?
+
+for example:
+ the "kill" command can be isuued from the console, but when used in FakeClientCommand() it returnes "unknown command".
+and also "cmd kill" (from the console) is unknown.
+
+another ex.: "inprev" typed in the console turnes to a "weapon_*" command (by the client.dll i guess) but when used as "cmd inprev" or with FakeClientCommand() it just returns "unknown command: inprev".
+
+got clues? (10x)
+
+
+--------------------------------------------------
+07/17/01 at 14:36:02  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+"kill" is intercepted by the Half-Life engine.  Therefore it isn't passed on to the MOD DLLs ClientCommand() function (which the FakeClientCommand emulates).
+
+You can add your own commands to a MOD using pfnAddServerCommand() which will add the command to the list of commands recognized by the engine (but will be parsed by the MOD DLL code, not the engine code).
+
+pfnAddServerCommand() has the command name (i.e. "cmd") and the address of the function to execute when the engine sees that command.
+
+You may have to intercept this engine function and save the command string and the function address for that string in a table somewhere.  When you wish to execute one of these types of commands, just scan the table looking for a match then call that function address in the same manner that the Half-Life engine would for a command sent from a client.
+
+botman
+
+--------------------------------------------------
+07/18/01 at 01:11:47  Reply by: bluesy (bluesy@bezeqint.net)
+--------------------------------------------------
+
+QUOTE:
+
+
+You can add your own commands to a MOD using pfnAddServerCommand() which will add the command to the list of commands recognized by the engine (but will be parsed by the MOD DLL code, not the engine code).
+
+
+
+
+
+that`s only good if  i want to add some new commands to the mod, which is different from my problem. i think i`ll abandon this aproach and focus on why the mod refuses to give weapons to the bots...
+
+thanks anyway
+
+--------------------------------------------------
+07/18/01 at 04:06:25  Reply by: jerry_stoel (jerry_stoel@hotmail.com)
+--------------------------------------------------
+Hi Ariel,
+
+The bots refuses to get weapons, because they have to have a config in which the different kinds of weapons are in. I am working on this too, but the only way I can get them too get weapons is by cheating :P. So I will have to find another way. Post a message if you got it, I want to know :D.
+
+Seeya,
+
+--------------------------------------------------
+07/18/01 at 04:29:47  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+"that`s only good if  i want to add some new commands to the mod, which is different from my problem."
+
+No, you didn't understand what I meant.
+
+The MOD can register commands with the engine that the engine will call when it sees them come from a client.  These commands won't be sent to ClientCommand() because the MOD has already told the engine which function to call when those commands are received.
+
+Intercept the MOD using the pfnAddServerCommand() and you will probably see the commands that you are trying to send using FakeClientCommand().  Just call the same MOD function that the engine would (the argument of pfnAddServerCommand) when you want to execute that command.
+
+botman
+
+--------------------------------------------------
+07/18/01 at 04:33:17  Reply by: theimann (killaruna@botepidemic.com)
+--------------------------------------------------
+QUOTE:
+that`s only good if  i want to add some new commands to the mod, which is different from my problem. 
+
+
+I think what botman meant was that even the "kill" or the "inprev" commands get registered with pfnAddServerCommand(). You should test in your pfnAddServerCommand() function if the new command is the one you would like to call yourself and store the passed pointer to the correspondent function in that case.
+
+Tobias
+
+--------------------------------------------------
+07/18/01 at 05:07:42  Reply by: bluesy (bluesy@bezeqint.net)
+--------------------------------------------------
+thanks for the clearance although i don`t think "console" command would help with the weapons problem.
+
+from what i got so far, i`m using the correct command for the weapons, using a correct weapon string (taken from weapon_config.cfg) and still the bot gets none of the weapons it "wants".
+
+i`m sure of this because:
+1. the bot gets the panic weapons.
+2. in DB mode, the bot also gets 2 berettas.
+3. when the bot picks a weapon, it uses it ok.
+
+just too weird...
+
+--------------------------------------------------
+07/18/01 at 07:06:07  Reply by: jerry_stoel (jerry_stoel@hotmail.com)
+--------------------------------------------------
+Yes I know it's weird. Well I just got them into the game not too hard :P.
+
+I think they get the weapons, because I use the string: __m0 AE... enz. :P and they join the game right, but when I try too let them select the weapon like: 
+code:
+
+FakeClientCommand(pEdict, "weapon_beretta", NULL, NULL);
+
+
+They won't select it. Maybe it has to do with the akimbo weapons or something, because the engine sends a message 71 and a string with akimbo. So I think I have to capture that message and do something with it.
+Hmmm.. if I get any further I will tell it here.
+
+Seeya,
+
+--------------------------------------------------
+07/18/01 at 07:55:53  Reply by: bluesy (bluesy@bezeqint.net)
+--------------------------------------------------
+if you try "weapon_beretta" on DB mode, you will see that it works. from what i know, msg 71 is sent whenever the client switches from normal to akimbo mode, unlike in AHL where akimbo weapons are separate from the single ones.
+
+tracking the 74,75 messages shows that the bots only get the panic weapon, regardless of what string you put with __m0 (it must be a legal string though).
+
+__m0 alone also get the bot to join the game, so i think there is more than the __m0 message.
+
+i tried to track the AddServerCommand but only 4 commands get registered. none of these 4 are useful (end_round, end_game and so on).
+
+if it was possible to send keyboard actions (like enter, numbers (not slot1 - slot 0)) then we could be sure that all get sent to the MOD.
+
+
+

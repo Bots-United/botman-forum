@@ -1,0 +1,137 @@
+--------------------------------------------------
+Subject: Bots not picking a class/stuck in spectator mode
+--------------------------------------------------
+08/13/02 at 12:07:13  Posted by: scallawag (tfcscallawag@hotmail.com)
+--------------------------------------------------
+Hey Botman,
+I've been running your bots for quite some time now.  One problem I run into pretty frequently is that I'll have bots join a team, but they won't pick a class.  Linger in limbo with nothing but their name on the TAB scores list.  
+
+The only thing I can think of that might be a factor is that I have HWG disabled (who wouldn't?) and a limit on snipers.. 
+
+Is it possible to make it so if the bots receive an error when tryin to switch to a class that is either filled or not available. that they autoswitch after a period of time? 
+
+Also having a problem with bots that I respawn during a map (using HPB_bot addbot) usually get stuck in spectator mode for the duration of the map. (granted, most of the command lists out there are outdated, but if I could disable spectator mode would that fix this?) Even kicking them and retrying puts them in spectator mode.  For some reason this is usually the case.  If I spawn enough, eventually they'll trickle onto teams.  (Granted, not the one I'm specifying usually) But not usually before I hit the server player limit.  This happens even if I specify for them to join the team with less players into a class that there are no limitations in.
+
+Just wondering what I'm doing wrong, or to give you a heads up for HPB_bot release 1.10 :)
+
+I made a few posts on the wishlist also that identified a couple of other things that I would like to see happen in HPB_bot.. but that actually might be a glitch now that I think about it.
+
+Might want to check them out :)
+
+Thanks again for the great bots.
+
+[modified on 08/13/02 at 12:07:13]
+--------------------------------------------------
+08/13/02 at 12:24:26  Reply by: BeaverMon1 (BJDobson1@aol.com)
+--------------------------------------------------
+Did you read the paragraph in HPB_bot.cfg about adding AT LEAST 1 less then maxplayers?
+
+"You should make max_bots be AT LEAST
+one less than the maxplayers value (otherwise no one will be able to join
+your server.)"
+
+Example: You have 8 bots playing. If you make sure maxplayers is 7, any bot you kick, will come back and play.
+
+--------------------------------------------------
+08/13/02 at 15:05:14  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+There's a bug where, if you are playing TFC, you have to kick the bot TWICE or it won't join the game properly when you add them back.  If you are spawning and kicking bots (or the HPB bot code is spawning and kicking them for min_bots, max_bots, sometimes they won't be able to join the team the choose and they will stay in observer mode.
+
+There's not much you can do about this except try manually kicking any bots that are in observer mode.  You should be able to kick them by player index or by player name.
+
+botman
+
+--------------------------------------------------
+08/13/02 at 18:09:29  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+I already said this before, but I think no one has listened then...
+
+To get rid of that bug (and of all the bugs that occur when a new bot takes over the entvars_t structure of a disconnected bot), you have to free its entity's private data.
+
+do
+code:
+
+FREE_PRIVATE (pBotEdict);
+pBotEdict->pvPrivateData = NULL;
+pBotEdict->v.frags = 0;
+
+
+
+in BotCreate, just before you call the player() function for creating the bot.
+
+lol that's at least the third time I say this ;D
+
+
+--------------------------------------------------
+08/14/02 at 05:45:46  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Yes, I've seen your reply before.  I'm not updating the HPB bot anymore so that bug will be there forever.
+
+botman
+
+--------------------------------------------------
+09/29/02 at 04:09:50  Reply by: Siborg (sgb001@cwcom.net)
+--------------------------------------------------
+Aww please botman, theres a lot of people still use your bots and I'm sure it wouldnt take a lot of time for you, I dunno. It seems like your not updating it because ur just stubborn or you've got a problem with it, it really wouldnt take long.
+
+--------------------------------------------------
+09/29/02 at 06:52:44  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+QUOTE:
+It seems like your not updating it because ur just stubborn or you've got a problem with it, it really wouldnt take long.
+
+
+
+
+You know WHO you call stubborn, man ? botman explicitly told his reasons on his web page.
+1 - He's now hired by Gearbox and is very busy
+2 - He never got paid for his work on Half-Life, at least not that I know, so YOU would be stubborn to expect from him a support of commercial quality for his work
+3 - Although the reason previously mentioned, he did, and does, support people damn pretty well, always answering to questions in his forums provided they are given in an intelligent manner.
+4 - The HPB_bot initially started as a framework for bot authors to know they could add bots to any Half-Life MOD, and to provide them with a working template. NOT to be the best bot ever, unlike the goal clearly pursued by 99.9% of the remaining bot projects.
+5 - He's giving away the source code, so it is pretty damn unpolite to call such a man a stubborn without even trying to fix the things by yourself. See reason 3-.
+
+Goddamnit !
+
+
+--------------------------------------------------
+09/29/02 at 08:03:20  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+The bug is the fact that bots try to pick the same team that they were on before, I think PM's bug fix should fix it but if it doesn't all I've done is make the bot switch teams in the bot code and it works also.
+
+--------------------------------------------------
+09/29/02 at 09:45:00  Reply by: Cpl_Shrike (jasp@xs4all.nl)
+--------------------------------------------------
+Hi all,
+
+Quite new to this forum and bot creating....
+
+But had fixed that bug like this:
+---------------------------------
+FREE_PRIVATE (BotEnt);
+BotEnt->pvPrivateData = NULL;
+BotEnt->v.frags = 0;
+---------------------------------
+quite the same as Pierre-Marie.
+But i couldend use his code. 
+maybee because im such a n00b on this "new" stuff 
+
+[modified on 09/29/02 at 09:45:00]
+--------------------------------------------------
+09/29/02 at 11:56:41  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+you mean EXACTLY the same...
+the only difference is that in my code the name of the entity returned by pfnCreateFakeClient is pBotEdict whereas in botman's template, it is BotEnt.
+It's just a matter of variable name.
+
+
+--------------------------------------------------
+09/29/02 at 14:46:04  Reply by: Cpl_Shrike (jasp@xs4all.nl)
+--------------------------------------------------
+Like i said , im a n00b.
+
+heh heh , had to figure it out my self.
+and that was quite something. so i shared my thoughts with the world.
+
+I am tring to make bot for tod.
+doing quite nice for a beginner.
+

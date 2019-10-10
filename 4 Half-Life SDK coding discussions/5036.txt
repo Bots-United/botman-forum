@@ -1,0 +1,131 @@
+--------------------------------------------------
+Subject: Compile Errors
+--------------------------------------------------
+12/28/03 at 21:29:48  Posted by: sfx2k4 (vze3gd7p@verizon.net)
+--------------------------------------------------
+This MinGW is giving me such a headache. Here is what I did.
+
+I copied the multiplayer source to the MinGW directory. Then I modified the makefile so instead of it having -m486 it would use -march=i486 (may be slightly different but that is what the compiler told me to do). I went into the multiplayer source\dlls directory and typed 'make'. I got these errors and the build stopped:
+
+In file included from weapons.h:18,
+                 from airtank.cpp:19:
+effects.h: In member function `void CSprite::AnimateAndDie(float)':
+effects.h:82: invalid static_cast from type `<unknown type>' to type `void 
+   (CBaseEntity::*)()'
+effects.h: In member function `void CBeam::LiveForTime(float)':
+effects.h:171: invalid static_cast from type `<unknown type>' to type `void 
+   (CBaseEntity::*)()'
+In file included from airtank.cpp:19:
+weapons.h: At global scope:
+weapons.h:448: ISO C++ forbids declaration of `HasWeapon' with no type
+airtank.cpp: In member function `virtual void CAirtank::Spawn()':
+airtank.cpp:61: invalid static_cast from type `<unknown type>' to type `void 
+   (CBaseEntity::*)(CBaseEntity*)'
+airtank.cpp:62: invalid static_cast from type `<unknown type>' to type `void 
+   (CBaseEntity::*)()'
+make: *** [obj/airtank.o] Error 1
+
+[modified on 12/28/03 at 21:29:48]
+--------------------------------------------------
+12/28/03 at 17:03:40  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+This error...
+
+"effects.h:82: invalid static_cast from type `<unknown type>' to type `void (CBaseEntity::*)()'"
+
+...comes from MinGW using newer ANSI standards for the C++ compiler.  You will need to modify ALL instances of SetThink(), SetTouch(), and SetUse() to include the classname as well as the function name.  For example, in airtank.cpp on line 61, you have...
+
+SetTouch( TankTouch );
+
+This should be changed to...
+
+SetTouch( &CAirtank::TankTouch );
+
+Change ALL instances of SetTouch(), SetThink(), and SetUse() to include the '&' and classname (followed by a double colon '::') before the name of the function as the argument.
+
+This has already been done for you if you download my patches to SDK 2.2 and run those on the SDK 2.2 source code and compile that with the newer version of the MinGW compiler.
+
+botman
+
+--------------------------------------------------
+12/28/03 at 18:41:45  Reply by: sfx2k4 (vze3gd7p@verizon.net)
+--------------------------------------------------
+I am using SDK 2.3, so I don't know if they will work.
+
+Is there an argument I can pass to use the older standards?
+
+[modified on 12/28/03 at 18:41:45]
+--------------------------------------------------
+12/29/03 at 05:32:16  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+"Is there an argument I can pass to use the older standards?"
+
+Nope, there isn't.  You can download and older version of the MinGW compiler, or you can go through and change all the source code.  Your choice.
+
+botman
+
+--------------------------------------------------
+12/29/03 at 22:23:13  Reply by: sfx2k4 (vze3gd7p@verizon.net)
+--------------------------------------------------
+Now I am getting linker errors which all look like one of these:
+
+./obj/airtank.o(.data$_ZTI8CAirtank+0x0):airtank.cpp: undefined reference to `vtable for __cxxabiv1::__si_class_type_info'
+
+./obj/cbase.o(.text+0x430):cbase.cpp: undefined reference to `__gxx_personality_sj0'
+
+./obj/gamerules.o(.text+0xeca):gamerules.cpp: undefined reference to `operator new(unsigned)'
+
+./obj/gamerules.o(.text+0xef8):gamerules.cpp: undefined reference to `operator delete(void*)'
+
+./obj/gamerules.o(.data$_ZTV10CGameRules+0xc):gamerules.cpp: undefined reference to `__cxa_pure_virtual'
+
+./obj/gamerules.o(.data$_ZTI10CGameRules+0x0):gamerules.cpp: undefined reference to `vtable for __cxxabiv1::__class_type_info'
+
+
+[modified on 12/29/03 at 22:23:13]
+--------------------------------------------------
+12/30/03 at 04:11:54  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+it looks like g++ is not correctly installed on your machine... I could be mistaken though ; but I had similar linker errors when trying to compile on a Linux machine lately, and rebuilding the whole GCC tarball fixed the error.
+
+
+--------------------------------------------------
+12/30/03 at 06:02:07  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Try using "g++" instead of "gcc" as the compiler in the Makefile.
+
+botman
+
+--------------------------------------------------
+12/30/03 at 16:29:38  Reply by: sfx2k4 (vze3gd7p@verizon.net)
+--------------------------------------------------
+Botman:
+I changed it and recompiled everything. I still get the errors. I used gcc on a simple program I wrote and the errors were all in the compiler. It did not make it to the linker.
+
+Pierre-Marie Baty:
+I have not had any trouble compiling other stuff. I made a simple C++ program and it worked. Maybe I will try a more complex one.
+
+[modified on 12/30/03 at 13:16:26]
+
+By a stroke of luck, I opened my C++ book and it went right to v-table, whick means "virtual table". I am looking for more info, and then I will check for problems in the SDK.
+
+[modified on 12/30/03 at 15:32:05]
+
+I can't figure it out. It is probably one of those thinks that work in Microsoft's compiler but not in MinGW.
+
+[modified on 12/30/03 at 16:29:38]
+--------------------------------------------------
+12/31/03 at 06:08:47  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+"v-table, whick means "virtual table"."
+
+The v-table is what C++ uses to help handle classes inheriting from other classes.  It's kind of complicated but, as I understand it, the v-table contains references to functions and variables in classes that a dervived class inherits from.
+
+For example, if you have a base class A, and class B inherits from class A, and class C inherits from class B, the v-table for B would contain references to class A functions and variables.  The v-table for class C would contain references to functions and variables for class B (but not for class A, since the v-table for class B already contains references to those).
+
+If you have polymorphism (a class derived from multiple classes, i.e. class D is inherits from classes A, B, and C), then the v-table for class D would contain references to all classes that it inherits from.
+
+The v-table stuff is NOT unique to Microsoft Visual C++.  Any C++ compiler would use v-tables to keep track of inheritance.
+
+botman
+

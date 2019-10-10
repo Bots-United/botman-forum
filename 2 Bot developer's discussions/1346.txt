@@ -1,0 +1,95 @@
+--------------------------------------------------
+Subject: iClip, iAmmo
+--------------------------------------------------
+03/11/01 at 12:40:40  Posted by: yotaku (acoates@uci.edu)
+--------------------------------------------------
+iClip, iAmmo not being updated when bots pickup weapons in CS.
+
+These vars normally contain ammo in current clip, and spare ammo.  However, when a bot picks up a weapon, that values of these vars do not update to reflect the new weapon.  On the other hand, if they drop a weapon, they do update.
+
+
+--------------------------------------------------
+03/11/01 at 13:57:40  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+I had a similar problem where weapons were dropped in Half-Life deathmatch.  Look for this code in the dll.cpp file...
+code:
+   for (i=0; i < 32; i++)
+   {
+      if (bots[i].is_used)
+      {
+         memset(&cd, 0, sizeof(cd));
+
+         UpdateClientData( bots[i].pEdict, 1, &cd );
+
+         // see if a weapon was dropped...
+         if (bots[i].bot_weapons != cd.weapons)
+         {
+            bots[i].bot_weapons = cd.weapons;
+         }
+      }
+   }
+
+This only stores the current weapons bits in the bot_weapons field.  You may need to do something similar for clip and ammo amounts.
+
+botman
+
+
+
+
+--------------------------------------------------
+03/12/01 at 08:13:40  Reply by: CountFloyd (countfloyd_1999@yahoo.com)
+--------------------------------------------------
+Yotaku is right and it also does seem to happen sometimes if the Bot bought a weapon and the server assigns him the weapon & basic ammo. I did take a look into the clientdata struct and it stores the different types of ammo. Has someone investigated in this ? Do we CS programmers need to specify the ammo type in our weapon specifications to handle this information ? I'm confused...
+
+--------------------------------------------------
+03/12/01 at 13:13:05  Reply by: yotaku (acoates@uci.edu)
+--------------------------------------------------
+Anyone delt with this problem?
+
+Looking through the clientdata_s structure these were the only vars that looked hopefull.  Some of them are indead the ammo, in some form, for some of the weapons.  ammo_nails and shells are definetly used.  But I'm not sure if their values are what you'd expect.  My bot would keep trying to shoot the gun, (I didn't set these values to anything..just monitored them)  and the gun would stop shooting when the values reached 0.  But the gun would have 10-30 ammo in it (not reloaded)  But it should have auto reloaded, cause the bot would stop trying to fire, then resume.
+
+Also for some of the weapons, none of these values represented the ammount of ammo.
+
+Got any ideas of other vars that might be used?
+
+
+[ code ]
+
+      int m_iId;
+      int ammo_shells;
+      int ammo_nails;
+      int ammo_cells;
+      int ammo_rockets;
+
+      // For mods
+      int iuser1;
+      int iuser2;
+      int iuser3;
+      int iuser4;
+[ /code ]
+--------------------------------------------------
+03/12/01 at 15:19:20  Reply by: eLiTe (ali@elitegamer.fsnet.co.uk)
+--------------------------------------------------
+lol, the shells, cells, nails and rockets are all left over from Quake 1, since HL is based on Q1/Q2 :)
+
+--------------------------------------------------
+03/12/01 at 15:30:09  Reply by: yotaku (acoates@uci.edu)
+--------------------------------------------------
+that doesn't mean that they are not used.
+
+--------------------------------------------------
+03/12/01 at 16:01:53  Reply by: ExecutionStyle (c_brennan@hotmail.com)
+--------------------------------------------------
+Did you try turning on debug output in the bot then picking up and dropping a weapon in-game?  As far as I know, botman's template never did include support for weapons in Counter-Strike so his message handling function maybe doesn't update the ammo for you when the server sends the bot the weapon pickup messages.  
+
+Look at the readme.txt that comes with template 3, it has a sample output that includes the weapon messages from the server.
+
+Also, if I'm completely confused as to what the problem is and you know all about this, then it may be a bug in Counter-Strike itself. A couple of times while I was playing CS, I picked up a gun and could fire it until the clip was empty, but I couldn't reload it.  Dropping it and picking up another gun, or buying another one, let me reload again.  I'm not sure if this is a widely known problem or not.
+
+ -Carl
+
+--------------------------------------------------
+03/16/01 at 10:51:42  Reply by: yotaku (acoates@uci.edu)
+--------------------------------------------------
+You make it sound like a rare bug, which perhaps the one you are talking about it.  However, the one I'm talking about happens everytime a bot picks up a weapon.  So maybe its a different bug.  I'll try the debug thing.
+

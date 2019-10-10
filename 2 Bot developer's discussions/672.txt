@@ -1,0 +1,310 @@
+--------------------------------------------------
+Subject: Experimental Bot Project...
+--------------------------------------------------
+11/22/00 at 10:33:18  Posted by: DarkYouth (darkyouth@thegraze.freeserve.co.uk)
+--------------------------------------------------
+I need a quick problem solved.
+
+How do I shoot out traclines at the following angles:
+
+90' to the left and right (i.e. directly left or right)
+60' to the left and right 
+30' to the left and right
+0' (i.e. straight forward)
+
+' = degrees (i.e. mathematical angles)
+
+I need this in an experimental waypointless system I am working on.
+
+Please help..... someone.
+
+--------------------------------------------------
+11/22/00 at 11:23:07  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+I assume you mean X number of degrees from the direction the bot is facing...
+
+   float angle = 0;
+   int done = 0;
+   Vector v_src, v_dest;
+   Vector view_angles;
+   float distance = 100.0;
+   TraceResult tr;
+ 
+   while ((!done) && (angle <= 90.0))
+   {
+      // try looking in one direction (forward + angle)
+      view_angles = pEdict->v.v_angle;
+      view_angles.y = pEdict->v.v_angle.y + angle;
+ 
+      if (view_angles.y < 0.0)
+         view_angles.y += 360.0;
+      if (view_angles.y > 360.0)
+         view_angles.y -= 360.0;
+ 
+      UTIL_MakeVectors( view_angles );
+ 
+      v_src = pEdict->v.origin + pEdict->v.view_ofs;
+      v_dest = v_src + gpGlobals->v_forward * distance;
+ 
+      UTIL_TraceLine( v_src, v_dest, dont_ignore_monsters,
+                      pEdict->v.pContainingEntity, &tr);
+ 
+      if (tr.flFraction < 1.0)  // hit something?
+      {
+         done = TRUE;
+      }
+      else
+      {
+         // try looking in the other direction (forward - angle)
+         view_angles = pEdict->v.v_angle;
+         view_angles.y = pEdict->v.v_angle.y - angle;
+ 
+         if (view_angles.y < 0.0)
+            view_angles.y += 360.0;
+         if (view_angles.y > 360.0)
+            view_angles.y -= 360.0;
+ 
+         UTIL_MakeVectors( view_angles );
+ 
+         v_src = pEdict->v.origin + pEdict->v.view_ofs;
+         v_dest = v_src + gpGlobals->v_forward * distance;
+ 
+         UTIL_TraceLine( v_src, v_dest, dont_ignore_monsters,
+                         pEdict->v.pContainingEntity, &tr);
+ 
+         if (tr.flFraction < 1.0)  // hit something?
+         {
+            done = TRUE;
+         }
+      }
+ 
+      angle += 30;
+   }
+
+botman
+
+
+
+--------------------------------------------------
+11/22/00 at 11:47:45  Reply by: DarkYouth (darkyouth@thegraze.freeserve.co.uk)
+--------------------------------------------------
+NONNONOONONO
+
+Botman, I dont even think your code refers to the view_angles variable. You seem to set it to a value and then just not use it at all.
+
+Heres the code I have in rough:
+
+      edict_t *pEdict = pBot->pEdict;
+      Vector v_pos[5];            // 5 Possible places.
+      Vector v_dest, v_src;
+      int possiblecount = 0;
+//      TraceResult tr;
+      int fwdist = 3000;
+      v_src = pEdict->v.origin;
+      while (possiblecount == 0)
+      {
+            fwdist = fwdist - 50;
+            // Straight Forward
+            v_dest = v_src + gpGlobals->v_forward * fwdist;
+            v_dest = v_dest + gpGlobals->v_up * 30;
+
+            if (WaypointReachable(pEdict->v.origin, v_dest, pEdict))
+            {      
+                  possiblecount++;
+                  v_pos[possiblecount++] = v_dest;
+            }
+            
+            // To the left a bit.
+            v_dest = v_src + gpGlobals->v_forward * (fwdist / 4);
+            v_dest = v_dest + gpGlobals->v_up * 30;
+            v_dest = v_dest + gpGlobals->v_right * (fwdist / 2);      
+
+            if (WaypointReachable(pEdict->v.origin, v_dest, pEdict))
+            {      
+                  possiblecount++;
+                  v_pos[possiblecount++] = v_dest;
+            }
+      
+            // To the left a LOT.
+            v_dest = v_src;// + gpGlobals->v_forward * (fwdist / 2);
+            v_dest = v_dest + gpGlobals->v_up * 30;
+            v_dest = v_dest + gpGlobals->v_right * fwdist;      
+
+            if (WaypointReachable(pEdict->v.origin, v_dest, pEdict))
+            {      
+                  possiblecount++;
+                  v_pos[possiblecount++] = v_dest;
+            }
+      
+            // To the right a bit.
+            v_dest = v_src + gpGlobals->v_forward * (fwdist / 4);
+            v_dest = v_dest + gpGlobals->v_up * 30;
+            v_dest = v_dest + gpGlobals->v_right * (fwdist / 2);      
+
+            if (WaypointReachable(pEdict->v.origin, v_dest, pEdict))
+            {      
+                  possiblecount++;
+                  v_pos[possiblecount++] = v_dest;
+            }
+      
+            // To the RIGHT a LOT.
+            v_dest = v_src; //+ gpGlobals->v_forward * (fwdist / 2);
+            v_dest = v_dest + gpGlobals->v_up * 30;
+            v_dest = v_dest + gpGlobals->v_right * fwdist;      
+
+            if (WaypointReachable(pEdict->v.origin, v_dest, pEdict))
+            {      
+                  possiblecount++;
+                  v_pos[possiblecount++] = v_dest;
+            }
+            if (fwdist < 100)
+                  possiblecount = 99;
+      }
+
+
+
+That code is mean to shoot out five tracelines in the bots view cone (I use wrong values for the look left and right stuff!! I need that) to determine what directions the bot can do in.
+
+i.e. it sweeps out the traces at a distance, and gradually reduces the sweep radius until a reachable direction is determine.
+
+(it shoots slightly up in the code so it can handle ramps. Ignore the bugs in that)
+
+
+Do you now know what I mean.
+
+If not get a draw a perfect straight line with line intersecting it perfectly. Place a protractor on the center and line it up. Then draw lines out at 0, 30, 60, 90, 120 and  180
+
+That is what I wish to do. A way of determining the vector that is desired would be great. I know the traceline code but I cannot work those values out for the life of me.
+
+--------------------------------------------------
+11/22/00 at 14:40:22  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+I use "view_angles" in UTIL_MakeVectors().  As you know (or should know ;)), UTIL_MakeVectors() takes an array of angles (pitch, yaw, and roll) and converts them to an array of 3 vectors (v_forward, v_right, and v_up), but it stores them in the gpGlobals structure (so they get overwritten if any other code uses MakeVectors).
+
+Here's a simple English description of my code.
+
+1. Start out with angle = 0;
+
+2. Add the current angle to the bot's view angles (account for wrap around).  Convert that angle to a vector and trace a line 100 units off in that direction.  If you hit something then stop.
+
+3. Subtract the current angle from the bot's view angles (account for wrap around).  Convert that angle to a vector and trace a line 100 units off in that direction.  If you hit something then stop.
+
+4. Add 30 degrees to the angle.  If the current angle is less than or equal to 90 degrees then go back to step 2 otherwise, stop.
+
+This way it will trace at 0 degrees from in front of the bot (actually it will trace it twice, +0 and -0).  Then it will trace 30 degrees to the right, then 30 degrees to the left.  Next it will trace 60 degrees to the right, then 60 degrees to the left.  Finally it will trace 90 degrees to the right and 90 degrees to the left.
+
+botman
+
+
+--------------------------------------------------
+11/22/00 at 16:44:48  Reply by: dannywent (dannywent@hotmail.com)
+--------------------------------------------------
+hey dark youth, i like the way you think.  i've already got a bot that uses a navigation system using the stuff you were asking about.  It works surprisingly well.  A couple things you're going to have to deal with.  Making sure bots can tell the difference between having a wall in front of them, and having a steep incline infront.  Also, this pinging system will lead them to walk right off long drops, which tend to hurt :)  One tip, you can make your code a lot simple by implementing for loops and using an array to store values.  I haven't had much time to work on my bot lately, too much school work, but if you've got any specific things or ideas you want to talk about email me at dannywent@hotmail.com  have fun :)
+
+--------------------------------------------------
+11/27/00 at 03:04:18  Reply by: 2slow4u (2slow4u@gmx.net)
+--------------------------------------------------
+Hi Dark Youth,
+
+I use the following basic code for implementing a system for finding gates in rooms.
+
+      vecTest = pEdict->v.angles;
+      vecTest.y -= 100;
+
+
+      for (index=0; index < 40; index++)
+      {      
+            vecTest.y +=  5;
+            UTIL_MakeVectors(vecTest);
+            vecDir = gpGlobals->v_forward;
+            vecSrc = GetGunPosition(pEdict);
+            vecDest = vecSrc + vecDir * 8192;
+            pentIgnore = ENT ( pEdict);
+            UTIL_TraceLine(vecSrc, vecDest, ignore_monsters, pentIgnore, &tr);
+            Tracer[1].trResult[index]= tr.flFraction * 8192;  
+            Tracer[1].trResultDif[index] = Tracer[1].trResult[index-1] - Tracer[1].trResult[index];
+      }
+
+The trick is not to look only on the results of the trace but the differences.
+Try to find out what happens to the results if there were a positiv or negativ edge....
+
+
+
+
+--------------------------------------------------
+11/27/00 at 17:29:45  Reply by: cooldude (Cooldude158@excite.com)
+--------------------------------------------------
+whew! glad to get that over with!
+
+--------------------------------------------------
+11/28/00 at 01:15:00  Reply by: 2slow4u (2slow4u@gmx.net)
+--------------------------------------------------
+That means ?
+
+--------------------------------------------------
+11/28/00 at 01:22:12  Reply by: 2slow4u (2slow4u@gmx.net)
+--------------------------------------------------
+So, here  is the code to find gates:
+
+      int anzPeaks = 0;
+      for (index=1; index < 40; index++)
+      {      
+            if (((abs(Tracer[1].trResultDif[index]) > abs(Tracer[1].trResultDif[index-1])) 
+                  && (abs(Tracer[1].trResultDif[index]) > abs(Tracer[1].trResultDif[index+1]))) 
+                  && (abs(Tracer[1].trResultDif[index]) >= 80))
+            {
+                  anzPeaks += 1;
+
+                  Tracer[1].peak[anzPeaks] = index;
+
+            }
+
+      }
+      winkel = 99;
+      for (index=1; index < anzPeaks; index++)
+      {      
+
+            if (((winkel == 99) && (Tracer[1].trResultDif[Tracer[1].peak[index}} < 0) 
+                  && (Tracer[1].trResultDif[Tracer[1].peak[index+1}} > 0)) 
+                  ((Tracer[1].trResultDif[Tracer[1].peak[index}} < 0) 
+                  && (Tracer[1].trResultDif[Tracer[1].peak[index+1}} > 0) && (RANDOM_LONG(0,100) < 50)))
+            {
+                  winkel = -100 + ((Tracer[1].peak[index+1]-Tracer[1].peak[index])/2+Tracer[1].peak[index])*5+ 5;
+            }
+      }
+
+      return winkel;
+
+
+For example: The bot looks continously for gates in the viewangle -100 - 100. You can use the time or the moving length when the bot has to identify the next gate.
+
+
+--------------------------------------------------
+11/28/00 at 01:27:11  Reply by: 2slow4u (2slow4u@gmx.net)
+--------------------------------------------------
+You get the idea ?
+
+It's just a little bit mathematical function analysis........
+
+The problem: The function is stable enough to in flat maps like dust or cbble (for cs) but isn't able to identify stairs rigth now. Therefore is the array Tracer[x], which has to implemented the 3dimensional array for looking up and down.
+With my notebook (PIII-600 and Savage IX graphic) there is no performance problem to scan the whole enviroment with 20 bots each Botthink..... 
+
+
+
+--------------------------------------------------
+11/28/00 at 03:16:14  Reply by: theimann (theimann@stud.fh-heilbronn.de)
+--------------------------------------------------
+80 traces per frame??? Not everyone owns a PIII-600... Nice approach anyway. I used to have a similar system for detecting doorways in specific walls. I gave it up because it did not work in all cases: the first problem are the stairs you mentioned, others are e.g. low tunnels or high windows which a player can use but the bot would never detect. All this (and some more things) led me to drop the whole "zero-waypoints-but-lots-of-tracing" navigation system and I came to  "plenty-waypoints-hardly-tracing". That's much more reliable and better for planning routes. And it works with 400MHz as well...
+
+Tobias
+
+--------------------------------------------------
+11/28/00 at 04:41:28  Reply by: cooldude (Cooldude158@excite.com)
+--------------------------------------------------
+just jibberish to me, thats all im sayin
+
+--------------------------------------------------
+11/28/00 at 04:41:29  Reply by: cooldude (Cooldude158@excite.com)
+--------------------------------------------------
+just jibberish to me, thats all im sayin
+

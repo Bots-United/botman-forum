@@ -1,0 +1,157 @@
+--------------------------------------------------
+Subject: Ladder Handling
+--------------------------------------------------
+11/14/00 at 06:50:56  Posted by: theimann (theimann@stud.fh-heilbronn.de)
+--------------------------------------------------
+OK, I finished my navigation system and in the first tests was surprised to see that my bot handles ladders without problems, i.e. climbing up and down(!) without falling...
+Since I am observing the player the bot knows from which side to climb the ladder, but I guess you can simulate this by manually placing additinal waypoints in you nav-systems. The waypoint placement on ladders is as follows:
+- One waypoint at the upper end of the ladder + (0,0,35) and another at the lower end + (0,0,35)
+- between these two one waypoint every 64-units-distance at the position of a player->origin climbing the ladder
+- a waypoint in distance < 50 units is treated as reached, i.e. bot should aim for next waypoint
+
+Post or mail me if you have further questions...
+ 
+Tobias
+
+--------------------------------------------------
+11/14/00 at 07:39:23  Reply by: William (william@botepidemic.com)
+--------------------------------------------------
+Sounds great.
+
+Does it (the lower end placement) also work for the 'jump to' ladder at de_cobble (if I remember correctly, there's a ladder in the air, leading upwards to a room, which you need to jump to to catch).
+How you deal with the ladder top end being covered with planks (the inca style escort map has a tunnel system, accessed by a ladder, at the VIP side).
+(I happened to have implemented a similar mechanism for CGF, and ran into some problems with lower and top ends).
+
+Wrt to knowing from which side to climb the ladder: since most bots use < 1000 way points, the cost of annotating per way point from which direction to approach it in case it is a ladder is negligible (one byte would do, encoding the approach yaw angle in a 2 degrees resolution). 
+Storing this info at the ladder way point results in less complex path finding/movement code, since there's no need to search for additional way points.
+
+William
+
+--------------------------------------------------
+11/14/00 at 18:58:31  Reply by: CountFloyd (countfloyd_1999@yahoo.com)
+--------------------------------------------------
+Sounds impressive, but like William, I doubt that it will work for all types of ladders. Just think of those scary ladders in cs_backalley with narrow entries and backward movement to get off the ladder without falling.
+How did you prevent the Bots from turning around ? What I mean is, if you change the yaw into the direction of your ladder waypoints they would most likely turn around while climbing since the actual waypoint origin is right in the middle of the entity. Am I wrong ? Do you remember the forward vector in your wpt structure and add it to the origin when climbing or is there another approach I missed ?
+
+--------------------------------------------------
+11/15/00 at 02:52:43  Reply by: theimann (theimann@stud.fh-heilbronn.de)
+--------------------------------------------------
+Since I'm currently developing for HL-deathmatch I didn't try any CS-maps, so I don't know if it will work on the maps you mentioned.
+However, I am nearly sure it will work for the "jump to" ladder since I'm storing jumps as well... About the planks I don't know - I've never seen this map.
+Count Floyd, what origin do you mean? The only turning problem I can imagine concerns the ladder origin, but since I don't use this one but top- and down-end of the ladder there's no problem. And yes, I change the v_angle to the direction of the next waypoint.
+I will run some tests on the maps you wrote about and post the results later on. Thank you for pointing out the really hard ones!
+
+Tobias
+
+--------------------------------------------------
+11/15/00 at 04:58:20  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+Count Floyd, when you say "How did you prevent the Bots from turning around?", are you always trying to get the bots to "square up" on the ladder so that they don't slide off the side as they are going up/down?  If this is what you are talking about, you can always have them face either directly toward the ladder (using the Normal vector from the ladder) or have them face directly away from the ladder (again using the Normal) to help keep them from sliding off the side.  Just pick whichever direction is closest to the angle that the bot's body is already facing.
+
+botman
+
+--------------------------------------------------
+11/15/00 at 12:49:57  Reply by: CountFloyd (countfloyd_1999@yahoo.com)
+--------------------------------------------------
+Yes Botman, you're right (as always). I currently use the waypoint origins to "stick" the Bots to the ladder. This makes them spinning their way up and down (because they turn their yaw to face the ladder waypoint), of course it works but looks stupid.
+My first attempt before this was to use the Center Coordinates of the ladder you get by using VecbModelOrigin. This looked even more stupid, the Bots were just flying up/down that ladder. Maybe I should store the normal vector in the waypoint structure. Ermm... I'm ashamed to ask, but how do you get the normal vector ? Would be easy if you could do a Traceline with a ladder since you get the normal returned in the structure, but sadly you can't. Is this approach correct ?
+
+// Get the Ladder coords
+Vector vLadder=VecbModelOrign(pEntity);
+Vector vBot=pBot->pEdict->v.origin;
+Vector vNormal=vLadder-vBot;
+vNormal=UTIL_VecToAngles(vNormal);
+vNormal.Normalize();
+
+Do I have to study my old math books again or is this the right way ?
+
+--------------------------------------------------
+11/15/00 at 13:36:13  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+I meant the Normal vector of ladders that are attached to a wall.  Of course, for free standing ladders, you don't have a wall to trace against.  I check as soon as the bot touches a ladder if there are any walls within 40 units of the bot.  I start in the direction the bot is facing and slowly change the angle by 10 degrees until I have traced straight to the left and straight to the right (tracing left first, then right, then left, then right, etc.).  If I haven't hit any walls by the time I reach +/- 90 degrees I give up and just leave the bot facing the way it is.  If I hit a wall, I make the bot turn that direction.
+
+But like I said, this doesn't work for free standing ladders.
+
+botman
+
+--------------------------------------------------
+11/15/00 at 14:20:22  Reply by: William (william@botepidemic.com)
+--------------------------------------------------
+Count Floyd,
+
+you're better of subtracting the ladder position at the bot's z-position than the ladder's origin.
+(In other words, you probably prefer a normal to be in the xy-plane).
+
+William
+
+--------------------------------------------------
+11/15/00 at 14:30:50  Reply by: CountFloyd (countfloyd_1999@yahoo.com)
+--------------------------------------------------
+QUOTE:
+this doesn't work for free standing ladders
+
+
+
+Then this is not an optimal solution for me (if there is any) since there are a lot of those ladders in CounterStrike.
+William:
+Doesn't this (in the calculation) reposition the center of the ladder to the position of the player ? Would be great. Btw. isn't the HL coordinate system kind of weird ? Is this the so called left-handed system ?
+
+
+--------------------------------------------------
+11/15/00 at 14:37:50  Reply by: William (william@botepidemic.com)
+--------------------------------------------------
+Since I haven't written one LOC for HL, I'm not sure your code put's the ladder origin at the player's height. I'm reasoning from my Q2 vector math (which shouldn't be much different).
+
+However, the use of angles is incorrect. You'd have the normal simply by:
+. subtracting vBotOrigin from vLadder 
+. resetting the z-coord
+. normalizing the resulting vector
+or you could retrieve the yaw from the subtraction result immediately (normally, the yaw is retrieved using an atan2 which doesn't need normalized input).
+
+Left-hand vs. right-hand side coordinate systems have something to do with orientation of x and y axiswrt to the z-axis. www.flipcode.com has some good tutorials on this.
+
+William
+
+--------------------------------------------------
+11/16/00 at 02:07:41  Reply by: theimann (theimann@stud.fh-heilbronn.de)
+--------------------------------------------------
+Some time ago I wrote something about from which side to approach a ladder and got the replies that it won't work for the freestanding ones... Now I understand your problems: botman, why do you go through all this trouble of tracing to determine a ladder's normal??? I am using the cross-product to calculate it:
+Vector ladderLeft = ladder->pev->absmin;
+Vector ladderRight = ladder->pev->absmax;
+ladderLeft.z = ladderRight.z;
+Vector ladderSide = ladderLeft - ladderRight;
+Vector normal = CrossProduct( ladderSide, Vector(0,0,1) );
+Now you only have have 2 possibilities: the ladder could be oriented towards normal or -normal. You have to decide on this one by setting an additional waypoint or a waypoint-value angle like William suggested.
+
+Regarding the tests on the CS-maps: I will have to add a bit of CS-support for the bot to make the navigation system work in CS. This may take a few days :-(  However, I noticed the problem: these backalley-ladders suck! I nearly fell to death trying to climb some of them - don't know if my bot will be able to handle these ones...
+
+Tobias
+
+--------------------------------------------------
+11/16/00 at 05:16:35  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+True, I forgot about the absmin and absmax values for the corners of the ladder.  You could take these coordinates and use the Normal vector to determine a right angle to the ladder without having to use a TraceLine.
+
+Count Floyd, to "reposition" the center of the ladder to the same level as the player, just make a copy of the VecBModelOrigin() origin and assign the bot's z component (of the origin) to the ladder's origin to "make" the center of the ladder level with the player.
+
+I guess I'll be playing with some more ladder coding this weekend.  ;D
+
+botman
+
+
+--------------------------------------------------
+11/16/00 at 10:53:41  Reply by: CountFloyd (countfloyd_1999@yahoo.com)
+--------------------------------------------------
+Thanks for all the comments, looks like we all have to spent some more time on ladder coding :)
+Tobias:
+Didn't I tell you those backalley ladders suck hard :)
+Actually they are the most nasty ones I could find in the official maps. Some evil ones are also in cs_militia and as_tundra. I would be really surprised if one day a Bot could handle these 100% (but your ideas sound great). 
+
+
+--------------------------------------------------
+11/20/00 at 05:27:38  Reply by: theimann (theimann@stud.fh-heilbronn.de)
+--------------------------------------------------
+I can't guarantee a 100% success rate, but basically my bot can handle the backalley-ladders now: I observed him climbing the most difficult ones, sometimes better than me... It's all a question of the correct waypoint placement. My problem is that I set all waypoints and paths dynamically, i.e. they change while you're playing. I still have to optimize the path-selection to keep the good ones that work :-)
+
+Tobias
+

@@ -1,0 +1,79 @@
+--------------------------------------------------
+Subject: MSVC: Debugging with stack dump?
+--------------------------------------------------
+03/23/02 at 10:51:32  Posted by: theimann (killaruna@botepidemic.com)
+--------------------------------------------------
+If I've got a stack dump with the assembly code where my program crashed, how can I locate the line in my source code? Since the dump comes from a release version no debug symbols etc are present. Thanks for any help,
+
+Tobias
+
+--------------------------------------------------
+03/23/02 at 11:55:59  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+If you are using only your own source and it is only showing you assembly code then you don't have the source for that assembly code. (I think thats what it does anyway). So your crash may be happening within the base HL engine code.
+
+You could try right clicking on the assembly code window and choose "go to source". If it does nothing and beeps then you dont have the source! :(
+
+--------------------------------------------------
+03/23/02 at 13:17:05  Reply by: theimann (killaruna@botepidemic.com)
+--------------------------------------------------
+No, it is my source. But I only have the assembly code people copied from the error messages on their computers. That's why I don't know where the error occured. It never happened on my own computer, so I just have to trace the commands they send me and find out which source line they belong to...
+
+Tobias
+
+--------------------------------------------------
+03/23/02 at 14:22:51  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+oh.. It's pretty hard to find your code because I don't think MSVC has a search feature for the assembly code viewer so If it definetly doesnt have a seacrh feature, you'd have to search each line of coded individually (which is about 10 times longer than checking your origianly code for each line) basically It would take years!
+
+The basic response you can give to someone that experienced a crash is the fact that you can't fix it as you can't reproduce the error. You can try running your release DLL and see if that works ok if that's waht other people are using, and check you debug dll for crashes (just running it and testing of course)
+
+I've noticed that some crashes dont' occur on debug dll that can crash the release DLL. I think one of them are null strings.
+
+I haven't messed about with the assembly feature much so I wouldn't give you the best answer :)
+
+--------------------------------------------------
+03/23/02 at 18:25:27  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+When people e-mail me about crashes, I have them run Dr.Watson and send me the .log file that it generates.  It will have the address where the crash occurred.  You can then search the map file (.map) to find where this address range resides and that will tell you what function is causing the crash.
+
+Let's say the crash log indicates that it crashed at 0x00184ec0 and you search through the .map file to find things near 0x00184000 and you find one function at 0x00184120 and you find another function at 0x00184f80 but you don't find anything in between those two.  You know that the crash occured in the function matching the first address and you know that the code causing the crash was pretty near the end of the function (since 0x00184ec0 is closer to 0x00184f80 than is is to 0x00184120).  You can then look at the machine code/source code listing (in MSVC) to find the same assembly code where the crash occurred this should hopefully lead you to the source code line that caused the problem.
+
+Other than that, it's kind of trial and error.
+
+botman
+
+--------------------------------------------------
+03/24/02 at 07:29:24  Reply by: theimann (killaruna@botepidemic.com)
+--------------------------------------------------
+Thanks, botman. I tried to work with the mapfile, but somehow the addresses reported in there don't match at all. However, I've found another method to trace the error:
+
+1. Load the release dll with a hexeditor and search for the assembly code bytes. This should give you an idea where the error ocurred, i.e. at 60% of the file size.
+2. Load the debug dll with a hexeditor and search for small pieces of the source bytes. Normally the optimizer changes the code quite a lot, so you have to try several combinations to come to a result. Compare the relative position to the one encountered in the release dll (~60%), write down the exact position.
+3. Load the debug dll in the MSVC debugger, add the exact position to the module offset and check if the assembly code at that address matches, i.e. if it is the non-optimized version of the code the user sent you.
+4. If yes, click go to source, if not give it another try...
+
+This worked surprisingly well and I've already found the origin of a crash that I'd never have found otherwise. These Dr.Watson logs contain quite a bit of information!
+
+Tobias 
+
+--------------------------------------------------
+03/27/02 at 15:10:27  Reply by: theimann (killaruna@botepidemic.com)
+--------------------------------------------------
+I've found an easier solution: Searching the debug dll for code from the release version is a pain, really. Fortunately you just need to enable debug information for the linker in your release configuration (under project settings), then the code won't differ from the normal release DLL. Which means that you can just search directly in there and write down the offset. To go to that offset in the MSVC debugger (I haven't found a direct "goto address"), press alt+f9 and enter (offset + module adress) as a breakpoint. Then click "Modify code" and there you are. Scroll upwards until you find the name of the function (which gets displayed beacuse of the linker debugging info). Hope that's useful for somebody, I'm debugging all the time now ;-)
+
+Tobias
+
+--------------------------------------------------
+03/28/02 at 02:42:41  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+Hopefully that'll come in useful for me sometimes :) my code is getting more messy by the minute ;D Things are likely to happen!
+
+--------------------------------------------------
+03/28/02 at 03:00:09  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+uhh really? a talented programmer like you? :-P
+lol... ;D
+
+
+[modified on 03/28/02 at 03:00:09]

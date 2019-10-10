@@ -1,0 +1,582 @@
+--------------------------------------------------
+Subject: gpGlobals->time differs in CS 1.6?
+--------------------------------------------------
+10/28/03 at 12:57:33  Posted by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+Hey all,
+
+Perhaps not really noticable first, but i figured when i play with my bots in CS 1.5, the bots shoot way more frequent and longer then in CS 1.6
+
+In fact, in CS 1.6 they seem to shoot 1 shot per second! The code does not even allow this, the code gives a max of 'wait' time of 0.3 seconds. Could it be the gpGlobals->time differs? 
+
+--------------------------------------------------
+10/28/03 at 14:00:56  Reply by: Cheesemonster!!! (cheeseh(at)rcbot(dot)net)
+--------------------------------------------------
+I would test the time first, remember try to solve them problems yourself first ;) hehe cause I know you can.
+
+Just output a message each second or something and see if it's in time.
+
+--------------------------------------------------
+10/28/03 at 14:01:16  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Stefan, be aware that gpGlobals->time is highly unreliable!! I really experienced strange bugs using it as a timebase, especially for bot aiming. At some point, my debug info indicated that sometimes gpGlobals->time was simply not updated between frames ! I had to switch to the msecval, which is basically a "low-pass filtered" (e.g, smoothed relatively to time) gpGlobals->time.
+
+I'm telling myself that if I find more problems, I'll implement an internal time_t in my bot DLL, like botmeister does. In the meanwhile, if I were you, I'd rely rather on the msecval.
+
+
+--------------------------------------------------
+10/28/03 at 14:23:30  Reply by: Cheesemonster!!! (cheeseh(at)rcbot(dot)net)
+--------------------------------------------------
+PM: I think you mean gpGlobals->frametime and not gpGlobals->Time ? ;D
+
+Y/N ?
+
+is it really that unreliable?
+
+[modified on 10/28/03 at 14:23:30]
+--------------------------------------------------
+10/28/03 at 14:26:30  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+omf^Hg yes, my bad! ;D
+will teach me to think before I type
+
+
+--------------------------------------------------
+10/29/03 at 03:36:13  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+look i was once a bit lazy, but that does not mean i am now :)
+
+Here is the code i use for bursting with Primary weapons, which works FINE in CS 1.5, in fact the bots blow my head off and shoot multiple shots instead of one as in CS 1.6!
+
+code:
+
+                  if (pBot->f_prim_weapon < gpGlobals->time)
+                  {
+                  // --- ADD HERE DELAYS  FOR BURST FIRE ---
+        UTIL_BotPressKey(pBot, IN_ATTACK); // Hold fire
+
+                  // All other weapons, the more distance, the more time we add to holding weapon
+
+      if (pBot->f_shoot_wait_time < gpGlobals->time)
+      {
+                  
+        // AK, COLT, STEYR AUG, only when enough skill!
+                  if ((FUNC_BotHoldsWeapon(pBot, CS_WEAPON_AK47) 
+                       FUNC_BotHoldsWeapon(pBot, CS_WEAPON_M4A1) 
+                           FUNC_BotHoldsWeapon(pBot, CS_WEAPON_AUG)) && (pBot->bot_skill < 3))
+                  {       
+        float f_burst = 0.1;
+                        if (dist > 200)
+                        {
+                         f_burst = ((dist - 100) / 700);
+                              if (f_burst < 0.1)
+                                    f_burst = 0.1;
+
+                              if (f_burst > 0.5)
+                                    f_burst = 0.5;
+
+          // CS 1.6 less burst
+          if (counterstrike == 1)
+            if (f_burst > 0.3)
+              f_burst=0.3;
+                              
+                              pBot->f_prim_weapon = gpGlobals->time + f_burst;
+                        
+                        }
+                        pBot->f_shoot_wait_time = gpGlobals->time + f_burst + RANDOM_FLOAT(0.3, 0.6);
+                  }
+                  else
+                  {        
+        float f_burst = 0.1;
+                        if (dist > 300 && pBot->bot_skill < 6)
+                        {
+                              f_burst = ((dist - 300) / 550);
+                              
+                              if (f_burst < 0.1)
+                                    f_burst = 0.0;
+
+                              if (f_burst > 0.5)
+                                    f_burst = 0.5;
+
+          // CS 1.6 less burst
+          if (counterstrike == 1)
+            if (f_burst > 0.2)
+              f_burst=0.2;
+                              
+                              
+                              if (pBot->f_prim_weapon < gpGlobals->time)
+                                    pBot->f_prim_weapon = gpGlobals->time + f_burst;
+
+                        }
+        pBot->f_shoot_wait_time = gpGlobals->time + f_burst + RANDOM_FLOAT(0.2, 0.7);
+      }
+
+      }
+                  } // give the bot alteast 0.3 seconds to fire its weapon
+     
+
+
+
+and for those who wonder what the UTIL_BotPressKey function does:
+
+code:
+
+void UTIL_BotPressKey(bot_t *pBot, int type)
+{
+      if (type == IN_JUMP  type == IN_DUCK)
+            if (pBot->f_freeze_time > gpGlobals->time)
+                  return; // do nothing when in freezetime
+
+       if (type == IN_JUMP)
+            if (pBot->f_may_jump_time > gpGlobals->time)
+                  return; // do nothing when we may not jump
+
+
+      if (type == IN_JUMP && pBot->f_camp_time > gpGlobals->time)
+            return; // Do not jump when camping.
+      
+      if (FUNC_IsOnLadder(pBot->pEdict) && type == IN_JUMP)
+            return;
+
+      // KEY: Reload
+  if (type == IN_RELOAD)                  // when reloading, there is NO zooming (when holding a zoomable weapon or a sniper gun)
+  {
+            if (FUNC_BotHoldsZoomWeapon(pBot)  UTIL_GiveWeaponType(pBot->current_weapon.iId) == SNIPER)    
+      
+      //pBot->zoomed = ZOOM_NONE; // not zoomed anymore
+    
+      // FIX: Do not let bots do anything with this weapon for 0.7 second. So the engine can
+      // update the information.
+    pBot->f_update_weapon_time = gpGlobals->time + 0.7;
+  }
+      // KEY: End
+
+      pBot->pEdict->v.button = type;
+
+      if (type == IN_JUMP)
+      {
+            if (pBot->f_hold_duck < gpGlobals->time)
+                  pBot->f_hold_duck = gpGlobals->time + 0.35;
+      }
+}
+
+
+
+
+CODE THEORIE:
+f_prim_weapon is the time a bot may shoot. When the bot may shoot (f_prim_weapon < gpGlobals->time) then there is also a specific amount of time before we 'hold back' (wait_time). Only when that time expires, the bot will change f_prim_weapon again to 'burst'...
+
+THere are some 'changes' for CS 1.6, i tried them because perhaps you need to hold the trigger longer in CS 1.6 or something, but it did not work. Therefor i actually wonder if the gpGlobals->time is not somehow changed... or the way of firing a weapon has changed in CS 1.6... (perhaps the bit flag changed? i dunno yet)
+
+[modified on 10/29/03 at 03:36:13]
+--------------------------------------------------
+10/29/03 at 10:10:13  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+I did some more research:
+
+gpGlobals->time works fine!
+All other timers work fine aswell!
+
+Only change is CS version and STEAM...
+
+I haven't had time to check other stuff, but perhaps the engine sends some kind of message to the player edict which allows it to 'fire longer'? 
+
+I have no idea why this does not work! ARGH
+
+--------------------------------------------------
+10/29/03 at 13:18:25  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+well, its getting late, but i did again more research:
+
+My code always uses 0.7 seconds to give the engine time to update weapon information when needed (f_update_weapon_time). This is an 'ugly' hack, but it works fine. Actually intercepting engine calls and the such will be more neat, but thats something that can wait.
+
+I have 'fixed' my code by removing the check on ammo1, so the bots do not try to drop their weapon or reload. A closer look at the engine message gives me yet the same information:
+
+QUOTE:
+
+*** pfnMessageBegin: edict=422fdf0 dest=1 type=66
+pfnWriteBYTE: 1
+pfnWriteBYTE: 16
+pfnWriteBYTE: 12
+*** pfnMessageEnd:
+
+
+
+
+Comparing to CS 1.5 and such, i bet this is the same. 
+
+I did a closer look at different type of messages between CS 1.5 and CS 1.6. There are some slight differences here:
+
+CS1.5
+QUOTE:
+
+WeaponList msg=77
+AmmoPickup msg=91
+WeapPickup msg=92 
+...
+
+
+
+
+and...
+
+CS1.6
+QUOTE:
+
+WeaponList msg=78
+AmmoPickup msg=91
+WeapPickup msg=92 
+...
+
+
+
+
+This should not matter you say, so i give you WeaponList messages of CS 1.5 and CS 1.6
+
+CS 1.5
+QUOTE:
+
+*** pfnMessageBegin: edict=5cb680c dest=1 type=77
+pfnWriteSTRING: weapon_p228
+pfnWriteBYTE: 9
+pfnWriteBYTE: 52
+pfnWriteBYTE: -1
+pfnWriteBYTE: -1
+pfnWriteBYTE: 1
+pfnWriteBYTE: 3
+pfnWriteBYTE: 1
+pfnWriteBYTE: 0
+
+
+
+
+and...
+
+CS 1.6
+QUOTE:
+
+*** pfnMessageBegin: edict=0 dest=3 type=78
+pfnWriteSTRING: weapon_p228
+pfnWriteBYTE: 9
+pfnWriteBYTE: 52
+pfnWriteBYTE: -1
+pfnWriteBYTE: -1
+pfnWriteBYTE: 1
+pfnWriteBYTE: 3
+pfnWriteBYTE: 1
+pfnWriteBYTE: 0
+*** pfnMessageEnd:
+
+
+
+
+
+
+here is the one million dolar question:
+- How come that somehow the weaponlist information is not updated correctly in STEAM? while in CS 1.5 it works okay? The bot behaves perfect in CS 1.5, but with the EXACT SAME CODE it DOES NOT behave perfectly in CS 1.6. Only REMOVING the 4 lines of code:
+
+code:
+
+            if (total_ammo <= 0)
+            {
+                  // Drop weapon
+                  DebugOut("BotFireWeapon(): drop weapon 2\n");
+                  FakeClientCommand(pBot->pEdict, "+drop", "", "");
+                  pBot->f_update_weapon_time = gpGlobals->time + .7; // update timer 
+            }
+
+
+
+
+... seem to solve the problem. Yet i am not interested in the sollution i am more interested in WHY it does not update correctly. Since i am already spoiling you with information, hereby my client function:
+
+code:
+
+// This message is sent when a client joins the game.  All of the weapons
+// are sent with the weapon ID and information about what ammo is used.
+void BotClient_Valve_WeaponList(void *p, int bot_index)
+{
+       DebugOut("bot_client (FINDME): BotClient_Valve_WeaponList()\n");
+   static int state = 0;   // current state machine state
+   static bot_weapon_t bot_weapon;
+
+   if (state == 0)
+   {
+      state++;
+      strcpy(bot_weapon.szClassname, (char *)p);
+      char dbMsg[80];
+      sprintf(dbMsg, "Weapon name: %s \n", bot_weapon.szClassname);
+      DebugOut(dbMsg);
+     
+     #ifdef _DEBUG
+      fp=fopen("!BotWeapon.txt","a"); fprintf(fp,"WeaponList: name = %s\n", bot_weapon.szClassname); fclose(fp);
+     #endif 
+
+   }
+   else if (state == 1)
+   {
+      state++;
+      bot_weapon.iAmmo1 = *(int *)p;  // ammo index 1
+   }
+   else if (state == 2)
+   {
+      state++;
+      bot_weapon.iAmmo1Max = *(int *)p;  // max ammo1
+   }
+   else if (state == 3)
+   {
+      state++;
+      bot_weapon.iAmmo2 = *(int *)p;  // ammo index 2
+   }
+   else if (state == 4)
+   {
+      state++;
+      bot_weapon.iAmmo2Max = *(int *)p;  // max ammo2
+   }
+   else if (state == 5)
+   {
+      state++;
+      bot_weapon.iSlot = *(int *)p;  // slot for this weapon
+   }
+   else if (state == 6)
+   {
+      state++;
+      bot_weapon.iPosition = *(int *)p;  // position in slot
+   }
+   else if (state == 7)
+   {
+      state++;
+      bot_weapon.iId = *(int *)p;  // weapon ID
+      char dbMsg[80];
+      sprintf(dbMsg, "Weapon ID: %d \n", bot_weapon.iId);
+      DebugOut(dbMsg);
+      #ifdef _DEBUG
+      fp=fopen("!BotWeapon.txt","a"); fprintf(fp,"WeaponList: ID = %d\n", bot_weapon.iId); fclose(fp);
+     #endif 
+   }
+   else if (state == 8)
+   {
+      state = 0;
+
+      bot_weapon.iFlags = *(int *)p;  // flags for weapon (WTF???)
+
+      // store away this weapon with it's ammo information...
+      weapon_defs[bot_weapon.iId] = bot_weapon;
+   }
+}
+
+
+
+and...
+
+code:
+
+// This message is sent when a weapon is selected (either by the bot chosing
+// a weapon or by the server auto assigning the bot a weapon).
+void BotClient_Valve_CurrentWeapon(void *p, int bot_index)
+{
+ static int state = 0;   // current state machine state
+   static int iState;
+   static int iId;
+   static int iClip;
+
+   if (state == 0)
+   {
+      state++;
+      iState = *(int *)p;  // state of the current weapon
+   }
+   else if (state == 1)
+   {
+      state++;
+      iId = *(int *)p;  // weapon ID of current weapon
+   }
+   else if (state == 2)
+   {
+      state = 0;
+
+      iClip = *(int *)p;  // ammo currently in the clip for this weapon
+
+      if (iId <= 31)
+      {
+         bots[bot_index].bot_weapons |= (1<<iId);  // set this weapon bit
+
+         if (iState == 1)
+         {
+            bots[bot_index].current_weapon.iId = iId;                  // weapon id
+            bots[bot_index].current_weapon.iClip = iClip;            // currently in clp
+
+            // update the ammo counts for this weapon...
+
+                  char msg[80];
+                  sprintf(msg, "bot_client: Currentweapon() --> id = %d\n",iId);
+                  DebugOut(msg);
+
+
+
+            bots[bot_index].current_weapon.iAmmo1 =
+               bots[bot_index].m_rgAmmo[weapon_defs[iId].iAmmo1];
+
+            bots[bot_index].current_weapon.iAmmo2 =
+               bots[bot_index].m_rgAmmo[weapon_defs[iId].iAmmo2];
+         }
+      }
+   }
+
+}
+
+
+
+
+anyone has ideas?
+
+
+--------------------------------------------------
+10/29/03 at 14:01:17  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Before I reply, can you afford the million dollar ? ;D
+
+[edited]
+I do know the answer, btw...
+
+[modified on 10/29/03 at 14:01:17]
+--------------------------------------------------
+10/29/03 at 14:06:36  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+See this from Alfred about the CS 1.6 WeaponList network message...
+
+http://www.mail-archive.com/hlcoders@list.valvesoftware.com/msg05845.html
+
+EDIT: Oh, and here's the CS 1.6 list...
+
+http://www.mail-archive.com/hlcoders@list.valvesoftware.com/msg05849.html
+
+botman
+
+[modified on 10/29/03 at 14:06:36]
+--------------------------------------------------
+10/29/03 at 15:26:14  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+meh, all the fun is spoiled now !!! :(
+
+and how will I get my million dollar ?
+
+
+--------------------------------------------------
+10/29/03 at 16:48:05  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+"and how will I get my million dollar ?"
+
+Don't you mean million francs?  :)
+
+botman
+
+--------------------------------------------------
+10/29/03 at 18:21:01  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+eh, 'old timer, francs are history, we're all trading in euros now ! ;) :P
+
+anyway if he wants he can send this amount in euros, I won't complain at all (1 € ~ 6.55957 Francs, ~ a bit more than a $$, actually) ;D
+
+
+nah okay, back on the topic now.
+
+You should hardcode the weapons, Stefan, and store them all in some config file. You'll probably want to take the chance to rewrite parts of your weapon code, but it's probably best that way. I already did something like this, if you want to have a look at it head down here to http://www.racc-ai.com/racc.rar (it's an archive I put online some time ago for botmeister and others). A sample of one of my weapons looks like this:code:
+
+[ weapon_hegrenade ]
+model="models/p_hegrenade.mdl"
+id=4
+slot=3
+position=1
+flags=24
+primary.use_percent=100
+primary.min_range=300
+primary.max_range=800
+primary.type_of_ammo=12
+primary.min_ammo=1
+primary.max_ammo=1
+primary.can_use_underwater=0
+primary.should_hold=0
+primary.should_charge=0
+primary.charge_delay=0.0
+primary.sound1="weapons/pinpull.wav"
+primary.sound2="weapons/pinpull.wav"
+primary.min_delay="0.5 0.4 0.3 0.2 0.1"
+primary.max_delay="0.6 0.5 0.4 0.3 0.2"
+
+
+
+
+--------------------------------------------------
+10/30/03 at 01:53:24  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+Phew, luckily it was not my own code :)
+
+I already have an INI parsing code, so i can just add fields to my weapons for this kind of 'hard coded' information. 
+
+I don't have a million dollar, nor a million euro... or a million "whatever" :) Sorry guys ;) 
+
+code:
+
+void main()
+{
+ cHuman Stefan;
+ if (Stefan->money < 999999999)
+  printf("Sorry, not enough ca$h\n");
+}
+
+
+
+... and nag me down on a 'unknow class cHuman':P
+
+
+
+--------------------------------------------------
+11/17/03 at 07:59:43  Reply by: KaCaT (bigkacat@yahoo.com)
+--------------------------------------------------
+After reading all above..I still don't have an idea to get the bots recieve the ammo correctly. Anyone could help me?
+
+To PM: I can't get that racc.rar, it seems like has been removed...
+
+
+[modified on 11/17/03 at 07:59:43]
+--------------------------------------------------
+11/17/03 at 08:33:21  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+bottomline:
+you cannot recieve it in CS 1.6, you need to load up the data via an external file YOU create. 
+
+Hint:
+grab the list from CS 1.5, it still gets sent there, then just add the new weapons, add the ID number (they are also known) and then simply change the values so the bots know how many total ammo and how many 'ammo in clip' there is.
+
+--------------------------------------------------
+11/17/03 at 09:23:04  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+I have made better in my bot.
+
+I make them load the weapon data from a file (weaponspecs.cfg, some sort of INI file), and IN CASE there is a WeaponList message, the information that is sent via the WeaponList message supercedes the information from the INI file.
+
+
+--------------------------------------------------
+11/17/03 at 09:24:05  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+so do i ;)
+
+--------------------------------------------------
+11/20/03 at 07:11:03  Reply by: KaCaT (bigkacat@yahoo.com)
+--------------------------------------------------
+Thanks but I still not that understand.. Could yo u give me an example?
+
+[modified on 11/20/03 at 07:11:03]
+--------------------------------------------------
+11/20/03 at 09:49:50  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Use the source, Luke!
+
+http://www.racc-ai.com/racc-template-2.exe :)
+
+
+--------------------------------------------------
+11/20/03 at 18:19:30  Reply by: KaCaT (bigkacat@yahoo.com)
+--------------------------------------------------
+Yeah, I get it now! Thanks a lot! :)
+

@@ -1,0 +1,68 @@
+--------------------------------------------------
+Subject: hpb_bot and bsp slicer code
+--------------------------------------------------
+03/27/03 at 18:29:31  Posted by: BAStumm (bs@bs-linux.com)
+--------------------------------------------------
+So I've hacked the bot code so I can get player coordinates. ie-
+
+code:
+
+    pName = STRING(INDEXENT(i)->v.netname);
+
+    // PLAYERINDEX#:XCOORD:YCOORD:ZCOORD:HEALTH:TEAM#:PLAYERNAME
+    printf("PlayerCoord%i=\"%f:%f:%f:%f:%i:%s\"\n",
+            i,   
+            INDEXENT(i)->v.origin.x,
+            INDEXENT(i)->v.origin.y,
+            INDEXENT(i)->v.origin.z,
+            INDEXENT(i)->v.health / INDEXENT(i)->v.max_health,
+            UTIL_GetTeam(INDEXENT(i)),
+            pName
+          );
+
+
+
+and I've also used bsp_slicer to get a set of 1/10th scale map images (topographical). halfd reports the player coords to me (sent only to console not logs) via php and with php feeding javascript I can place dots over top the map images to represent where players are in game.
+
+You can view this at http://bs-linux.com/playercoords/grabber.php (works only in IE right now *not finished yet*). 
+
+This works great on 2fort, well, crossover2 and most maps for that matter. But tonight I noticed casbah and totalwar maps (TFC) play. The dots were in lala land, outside the boundaries of the map. a status command reports:
+
+map     :  casbah at: 0 x, 0 y, 0 z
+
+so I figured I needed no offset of coordinates (other than half the width and height of image). 
+
+What am I missing here? is the exact center of his cube created by x,y,z coords not necessarily the center of the map? Is there some other info I need to know to properly place player icons? And if so how/where do I get this data? 
+
+[modified on 03/27/03 at 18:29:10]
+
+[modified on 03/27/03 at 18:29:31]
+--------------------------------------------------
+03/27/03 at 19:59:26  Reply by: BAStumm (bs@bs-linux.com)
+--------------------------------------------------
+oh and I did try flipping, flopping and rotating the images. Seems if the map is non-symetrical then something else has to be done to determine what the player position coordinates mean in comparison to the bsp-slicer image.
+
+--------------------------------------------------
+03/27/03 at 20:06:59  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Normal, I'd say. :)
+
+The BSP slicer aligns its slices taking the whole map bounding box as a reference. Thus, the center of the bitmap will always correspond to the center of the map. But not to the center of the world !
+
+Many maps are not centred around (0,0,0) actually.
+
+--------------------------------------------------
+03/27/03 at 21:03:35  Reply by: BAStumm (bs@bs-linux.com)
+--------------------------------------------------
+right so how might I attempt to guess at where the center is or what kind of offset to use or whatever. Must be a way, valve uses an overlay (bmp file) in game for that one overview spectator mode. 
+
+--------------------------------------------------
+03/27/03 at 21:47:09  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Of course, all you have to do is to substract the coordinates of the center of the map's bounding box to the coordinates of your player. The map (worldspawn) is model #0 in the BSP data, and entity #0 in the game.
+
+v_relative_coords = v_absolute_coords - (INDEXENT (0)->v.absmin + INDEXENT (0)->v.absmax) / 2;
+
+you get the idea... :)
+
+

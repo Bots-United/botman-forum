@@ -1,0 +1,230 @@
+--------------------------------------------------
+Subject: [TFC] spy bots feigning death refuse to get up!!!
+--------------------------------------------------
+03/24/02 at 18:59:16  Posted by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+That's me again, sorry to bother you again but since my accident I have lots of time to spend on developing my bot (fortunately I still can sit in front of a computer!!), so... I have lots of questions too ;-P
+
+I made my bots answer to many orders players give them, in TFC. For example, engineer bots can be asked to build sentry guns, upgrade them, demoman bots can be asked to drop their plastic, and spy bots can be asked to disguise as enemy or as another class, or even to feign death. For all that I make them issue the same ClientCommands player (unconsciously) send when they want to perform such an action on their own (hint: hex view the TFC client DLL and you'll find the right ClientCommands that go along with the "special VGUI menu" of a player's class). Okay, this is working.
+
+The damn trick is that, once a spy has issued a "feign" or "sfeign" ClientCommand, there's NO WAY to order him to stand up back! Usually players stand up issuing the same command, e.g. "feign" or "sfeign" works both for feigning death and getting up... but the bots issue the command and refuse to get up!
+
+I can understand that once you've found a comfortable place to sleep, you may dislike getting up, but in a battle this behaviour lacks a bit of serious. Especially for bots.
+
+I have wrote a small ClientCommand that permits me to make bots issue ClientCommands on request, like this:
+QUOTE:
+
+botorder "general Grant" "build 2"
+
+
+
+this one making the bot whose name is general Grant (engineer) build a sentry gun.
+
+Issuing commands with this toy to make spies feign death, silently or not, works well, like for each possible class-specific command a player can do. I tested them all. The only bug:
+QUOTE:
+
+botorder "Madam Peel" "feign"
+
+
+
+... and my bot falls on the ground, feigning death.
+QUOTE:
+
+botorder "Madam Peel" "feign"
+
+
+
+... and this stupid being refuses to get up.
+
+What the heck ? Is the character edict resetted by the engine when a client feigns death ? Theoretically impossible, so what ?
+
+Are there TFC bot makers in here who are aware of this problem ?
+
+???
+
+
+--------------------------------------------------
+03/25/02 at 01:49:19  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+I'm not sure.. I didn't see you mention using FakeClientCommand which you should for bots though. (Unless I'm blind of course or lazy!)
+
+I think there might be buttons for TFC (like IN_ATTACK, perhaps there's an IN_FEIGN button, but you'll have to get all these from valve)
+
+--------------------------------------------------
+03/25/02 at 06:43:24  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+Of course, when I say 'bots issuing ClientCommands', I hear 'bots issuing <b>Fake</b>ClientCommands'... Sorry for the lack of precision...
+
+Anyway, there isn't any IN_FEIGN button, or anything like that. As I said, it is ClientCommands that get issued when a player selects something in his class-specific special VGUI menu. One can imagine setting up a keybinding for a particular ClientCommand, but BASICALLY that's how things work.
+
+To explain more again, the "botorder" command is a field I added in the ClientCommand() function that permits me to make my bots issue FakeClientCommands on request. Like this:
+code:
+
+// in void ClientCommand (edict_t *pEntity)...
+// [...]
+   else if (FStrEq (pcmd, "botorder"))
+   {
+      if ((arg1 != NULL) && (*arg1 != 0) && (arg2 != NULL) && (*arg2 != 0))
+      {
+         char i;
+         for (i = 0; i < 32; i++)
+         {
+            if (strcmp (bots[i].name, arg1) == 0) // find the bot we want
+            {
+               char msg[256];
+               char command[256];
+               sprintf (command, "%s", arg2);
+               sprintf (msg, "BOT %s issues command %s\n", bots[i].name, command);
+               ClientPrint (pEntity, HUD_PRINTNOTIFY, msg);
+               FakeClientCommand (bots[i].pEdict, command);
+               break;
+            }
+         }
+      }
+      return;
+   }
+// rest of function follows...
+
+
+...of course, you noticed a change in the FakeClientCommand() call. That's right, I rewrote this function and the associated Cmd_Argc(), Cmd_Args() and Cmd_Argv() stuff in a much cleaner way than botman did. The problem is not here, this stuff has been tested and is known to work fine.
+code:
+
+void FakeClientCommand (edict_t *pFakeClient, char *command)
+{
+   int length, index = 0;
+
+   if ((command == NULL) || (*command == 0))
+      return; // if no argument, return
+
+   memset (g_argv, 0, sizeof (g_argv));
+   strcpy (g_argv, command); // first copy the command to the argv field
+   length = strlen (g_argv); // get length of command
+   if (g_argv[length - 1] == '\n')
+      length--; // remove any final '\n'
+   g_argv[length] = 0; // terminate the string
+
+   fake_arg_count = 0; // let's now parse the line and count the different fields
+
+   // count the number of arguments
+   while (index < length)
+   {
+      while ((index < length) && (g_argv[index] == ' '))
+         index++; // ignore spaces
+
+      // is this field multi-word between quotes or single word ?
+      if (g_argv[index] == '"')
+      {
+         index++; // move one step further to bypass the quote
+         while ((index < length) && (g_argv[index] != '"'))
+            index++; // reach end of field
+         index++; // move one step further to bypass the quote
+      }
+      else
+         while ((index < length) && (g_argv[index] != ' '))
+            index++; // reach end of field
+
+      fake_arg_count++; // we have processed one argument more
+   }
+
+   isFakeClientCommand = TRUE; // set the fakeclient flag
+   ClientCommand (pFakeClient); // tell now the MOD DLL to execute the ClientCommand...
+   g_argv[0] = 0; // when it's done, reset the g_argv field
+   isFakeClientCommand = FALSE; // reset the fakeclient flag
+   fake_arg_count = 0; // and the argument count
+}
+
+
+int Cmd_Argc (void)
+{
+   if (isFakeClientCommand)
+      return fake_arg_count; // return the argument count
+
+   return (*g_engfuncs.pfnCmd_Argc) ();
+}
+
+
+const char *Cmd_Args (void)
+{
+   if (isFakeClientCommand)
+      return &g_argv[0]; // return the whole argument string
+
+   return (*g_engfuncs.pfnCmd_Args) ();
+}
+
+
+const char *Cmd_Argv (int argc)
+{
+   if (isFakeClientCommand)
+   {
+      int length, i, index = 0, arg_count = 0, fieldstart, fieldstop;
+
+      arg[0] = 0; // reset arg
+      length = strlen (g_argv); // get length of argv
+
+      // while we have not reached end of line
+      while ((index < length) && (arg_count <= argc))
+      {
+         while ((index < length) && (g_argv[index] == ' '))
+            index++; // ignore spaces
+
+         // is this field multi-word between quotes or single word ?
+         if (g_argv[index] == '"')
+         {
+            index++; // move one step further to bypass the quote
+            fieldstart = index; // save field start position
+            while ((index < length) && (g_argv[index] != '"'))
+               index++; // reach end of field
+            fieldstop = index - 1; // save field stop position
+            index++; // move one step further to bypass the quote
+         }
+         else
+         {
+            fieldstart = index; // save field start position
+            while ((index < length) && (g_argv[index] != ' '))
+               index++; // reach end of field
+            fieldstop = index - 1; // save field stop position
+         }
+
+         if (arg_count == argc)
+         {
+            for (i = fieldstart; i <= fieldstop; i++)
+               arg[i - fieldstart] = g_argv[i]; // store the field value in a string
+            arg[i - fieldstart] = 0; // terminate the string
+         }
+
+         arg_count++; // we have processed one argument more
+      }
+
+      return (&arg[0]); // returns the wanted argument
+   }
+
+   return (*g_engfuncs.pfnCmd_Argv) (argc);
+}
+
+
+You can even use them in your code...
+
+Still in trouble... An idea why fakeclients 'feigning death' can't issue FakeClientCommands anymore? That's as if their edict couldn't even be binded, because when using my "botorder" stuff, the message "BOT XXX issues command XXX" doesn't print. Everything else works fine!
+
+I don't know what's happening!
+???
+
+
+--------------------------------------------------
+03/25/02 at 08:23:50  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+Word of caution, You'll need to check if bots[i].is_used is TRUE before checking anything else in it to ensure it is working properly.
+
+I'm not sure what the "feign" command does with fakeclients exactly though!
+
+
+
+--------------------------------------------------
+03/25/02 at 12:32:22  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+there's no reason why the is_used flag of the bot_t structure would be resetted. The engine does not have access to it, furthermore it doesn't even know it. pBot is what YOU know of a bot, whereas pBot->pEdict is what the ENGINE knows of the bot.
+
+It's that I don't understand???
+
+
+

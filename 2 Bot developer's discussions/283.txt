@@ -1,0 +1,212 @@
+--------------------------------------------------
+Subject: BotMan, Help me get version 3 finished....
+--------------------------------------------------
+10/12/00 at 10:46:16  Posted by: DarkYouth (darkyouth@thegraze.freeserve.co.uk)
+--------------------------------------------------
+Heres how I find my paths:
+
+1) Find Nearest Waypoint
+2) Find Objective
+3) Find WPT nearest objective
+4) Go to appropriate wpt in my floyd matrix
+
+This is the code so far:
+
+int BotFindNearestWaypoint( bot_t *pBot, Vector location)
+{
+      edict_t *pEdict = pBot->pEdict;
+      int team = UTIL_GetTeam(pEdict);
+      int nearestwp = 9999;
+      float nearestds = 9999;
+      for (int x = 0; x < num_waypoints[team]; x++)
+      {
+            float temp;
+            temp = (location - waypoints[team][x].origin).Length();
+            if (temp < nearestds)
+            {
+                  nearestds = temp;
+                  nearestwp = x;
+            }
+      }
+      if (nearestwp = 9999)
+            return 9999;
+      else
+            return nearestwp;
+}
+
+Vector BotFindNearestObjective(bot_t *pBot)
+{
+      // DOES NOTHING (Will return objective origin)
+      return pBot->pEdict->v.origin;
+}
+
+bool BotFindWaypointNEW(bot_t *pBot )
+{
+      edict_t *pEdict = pBot->pEdict;
+      bool alt = FALSE;
+      int team = UTIL_GetTeam(pEdict);
+      Vector ObjectivePostion = BotFindObjective(pBot);
+      int X = BotFindNearestWaypoint(pBot, pEdict->v.origin);
+      int T = BotFindNearestWaypoint(pBot, ObjectivePosition);
+      // NEXT WPT is to[team][X][T]
+      if (X = 9999)                                    // IF FAILED TRY OTHERS
+      {
+            alt = BotFindWaypoint(bot_t *pBot);
+            return alt;
+      }
+      else if (T = 9999)
+      {
+            alt = BotFindWaypoint(bot_t *pBot);
+            return alt;
+      }
+      else
+      {
+            pBot->curr_wpt_index = to[team][X][T];
+            return true;
+      }
+}
+
+and the floyd bit is:
+
+
+void WaypointFloyd(int a, edict_t *pEntity)
+{
+      int u, v, w,z;
+      int num_teams = 1;                              // Teams number minus 1
+      int changed = 1;
+      // Initialise Arrays
+      for (u = 0; u < num_teams; u++)
+      {
+            for (v = 0; v < num_waypoints[u]; v++)
+            {
+                  for (w = 0; w < num_waypoints[u]; w++)
+                  {
+                        
+                        if (WaypointReachable(waypoints[u][v].origin, waypoints[u][w].origin, pEntity))
+                        {
+
+                              shortest[u][v][w] = (waypoints[u][v].origin - waypoints[u][w].origin).Length();
+                              to[u][v][w] = w;
+                        }
+                  }
+            }
+      }
+      // Sort arrays
+      while (changed)
+      {
+            for (u = 0; u < num_waypoints[u]; u++)
+        {
+                  for (v = 0; v < num_waypoints[u]; v++)
+            {
+                        for (w = 0; w < num_waypoints[u]; w++)
+                        {
+                              for (z = 0; u < num_waypoints[u]; z++)
+                              {
+                                    if (shortest[u][w][v] + shortest[u][v][z] < shortest[u][w][z])
+                                    {  
+                                          shortest[u][w][z] = shortest[u][w][v] + shortest[u][v][z];
+                                          to[u][w][z] = to[u][w][v];
+                                          changed = 1;
+                                    }
+                              }
+                        }
+                  }
+            }
+      }
+}
+
+
+I intialize the floyd array with a command in the console.
+
+Can you just look at my code and tell me what you think...
+
+
+Im very uncertain......
+
+--------------------------------------------------
+10/12/00 at 10:48:06  Reply by: DarkYouth (darkyouth@thegraze.freeserve.co.uk)
+--------------------------------------------------
+AND YET AGAIN YAYBB JUST SCREWS UP MY CODE AGAIN....
+
+Is there a way of turning that stuff off or exempting the code somehow....
+
+--------------------------------------------------
+10/12/00 at 11:17:57  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+Not really, even if you use the [ code ] and [ / code ] (without the spaces, it screws up the formatting of some stuff).
+
+The problems are usually dues to the [ and ] characters around what YaBB considers valid UBB type controls.  If you put an extra space after the '[' and before the ']', they don't get interpreted as UBB formating tags.
+
+
+The code you have looks like it should do what you want (as far as initializing and using the Floyd matrix properly).  Start with a very small list of waypoints (like a dozen or so with a couple of paths from the spawn point to an objective), spawn 1 bot and follow it.  If things work properly you should see it head straight toward the objective.  When I first got the Floyd matrix stuff working I was surprized at some of the paths the bots took (like running off the top of the fort down to the bridge in 2fort, but I quickly realized that it WAS indeed the quickest way from the spawn point to the flag.
+
+You'll be able to tell RIGHT AWAY when it's not doing the right thing because the bots will probably just run back and forth between 2 waypoints or run straight into a wall trying to get to a waypoint that it can't possibly get to.
+
+botman
+botman
+
+
+--------------------------------------------------
+10/12/00 at 11:20:13  Reply by: DarkYouth (darkyouth@thegraze.freeserve.co.uk)
+--------------------------------------------------
+The Floyd() function crashes my half-life....
+
+Arggghhhh
+
+--------------------------------------------------
+10/12/00 at 11:20:49  Reply by: DarkYouth (darkyouth@thegraze.freeserve.co.uk)
+--------------------------------------------------
+Can I download the HPB beta 1 (FULL) source....
+
+I just cant get why it aint workin.....
+
+--------------------------------------------------
+10/12/00 at 12:31:59  Reply by: SUCKLEAD (sucklead@btinternet.com)
+--------------------------------------------------
+Shouldn't you be screening deleted waypoints out in the waypoint searches?
+Getting the Floyd bit to work was real easy after Botman gave the code snippet out which I'd been searching for.  The harder bit now is making the bots _not_ always go the best route :7)
+
+--------------------------------------------------
+10/12/00 at 13:37:13  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+I would suggest writing a separate C program to generate the Floyd matrix (from the saved waypoint and path information in the waypoint file).
+
+This way you can test things and use the debugger without having to start up Half-Life all the time.  Instead of using the WaypointReachable() function, just use the path information from the PATH linked list to determine which waypoints are reachable from other waypoints.
+
+botman
+
+--------------------------------------------------
+10/12/00 at 15:57:53  Reply by: CountFloyd (countfloyd_1999@yahoo.com)
+--------------------------------------------------
+I agree with Sucklead on this. After Botman gave out his template functions everybody could do a decent pathfinding function. I'm not very happy about this, because then every little kid can do a working bot and most users couldn't tell the difference between them (just look at the voting poll at bot-central to see what I mean). I think the hardest part in Bot programming was upto now the pathfinding code and correct ladder climbing. Most other things can be found out by trial and error. It's just a matter of time to implement game goals and flocking behaviour. So you HAVE to do some routines on your own, or do you want to credit botman for all ? To your problem: don't save deleted waypoints in your structure. Do some console command to write a CalculateShortestPathFromHere2There function which logs all nodes to a file or even better write a test program in debug mode to import your waypoint file and test it with it. That way you have all nice VC++ debug helpers and you can track down bugs more easily than browsing through a log file...
+
+BTW. Botman:
+It's kind of funny but ladder climbing works somehow better (at least for me) if you don't let the angle.x point up or down. Instead, if they look straight and just direct themselves to the nearest waypoint on the ladder (angle.y) makes them fall down not that often. Ladders work for me 90% of the time, which I'm satisfied with. Of course the bots look quite stupid when climbing (read floating), so you maybe don't want to try this.
+
+--------------------------------------------------
+10/12/00 at 16:34:03  Reply by: SUCKLEAD (sucklead@btinternet.com)
+--------------------------------------------------
+What makes me laugh is that whenever someone starts development open source and then others use it as a starting point for closed source development.  Sucky really.  I'm just writing one to brush up on my c coding.  Cheers Botman.
+
+--------------------------------------------------
+10/13/00 at 04:21:57  Reply by: William (william@botepidemic.com)
+--------------------------------------------------
+Hi Count,
+
+"It's just a matter of time to implement game goals and flocking behaviour."
+
+Now have a look at my code statistics here:
+http://www.botepidemic.com/aid/cgf/design_overall.shtml (at the bottom)
+
+I spent about 7500 lines of code on navigation, way points and stuff. Game goals, tactical terrain understanding, team behavior, team maneuvers, really realistic vision, threat prediction, high performance caches etc. simply make up for 10 times as much code.
+
+Having way points is just the beginning.
+
+William
+
+--------------------------------------------------
+10/13/00 at 07:25:26  Reply by: CountFloyd (countfloyd_1999@yahoo.com)
+--------------------------------------------------
+William: You see, it's just a matter of time & typing speed then :)
+Honestly, I've been a bit too harsh in my post. I don't underestimate the work which still has to be done and I know it's just the beginning. I'm nearly at the point to install AQ2 and leech your Bots. From all your posts & knowledge you posted they must be awesome ! I just can't stand the cut & paste behaviour many programmers practice today. It's so easy to get information and/or sources in the internet. It wasn't that way earlier and IMHO it's better to try and understand things before you paste sources into your program, which another dude maybe has already copied from dubious sources. This shouldn't be an offence to DarkYouth, but hey the code snippet he posted above is nearly 1:1 from the example page Botman gave him. He didn't even bother to change Variable Names ! If I offended anybody, I feel sorry...maybe I should just sit back and relax !
+

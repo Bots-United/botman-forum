@@ -1,0 +1,273 @@
+--------------------------------------------------
+Subject: GetProcAddress And Dll Injection
+--------------------------------------------------
+09/18/03 at 11:37:51  Posted by: LazyOne (the_lazy_one_09@hotmail.com)
+--------------------------------------------------
+I'm only posting this since I've been looking it up for the past few days and have had no luck getting anything to work.
+
+First my goal has nothing to do with the HL client, its the server I'm interested in.
+I want to make it call my version of GetProcAddress, check for "MessageBox" and if it is use my function instead.
+
+I've looked at many articles and They don't cover hooking functions, or they don't describe the process very well.
+
+I also notice that after injecting code into another process, the size grows and it doesn't go down all the way even with VirtualFreeEx.
+
+I want to make an application to restart hlds if a crash occured and handle error MessageBoxes as well.
+
+Any ideas or links?
+
+
+[modified on 09/18/03 at 11:37:51]
+--------------------------------------------------
+09/18/03 at 12:57:25  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+Does this help?
+
+http://www.codeguru.com/dll/apihijack.shtml
+
+botman
+
+--------------------------------------------------
+09/19/03 at 04:06:49  Reply by: LazyOne (the_lazy_one_09@hotmail.com)
+--------------------------------------------------
+Yes that did help, it is entirely opposite of how I thought it was done.
+
+Thx for the link.
+
+
+--------------------------------------------------
+09/20/03 at 19:08:27  Reply by: AustinBotServer (AustinBotServer@MindSpring)
+--------------------------------------------------
+QUOTE:
+
+I want to make an application to restart hlds if a crash occured and handle error MessageBoxes as well.
+
+Any ideas or links?
+
+
+
+One quick but effective way to do this is to look for the error windows that come up and then send a message to close them, then restart the server.
+
+Set a timer message for every 3 seconds or so and do something like this.
+
+//==========================================================
+void CRestartHLServer::OnTimer(UINT nIDEvent) 
+//==========================================================
+{      
+      bool foundServer;
+      HWND topWindow, buttonWindow;
+
+            
+      // first look for the program error dlg and close it
+      topWindow = ::FindWindow(NULL, "Program Error");
+      if (::IsWindow(topWindow))
+      {
+            buttonWindow = ::FindWindowEx(topWindow, NULL, "Button", "OK");
+            if (::IsWindow(buttonWindow))
+            {
+                  ::SetForegroundWindow(buttonWindow);
+                  ::PostMessage(buttonWindow, WM_KEYDOWN, (WPARAM)VK_SPACE, (LPARAM)0);
+                  ::PostMessage(buttonWindow, WM_KEYUP, (WPARAM)VK_SPACE, (LPARAM)0);
+
+                  // Log the time we restarted
+                  CTime ct = CTime::GetCurrentTime();;
+                  CString s = ct.Format( "%A, %B %d %H:%M:%S\n" );
+
+                  CStdioFile f;
+                  CFileException e;
+                  char* pFileName = "C:\\Sierra\\Counter-strike\\ServerRestart.log";
+                  try
+                  {
+                        if( f.Open( pFileName, CFile::modeCreate  CFile::modeWrite  CFile::modeNoTruncate, &e ) )
+                        {
+                              f.SeekToEnd();
+                              f.WriteString(s);
+                              f.Close();
+                        }
+                  }
+                  catch( ... )
+                  {
+                        f.Abort();
+                  }
+                  
+                  char text[1024];
+                  LPTSTR pText= text;
+
+                  m_commandLine.GetWindowText(pText, 1022);
+
+                  WinExec(text, SW_MINIMIZE);                                                                                    
+            }
+      }
+
+      CDialog::OnTimer(nIDEvent);
+}
+
+Use Spy++ that ships with VC++ to spy on the messages boxes that come up when you hit an error. Pay attention to the dialog title that you would use to find the window and pay attention to the button types to look for to “press” Button, TButton, etc..
+
+
+
+
+[modified on 09/20/03 at 19:08:27]
+--------------------------------------------------
+09/20/03 at 19:50:46  Reply by: LazyOne (the_lazy_one_09@hotmail.com)
+--------------------------------------------------
+Thanks for the info, although that would be easier I started this to learn about injecting code into remote processes.
+
+Basically what I wanted to do was be as lazy as possible with restarting servers...
+
+Hlds process detected ( Figuring out the best way to detect it, right now snaps processes ).
+Inject code to retrieve the command line parameters.
+
+If there is a crash, I'd simply restart the server with the same command line options.
+I still am having no luck getting remote processes to execute my code.
+
+
+--------------------------------------------------
+09/21/03 at 14:46:53  Reply by: AustinBotServer (AustinBotServer@MindSpring)
+--------------------------------------------------
+Here is a site with excellent resources on what you are trying to do.
+
+http://www.internals.com/articles_main.htm
+
+
+While you are working on getting your application working you may want to protect your server right away using http://www.firedaemon.com
+
+
+
+--------------------------------------------------
+10/18/03 at 09:41:54  Reply by: LazyOne (the_lazy_one_09@hotmail.com)
+--------------------------------------------------
+Sorry to bring this back up again but I decided to try patching the import address table.
+
+I'm testing a small .exe to try and get it to call my version of MessageBox instead but it keeps crashing when I try to set pThunk->u1.Function.
+
+The debugger shows it crashing on the line where I try to assign it to it's new function.
+
+Its probably something simple but I'm just learning this stuff out so any help is appreciated.
+
+code:
+
+#include <cstdio>
+#include <cstring>
+#include <cstdlib>
+#include <iostream>
+#include <fstream>
+#include <windows.h>
+#include <process.h>
+using namespace std;
+
+#define MakePtr( cast, ptr, addValue ) ( cast ) ( ( DWORD ) ( ptr ) + ( DWORD )( addValue ) )
+typedef int ( WINAPI* pMessageBoxA ) ( HWND, LPCTSTR, LPCTSTR, UINT );
+
+int WINAPI myMessageBoxA( HWND hWnd, LPCTSTR lpText, LPCTSTR lpTitle, UINT uButtons )
+{
+      cout << lpTitle << " : " << lpText << endl;
+      return uButtons;
+}
+
+pMessageBoxA g_MessageBoxProc = myMessageBoxA;
+
+void main( void )
+{
+      IMAGE_DOS_HEADER*                  pDosHeader = 0;
+      IMAGE_NT_HEADERS*                  pNTHeader = 0;
+      IMAGE_IMPORT_DESCRIPTOR*      pImport = 0;
+      IMAGE_THUNK_DATA*                  pThunk = 0;
+      bool                                    bFoundLibrary = false;
+      DWORD                                    dwOldProtect = 0;
+      DWORD dwFunction = ( DWORD ) GetProcAddress( GetModuleHandle( "user32.dll" ), "MessageBoxA" );
+
+      MessageBox( 0, 0, 0, MB_OK );      //      Needed to link with user32.dll
+
+      if ( dwFunction == 0 )
+      {
+            cout << "Failed to get DWORD of MessageBox.\n";
+            return;
+      }
+
+      pDosHeader = ( PIMAGE_DOS_HEADER ) GetModuleHandle( 0 );      //      This EXE
+
+      if ( IsBadReadPtr( pDosHeader, sizeof( IMAGE_DOS_HEADER ) ) )
+      {
+            cout << "Bad read pointer on dos header.\n";
+            return;
+      }
+
+      if ( pDosHeader->e_magic != IMAGE_DOS_SIGNATURE )
+      {
+            cout << "DOS Signature invalid.\n";
+            return;
+      }
+
+      pNTHeader = MakePtr( PIMAGE_NT_HEADERS, pDosHeader, pDosHeader->e_lfanew );
+
+      if ( IsBadReadPtr( pNTHeader, sizeof( IMAGE_NT_HEADERS ) ) )
+      {
+            cout << "Bad read pointer on NT header.\n";
+            return;
+      }
+
+      if ( pNTHeader->Signature != IMAGE_NT_SIGNATURE )
+      {
+            cout << "NT Signature invalid.\n";
+            return;
+      }
+
+      pImport = MakePtr( PIMAGE_IMPORT_DESCRIPTOR, pDosHeader, pNTHeader->OptionalHeader.DataDirectory[ IMAGE_DIRECTORY_ENTRY_IMPORT ].VirtualAddress );
+
+      if ( pImport == ( PIMAGE_IMPORT_DESCRIPTOR ) pNTHeader )
+      {
+            cout << "Failed to get import descriptor.\n";
+            return;
+      }
+
+      while ( pImport->Name )
+      {
+            PSTR pString = MakePtr( PSTR, pDosHeader, pImport->Name );
+
+            if ( strcmpi( pString, "user32.dll" ) == 0 )
+            {
+                  bFoundLibrary = true;
+                  break;
+            }
+            
+            pImport++;
+      }
+
+      if ( ! bFoundLibrary )
+      {
+            cout << "Failed to find library in import descriptor.\n";
+            return;
+      }
+
+      pThunk = MakePtr( PIMAGE_THUNK_DATA, pDosHeader, pImport->FirstThunk );
+
+      while ( pThunk->u1.Function )
+      {
+            if ( pThunk->u1.Function == dwFunction )
+            {
+                  MEMORY_BASIC_INFORMATION mbi; VirtualQuery( pDosHeader, &mbi, sizeof( MEMORY_BASIC_INFORMATION ) );
+                  VirtualProtect( ( void* ) pThunk->u1.Function, sizeof( DWORD ), PAGE_EXECUTE_READWRITE, &dwOldProtect );
+
+                  pThunk->u1.Function = ( DWORD ) g_MessageBoxProc;
+                  VirtualProtect( ( void* ) pThunk->u1.Function, sizeof( DWORD ), dwOldProtect, &dwOldProtect );
+
+                  bFoundLibrary = true;
+                  break;
+            }
+
+            pThunk++;
+      }
+
+      if ( ! bFoundLibrary )
+      {
+            cout << "Failed to patch import address table.\n";
+            return;
+      }
+
+      MessageBox( 0, "Success in patching the import address table.", "Done", MB_OK );
+}
+
+
+
+

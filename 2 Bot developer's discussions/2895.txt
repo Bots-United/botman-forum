@@ -1,0 +1,45 @@
+--------------------------------------------------
+Subject: Bot's using wall mounted stations... ALL MESSED UP
+--------------------------------------------------
+03/25/02 at 10:44:12  Posted by: freeman_666_86 (ruban_666@hotmail.com)
+--------------------------------------------------
+When I used separate vectors for moving and aiming, the bots stopped being able to use health stations and such.  By the looks of it, the bots use the stations one frame then turn 90 degrees to the left and stay stuck there.  They dont use ladders that well either.
+
+What i did was to add Vector moveAngle; to the bot class in bot 10.  for aiming i just left the pev->v_angle and instead of having that in Engine move function i used the moveAngle.
+
+Its not like i didn't try to fix it on my own already, im just stumped.
+
+Also, where can i find out how to use tracelines - when my bots use tripmines they randomly place them at waist level, ankle level, or they put one at eye level and one ankle level.  My problem here is that sometimes the bots put the ankle level ones on the floor.  How can i test if its the floor or the wall?
+
+UUUUGGGGGGGGGG.
+
+--------------------------------------------------
+03/25/02 at 11:36:53  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+"How can i test if its the floor or the wall?"
+
+Look at the X, Y, and Z values of the surface normal.  The TraceResult structure contains a vecPlaneNormal field (a vector).  This is the normal vector to the surface that was hit.  The normal is perpendicular to the surface.
+
+If a normal has no Z component (Z = 0), then the normal vector is straight out horizontally (parallel to the floor).  This indicates the surface was a wall that's straight up and down.  You could also check to see if the Z component was less than 0.7071 (sin 45 degrees) to see if the wall is slanted at 45 degrees or more (since you want Z to be between 0 and 0.7071).  Any Z value larger than 0.7071 would indicate that the surface was a floor or ceiling (or "close" to being a floor or ceiling).
+
+botman
+
+--------------------------------------------------
+03/25/02 at 14:32:03  Reply by: freeman_666_86 (ruban_666@hotmail.com)
+--------------------------------------------------
+Sweet!, but what about the health station stuff?
+
+--------------------------------------------------
+03/25/02 at 14:34:23  Reply by: PM (baty.pm@libertysurf.fr)
+--------------------------------------------------
+Probably you call botman's BotTurnAtWall() -if you haven't changed it- when the bot faces the station at close range; you may have changed the BotThink() layout, that would be why the bug occurs.
+
+--------------------------------------------------
+03/26/02 at 07:38:09  Reply by: freeman_666_86 (ruban_666@hotmail.com)
+--------------------------------------------------
+Nope, i found it!  The bots kept trying to go to waypoints and they would look at them instead of the station.  
+
+As for the ladders, i expiremented with the bots looking at the origin of the ladder.  It worked better - if the bot was on the correct side of the ladder...
+
+
+

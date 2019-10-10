@@ -1,0 +1,162 @@
+--------------------------------------------------
+Subject: Weapon selection & FakeClientCommand
+--------------------------------------------------
+03/19/03 at 19:29:22  Posted by: wthod (handdeath_ps@yahoo.com)
+--------------------------------------------------
+I'm really stuck and could use suggestions.  Here's the situation.
+
+I have a bot that runs as a Metamod plugin, which was originally based on the HPB bot.  At this point there is very little of the original code left.
+
+Before I converted to Metamod, FakeClientCommand worked fine to select weapons.  Now it doesn't work any more - I call the game dll pfnClientCommand, it calls me back on the engine pfnCmd_Argv(0), I return the weapon name, and then nothing happens.  
+
+I've tried replacing my own FakeClientCommand equivalent with the HPB code again, but it doesn't make any difference.
+
+I've tried different fake commands, but it doesn't seem to matter what the command is, the game just ignores it.
+
+I've tried a variety of different methods to return the string from the intercepted pfnCmd_Argv, but none of them seem to work.
+
+Has anyone else seen this kind of behaviour?  Since it was working fine before, I'm at a loss to explain it - I've been through the metamod source code and haven't found anything that looks relevant.
+
+To head off obvious questions:
+- Yes, I'm calling the game DLL and not the engine DLL pfnClientCommand.
+- The game DLL in this case is Natural Selection.
+- The callbacks I get are Cmd_Argv(0) and nothing else (which is the same as the working version of the code).
+- I still have all the original code in source control, so it's easy to duplicate the working/not working cases.
+
+Any ideas?
+
+--------------------------------------------------
+03/19/03 at 21:15:08  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+Verify that:
+1. You set the isFakeClientCommand (or whatever) flag right on time, i.e JUST BEFORE calling ClientCommand and remove it after, i.e JUST AFTER ClientCommand returns.
+2. You hook correctly pfnCmd_Args, pfnCmd_Argv and pfnCmd_Argc and check for the isFakeClientCommand flag state in order to dispatch the call EITHER to the engine function OR to the local g_argv string (if you use botman's implementation of FakeClientCommand, arguments are 64 characters far from each other in the g_argv string).
+3. In your bot DLL, you use the CMD_ARGV, CMD_ARGS and CMD_ARGC macros when appliable.
+
+I don't know what could cause a problem else. Some runtime debug on-screen printings for CMD_ARGV would probably help.
+
+
+--------------------------------------------------
+03/19/03 at 23:45:01  Reply by: wthod (handdeath_ps@yahoo.com)
+--------------------------------------------------
+First of all, thanks for the reply, Pierre.
+
+I'm pretty sure that I'm returning the right value from my pfnCmd_Argv interception, since I can put a breakpoint in there and verify that the correct path is being taken and what looks like the correct value is returned.
+
+In the latest version, I'm using the HPB's memory mapped g_argv.  It seemed unclear why that would help - I'm not 100% sure why the HPB bot impl did that - but I'd run out of ideas.
+
+As I mentioned, I've also tried the original HPB code pretty much verbatim and that didn't help either.
+
+Since it doesn't seem to make any sense right now, I'm guessing that it's going to be something so stupid that I'll want to shoot myself when it's explained... :)
+
+Here's the actual code:
+
+<NSBot.cpp>
+extern vector<string> g_fakeArgs;
+void NSBot::fakeClientCommand(char* arg)
+{
+    // allow the MOD DLL to execute the ClientCommand...
+    g_fakeArgs.push_back(string(arg));
+    MDLL_ClientCommand(_entity);
+    g_fakeArgs.clear();
+}
+</NSBot.cpp>
+
+
+<engine_intercepts.cpp>
+extern char* g_argv;
+vector<string> g_fakeArgs;
+const char* interceptCmdArgs()
+{
+    if (g_fakeArgs.size() != 0) {
+        memset(g_argv, 0, 1024);
+
+        int idx = 0;
+        for (vector<string>::iterator ii = g_fakeArgs.begin(); ii != g_fakeArgs.end(); ii++) {
+            if (idx < 1023) {
+                strcpy(&g_argv[idx], ii->c_str());
+                idx += ii->length();
+                strcpy(&g_argv[idx], " ");
+                idx++;
+            }
+        }
+        return g_argv;
+
+    } else {
+        return (*g_engfuncs.pfnCmd_Args)();
+    }
+}
+
+const char* interceptCmdArgv(int idx)
+{
+    if (g_fakeArgs.size() > 0) {
+        LOG_CONSOLE(PLID, "Called argv [idx=%d]", idx);
+    }
+
+    if (g_fakeArgs.size() > 0 && idx < g_fakeArgs.size()) {
+        memset(g_argv, 0, 1024);
+
+        strcpy(g_argv, g_fakeArgs[idx].c_str());
+        return g_argv;
+
+    } else {
+        const char* ret = (*g_engfuncs.pfnCmd_Argv)(idx);
+        return ret;
+    }
+}
+
+int interceptCmdArgc()
+{
+    if (g_fakeArgs.size() > 0) {
+        LOG_CONSOLE(PLID, "Called argc, %d", g_fakeArgs.size());
+        return g_fakeArgs.size();
+
+    } else {
+        return (*g_engfuncs.pfnCmd_Argc)();
+    }
+}
+</engine_intercepts.cpp>
+
+
+<h_exports.cpp>
+#ifdef _WIN32
+extern HINSTANCE h_Library;
+extern HGLOBAL h_global_argv;
+#else
+extern void* h_Library;
+#endif
+
+// Receive engine function table from engine.
+// This appears to be the _first_ DLL routine called by the engine, so we
+// do some setup operations here.
+void WINAPI GiveFnptrsToDll( enginefuncs_t* pengfuncsFromEngine, globalvars_t *pGlobals )
+{
+      memcpy(&g_engfuncs, pengfuncsFromEngine, sizeof(enginefuncs_t));
+      gpGlobals = pGlobals;
+
+    #ifndef __linux__
+        h_Library = LoadLibrary("ns\\dlls\\ns.dll");
+    #else
+        h_Library = dlopen("ns/dlls/ns_i386.so", RTLD_NOW);
+    #endif
+
+
+    #ifndef __linux__
+        h_global_argv = GlobalAlloc(GMEM_SHARE, 1024);
+        g_argv = (char* )GlobalLock(h_global_argv);
+        memset(g_argv, 0, 1024);
+    #else
+        g_argv = (char* )h_global_argv;
+    #endif
+}
+</h_exports.cpp>
+
+--------------------------------------------------
+03/25/03 at 15:25:50  Reply by: wthod (handdeath_ps@yahoo.com)
+--------------------------------------------------
+As you might expect, it was something really dumb.
+
+Turned out that I had forgotten to use the Metamod macros to return the values from the functions, so Metamod silently ate them and returned the engine DLL values.
+
+If you run it in dedicated server mode, it does warn you on the console, but if you're only running in host mode, there doesn't seem to be a warning.
+

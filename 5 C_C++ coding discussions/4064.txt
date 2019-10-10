@@ -1,0 +1,410 @@
+--------------------------------------------------
+Subject: Getting started with Assembler... need help!
+--------------------------------------------------
+01/22/03 at 14:43:38  Posted by: Integrator (integrator@triasoft.com)
+--------------------------------------------------
+Well, I want to study Assembler and I don't know (again, uhh) where should I start from... Certanly I have a few books on it (and I've already read something from them ) but it seems to me that if I'll continue <i>only reading them</i>, I'll waist my time. IMHO it is like trying to learn C without even touching your computer...
+So, I think I need something like Microsoft Visual C, Borland C, but instead of C I need Assembler. Actually, I need some practice.
+Could you recommend something for me? maybe a few links were I can download them from...
+THANK YOU VERY VERY MUCH!
+PS: Certanly I still am a newbie, so I would like something enought simple... for little tests... 
+PPS: And I need enought simple debugger for assembler... where I could test my programs.
+
+[modified on 01/22/03 at 14:43:38]
+--------------------------------------------------
+01/22/03 at 15:03:49  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+1. First thing, make yourself a Win98 boot floppy.  Don't boot up in WindowsNT, Win2K, WinME, or WinXP.
+
+2. See home.att.net/~jackklein/x86/x86_main.htmlthis page about getting MASM.  You could also use TASM (Borland's Assembler) or several other freely available assemblers.
+
+3. For debugging, you could start with the old MS-DOS DEBUG.EXE program.  Search the web for tutorials on "ms-dos debug" (or something similar).  If you are using Borland's TASM, you can probably use the Turbo Debugger (also available for download free from Borland's website).
+
+The reason you DON'T want to run Windows is that many of the examples in your ASM book (assuming it's for writing PC programs), is that they will attempt to call MS-DOS or BIOS interrupt functions and those won't work properly when running from a Windows environment.
+
+botman
+
+--------------------------------------------------
+01/22/03 at 15:06:06  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+I found a tutorial on MS-DOS DEBUG...
+
+http://www.geocities.com/thestarman3/asm/debug/debug.htm
+
+You could even use the built-in assembler in DEBUG to assemble your code if you wanted to.  :)
+
+botman
+
+[modified on 01/22/03 at 15:06:06]
+--------------------------------------------------
+01/22/03 at 15:37:10  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+hasn't MS-DOS a nice DEBUG function too ? :)
+
+
+[modified on 01/22/03 at 15:37:10]
+--------------------------------------------------
+01/22/03 at 23:49:41  Reply by: Zipster (skyork99@juno.com)
+--------------------------------------------------
+You could use DEBUG, but it's a real pain in the butt if you're going to be writting more than 5 instruction programs :)
+
+What you want is ML.EXE for compiling assembly code, LINK.EXE for linking the code into an executable, and ML.ERR so that ML.EXE can print error codes :)  I've provided some quicky links for ya:
+
+http://144.132.10.111/zipster/ML.EXE
+http://144.132.10.111/zipster/ML.ERR
+http://144.132.10.111/zipster/LINK.EXE
+
+You might also want to look into NMAKE.  But that's more advanced.
+
+And above all, you need to know assembly language first :)  It can be written in a plain text file.
+
+Here's some sample code I have from an earlier project.  This resembles what assembly code will look like:
+
+code:
+
+.MODEL      SMALL
+
+.CODE
+
+.DATA
+
+      EXTRN      SECTOR:BYTE
+      EXTRN      SECTOR_OFFSET:WORD
+      EXTRN      PHANTOM_CURSOR_X:BYTE
+      EXTRN      PHANTOM_CURSOR_Y:BYTE
+
+.CODE
+;------------------------------------------------------------------------------;
+;This procedure writes one byte to sector, at the memory location pointed to       ;
+;by the phantom cursor.                                                             ;
+;                                                                               ;
+;On Entry:            DL            Byte to write to SECTOR                               ;
+;                                                                               ;
+;The offset is calculated by                                                       ;
+;      OFFSET = SECTOR_OFFSET + (16 * PHANTOM_CURSOR_Y) + PHANTOM_CURSOR_X       ;
+;                                                                               ;
+;Reads:      PHANTOM_CURSOR_..., SECTOR_OFFSET                                     ;
+;Writes:      SECTOR                                                             ;
+;------------------------------------------------------------------------------;
+WRITE_TO_MEMORY      PROC
+      PUSH      AX
+      PUSH      BX
+      PUSH      CX
+      MOV      BX,SECTOR_OFFSET
+      MOV      AL,PHANTOM_CURSOR_Y
+      XOR      AH,AH
+      MOV      CL,4                                    ;Multiply PHANTOM_CURSOR_Y by 16
+      SHL      AX,CL
+      ADD      BX,AX                                    ;BX = SECTOR_OFFSET + (16 * Y)
+      MOV      AL,PHANTOM_CURSOR_X
+      XOR      AH,AH
+      ADD      BX,AX                                    ;That's the address!
+      MOV      SECTOR[BX],DL                        ;Store the byte
+      POP      CX
+      POP      BX
+      POP      AX
+      RET
+WRITE_TO_MEMORY      ENDP
+
+      PUBLIC      EDIT_BYTE
+      EXTRN      SAVE_REAL_CURSOR:PROC, RESTORE_REAL_CURSOR:PROC
+      EXTRN      MOV_TO_HEX_POSITION:PROC, MOV_TO_ASCII_POSITION:PROC
+      EXTRN      WRITE_PHANTOM:PROC, WRITE_PROMPT_LINE:PROC
+      EXTRN      CURSOR_RIGHT:PROC, WRITE_HEX:PROC, WRITE_CHAR:PROC
+
+.DATA
+
+      EXTRN      EDITOR_PROMPT:BYTE
+
+.CODE
+;------------------------------------------------------------------------------;
+;This procedure changes a byte in memory and on the screen.                         ;
+;                                                                               ;
+;On Entry:            DL      Byte to write into SECTOR, and change on screen             ;
+;                                                                               ;
+;Uses:            ..._REAL_CURSOR, MOVE_TO_..._POSITION                         ;
+;                  WRITE_PHANTOM, WRITE_PROMPT_LINE, CURSOR_RIGHT                   ;
+;                  WRITE_HEX, WRITE_CHAR, WRITE_TO_MEMORY                         ;
+;Reads:            EDITOR_PROMPT                                                 ;
+;------------------------------------------------------------------------------;
+EDIT_BYTE      PROC
+      PUSH      DX
+      CALL      SAVE_REAL_CURSOR
+      CALL      MOV_TO_HEX_POSITION
+      CALL      CURSOR_RIGHT
+      CALL      WRITE_HEX
+      CALL      MOV_TO_ASCII_POSITION
+      CALL      WRITE_CHAR
+      CALL      RESTORE_REAL_CURSOR
+      CALL      WRITE_PHANTOM
+      CALL      WRITE_TO_MEMORY
+      LEA      DX,EDITOR_PROMPT
+      CALL      WRITE_PROMPT_LINE
+      POP      DX
+      RET
+EDIT_BYTE      ENDP
+
+      END
+
+
+--------------------------------------------------
+01/23/03 at 02:01:11  Reply by: Integrator (integrator@triasoft.com)
+--------------------------------------------------
+Ok, guys, thank you very much, I've downloaded compiler and linker (actually I downloaded Processor Pack form msdn.microsoft.com/vstudio/downloads/tools/ppack/download.asphere) but I have a little problem: take a look at this simple program:
+code:
+
+.model      small
+.stack      128
+.data
+MSG      db      "It works!$"
+.code
+Entry:      mov      AX, @data
+      mov      DS, AX
+      mov      AH, 09h
+      lea      DX, MSG
+      int      21h
+      mov      AH, 4Ch
+      int      21h
+end Entry
+
+
+My compiler (ml.exe) makes an object file, but when I link (link.exe) it I get errors:
+
+LINK : error : Segment reference in fixup record
+test.obj : fatal error LNK1123: failure during conversion to COFF: file invalid or corrupt
+
+Could you explane me how to fix it? Maybe there are errors in code? Thank you again...
+
+
+[modified on 01/23/03 at 02:01:11]
+--------------------------------------------------
+01/23/03 at 02:06:55  Reply by: Zmeko (dosap29@msn.com)
+--------------------------------------------------
+http://www.drpaulcarter.com/pcasm/
+PDF PC Assembly Language book.
+
+i like it and it's free.
+code:
+
+#include "stdafx.h"
+extern "C" int addf(int i, int v, int k);
+int main(int argc, char* argv[])
+{
+      printf("Hello World!\n");
+      int ad = 500;
+      int bd = 300;
+      long muld = 1;
+      __asm{
+                  push        eax                  //push eax
+                  push            ebx                  //push ebx
+                  mov                  eax, ad            //eax = &ad
+                  mov                  ebx, bd            //ebx = &bd
+                  
+                  push            muld            //push muld to addf (k)
+                  push            eax                  //push eax to addf      (v)
+                  push            ebx                  //push ebx to addf      (i)
+                  
+                  call        addf            //call addf
+                  mov                  ad, eax            //ad = &eax
+
+                  pop                  ebx                  //gives it up
+                  pop                  ebx                  //gives it up
+                  pop                  eax                  //gives it up
+                  pop                  eax                  //gives it up
+                  pop                  muld
+      }
+      printf("%d\n", ad);
+
+
+      return 0;
+}
+extern "C" int addf(int i, int v, int k)
+{
+      int temp;
+      temp = (i + v) * k;
+      return temp;
+}
+
+
+
+there's some assembly code that can be compiled with MSVC++.
+i am still a newbie but i am learning and most of the information is comming from that book.
+
+
+--------------------------------------------------
+01/23/03 at 02:30:35  Reply by: Integrator (integrator@triasoft.com)
+--------------------------------------------------
+Well, I know about __asm, _asm and asm in VC++ but there you can't use a lot of commands, for example when you write
+dw 0b
+you get error message. But things like
+      _asm _emit 0x0f
+      _asm _emit 0x31
+work good :).
+
+Actually it would be great if after generating assembly-listing files of my C/C++ programm I could make a few changes in them and after that build my programm with MASM... but I think I need example ('cause samples from books don't work),
+just a little file, for example test.asm, and when I exec "ml test.asm" I get test.obj and test.exe without errors...
+
+--------------------------------------------------
+01/23/03 at 19:31:47  Reply by: Zmeko (dosap29@msn.com)
+--------------------------------------------------
+dw 0b declares a word right?
+
+why dont you just use unsigned int?
+
+
+--------------------------------------------------
+01/24/03 at 09:31:41  Reply by: Integrator (integrator@triasoft.com)
+--------------------------------------------------
+Just becase it's assembler, but not C.
+C is quite an abstract language where we use varaibles, functions and etc. almost without thinking what will our program be <i>realy</i> like (I mean file), how code is arranged in memory and etc. But in assembler you see it...
+
+[modified on 01/24/03 at 09:31:41]
+--------------------------------------------------
+01/24/03 at 09:45:53  Reply by: Integrator (integrator@triasoft.com)
+--------------------------------------------------
+Ok, I finally managed to compile my program:
+code:
+
+;;file: test.asm
+;;
+.model      small
+.stack      128
+.data
+MSG      db      "It works!$"
+.code
+Entry:      mov      AX, @data
+     mov      DS, AX
+     mov      AH, 09h
+     lea      DX, MSG
+     int      21h
+     mov      AH, 4Ch
+     int      21h
+end Entry
+
+
+When I compile it (ml /c c:\a\test.asm > c:\a\ml_output.txt) I get test.obj.
+So, now I need to link it (and get test.exe or test.com), and I think that I should do something like "link test.obj kernel32.lib user32.lib ...", but I don't know what I should do <i>exactly</i>... Could anyone help me (again)? Thanks for help...
+
+
+--------------------------------------------------
+01/24/03 at 14:03:54  Reply by: Zmeko (dosap29@msn.com)
+--------------------------------------------------
+you do not have to lecture me about abstraction.
+your saying that in a MSVC++ you cant do db 0b
+and if i understand correctly, db 0b is declaring a byte. so the whole of my post was a solution to your problem.
+
+i dont want to lecture you about high level languages and abstraction because as you would of already guess abstraction allows the programmer to make more complex programs with more of an easy.
+
+Also note that your assembler compiles assembly code and assembly level of abstraction.
+
+Nick assembly is in human letters,in the sense that what you type is something you can understand i.e: mov, ebx, add ebx, 40, computers are good with numbers, not words.
+
+also when your C compiler compiles something it doesnt compile to the code to assembly, it compiles it to the native machine's language!
+
+[modified on 01/24/03 at 14:03:54]
+--------------------------------------------------
+01/24/03 at 14:12:49  Reply by: botman (botman@planethalflife.com)
+--------------------------------------------------
+"also when your C compiler compiles something it doesnt compile to the code to assembly, it compiles it to the native machine's language!"
+
+But any good C or C++ compiler has a command line switch to generate ASM code instead of object file output.
+
+You should then be able to feed the ASM code into a compatible assembler and linker to generate an executable.  Usually doing things this way will bypass many of the compiler optimizations (like loop unrolling, etc.).
+
+botman
+
+--------------------------------------------------
+01/24/03 at 21:11:25  Reply by: CountFloyd (countfloyd@botepidemic.com)
+--------------------------------------------------
+Albeit old and now somewhat abandonded I found this homepage to be a very good starting point if you want to do pure assembly within the windows environment:
+http://spiff.tripnet.se/~iczelion/
+
+There's also a great customized MASM Package (with FrontEnd & CodeWizard) and imho nice tutorials, be sure to check it out.
+
+[modified on 01/24/03 at 21:11:25]
+--------------------------------------------------
+01/25/03 at 22:52:01  Reply by: Zmeko (dosap29@msn.com)
+--------------------------------------------------
+QUOTE:
+"also when your C compiler compiles something it doesnt compile to the code to assembly, it compiles it to the native machine's language!"
+
+But any good C or C++ compiler has a command line switch to generate ASM code instead of object file output.
+
+You should then be able to feed the ASM code into a compatible assembler and linker to generate an executable.  Usually doing things this way will bypass many of the compiler optimizations (like loop unrolling, etc.).
+
+botman
+
+
+
+
+compiler doesnt compile the C/C++ to the native machine language isn't assembly just an abstraction for machin language?
+
+I always thought and told that machine language is something that the machine understood, e.g binary, i might be wrong but a teacher, who does DSS, told me that assembly is the human abstraction of machine op codes? 
+i like said, i am not an expert.
+
+[modified on 01/25/03 at 22:52:01]
+--------------------------------------------------
+01/27/03 at 13:08:59  Reply by: stefanhendriks (stefan@counter-strike.net)
+--------------------------------------------------
+are we talking about grade languages now?
+
+the binary stuff is the only thing a computer 'knows' afaik. 0's and 1's, thats it. 
+
+i thought it was something like:
+
+00101110110110101101 -> machine 'language'
+asm -> 2nd
+c/c++ -> 3rd
+progress/sql -> 4th
+
+i also heared about fifth generation languages, but i think the higher the 'grade' on a language the less flexible it will be. 
+
+
+
+--------------------------------------------------
+01/27/03 at 17:50:33  Reply by: Cheesemonster!!! (paul.murphy@ntlworld.com)
+--------------------------------------------------
+Apparantly things like Visual Basic/Delphi are 5th gen :S :)
+
+--------------------------------------------------
+01/28/03 at 00:53:10  Reply by: PM (pm@racc-ai.com)
+--------------------------------------------------
+You need to know electronics a bit to understand this whole language abstraction things.
+
+In particular, how a microcontroller works, what are address and data buses, what are hardware interruptions, and how to bootstrap the CPU.
+
+If you want to go deeper, you may want to learn what are digital programmable chips, and what is ABEL and VHDL.
+
+It is untrue to say that binary is a language. What is a "language", what the computer "understands", is the use it makes of its AND and OR gates. A CPU is made by billions of AND and OR gates, which ones give others if combined altogether: NOT gates, XOR gates, NAND gates, etc. These other gates, combined altogether, give counters, summers, multipliers. And these elements, combined altogether, give a CPU.
+
+These AND and OR gates can be visualized like chips with two pins input and one pin output. Two levels of voltage are discriminative : either the pin has no current (this is level 0), or the pin is powered at the power supply voltage level, usually +5V (this is level 1). The "gate" then decides of the level of the output given these inputs. For example, a OR gate having [0;1] as input will output 1. An AND gate having [0;1] as input will output 0.
+
+Now the concept of buses is the paralellization of such steps of processing. Once a working ALU (Arithmetical and Logical Unit) has been designed, in order to handle the multiplication and addition of numbers larger than 0 and 1, we input several wires at a time. The most common size of buses are 8, 12, 16, 32, 48 or 64 bits (for really big systems). 8 bits means the bus has 8 wires. Thus we can represent numbers up to 2^8, i.e, 256, starting from 00000000 binary (0) to 11111111 binary (256). Etc.
+
+Now the programming concept. Engineers figured out that it would be cool to somewhat "script" the ALU in order to make it execute several operations in sequence. For this purpose, they burned a PROM (Programmable Read Only Memory), with 1s and 0s so as they are grouped in 8-bit width elementary instructions. Then a hardware "address pointer" is set up, which purpose is: on first cycle of CPU, apply address 0 on PROM so that it outputs the first instruction word. On second cycle, incrememt the address so that the PROM outputs the next instruction word. And so on. Then these words are fed to the ALU, which then sets itself up so as to make such or such operation (addition, then multiplication, then unary complement, then addition again, etc.) at each cycle of the CPU.
+
+The programming concept was born out of this. In order for the programmers not to get lost, the 8-bit binary instructions have been abstracted into ASSEMBLY OPERATIONS. For example, if I say 00101101 makes my ALU conform itself so as to make an addition, I will name the 00101101 instruction "ADD". If 11001111 makes my ALU branch the hardware address pointer to the following data word if its input is not equal to zero, I will name it "JNZ" (for Jump if Not Zero). This way, we can not only script the ALU but also execute conditional operations, and change the way the program behaves.
+
+     MOV      00111111,00001111
+     MOV      01000000,11110000
+     XOR      00111111,01000000
+     JNZ      00000001
+ 
+The ASSEMBLY LANGUAGE is the first level of abstraction to the so-called "machine language" (which is not really a language, as we said, just a deterministic way of configuring the ALU. Language means interpretation, here it's not a language, it's just about which voltage to apply to which input so as to make the ALU make an addition next).
+
+You can then go on through deeper levels in abstraction. C, C++, are deeper levels of abstraction of the assembly language. Instead of writing 100 lines of assembly, people thought it was simpler to write one single line of C. And so on.
+
+There is not really "generations" in programming languages, apart from historical reasons that is. Machine "language" is abstracted into assembly. Assembly is then abstracted into another language. Whatever language it is. Story ends here. :)
+
+
+
+--------------------------------------------------
+01/28/03 at 04:54:07  Reply by: Phreak (dead_sexy_simon@hotmail.com)
+--------------------------------------------------
+
+Well explained Pierre. I have started with ASM and I am finding it suprisingly easy to understand. Count Floyd is right !!
+
+Go ASM :)
+
+Phreak
+

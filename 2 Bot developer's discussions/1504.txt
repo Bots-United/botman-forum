@@ -1,0 +1,138 @@
+--------------------------------------------------
+Subject: HPB Template v3 bugfixes (minor)
+--------------------------------------------------
+04/09/01 at 21:52:43  Posted by: everyman (eric@gamershomepage.com)
+--------------------------------------------------
+I thought I'd share a few minor bugs that I've found in HPB Template v3. I couldn't find any references to either of them in the messageboard archives, but if they have already been reported I apologize.
+
+
+--- util.cpp ---
+function:
+int UTIL_GetTeam(edict_t *pEntity)
+
+line:
+(strcmp(model_name, "artic") == 0) ||   // Artic Avenger
+
+should be:
+(strcmp(model_name, "arctic") == 0) ||   // Arctic Avenger
+
+explanation:
+The string "arctic" has two Cs in it. (I vaguely remember that it used to be mispelled in an older version of Counter-Strike.)
+
+
+--- waypoint.cpp ---
+function:
+int WaypointFindRandomGoal(edict_t *pEntity, int team, int flags)
+[and]
+int WaypointFindRandomGoal(Vector v_src, edict_t *pEntity, float range, int team, int flags)
+
+explanation:
+Both of these functions work differently than one would expect if the flags bitmask matches more than 50 waypoints. In these cases the waypoint returned is pseudo-random, but only within the domain of the 50 matching waypoints with the lowest indices. I ran into this bug when I tried using the flags parameter at value zero (my goal was to get any waypoint at random). To alleviate this problem, I modified the "if (count < 50)" clause to now read:
+
+if (count < 50)
+{
+   indexes[count] = index;
+   count++;
+}
+else
+{
+   // since indexes is already full, overwrite a random element
+   indexes[RANDOM_LONG(1, 50) - 1] = index;
+}
+
+This still has problems with probabilistic distribution (having a lower waypoint index now correlates with having more chances at being overwritten), but at least all matching waypoints have the potential of being selected. I use the following function for cases where I'm wanting a better index distribution, and don't have any restrictive 'flags':
+
+/** Find any waypoint completely at random. */
+int WaypointFindRandomGoal (edict_t *pEntity, int team)
+{
+   int index;
+   int count = 0;
+
+   if (num_waypoints < 1)
+      return -1;
+
+   while (count < 50) {
+      count++;
+
+      index = RANDOM_LONG(1, num_waypoints) - 1;
+
+      if (waypoints[index].flags & W_FL_DELETED)
+         continue;  // skip any deleted waypoints
+
+      if (waypoints[index].flags & W_FL_AIMING)
+         continue;  // skip any aiming waypoints
+
+      // skip this waypoint if it's team specific and teams don't match...
+      if ((team != -1) && (waypoints[index].flags & W_FL_TEAM_SPECIFIC) && ((waypoints[index].flags & W_FL_TEAM) != team))
+         continue;
+
+   return index;
+   }
+
+   return -1;
+}
+
+
+- - -
+
+Hope someone finds this useful.
+
+- Eric Bieschke
+
+p.s.  botman, you rule!
+
+
+--------------------------------------------------
+04/10/01 at 05:03:32  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+You'll probably also want to make the changes that were pointed out by Eric here...
+
+http://dynamic.gamespy.com/~botman/yabb/YaBB.pl?board=2&action=display&num=1491
+
+This could potentially cause a problem since other data is sent in this network packet besides the menu ID.  If one of these other network fields randomly matches a menu ID then the bot's "start_action" variable could get all hosed up.
+
+botman
+
+--------------------------------------------------
+04/10/01 at 05:10:15  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+Also, if you tend to edit waypoints while bots are in the game (which you REALLY shouldn't do!), and you turn autowaypointing on, you might want to change this...
+code:
+            if ((g_waypoint_on) && FBitSet(pPlayer->v.flags, FL_CLIENT))
+            {
+                  WaypointThink(pPlayer);
+            }
+
+...to this...
+code:
+            if ((g_waypoint_on) && FBitSet(pPlayer->v.flags, FL_CLIENT) &&
+                      !FBitSet(pPlayer->v.flags, FL_FAKECLIENT))
+            {
+                  WaypointThink(pPlayer);
+            }
+
+...in the StartFrame() function in dll.cpp to prevent bots from causing waypoints to be automatically added to levels.
+
+botman
+
+--------------------------------------------------
+04/10/01 at 14:08:03  Reply by: eLiTe (ali@elitegamer.fsnet.co.uk)
+--------------------------------------------------
+Well that feature is actually kind of funny :)
+
+Autowaypointing seems very wasteful tho, placing waypoints every 200 units (something to do with using the FLoyds algorithm?)
+
+--------------------------------------------------
+04/10/01 at 14:34:51  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+Nothing to do with Warshall-Floyd's algorithm.  I just wanted to make sure that waypoints weren't so far apart that they weren't viewable from one to the next (like going over a hill with one waypoint on one side and the other on the opposite side, if they are too far apart one won't be visible from the other).
+
+I think many of the Quake I/II bots used 128 units as a good distance between waypoints, but for wide open spaces you could make them much farther apart.  For areas with tight navigation (like amongst a bunch of boxes and crates) you would probably want the waypoints to be fairly close together to aid better navigation.
+
+botman
+
+--------------------------------------------------
+04/11/01 at 12:33:27  Reply by: eLiTe (ali@elitegamer.fsnet.co.uk)
+--------------------------------------------------
+The floyds algorithm didn't seem to work with my own waypoint structure (paths are not given to every visible waypoint, only a maximum of two paths for normal waypoints). It's way too complicated for me to understand anyway what with all the distance*distance-whatever*NOT_REACHABLE, etc
+

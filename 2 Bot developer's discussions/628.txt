@@ -1,0 +1,105 @@
+--------------------------------------------------
+Subject: Just a few Questions
+--------------------------------------------------
+11/16/00 at 22:13:49  Posted by: gommo (gommo@geocities.com)
+--------------------------------------------------
+1/ I've got the bots buying everyweapon and I am now looking at getting them to actually use each weapon differently. However, What is the best way to make them change weapons, i.e. Bring out their handgun or swap to their knife when up close etc...
+
+2/ I am having my bots taunt the enemy buy launching a 
+FakeClientCommand(pBot->pEdict,"say",somemessage,NULL);
+
+however whenever the bot says the 'somemessage' their is a 'say' in front of it. So if the bot is called gommo it would print out
+gommo says:  say somemessage
+
+Am I using the wrong command for this??
+
+3/
+Most of the CS bot dll's are around or under 200KB whereas just the template for the HPB bot is 500KB . I have cut out heaps of Valve, TFC stuff but mine is still around 400KB. Is there other stuff that can be removed safely?
+
+4/ 
+I have also been looking at various path finding algorithms but have yet to implement one. I was thinking of somehow creating an nxn matrix where as when you cross reference one node to another it gives you the best node to head too.
+i.e.
+
+      A   B    C    D
+A     C   C    D    B
+B     A   D    D    C
+C     D   A    D    B
+D     A   B    C    A
+
+So if you were at A and wanted to go to D the
+best path would first go through B
+
+IS this one of the algorithms used or is this
+mathamatically impossible to calculate??
+
+Anyway, 
+thanks for the help
+
+
+--------------------------------------------------
+11/17/00 at 02:34:22  Reply by: FuckFace (gellert.lukacs@dbs.hu)
+--------------------------------------------------
+if you want to select a weapon, use it's name as a command. eg. weapon_knife.
+
+instead of using the say command, use one of the various UTIL_ functions, I'm sure there are something for this matter.
+
+Try to compille it in release mode. Unless you are using Large static arrays, it shouldn't be more  than 200K.
+
+I have no specific info about the graph, it is sure that you can calculate the shortest path no mater how you represent the graph (matrix or linked list) Search this forum on this mater, there are a number of topics concerning this question.
+
+
+
+--------------------------------------------------
+11/17/00 at 04:34:19  Reply by: William (william@botepidemic.com)
+--------------------------------------------------
+Hi Colin,
+
+wrt. 3:
+don't bother - you won't gain much speed by removing a few 100KB. It's not significant on the 32MB HL is consuming in total.
+
+wrt 4.
+I'm indeed using the NxN matrix with 'next node to visit along the path', which you describe. You can easily compute such a matrix using the Floyd or Warshall algorithm (often referred to on this board).
+Matrix look up in general is faster than linked list (traversing a linked lists has the CPU follow pointers across the heap, with good chance of losing 'locality' which means cache misses). A matrix, if allocated as a single big chunk in memory doesn't have that problem.
+
+For more info on Floyd/Warshall see:
+http://wannabe.guru.org/alg/node88.html
+
+William
+
+--------------------------------------------------
+11/17/00 at 05:50:35  Reply by: gommo (gommo@geocities.com)
+--------------------------------------------------
+I've looked at floyds but what is the
+matrix[i,j] mean.
+Is it a new matrix or if not is matrix[i,j] right?
+
+matrix[i,j] = matrix[i][k] + matrix[k][j];
+
+--------------------------------------------------
+11/17/00 at 12:21:07  Reply by: William (william@botepidemic.com)
+--------------------------------------------------
+Matrix[i,j] (which is Algol68 / Pascal / Modula-2 notation) is equal to matrix[ i ][ j ] in C.
+
+However, since you'll be supporting different numbers of way point, which means different matrix sizes, you'r better off implementing the matrix as a one-dimensional array, and providing a simple access function:
+
+const unsigned int kMaxMatrixSize = 512;
+static nodeid_t matrix[kMaxtrixSize * kMaxMatrixSize];
+
+unsigned int kWaypointCount = ???;
+
+unsigned int GetMatrixIndex(unsigned int aRow, unsigned int aColumn)
+  {
+    assert( kWaypointCount < kMatrixSize );
+    assert( aRow < kWaypointCount );
+    assert( aColumn< kWaypointCount );
+    return kWaypointCount * aColumn + aRow;
+  }
+
+Setting matrix[i][j] now becomes:
+matrix[GetMatrixIndex(i,j)] = blabla;
+
+The compiler most likely will get rid of the function call overhead when optimizing.
+
+William
+
+

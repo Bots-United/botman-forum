@@ -1,0 +1,89 @@
+--------------------------------------------------
+Subject: player join and drop connections
+--------------------------------------------------
+04/20/01 at 02:08:06  Posted by: Clean (botmans@divinegods.net)
+--------------------------------------------------
+I've implemented a very crude way of detecting when players have been dropped from the server. I did so by checking if the player still exists as:
+
+
+pEdict->v.flags & (FL_CLIENT | FL_FAKECLIENT | FL_SPECTATOR | FL_DORMANT)) != 0
+
+
+Now the catch with this method is that a timer is required and it is set to wait X-amount of seconds before checking with the above code if the user still has not appeared in the player list. I've set the timer to 90 seconds and within this time if a player exists, then stop the timer since the entity is now officially in the game.
+
+I have not found any other way to detect player joins and drops. The ClientConnect tells us that a new player joins, but ClientDisconnect is not very accurate per se when people drop connections.
+
+If no one else has any other suggestion, then I suppose this is currently the only way.
+
+Count Floyd, you need to do this too in POD Bot ;) Your bots simply never go back to maximum allowable bots when users join and drop before appearing in the game =)
+
+--------------------------------------------------
+04/20/01 at 05:18:11  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+Read this discussion in the hlcoders list on www.topica.com about gpGlobals->maxClients...
+
+http://www.topica.com/lists/hlcoders/read?sort=d&start=7270
+
+(read the ones with "RE: gpGlobals->maxClients" from top to bottom).
+
+botman
+
+--------------------------------------------------
+04/20/01 at 06:04:35  Reply by: CountFloyd (countfloyd_1999@yahoo.com)
+--------------------------------------------------
+QUOTE:
+Count Floyd, you need to do this too in POD Bot ;) Your bots simply never go back to maximum allowable bots when users join and drop before appearing in the game
+
+
+
+1.4x right ? It doesn't seem to happen since I use Botman's workaround of using ClienPutInServer in addition to ClientConnect to verify new clients. But thanks for pointing out anyway... 
+
+--------------------------------------------------
+04/20/01 at 19:56:55  Reply by: Clean (botmans@divinegods.net)
+--------------------------------------------------
+Botman:
+
+Thanks for that forum. There's another bot resource added to the list ;)
+
+In reply to the client add/drop, Ghengis Khan's comment (http://www.topica.com/lists/hlcoders/read/message.html?mid=2001131481&sort=d&start=7270) that client joins and drops are unreliable I must agree. I notice after leaving the dedicated server on for hours, sometimes upon timeouts random disconnects, and others the client arrive in ClientPutInServer and then leave with ClientDisconnect, and other times not (yet to be fully verified). The game engine kicks out people when client generates SZ_* errors and other undocumented ones out there and sometimes clients don't disconnect properly. I suspect the game server doesn't tell the mod everything, but if anyone has also come across this rare occurance please report it here! :)
+
+
+Count Floyd:
+
+You fixed 1.4x with ClientPutInServer right? I hope it works, I'm testing HLREF and team killing using your bots so make sure it works hehe =)
+
+
+--------------------------------------------------
+04/27/01 at 00:27:44  Reply by: Clean (botmans@divinegods.net)
+--------------------------------------------------
+Here we go. Found it:
+
+L 04/27/2001 - 00:10:42: Team "CT" triggered "CTs_Win" (CT "167") (T "152")
+L 04/27/2001 - 00:10:42: World triggered "Round_End"
+L 04/27/2001 - 00:10:43: "=+=<83><170469><>" connected, address "209.178.105.187:27005"
+Dropped =+= from server
+Reason:  Client sent 'drop'
+L 04/27/2001 - 00:10:46: "Llama<78><590978><TERRORIST>" triggered "Spawned_With_The_Bomb"
+L 04/27/2001 - 00:10:47: World triggered "Round_Start"
+L 04/27/2001 - 00:11:20: "[UCB]chad<5><0><CT>" killed "Mighty Mouse<76><409751><TERRORIST>" with "m4a1"
+L 04/27/2001 - 00:12:15: <<HLREF>> INVALID: disconnecting user 83 (#170469); 209.178.105.187:27005
+L 04/27/2001 - 00:12:22: "dude<4><0><CT>" killed "Llama<78><590978><TERRORIST>" with "xm1014"
+L 04/27/2001 - 00:12:22: Team "CT" triggered "CTs_Win" (CT "168") (T "152")
+L 04/27/2001 - 00:12:22: World triggered "Round_End"
+
+ClientDisconnect was never called =)
+
+HLREF does so by polling for invalid users for N-seconds. Say, if any users drop out in the first 90s, just keep polling. If they still don't exist by 90s (some people take up to 109s to connect), then drop/kick them out. I did wish that the game engine itself would report player disconnects to the game MOD. What happens if memory allocated to players that disconnected weren't freed by the game MOD itself? Then could that be a part of the memory leaks people are complaining about? I might think it's one plausible reason because the server begins using more memory when I list the server on to the master list where normal people connect hundreds of times per day.
+
+
+--------------------------------------------------
+04/27/01 at 05:14:15  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+You might also want to e-mail Alfred (of the Admin MOD) or look through the Admin MOD CVS tree to see how they handle client connects and disconnects.  I seem to remember something else on the hlcoders list about this...
+
+http://www.topica.com/lists/hlcoders/read/message.html?mid=2001094710
+
+You might try searching the hlcoders list at www.topica.com for "ClientConnect", "ClientDisconnect" or "ClientPutInServer"
+
+botman
+

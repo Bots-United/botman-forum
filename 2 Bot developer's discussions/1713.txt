@@ -1,0 +1,67 @@
+--------------------------------------------------
+Subject: non-deterministic navigation with waypoints..
+--------------------------------------------------
+05/30/01 at 08:12:32  Posted by: mark (mark.pfrengle@gmx.de)
+--------------------------------------------------
+hi out there!
+
+i want to implement a navigation-system for a bot. in botmans template-code (*big* thanks for it!), the floyd-algorithm is used to compute the shortest way from one waypoint to another. the problem i see is when i'm using this table, trying to move from point a to point b results always to the same path. ok - you can vary somehow the points itself to vary the movement, but the path a-b stays the same... or did i fail to notice something in the template-code? could someone give me a hint, where to find the code i'm searching for or how to implement different paths for the same target...?
+is it right, that when i want to vary the pathes, i have to calculate them online with a pathfinding-algorithm like a* and cannot use a prepared table? or is this far to performance-hungry??
+
+mark
+
+
+--------------------------------------------------
+05/30/01 at 08:17:16  Reply by: jldailey (jldailey@uchicago.edu)
+--------------------------------------------------
+it would not be impossible to build a table using a modified version of floyd's that would show you  the shortest say three paths... though you then have a 3dimensional table to manage, and a lot more expensive to build.  as it is floyd runs in N^3 time, which is _horrible_, and you would be making it run in N^5 or something... 
+
+also, you can use A* with a bit of a dice spin on the distance to goal estimate, and you would get different paths everytime, though you have no gaurantee that you will have a meaningful path, i dont know the probabilities well enough to say for sure when it will or will not converge to a valid path but its worth a shot.
+
+--------------------------------------------------
+05/30/01 at 08:24:13  Reply by: William (william@botepidemic.com)
+--------------------------------------------------
+have a look at:
+http://dynamic.gamespy.com/~botman/yabb/YaBB.pl?board=2&action=display&num=1551
+
+the message at the bottom tries to explain how to use Floyd and get varying paths.
+
+William
+
+--------------------------------------------------
+05/30/01 at 11:25:07  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+There are also several good path finding discussions here (URL from my "Links" page)...
+
+http://www.red3d.com/breese/navigation.html
+
+...however, most of these deal with finding the shortest path to a goal, which the Floyd-Warshall table already gives you.
+
+It's a difficult problem and not computationally inexpensive.  I've spent many hours trying to come up with a good, fast method of finding alternate routes from one arbitrary point to some other arbitrary point and never was able to figure out a clever way to do this that didn't require an exhaustive search through all of the Floyd paths between all of the points that can get you from A to B.
+
+I'm sure there is a clever solution to this problem, but the only ones I could come up with involve having a person mark alternate routes by tagging two or more waypoints as "alternate route" type waypoints.  It's just not clear how to associate these tagged waypoints with the end points of a path that use them.
+
+botman
+
+--------------------------------------------------
+05/30/01 at 14:38:26  Reply by: mark (mark.pfrengle@gmx.de)
+--------------------------------------------------
+thanks for the links and the suggestions!
+
+hmm.. i think, i have do divide the problem in different detail-sizes. on a higher-level (marked with special-flagged waypoints at intersections, crosspoints,...) trying to find the different alternatives on a "raw level" connecting whole areas and not only waypoints ( go right, over the market and then straigth through or left, stairs up, throught the whine cellar and approaching from the other side...). after that, calculating the exact path (or looking in the floyd-table) with a full-detail waypoint-queue..  a mix between calculation and lookup...
+
+on the "raw" level, it would (hopefully) be not too slow calculating the different possibilites...
+i have to test - and think more about it....
+
+mark
+
+
+--------------------------------------------------
+05/31/01 at 05:18:55  Reply by: botman (botman@mailandnews.com)
+--------------------------------------------------
+Start with simple examples and try to extend that.  For example if you had a hallway that formed a circle with 10 waypoints spread equally about around the circle and you wanted to get from one side of the circle to the other, there's obviously 2 paths you can take.  But how do you determine which directions to go?  You could start by realising that there are 2 directions to take from the starting point.  If a path exists from the next waypoint (going in one direction or the other) to the goal waypoint then you have found 2 paths.  Each of these paths might not be the shortest path from the second waypoint to the goal waypoint so the Floyd table won't necessarily help you out here (but it might).  Now lets suppose you have a figure 8 hallway and you want to go from the top of the eight to the bottom of the eight.  There are four paths you can take (left curve then left curve, left curve then right curve, right curve then left curve, or right curve then right curve).  How would you determine that these four paths exist?  You would probably want some method that "detects" waypoints in the middle of each curve and choose 2 of these 4 waypoints as "mid-goal" waypoints.  Travel from the starting point to a mid-goal point, then from that mid-goal point to another mid-goal point or to the goal if no other mid-goal waypoints exist.
+
+The tricky part is coming up with a method that determines which waypoints are mid-goal waypoints.
+
+botman
+
